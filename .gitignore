@@ -1,0 +1,30 @@
+# ===== Frontend (Next.js) =====
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ===== Backend (Spring Boot) =====
+backend/.gradle/
+backend/build/
+backend/*.jar
+backend/*.war
+backend/.env
+backend/HELP.md
+backend/.idea/
+backend/*.iml
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE =====
+.vscode/settings.json
+.idea/
+*.iml

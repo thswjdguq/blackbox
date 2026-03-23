@@ -1,0 +1,41 @@
+spring:
+  datasource:
+    url: ${SUPABASE_DB_URL}
+    username: ${SUPABASE_DB_USERNAME}
+    password: ${SUPABASE_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+server:
+  port: ${APP_PORT:8080}
+
+app:
+  cors:
+    origins: ${APP_CORS_ORIGINS:http://localhost:3000}
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+external:
+  github:
+    token: ${GITHUB_TOKEN}
+    base-url: https://api.github.com
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
+  claude:
+    api-key: ${CLAUDE_API_KEY}
+    model: ${CLAUDE_MODEL:claude-sonnet-4-6}
+    base-url: https://api.anthropic.com
