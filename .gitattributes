@@ -1,0 +1,14 @@
+# 텍스트 파일: LF 통일 (Windows/Mac/Linux 공동 개발)
+* text=auto eol=lf
+
+# 바이너리: 변환 없음
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

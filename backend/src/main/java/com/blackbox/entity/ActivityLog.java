@@ -4,13 +4,11 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.Map;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -22,37 +20,47 @@ public class ActivityLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
+    @Column(nullable = false, updatable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
-    private Team team;
+    // PLATFORM | GITHUB | GOOGLE_DRIVE | MANUAL
+    @Column(nullable = false, length = 20)
+    private String source;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Source source;
+    // TASK_CREATE | TASK_COMPLETE | MEETING_ATTEND | CHECKIN | ...
+    @Column(name = "action_type", nullable = false, length = 50)
+    private String actionType;
 
-    @Column(name = "activity_type", nullable = false)
-    private String activityType;
-
-    // JSONB column for raw API response data
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "raw_data", columnDefinition = "jsonb")
-    private Map<String, Object> rawData;
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private String metadata;
 
-    @Column(name = "quality_score", precision = 5, scale = 2)
+    @Column(name = "external_id", length = 255)
+    private String externalId;
+
+    @Column(name = "trust_level", nullable = false, precision = 3, scale = 2)
+    private BigDecimal trustLevel;
+
+    @Column(name = "occurred_at", nullable = false)
+    private OffsetDateTime occurredAt;
+
+    @Column(name = "synced_at", nullable = false, insertable = false, updatable = false)
+    private OffsetDateTime syncedAt;
+
+    @Column(name = "quality_score", precision = 3, scale = 2)
     private BigDecimal qualityScore;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "quality_reason", columnDefinition = "TEXT")
+    private String qualityReason;
 
-    public enum Source {
-        github, google_drive, manual
-    }
+    @Column(name = "analysis_method", length = 20)
+    private String analysisMethod;
 }

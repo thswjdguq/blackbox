@@ -1,8 +1,10 @@
 spring:
   datasource:
-    url: ${SUPABASE_DB_URL}
-    username: ${SUPABASE_DB_USERNAME}
-    password: ${SUPABASE_DB_PASSWORD}
+    # docker-compose.yml에서 SPRING_DATASOURCE_* 환경변수로 직접 주입됨
+    # 로컬 개발(application-local.yml)에서는 localhost:5432 사용
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/blackbox_db}
+    username: ${SPRING_DATASOURCE_USERNAME:blackbox}
+    password: ${SPRING_DATASOURCE_PASSWORD:blackbox}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -18,24 +20,39 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
 server:
-  port: ${APP_PORT:8080}
+  port: 8080
 
 app:
   cors:
     origins: ${APP_CORS_ORIGINS:http://localhost:3000}
   jwt:
     secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    expiration-ms: ${JWT_EXPIRATION_MS:1800000}                    # access token 30분
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}  # refresh token 7일
+  file:
+    upload-dir: ${FILE_UPLOAD_DIR:/data/uploads}
 
 external:
   github:
-    token: ${GITHUB_TOKEN}
+    app-id: ${GITHUB_APP_ID:}
+    private-key: ${GITHUB_APP_PRIVATE_KEY:}
+    webhook-secret: ${GITHUB_WEBHOOK_SECRET:}
     base-url: https://api.github.com
   google:
-    client-id: ${GOOGLE_CLIENT_ID}
-    client-secret: ${GOOGLE_CLIENT_SECRET}
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
   claude:
-    api-key: ${CLAUDE_API_KEY}
-    model: ${CLAUDE_MODEL:claude-sonnet-4-6}
+    api-key: ${CLAUDE_API_KEY:}
+    model: claude-sonnet-4-6
     base-url: https://api.anthropic.com

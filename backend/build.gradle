@@ -8,9 +8,8 @@ group = 'com.blackbox'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 configurations {
@@ -30,8 +29,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // PostgreSQL (Supabase)
+    // PostgreSQL
     runtimeOnly 'org.postgresql:postgresql'
+
+    // Flyway (DB 마이그레이션)
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
 
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
@@ -41,9 +44,9 @@ dependencies {
     // HTTP Client (for GitHub, Google Drive, Claude API)
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
-    // Lombok
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    // Lombok (1.18.36: Java 24 지원)
+    compileOnly 'org.projectlombok:lombok:1.18.36'
+    annotationProcessor 'org.projectlombok:lombok:1.18.36'
 
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
