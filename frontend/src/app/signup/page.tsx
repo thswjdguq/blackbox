@@ -76,27 +76,27 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bb-bg flex items-center justify-center p-4">
       {/* Theme Toggle */}
       <button
         onClick={toggleTheme}
-        className="fixed top-4 right-4 p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+        className="fixed top-4 right-4 p-2 rounded-lg bg-bb-surface2 text-bb-text2 hover:bg-bb-border transition-colors"
         aria-label="테마 전환"
       >
         {isDark ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
       {/* Card */}
-      <div className="w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-8">
+      <div className="w-full max-w-md bg-bb-surface border border-bb-border rounded-xl p-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-500/10 mb-4">
-            <Shield size={24} className="text-blue-500" />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-bb-primary/10 mb-4">
+            <Shield size={24} className="text-indigo-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 className="text-2xl font-bold text-bb-text">
             Team Blackbox
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-bb-text2 mt-1">
             새 계정 만들기
           </p>
         </div>
@@ -112,7 +112,7 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
               이름
             </label>
             <input
@@ -122,13 +122,13 @@ export default function SignupPage() {
               placeholder="홍길동"
               required
               minLength={2}
-              className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-bb-surface border border-bb-border rounded-lg px-4 py-2.5 text-sm text-bb-text placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
               이메일
             </label>
             <input
@@ -137,13 +137,13 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
               required
-              className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-bb-surface border border-bb-border rounded-lg px-4 py-2.5 text-sm text-bb-text placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
               비밀번호
             </label>
             <div className="relative">
@@ -154,12 +154,12 @@ export default function SignupPage() {
                 placeholder="8자 이상 입력"
                 required
                 minLength={8}
-                className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 pr-10 text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
+                className="w-full bg-bb-surface border border-bb-border rounded-lg px-4 py-2.5 pr-10 text-sm text-bb-text placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-bb-text transition-colors"
                 aria-label="비밀번호 표시 전환"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -169,7 +169,7 @@ export default function SignupPage() {
 
           {/* Role */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
               역할
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -178,8 +178,8 @@ export default function SignupPage() {
                 onClick={() => setRole("STUDENT")}
                 className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
                   role === "STUDENT"
-                    ? "bg-blue-500/10 border-blue-500 text-blue-400"
-                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
+                    ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
+                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
                 }`}
               >
                 <Users size={16} />
@@ -190,8 +190,8 @@ export default function SignupPage() {
                 onClick={() => setRole("PROFESSOR")}
                 className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
                   role === "PROFESSOR"
-                    ? "bg-blue-500/10 border-blue-500 text-blue-400"
-                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
+                    ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
+                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
                 }`}
               >
                 <GraduationCap size={16} />
@@ -203,7 +203,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 mt-2"
+            className="w-full bg-bb-primary hover:bg-bb-primary-h disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 mt-2"
           >
             {loading ? (
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -217,11 +217,11 @@ export default function SignupPage() {
         </form>
 
         {/* Footer */}
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
+        <p className="text-center text-sm text-bb-text2 mt-6">
           이미 계정이 있으신가요?{" "}
           <Link
             href="/login"
-            className="text-blue-500 hover:text-blue-400 font-medium transition-colors"
+            className="text-indigo-500 hover:text-indigo-400 font-medium transition-colors"
           >
             로그인
           </Link>

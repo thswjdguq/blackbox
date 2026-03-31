@@ -2,6 +2,7 @@ package com.blackbox.controller;
 
 import com.blackbox.dto.*;
 import com.blackbox.entity.User;
+import com.blackbox.service.ClaudeService;
 import com.blackbox.service.MeetingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -16,9 +17,11 @@ import java.util.UUID;
 public class MeetingController {
 
     private final MeetingService meetingService;
+    private final ClaudeService claudeService;
 
-    public MeetingController(MeetingService meetingService) {
+    public MeetingController(MeetingService meetingService, ClaudeService claudeService) {
         this.meetingService = meetingService;
+        this.claudeService  = claudeService;
     }
 
     // ── Project-scoped meeting endpoints ─────────────────────────────────
@@ -88,6 +91,29 @@ public class MeetingController {
             @AuthenticationPrincipal User user) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(meetingService.createActionItem(projectId, meetingId, req, user));
+    }
+
+    // ── AI 엔드포인트 ────────────────────────────────────────────────────────
+
+    @PostMapping("/api/projects/{projectId}/meetings/{meetingId}/ai/summarize")
+    public ResponseEntity<AiSummaryResponse> summarizeMeeting(
+            @PathVariable UUID projectId,
+            @PathVariable UUID meetingId,
+            @AuthenticationPrincipal User user) {
+        MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
+        String summary = claudeService.summarizeMeeting(
+                meeting.title(), meeting.purpose(), meeting.notes(), meeting.decisions());
+        return ResponseEntity.ok(new AiSummaryResponse(summary));
+    }
+
+    @PostMapping("/api/projects/{projectId}/meetings/{meetingId}/ai/extract-actions")
+    public ResponseEntity<AiActionItemsResponse> extractActions(
+            @PathVariable UUID projectId,
+            @PathVariable UUID meetingId,
+            @AuthenticationPrincipal User user) {
+        MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
+        List<String> items = claudeService.extractActionItems(meeting.notes(), meeting.decisions());
+        return ResponseEntity.ok(new AiActionItemsResponse(items));
     }
 
     // ── Global checkin endpoint (코드만으로 체크인) ────────────────────────

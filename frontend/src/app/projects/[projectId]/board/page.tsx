@@ -1,0 +1,248 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import KanbanBoard from "@/components/kanban/KanbanBoard";
+import { Task, ScoreMap } from "@/types/task";
+import api from "@/lib/api";
+import {
+  RefreshCw,
+  ChevronDown,
+  FolderKanban,
+  AlertCircle,
+} from "lucide-react";
+
+interface Member {
+  userId: string;
+  memberId: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface ProjectInfo {
+  id: string;
+  name: string;
+  courseName: string | null;
+  semester: string | null;
+}
+
+interface ScoreEntry {
+  userId: string;
+  totalScore: number;
+}
+
+// ── Small stats banner ──────────────────────────────────────────────────────
+function StatPill({ label, value, accent }: { label: string; value: number; accent: string }) {
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bb-surface border border-bb-border`}>
+      <div className={`w-2 h-2 rounded-full ${accent}`} />
+      <span className="text-xs text-bb-text2">{label}</span>
+      <span className="text-sm font-bold text-bb-text">{value}</span>
+    </div>
+  );
+}
+
+export default function BoardPage() {
+  const params = useParams();
+  const router = useRouter();
+  const projectId = params?.projectId as string;
+
+  const [project, setProject] = useState<ProjectInfo | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [scoreMap, setScoreMap] = useState<ScoreMap>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Project selector (if no projectId — redirect to dashboard)
+  useEffect(() => {
+    if (!projectId) {
+      router.replace("/dashboard");
+      return;
+    }
+    const token = localStorage.getItem("accessToken");
+    if (!token) { router.replace("/login"); return; }
+    bootstrap();
+  }, [projectId]);
+
+  async function bootstrap() {
+    setLoading(true);
+    setError("");
+    try {
+      const [projRes, taskRes, memberRes] = await Promise.all([
+        api.get<ProjectInfo>(`/projects/${projectId}`),
+        api.get<Task[]>(`/projects/${projectId}/tasks`),
+        api.get<Member[]>(`/projects/${projectId}/members`),
+      ]);
+      setProject(projRes.data);
+      setTasks(taskRes.data);
+      setMembers(memberRes.data);
+
+      // Scores (may not exist yet — gracefully ignore 404)
+      try {
+        const scoreRes = await api.get<ScoreEntry[]>(`/projects/${projectId}/scores`);
+        const map: ScoreMap = {};
+        scoreRes.data.forEach((s) => { map[s.userId] = Number(s.totalScore); });
+        setScoreMap(map);
+      } catch {
+        // No scores yet — leave scoreMap empty
+      }
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) { router.replace("/login"); return; }
+      setError("프로젝트 데이터를 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRefreshScores() {
+    setRefreshing(true);
+    try {
+      const res = await api.post<ScoreEntry[]>(`/projects/${projectId}/scores/recalculate`);
+      const map: ScoreMap = {};
+      res.data.forEach((s) => { map[s.userId] = Number(s.totalScore); });
+      setScoreMap(map);
+    } catch { /* silent */ }
+    finally { setRefreshing(false); }
+  }
+
+  // Stats
+  const todoCount = tasks.filter((t) => t.status === "TODO").length;
+  const inProgressCount = tasks.filter((t) => t.status === "IN_PROGRESS").length;
+  const doneCount = tasks.filter((t) => t.status === "DONE").length;
+  const completionPct = tasks.length > 0
+    ? Math.round((doneCount / tasks.length) * 100)
+    : 0;
+
+  // ── Loading skeleton ────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-bb-bg">
+        <Sidebar />
+        <main className="ml-64 min-h-screen p-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-7 bg-bb-surface rounded-lg w-48" />
+            <div className="grid grid-cols-3 gap-6">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="bg-bb-surface rounded-xl p-4 h-64" />
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Error state ─────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="min-h-screen bg-bb-bg">
+        <Sidebar />
+        <main className="ml-64 min-h-screen p-8 flex items-center justify-center">
+          <div className="text-center">
+            <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
+            <p className="text-bb-text text-sm mb-4">{error}</p>
+            <button
+              onClick={bootstrap}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 transition-colors"
+            >
+              다시 시도
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Main render ─────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-bb-bg">
+      <Sidebar />
+
+      <main className="ml-64 min-h-screen flex flex-col">
+        {/* Top bar with gradient accent */}
+        <div className="relative px-8 pt-8 pb-6 border-b border-slate-800 overflow-hidden">
+          {/* Decorative gradient */}
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 via-transparent to-teal-400/5 pointer-events-none" />
+
+          <div className="relative flex items-start justify-between">
+            <div>
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-2 text-xs text-bb-text2 mb-2">
+                <FolderKanban size={12} />
+                <span
+                  className="hover:text-bb-text cursor-pointer transition-colors"
+                  onClick={() => router.push("/dashboard")}
+                >
+                  {project?.name ?? "프로젝트"}
+                </span>
+                <ChevronDown size={10} className="-rotate-90" />
+                <span className="text-bb-text2">칸반 보드</span>
+              </div>
+
+              <h1 className="text-xl font-bold text-bb-text">칸반 보드</h1>
+              {project?.courseName && (
+                <p className="text-xs text-bb-text2 mt-1">
+                  {project.courseName}
+                  {project.semester && ` · ${project.semester}`}
+                </p>
+              )}
+            </div>
+
+            {/* Stats + refresh */}
+            <div className="flex items-center gap-3">
+              <StatPill label="할 일" value={todoCount} accent="bg-slate-500" />
+              <StatPill label="진행 중" value={inProgressCount} accent="bg-indigo-500" />
+              <StatPill label="완료" value={doneCount} accent="bg-teal-400" />
+
+              {/* Progress bar */}
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-xs text-bb-text2">
+                  완료율 <span className="text-teal-400 font-bold">{completionPct}%</span>
+                </span>
+                <div className="w-24 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
+                    style={{ width: `${completionPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Score refresh */}
+              <button
+                onClick={handleRefreshScores}
+                disabled={refreshing}
+                title="기여도 점수 재계산"
+                className="p-2 rounded-lg bg-bb-surface border border-bb-border text-bb-text2
+                           hover:text-teal-400 hover:border-teal-400/40 transition-all disabled:opacity-50"
+              >
+                <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Board area */}
+        <div className="flex-1 p-8 overflow-x-auto">
+          <div className="min-w-[900px]">
+            <KanbanBoard
+              projectId={projectId}
+              initialTasks={tasks}
+              members={members.map((m) => ({
+                userId: m.userId,
+                name: m.name,
+                email: m.email,
+              }))}
+              scoreMap={scoreMap}
+              onTasksChange={setTasks}
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

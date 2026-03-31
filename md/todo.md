@@ -7,32 +7,34 @@
 ## Phase 1: 인프라 & 기반 구축 (1~2주)
 
 ### 🔴 P0 — Docker Compose 인프라 셋업
-- [ ] 프로젝트 루트 `docker-compose.yml` 작성
-- [ ] PostgreSQL 16 컨테이너 설정 (`db` 서비스)
-- [ ] `pgdata` 볼륨 (DB 영속), `uploads` 볼륨 (파일 저장)
-- [ ] Spring Boot Dockerfile 작성 (multi-stage 빌드)
-- [ ] Next.js Dockerfile 작성 (standalone 빌드)
-- [ ] Nginx 설정 (`/` → frontend, `/api` → backend, `/uploads` → 정적)
-- [ ] `docker compose up -d` 로 전체 스택 기동 확인
-- [ ] `.env` 환경변수 파일 구성 (DB 비밀번호, JWT 시크릿 등)
+- [x] 프로젝트 루트 `docker-compose.yml` 작성
+- [x] PostgreSQL 16 컨테이너 설정 (`db` 서비스)
+- [x] `pgdata` 볼륨 (DB 영속), `uploads` 볼륨 (파일 저장)
+- [x] Spring Boot Dockerfile 작성 (multi-stage 빌드)
+- [x] Next.js Dockerfile 작성 (standalone 빌드)
+- [x] Nginx 설정 (`/` → frontend, `/api` → backend, `/uploads` → 정적)
+- [ ] `docker compose up -d` 로 전체 스택 기동 확인 (실제 실행 검증 필요)
+- [x] `.env` 환경변수 파일 구성 (DB 비밀번호, JWT 시크릿 등)
 - **참조:** `docs/docker.md`
 
 ### 🔴 P0 — 프로젝트 초기화
-- [ ] Spring Boot 프로젝트 생성 (Java 17, Gradle)
-- [ ] Next.js 프로젝트 생성 (App Router, TypeScript)
+- [x] Spring Boot 프로젝트 생성 (Java 17, Gradle)
+- [x] Next.js 프로젝트 생성 (App Router, TypeScript)
 - [ ] GitHub 리포지토리 생성 & 브랜치 전략 확정
 - [ ] CI/CD 기본 설정 (GitHub Actions — Docker 빌드 확인)
 
 ### 🔴 P0 — DB 스키마 v1 배포 (Flyway)
-- [ ] Flyway 의존성 추가 & 설정
-- [ ] `V1__init_users.sql` — users 테이블
-- [ ] `V2__init_projects.sql` — projects, project_members 테이블
-- [ ] `V3__init_tasks.sql` — tasks, task_assignees 테이블
-- [ ] `V4__init_meetings.sql` — meetings, meeting_attendees 테이블
-- [ ] `V5__init_activity_logs.sql` — activity_logs 테이블 + 인덱스
-- [ ] `V6__init_file_vault.sql` — file_vault + immutable 트리거 + tamper_detection_log
-- [ ] `V7__init_scores_alerts.sql` — contribution_scores, alerts 테이블
-- [ ] `docker compose up` 시 Flyway 자동 마이그레이션 확인
+- [x] Flyway 의존성 추가 & 설정
+- [x] `V1__init_users.sql` — users 테이블
+- [x] `V2__init_projects.sql` — projects, project_members 테이블
+- [x] `V3__init_tasks.sql` — tasks, task_assignees 테이블
+- [x] `V4__init_meetings.sql` — meetings, meeting_attendees 테이블
+- [x] `V5__init_activity_logs.sql` — activity_logs 테이블 + 인덱스
+- [x] `V6__init_file_vault.sql` — file_vault + immutable 트리거 + tamper_detection_log
+- [x] `V7__init_scores_alerts.sql` — contribution_scores, alerts 테이블
+- [x] `V8__add_timestamp_triggers.sql` — 타임스탬프 자동 갱신 트리거 (todo에 없던 항목)
+- [x] `V9__add_task_triggers.sql` — 태스크 트리거 (todo에 없던 항목)
+- [ ] `docker compose up` 시 Flyway 자동 마이그레이션 확인 (실제 실행 검증 필요)
 - **참조:** `docs/database.md`
 
 ---
@@ -40,30 +42,30 @@
 ## Phase 2: 인증 & 프로젝트 관리 (3~4주)
 
 ### 🔴 P0 — 백엔드: 인증
-- [ ] User 엔티티 & Repository
-- [ ] 회원가입 API (`POST /api/auth/signup`)
-- [ ] 로그인 API (`POST /api/auth/login`) — JWT 발급
-- [ ] JWT 필터 & SecurityConfig
-- [ ] Refresh Token 로직
-- [ ] 역할 기반 접근 제어 (STUDENT / PROFESSOR / TA)
+- [x] User 엔티티 & Repository
+- [x] 회원가입 API (`POST /api/auth/signup`)
+- [x] 로그인 API (`POST /api/auth/login`) — JWT 발급
+- [x] JWT 필터 & SecurityConfig
+- [x] Refresh Token 로직
+- [ ] 역할 기반 접근 제어 (STUDENT / PROFESSOR / TA) — User 엔티티에 role 필드 있으나 PROFESSOR/TA 분기 로직 미구현
 - **참조:** `backend/modules/auth.md`
 
 ### 🔴 P0 — 백엔드: 프로젝트 관리
-- [ ] Project CRUD API
-- [ ] 초대 코드 생성 & 참여 API
-- [ ] 멤버 관리 (역할 변경, 탈퇴)
-- [ ] ProjectAccessChecker (LEADER/MEMBER/OBSERVER 권한 검증)
-- [ ] 데이터 수집 동의 기록 API
+- [x] Project CRUD API
+- [x] 초대 코드 생성 & 참여 API
+- [x] 멤버 관리 (역할 변경, 탈퇴)
+- [x] ProjectAccessChecker (LEADER/MEMBER/OBSERVER 권한 검증)
+- [x] 데이터 수집 동의 기록 API
 - **참조:** `backend/modules/project.md`
 
 ### 🟡 P1 — 프론트엔드: 인증 & 프로젝트
-- [ ] 로그인/회원가입 페이지
-- [ ] JWT 토큰 관리 (Zustand store)
-- [ ] Axios 인터셉터 (토큰 자동 첨부, 갱신)
-- [ ] 프로젝트 목록 페이지
-- [ ] 프로젝트 생성 모달
-- [ ] 초대 코드 참여 페이지
-- [ ] 동의 플로우 온보딩 UI
+- [x] 로그인/회원가입 페이지
+- [x] JWT 토큰 관리 (Zustand store)
+- [x] Axios 인터셉터 (토큰 자동 첨부, 갱신)
+- [x] 프로젝트 목록 페이지
+- [x] 프로젝트 생성 모달
+- [x] 초대 코드 참여 페이지 (모달 형태로 구현)
+- [ ] 동의 플로우 온보딩 UI — API는 있으나 프론트 UI 미구현
 - **참조:** `frontend/pages/auth.md`, `frontend/pages/dashboard.md`
 
 ---
@@ -71,33 +73,33 @@
 ## Phase 3: 칸반 & 회의록 (5~6주)
 
 ### 🔴 P0 — 백엔드: 태스크
-- [ ] Task CRUD API (생성/수정/삭제/목록)
-- [ ] 상태 변경 API (TODO → IN_PROGRESS → DONE)
-- [ ] 담당자 배정 API
-- [ ] 태스크 이벤트 → `activity_logs` 자동 기록
+- [x] Task CRUD API (생성/수정/삭제/목록)
+- [x] 상태 변경 API (TODO → IN_PROGRESS → DONE)
+- [x] 담당자 배정 API
+- [x] 태스크 이벤트 → `activity_logs` 자동 기록
 - **참조:** `backend/modules/task.md`
 
 ### 🔴 P0 — 백엔드: 회의록
-- [ ] Meeting CRUD API
-- [ ] 체크인 코드 생성 & 체크인 API
-- [ ] 회의록 작성/수정 API
-- [ ] 액션 아이템 → 태스크 생성 연결
-- [ ] 회의 이벤트 → `activity_logs` 자동 기록
+- [x] Meeting CRUD API
+- [x] 체크인 코드 생성 & 체크인 API
+- [x] 회의록 작성/수정 API
+- [x] 액션 아이템 → 태스크 생성 연결
+- [x] 회의 이벤트 → `activity_logs` 자동 기록
 - **참조:** `backend/modules/meeting.md`
 
-### 🟡 P1 — 프론트엔드: 칸반 보드
-- [ ] 3단 칼럼 레이아웃 (To Do / In Progress / Done)
-- [ ] 태스크 카드 컴포넌트
-- [ ] 드래그 앤 드롭 (@dnd-kit)
-- [ ] 태스크 생성/편집 모달
-- [ ] 필터 (담당자, 태그, 우선순위)
+### 🔴 P0 — 프론트엔드: 칸반 보드 (`/projects/[id]/board`)
+- [x] 3단 칼럼 레이아웃 (To Do / In Progress / Done)
+- [x] 태스크 카드 컴포넌트 (우선순위 뱃지, 담당자 아바타, 마감일, 기여도 점수 칩)
+- [x] 드래그 앤 드롭 (@dnd-kit — 낙관적 업데이트 + 백엔드 API 호출)
+- [x] 태스크 생성/편집 모달 (2단계 삭제 확인 포함)
+- [ ] 필터 (담당자, 태그, 우선순위) — 미구현
 - **참조:** `frontend/pages/board.md`
 
 ### 🟡 P1 — 프론트엔드: 회의록
-- [ ] 회의 목록 페이지
-- [ ] 회의 상세 (참석자, 내용, 결정사항)
-- [ ] 체크인 UI (QR 표시 or 링크)
-- [ ] 액션 아이템 → 태스크 생성 버튼
+- [ ] 회의 목록 페이지 — 미구현
+- [ ] 회의 상세 (참석자, 내용, 결정사항) — 미구현
+- [ ] 체크인 UI (QR 표시 or 링크) — 미구현
+- [ ] 액션 아이템 → 태스크 생성 버튼 — 미구현
 - **참조:** `frontend/pages/meeting.md`
 
 ---
@@ -105,49 +107,65 @@
 ## Phase 4: Hash Vault & Score Engine (5~7주, Phase 3과 병행)
 
 ### 🔴 P0 — 백엔드: Hash Vault (로컬 파일 저장)
-- [ ] FileStorageService (로컬 디스크 저장: `/data/uploads/{projectId}/`)
-- [ ] SHA-256 해시 생성 (HashService)
-- [ ] 파일 업로드 API (`POST /projects/:id/files` — multipart)
-- [ ] `file_vault` INSERT + 버전 관리
-- [ ] 재업로드 시 해시 비교 로직
-- [ ] 파일 다운로드 API (`GET /files/:id/download` — 스트리밍)
-- [ ] 변조 감지 시 `tamper_detection_log` + `alerts` 기록
-- [ ] 파일 이력 조회 API
+- [x] FileStorageService (로컬 디스크 저장: `/data/uploads/{projectId}/`)
+- [x] SHA-256 해시 생성 (HashService)
+- [x] 파일 업로드 API (`POST /projects/:id/files` — multipart)
+- [x] `file_vault` INSERT + 버전 관리
+- [x] 재업로드 시 해시 비교 로직
+- [x] 파일 다운로드 API (`GET /files/:id/download` — 스트리밍)
+- [x] 변조 감지 시 `tamper_detection_log` + `alerts` 기록
+- [x] 파일 이력 조회 API
 - **참조:** `backend/modules/vault.md`
 
 ### 🔴 P0 — 백엔드: Score Engine (MVP 버전)
-- [ ] 플랫폼 활동 로그 기반 점수 산출
-- [ ] 팀 평균 기준 정규화 (상한 150 클리핑)
-- [ ] 항목별 점수 계산 (태스크/회의/파일)
-- [ ] 종합 점수 = Σ(항목 × 가중치)
-- [ ] 점수 재계산 스케줄러 (30분 간격 or 이벤트 트리거)
-- [ ] 기본 가중치 설정 (w1=0.30, w2=0.25, w3=0.20, w4=0.25)
+- [x] 플랫폼 활동 로그 기반 점수 산출
+- [x] 팀 평균 기준 정규화 (상한 150 클리핑)
+- [x] 항목별 점수 계산 (태스크/회의/파일)
+- [x] 종합 점수 = Σ(항목 × 가중치)
+- [x] 점수 재계산 스케줄러 (30분 간격)
+- [x] 기본 가중치 설정 (w1=0.30, w2=0.25, w3=0.20, w4=0.25)
 - **참조:** `backend/modules/score.md`
 
 ### 🔴 P0 — 백엔드: 경보 시스템 (규칙 기반)
-- [ ] 불균형 감지 (점수 편차 > 40%)
-- [ ] 이탈 감지 (2주 연속 활동 없음)
-- [ ] 과부하 감지 (1인이 60% 이상)
-- [ ] 경보 생성 → `alerts` 테이블
+- [x] 불균형 감지 (점수 편차 > 40% — FREE_RIDE: 평균 60% 미만)
+- [x] 이탈 감지 (2주 연속 활동 없음 — DROPOUT)
+- [x] 과부하 감지 (1인이 60% 이상 — OVERLOAD)
+- [x] 경보 생성 → `alerts` 테이블
 - **참조:** `backend/modules/alert.md`
 
 ### 🟡 P1 — 프론트엔드: 파일 & 점수
-- [ ] 파일 업로드 UI
-- [ ] 파일 이력 뷰 (Hash Vault 타임라인)
-- [ ] 내 기여도 요약 카드
+- [ ] 파일 업로드 UI — 미구현
+- [ ] 파일 이력 뷰 (Hash Vault 타임라인) — 미구현
+- [ ] 내 기여도 요약 카드 — 미구현
 - **참조:** `frontend/pages/vault.md`, `frontend/pages/analytics.md`
 
 ---
 
-## Phase 5: 교수 대시보드 & MVP 마무리 (7~8주)
+## Phase 5: 팀원 성과 대시보드 & 무결성 PDF 리포트 (7~8주)
 
-### 🔴 P0 — 프론트엔드: 교수 대시보드
-- [ ] 팀 목록 오버뷰 (카드 뷰)
-- [ ] 팀 상세: 기여도 바 차트 (Recharts)
-- [ ] 프로젝트 진행률 표시
-- [ ] 경보 뱃지 & 목록
-- [ ] 건강도 지표 (🟢🟡🟠🔴)
-- **참조:** `frontend/pages/professor.md`
+> **전략 수정 (2026-03-30):** 교수 전용 실시간 대시보드를 폐기하고,
+> 팀원이 직접 생성하는 'SHA-256 해시 기반 무결성 PDF 보고서'를 교수에게 제출하는 방식으로 전환.
+> 학생 프라이버시 보호 + Hash Vault 철학(불변성 · 증거력) 일관성 확보.
+
+### 🔴 P0 — 프론트엔드: 팀원 성과 대시보드 (`/analytics`)
+- [ ] 내 기여도 요약 카드 (총점 · 항목별 점수 · 팀 내 순위)
+- [ ] 팀 전체 기여도 비교 바 차트 (Recharts — 멤버별 색상)
+- [ ] 칸반 진행률 환형 차트 (To Do / In Progress / Done)
+- [ ] 경보 현황 인라인 표시 (FREE_RIDE · OVERLOAD · DROPOUT)
+- [ ] 기여도 점수 수동 갱신 버튼 (→ `POST /scores/recalculate`)
+- **참조:** `frontend/pages/analytics.md`
+
+### 🔴 P0 — 백엔드: 무결성 PDF 리포트 API
+- [ ] `ReportService` — 프로젝트 스냅샷 직렬화 (태스크/파일/점수/경보)
+- [ ] 각 데이터 항목에 SHA-256 해시값 포함
+- [ ] `GET /projects/:id/report?format=pdf` — PDF 스트리밍 다운로드
+- [ ] 리포트 생성 시각 및 생성자 서명 기록
+- **참조:** `backend/modules/report.md`
+
+### 🔴 P0 — 프론트엔드: 리포트 생성 UI
+- [ ] 보고서 미리보기 패널 (주요 지표 요약)
+- [ ] '무결성 보고서 발급' 버튼 → PDF 다운로드
+- [ ] 발급 이력 목록 표시
 
 ### 🔴 P0 — Docker 배포 안정화
 - [ ] Docker Compose production 프로필 구성
@@ -221,6 +239,26 @@
 
 ---
 
+## 📌 코드에 구현되었으나 기존 todo에 없는 항목 (추가)
+
+### 백엔드 추가 구현 사항
+- [x] `V8__add_timestamp_triggers.sql` — updated_at 자동 갱신 DB 트리거
+- [x] `V9__add_task_triggers.sql` — 태스크 관련 DB 트리거
+- [x] WeightConfig 엔티티 & Repository — 프로젝트별 가중치 커스터마이징 지원
+- [x] `WeightConfig`를 활용한 ScoreService 가중치 동적 조회
+- [x] ActivityLogService — 모든 모듈에서 활동 로그 공통 기록
+- [x] `TamperDetectionLog` 엔티티 — 파일 변조 이력 별도 기록
+- [x] `ScoreController` — 점수 수동 재계산 API (`POST /projects/:id/scores/recalculate`)
+- [x] `HealthController` — Docker 헬스체크 엔드포인트 (`GET /api/health`)
+- [x] `SchedulingConfig` — Spring Scheduling 활성화 설정
+
+### 프론트엔드 추가 구현 사항
+- [x] Sidebar 공용 컴포넌트 (`components/Sidebar.tsx`)
+- [x] `lib/db.ts` — 프론트 DB 헬퍼 유틸리티
+- [x] `types/database.ts` — TypeScript DB 타입 정의
+
+---
+
 ## 우선순위 범례
 
 | 레벨 | 의미 | 시점 |
@@ -240,16 +278,16 @@ Docker Compose ──→ DB 스키마 (Flyway) ──→ 백엔드 인증 ──
   Nginx 설정                              프론트 인증     태스크 API
                                                 │              │
                                                 ↓              ↓
-                                          프로젝트 UI    칸반 보드 UI
+                                          프로젝트 UI    칸반 보드 UI  ← ⚠️ 미구현
                                                                │
-                                                          회의록 API/UI
+                                                          회의록 API/UI ← ⚠️ 미구현
                                                                │
                                                           Hash Vault
-                                                         (로컬 파일 저장)
+                                                         (로컬 파일 저장) ✅
                                                                │
-                                                          Score Engine
+                                                          Score Engine ✅
                                                                │
-                                                          교수 대시보드
+                                                          교수 대시보드 ← ⚠️ 미구현
                                                                │
                                                          [MVP 완성] ←─ Docker 배포 안정화
                                                                │

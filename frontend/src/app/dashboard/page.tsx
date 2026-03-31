@@ -10,8 +10,10 @@ import {
   Hash,
   X,
   LogIn,
+  Trash2,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import DatePicker from "@/components/DatePicker";
 import api from "@/lib/api";
 
 interface Project {
@@ -24,6 +26,7 @@ interface Project {
   endDate: string | null;
   inviteCode: string;
   memberCount: number;
+  myRole: string | null;
 }
 
 export default function DashboardPage() {
@@ -50,6 +53,10 @@ export default function DashboardPage() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
 
+  // 프로젝트 삭제 모달
+  const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // 인증 확인 + 프로젝트 목록 조회
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -64,10 +71,29 @@ export default function DashboardPage() {
     try {
       const { data } = await api.get<Project[]>("/projects");
       setProjects(data);
+      localStorage.setItem("projectCount", data.length.toString());
     } catch {
       router.replace("/login");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 프로젝트 삭제
+  const handleDelete = async () => {
+    if (!showDeleteId) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/projects/${showDeleteId}`);
+      const updated = projects.filter((p) => p.id !== showDeleteId);
+      setProjects(updated);
+      localStorage.setItem("projectCount", updated.length.toString());
+      setShowDeleteId(null);
+    } catch {
+      // 실패 시 모달 닫기만 (에러 표시 없이)
+      setShowDeleteId(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -128,29 +154,29 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Sidebar />
+    <div className="min-h-screen bg-bb-bg">
+      <Sidebar hasProjects={projects.length > 0} />
 
       <main className="ml-64 min-h-screen p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">내 프로젝트</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <h1 className="text-2xl font-bold text-bb-text">내 프로젝트</h1>
+            <p className="text-sm text-bb-text2 mt-1">
               참여 중인 프로젝트 {projects.length}개
             </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => setShowJoin(true)}
-              className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
               <Hash size={15} />
               초대 코드 참여
             </button>
             <button
               onClick={() => setShowCreate(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
               <Plus size={15} />
               새 프로젝트
@@ -164,34 +190,34 @@ export default function DashboardPage() {
             {[...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="bg-slate-800 border border-slate-700 rounded-xl p-6 animate-pulse"
+                className="bg-bb-surface border border-bb-border rounded-xl p-6 animate-pulse"
               >
-                <div className="h-4 bg-slate-700 rounded w-2/3 mb-3" />
-                <div className="h-3 bg-slate-700 rounded w-1/2 mb-6" />
-                <div className="h-3 bg-slate-700 rounded w-full" />
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-3" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-6" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full" />
               </div>
             ))}
           </div>
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-4">
-              <FolderKanban size={28} className="text-slate-500" />
+            <div className="w-16 h-16 rounded-2xl bg-bb-surface border border-bb-border flex items-center justify-center mb-4">
+              <FolderKanban size={28} className="text-bb-text2" />
             </div>
-            <p className="text-sm font-medium text-slate-300 mb-1">프로젝트가 없습니다</p>
-            <p className="text-xs text-slate-500 mb-6">
+            <p className="text-sm font-medium text-bb-text2 mb-1">프로젝트가 없습니다</p>
+            <p className="text-xs text-bb-text2 mb-6">
               새 프로젝트를 만들거나 초대 코드로 참여해 보세요
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowJoin(true)}
-                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <Hash size={15} />
                 초대 코드 참여
               </button>
               <button
                 onClick={() => setShowCreate(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <Plus size={15} />
                 새 프로젝트
@@ -201,7 +227,11 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onDelete={() => setShowDeleteId(project.id)}
+              />
             ))}
           </div>
         )}
@@ -254,19 +284,17 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="시작일">
-                <input
-                  type="date"
+                <DatePicker
                   value={createForm.startDate}
-                  onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })}
-                  className={INPUT_CLS}
+                  onChange={(v) => setCreateForm({ ...createForm, startDate: v })}
+                  placeholder="YYYY-MM-DD"
                 />
               </Field>
               <Field label="종료일">
-                <input
-                  type="date"
+                <DatePicker
                   value={createForm.endDate}
-                  onChange={(e) => setCreateForm({ ...createForm, endDate: e.target.value })}
-                  className={INPUT_CLS}
+                  onChange={(v) => setCreateForm({ ...createForm, endDate: v })}
+                  placeholder="YYYY-MM-DD"
                 />
               </Field>
             </div>
@@ -315,13 +343,49 @@ export default function DashboardPage() {
           </form>
         </Modal>
       )}
+
+      {/* 프로젝트 삭제 확인 모달 */}
+      {showDeleteId && (
+        <Modal title="프로젝트 삭제" onClose={() => setShowDeleteId(null)}>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">
+              이 프로젝트를 삭제하면 모든 데이터(태스크, 회의록, 파일 등)가
+              영구적으로 삭제됩니다. 정말 삭제하시겠습니까?
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteId(null)}
+                disabled={deleting}
+                className={BTN_SECONDARY}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                {deleting ? <Spinner /> : <><Trash2 size={15} /> 삭제</>}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
 // ── 프로젝트 카드 ───────────────────────────────────────────────────────────
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({
+  project,
+  onDelete,
+}: {
+  project: Project;
+  onDelete: () => void;
+}) {
   const router = useRouter();
 
   const formatDate = (d: string | null) =>
@@ -334,46 +398,65 @@ function ProjectCard({ project }: { project: Project }) {
 
   return (
     <div
-      onClick={() => router.push(`/projects/${project.id}`)}
-      className="bg-slate-800 border border-slate-700 rounded-xl p-6 cursor-pointer hover:border-slate-500 hover:bg-slate-800/80 transition-all group"
+      onClick={() => router.push(`/projects/${project.id}/board`)}
+      className="bg-bb-surface border border-bb-border rounded-xl p-6 cursor-pointer hover:border-bb-primary/30 hover:shadow-sm transition-all group"
     >
       {/* Top */}
       <div className="flex items-start justify-between mb-3">
-        <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-          <FolderKanban size={18} className="text-blue-400" />
+        <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+          <FolderKanban size={18} className="text-indigo-500 dark:text-indigo-400" />
         </div>
-        <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full text-xs">
-          진행 중
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-xs">
+            진행 중
+          </span>
+          {project.myRole === "LEADER" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+              title="프로젝트 삭제"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Title */}
-      <h3 className="text-sm font-semibold text-slate-100 mb-1 line-clamp-1">
+      <h3 className="text-sm font-semibold text-bb-text mb-1 line-clamp-1">
         {project.name}
       </h3>
       {project.description && (
-        <p className="text-xs text-slate-400 mb-3 line-clamp-2">{project.description}</p>
+        <p className="text-xs text-bb-text2 mb-3 line-clamp-2">{project.description}</p>
       )}
       {!project.description && project.courseName && (
-        <p className="text-xs text-slate-400 mb-3">{project.courseName}</p>
+        <p className="text-xs text-bb-text2 mb-3">{project.courseName}</p>
       )}
 
       {/* Meta */}
-      <div className="flex items-center gap-4 mt-auto pt-3 border-t border-slate-700/60">
-        <span className="flex items-center gap-1.5 text-xs text-slate-500">
+      <div className="flex items-center gap-4 mt-auto pt-3 border-t border-bb-border">
+        <span className="flex items-center gap-1.5 text-xs text-bb-text2">
           <Users size={12} />
           {project.memberCount}명
         </span>
         {project.semester && (
-          <span className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5 text-xs text-bb-text2">
             <Calendar size={12} />
             {project.semester}
           </span>
         )}
         {dateRange && !project.semester && (
-          <span className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5 text-xs text-bb-text2">
             <Calendar size={12} />
             {dateRange}
+          </span>
+        )}
+        {project.myRole && (
+          <span className="ml-auto text-xs font-medium text-indigo-500 dark:text-indigo-400">
+            {project.myRole === "LEADER" ? "팀장" : "팀원"}
           </span>
         )}
       </div>
@@ -387,12 +470,12 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-2xl">
+      <div className="relative w-full max-w-md bg-bb-surface border border-bb-border rounded-xl p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
+          <h2 className="text-lg font-semibold text-bb-text">{title}</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 transition-colors p-1 rounded-lg hover:bg-slate-700"
+            className="text-bb-text2 hover:text-bb-text transition-colors p-1 rounded-lg hover:bg-bb-surface2"
           >
             <X size={18} />
           </button>
@@ -406,7 +489,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-400 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-bb-text2 mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -417,10 +500,10 @@ function Spinner() {
 }
 
 const INPUT_CLS =
-  "w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-sm text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors";
+  "w-full bg-bb-surface border border-bb-border rounded-lg px-4 py-2 text-sm text-bb-text placeholder-bb-text2 focus:outline-none focus:border-bb-primary transition-colors";
 
 const BTN_PRIMARY =
-  "bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2";
+  "bg-bb-primary hover:bg-bb-primary-h disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2";
 
 const BTN_SECONDARY =
-  "bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors";
+  "bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors";

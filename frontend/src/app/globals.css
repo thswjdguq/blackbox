@@ -2,6 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design Tokens (CSS Custom Properties) ─────────────────────────── */
+:root {
+  /* Light mode palette */
+  --bb-bg:        255 255 255;   /* #FFFFFF */
+  --bb-surface:   248 250 252;   /* #F8FAFC */
+  --bb-surface2:  241 245 249;   /* #F1F5F9 */
+  --bb-border:    226 232 240;   /* #E2E8F0 */
+  --bb-primary:   99 102 241;    /* #6366F1  indigo-500 */
+  --bb-primary-h: 79 70 229;     /* #4F46E5  indigo-600 */
+  --bb-accent:    45 212 191;    /* #2DD4BF  teal-400 */
+  --bb-text:      15 23 42;      /* #0F172A */
+  --bb-text2:     100 116 139;   /* #64748B */
+  --bb-sidebar:   248 250 252;   /* #F8FAFC */
+}
+
+.dark {
+  /* Dark mode palette */
+  --bb-bg:        15 23 42;      /* #0F172A */
+  --bb-surface:   30 41 59;      /* #1E293B */
+  --bb-surface2:  51 65 85;      /* #334155 */
+  --bb-border:    51 65 85;      /* #334155 */
+  --bb-primary:   129 140 248;   /* #818CF8  indigo-400 */
+  --bb-primary-h: 99 102 241;    /* #6366F1  indigo-500 */
+  --bb-accent:    45 212 191;    /* #2DD4BF */
+  --bb-text:      241 245 249;   /* #F1F5F9 */
+  --bb-text2:     148 163 184;   /* #94A3B8 */
+  --bb-sidebar:   15 23 42;      /* #0F172A */
+}
+
+/* ─── Base Body Styles ──────────────────────────────────────────────── */
 body {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: rgb(var(--bb-bg));
+  color: rgb(var(--bb-text));
+}
+
+/* ─── Page Transition Progress Bar ─────────────────────────────────── */
+#nprogress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: rgb(var(--bb-primary));
+  z-index: 9999;
+  transition: width 0.2s ease;
+}
+
+/* ─── Toast Fade-In ─────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+
+/* ─── react-day-picker Calendar Overrides ───────────────────────────── */
+.rdp {
+  --rdp-accent-color: rgb(var(--bb-primary));
+  --rdp-background-color: rgb(var(--bb-primary) / 0.1);
+  margin: 0;
+}
+
+.rdp-day_selected,
+.rdp-day_selected:focus-visible,
+.rdp-day_selected:hover {
+  background-color: rgb(var(--bb-primary));
+  color: white;
+  border-radius: 6px;
+}
+
+.rdp-day:hover:not(.rdp-day_selected) {
+  background-color: rgb(var(--bb-primary) / 0.1);
+  border-radius: 6px;
+}
+
+.rdp-button:focus-visible {
+  outline: 2px solid rgb(var(--bb-primary));
+}
+
+.rdp-day_today:not(.rdp-day_selected) {
+  color: rgb(var(--bb-primary));
+  font-weight: 600;
 }

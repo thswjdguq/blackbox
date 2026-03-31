@@ -16,21 +16,27 @@ import {
 import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", icon: FolderKanban, label: "내 프로젝트" },
-  { href: "/board", icon: Kanban, label: "칸반 보드" },
-  { href: "/meetings", icon: FileText, label: "회의록" },
-  { href: "/vault", icon: Files, label: "Hash Vault" },
-  { href: "/analytics", icon: BarChart2, label: "기여도" },
+  { href: "/dashboard",  icon: FolderKanban, label: "내 프로젝트" },
+  { href: "/board",      icon: Kanban,       label: "칸반 보드",  needsProject: true },
+  { href: "/meetings",   icon: FileText,     label: "회의록",     needsProject: true },
+  { href: "/vault",      icon: Files,        label: "Hash Vault", needsProject: true },
+  { href: "/analytics",  icon: BarChart2,    label: "기여도",     needsProject: true },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  hasProjects?: boolean;
+}
+
+export default function Sidebar({ hasProjects }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
   const [isDark, setIsDark] = useState(true);
+  const [toast,  setToast]  = useState(false);
 
   useEffect(() => {
-    const theme = localStorage.getItem("theme") || "dark";
+    const theme = localStorage.getItem("theme") ?? "dark";
     setIsDark(theme === "dark");
+    document.documentElement.classList.toggle("dark", theme === "dark");
   }, []);
 
   const toggleTheme = () => {
@@ -40,62 +46,97 @@ export default function Sidebar() {
     document.documentElement.classList.toggle("dark", next);
   };
 
+  const showNoProjectToast = () => {
+    setToast(true);
+    setTimeout(() => setToast(false), 3000);
+  };
+
+  const handleNavClick = (e: React.MouseEvent, href: string, needsProject?: boolean) => {
+    if (!needsProject) return;
+    const stored = localStorage.getItem("projectCount");
+    const count  = hasProjects !== undefined
+      ? (hasProjects ? 1 : 0)
+      : stored !== null ? Number(stored) : -1;
+    if (count === 0) {
+      e.preventDefault();
+      showNoProjectToast();
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("projectCount");
     router.push("/login");
   };
 
   return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-700 h-screen fixed left-0 top-0 flex flex-col">
-      {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-700">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Shield size={16} className="text-blue-500" />
+    <>
+      <aside className="w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-30">
+        {/* 로고 */}
+        <div className="px-6 py-5 border-b border-bb-border">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-bb-primary/10 flex items-center justify-center">
+              <Shield size={16} className="text-bb-primary" />
+            </div>
+            <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
           </div>
-          <span className="text-sm font-semibold text-slate-100">Team Blackbox</span>
         </div>
-      </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                active
-                  ? "bg-blue-600/15 text-blue-400 font-medium"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-              }`}
-            >
-              <Icon size={16} />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+        {/* 네비게이션 */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5">
+          {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject }) => {
+            const active = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Link
+                key={href}
+                href={href}
+                prefetch={true}
+                onClick={(e) => handleNavClick(e, href, needsProject)}
+                className={`relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  active
+                    ? "bg-bb-primary/10 text-bb-primary font-medium before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-full before:bg-bb-primary"
+                    : "text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+                }`}
+              >
+                <Icon size={16} className={active ? "text-bb-primary" : "text-bb-text2"} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
 
-      {/* Bottom */}
-      <div className="px-3 py-4 border-t border-slate-700 space-y-0.5">
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-        >
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
-          {isDark ? "라이트 모드" : "다크 모드"}
-        </button>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-        >
-          <LogOut size={16} />
-          로그아웃
-        </button>
-      </div>
-    </aside>
+        {/* 하단 버튼 */}
+        <div className="px-3 py-4 border-t border-bb-border space-y-0.5">
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                       text-bb-text2 hover:text-bb-text hover:bg-bb-surface2 transition-colors"
+          >
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            {isDark ? "라이트 모드" : "다크 모드"}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                       text-bb-text2 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut size={16} />
+            로그아웃
+          </button>
+        </div>
+      </aside>
+
+      {/* 토스트 */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+                        flex items-center gap-2 px-5 py-3 rounded-xl shadow-lg
+                        bg-bb-surface border border-bb-border
+                        text-sm text-bb-text animate-fade-in">
+          <FolderKanban size={15} className="text-bb-primary shrink-0" />
+          먼저 프로젝트를 생성하거나 참여해주세요
+        </div>
+      )}
+    </>
   );
 }

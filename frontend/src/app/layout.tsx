@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import PageProgress from "@/components/PageProgress";
 
 export const metadata: Metadata = {
   title: "Team Blackbox",
@@ -14,13 +15,20 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
+        {/* 테마 초기화 — 깜빡임 방지 (blocking script) */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme')||'dark';document.documentElement.classList.toggle('dark',t==='dark')}catch(e){}})()`,
+            __html: `(function(){try{
+              var t=localStorage.getItem('theme')||'dark';
+              document.documentElement.classList.toggle('dark',t==='dark');
+            }catch(e){}})()`,
           }}
         />
       </head>
-      <body>{children}</body>
+      <body className="bg-bb-bg text-bb-text">
+        <PageProgress />
+        {children}
+      </body>
     </html>
   );
 }

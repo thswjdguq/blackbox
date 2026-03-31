@@ -47,7 +47,7 @@ public class ProjectService {
                 .map(m -> {
                     Project p = m.getProject();
                     long count = projectMemberRepository.countByProject(p);
-                    return ProjectResponse.from(p, count);
+                    return ProjectResponse.from(p, count, m.getRole());
                 })
                 .collect(Collectors.toList());
     }
