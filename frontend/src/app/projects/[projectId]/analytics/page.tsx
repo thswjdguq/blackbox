@@ -13,7 +13,7 @@ import {
 import {
   BarChart2, RefreshCw, AlertTriangle, Star, TrendingUp,
   Users, Loader2, AlertCircle, Zap, FileText, CheckSquare,
-  Video, GitBranch,
+  Video, GitBranch, Download, ShieldCheck,
 } from "lucide-react";
 
 // ── 상수 ──────────────────────────────────────────────────────────────────
@@ -184,11 +184,12 @@ export default function AnalyticsPage() {
   const projectId = params?.projectId as string;
   const chart     = useChartTheme();
 
-  const [scores,       setScores]       = useState<ScoreEntry[]>([]);
-  const [alerts,       setAlerts]       = useState<Alert[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [recalculating,setRecalculating]= useState(false);
-  const [error,        setError]        = useState("");
+  const [scores,        setScores]        = useState<ScoreEntry[]>([]);
+  const [alerts,        setAlerts]        = useState<Alert[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
+  const [error,         setError]         = useState("");
+  const [downloading,   setDownloading]   = useState(false);
 
   const normalise = (arr: ScoreEntry[]) =>
     arr.map((s) => ({
@@ -222,6 +223,23 @@ export default function AnalyticsPage() {
     if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchData();
   }, [fetchData]);
+
+  const handleDownloadReport = async () => {
+    setDownloading(true);
+    try {
+      const res = await api.get(`/projects/${projectId}/report`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `blackbox-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("리포트 생성에 실패했습니다.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleRecalculate = async () => {
     setRecalculating(true);
@@ -483,7 +501,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* ── 차트 3: 주차별 활동 추이 라인 차트 ──────────────── */}
-            <section>
+            <section className="mb-8">
               <SectionTitle><TrendingUp size={13} />주차별 활동 추이</SectionTitle>
               <div className="bg-white dark:bg-bb-surface border border-bb-border rounded-xl p-6 shadow-sm">
                 {avgScore > 0 ? (
@@ -508,6 +526,46 @@ export default function AnalyticsPage() {
                     활동 데이터가 쌓이면 추이 차트가 표시됩니다
                   </div>
                 )}
+              </div>
+            </section>
+
+            {/* ── 무결성 PDF 리포트 ─────────────────────────────────── */}
+            <section>
+              <SectionTitle>
+                <ShieldCheck size={13} className="text-bb-primary" />
+                무결성 PDF 리포트
+              </SectionTitle>
+              <div className="bg-white dark:bg-bb-surface border border-bb-border rounded-xl p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-bb-text mb-1">
+                      SHA-256 해시 기반 무결성 보고서
+                    </h3>
+                    <p className="text-xs text-bb-text2 leading-relaxed">
+                      기여도 점수, 칸반 태스크, Hash Vault 파일 목록을 포함한 PDF 리포트를 생성합니다.
+                      각 데이터 행에 SHA-256 해시가 포함되어 위변조 여부를 검증할 수 있습니다.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {["기여도 점수", "칸반 태스크", "Hash Vault 파일", "경보 현황", "리포트 해시"].map((tag) => (
+                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-bb-primary/10 text-bb-primary font-medium">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDownloadReport}
+                    disabled={downloading}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-bb-primary hover:bg-bb-primary-h
+                               text-white text-sm font-medium rounded-lg transition-all
+                               disabled:opacity-50 shrink-0"
+                  >
+                    {downloading
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <Download size={14} />}
+                    {downloading ? "생성 중..." : "리포트 발급"}
+                  </button>
+                </div>
               </div>
             </section>
           </>
