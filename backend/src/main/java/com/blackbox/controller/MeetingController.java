@@ -2,8 +2,10 @@ package com.blackbox.controller;
 
 import com.blackbox.dto.*;
 import com.blackbox.entity.User;
+import com.blackbox.entity.Meeting;
 import com.blackbox.service.ClaudeService;
 import com.blackbox.service.MeetingService;
+import com.blackbox.service.NotionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +19,15 @@ import java.util.UUID;
 public class MeetingController {
 
     private final MeetingService meetingService;
-    private final ClaudeService claudeService;
+    private final ClaudeService  claudeService;
+    private final NotionService  notionService;
 
-    public MeetingController(MeetingService meetingService, ClaudeService claudeService) {
+    public MeetingController(MeetingService meetingService,
+                             ClaudeService claudeService,
+                             NotionService notionService) {
         this.meetingService = meetingService;
         this.claudeService  = claudeService;
+        this.notionService  = notionService;
     }
 
     // ── Project-scoped meeting endpoints ─────────────────────────────────
@@ -114,6 +120,30 @@ public class MeetingController {
         MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
         List<String> items = claudeService.extractActionItems(meeting.notes(), meeting.decisions());
         return ResponseEntity.ok(new AiActionItemsResponse(items));
+    }
+
+    // ── Notion 내보내기 ───────────────────────────────────────────────────
+
+    @PostMapping("/api/projects/{projectId}/meetings/{meetingId}/notion/export")
+    public ResponseEntity<NotionExportResponse> exportToNotion(
+            @PathVariable UUID projectId,
+            @PathVariable UUID meetingId,
+            @AuthenticationPrincipal User user) {
+        MeetingResponse meetingDto = meetingService.getMeeting(projectId, meetingId, user);
+
+        // AI 요약 생성 (API 키 없으면 null)
+        String aiSummary = null;
+        try {
+            aiSummary = claudeService.summarizeMeeting(
+                    meetingDto.title(), meetingDto.purpose(),
+                    meetingDto.notes(), meetingDto.decisions());
+        } catch (Exception ignored) { }
+
+        // Meeting 엔티티 직접 조회 (NotionService에서 사용)
+        Meeting meeting = meetingService.getRawMeeting(projectId, meetingId, user);
+        String pageUrl = notionService.exportMeeting(meeting, aiSummary);
+
+        return ResponseEntity.ok(new NotionExportResponse(pageUrl));
     }
 
     // ── Global checkin endpoint (코드만으로 체크인) ────────────────────────

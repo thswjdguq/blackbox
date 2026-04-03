@@ -23,6 +23,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
@@ -126,6 +127,10 @@ export default function MeetingDetailPage() {
   // AI 요약
   const [summarizing,  setSummarizing]  = useState(false);
   const [aiSummary,    setAiSummary]    = useState<string | null>(null);
+
+  // Notion 내보내기
+  const [exporting,    setExporting]    = useState(false);
+  const [notionUrl,    setNotionUrl]    = useState<string | null>(null);
 
   // AI 액션아이템 추출
   const [extracting,      setExtracting]      = useState(false);
@@ -235,6 +240,26 @@ export default function MeetingDetailPage() {
       setError(msg ?? "AI 요약에 실패했습니다. CLAUDE_API_KEY를 확인하세요.");
     } finally {
       setSummarizing(false);
+    }
+  };
+
+  // ── Notion 내보내기 ──────────────────────────────────────────
+  const handleNotionExport = async () => {
+    if (!editNotes.trim() && !editDecisions.trim()) {
+      setError("회의록 내용을 먼저 입력하고 저장하세요.");
+      return;
+    }
+    setExporting(true);
+    try {
+      const { data } = await api.post<{ pageUrl: string }>(
+        `/projects/${projectId}/meetings/${meetingId}/notion/export`,
+      );
+      setNotionUrl(data.pageUrl);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? "Notion 내보내기 실패. NOTION_API_KEY와 NOTION_PARENT_PAGE_ID를 확인하세요.");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -432,20 +457,50 @@ export default function MeetingDetailPage() {
                 <AiSummaryPanel summary={aiSummary} onClose={() => setAiSummary(null)} />
               )}
 
+              {/* Notion 내보내기 성공 링크 */}
+              {notionUrl && (
+                <div className="flex items-center gap-2 p-3 bg-bb-primary/5 border border-bb-primary/20 rounded-lg">
+                  <ExternalLink size={13} className="text-bb-primary shrink-0" />
+                  <span className="text-xs text-bb-text2">Notion 페이지 생성됨:</span>
+                  <a
+                    href={notionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-bb-primary hover:underline truncate"
+                  >
+                    {notionUrl}
+                  </a>
+                  <button onClick={() => setNotionUrl(null)} className="ml-auto text-bb-text2 hover:text-bb-text shrink-0">
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-1">
-                {/* AI 요약 버튼 */}
-                <button
-                  onClick={handleAiSummarize}
-                  disabled={summarizing}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-bb-primary
-                             border border-bb-primary/30 hover:bg-bb-primary/5 rounded-lg
-                             transition-all disabled:opacity-50"
-                >
-                  {summarizing
-                    ? <Loader2 size={14} className="animate-spin" />
-                    : <Sparkles size={14} />}
-                  {summarizing ? "요약 중..." : "AI 요약"}
-                </button>
+                {/* 왼쪽: AI 요약 + Notion 버튼 */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleAiSummarize}
+                    disabled={summarizing}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-bb-primary
+                               border border-bb-primary/30 hover:bg-bb-primary/5 rounded-lg
+                               transition-all disabled:opacity-50"
+                  >
+                    {summarizing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {summarizing ? "요약 중..." : "AI 요약"}
+                  </button>
+
+                  <button
+                    onClick={handleNotionExport}
+                    disabled={exporting}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-bb-text2
+                               border border-bb-border hover:bg-bb-surface2 rounded-lg
+                               transition-all disabled:opacity-50"
+                  >
+                    {exporting ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
+                    {exporting ? "내보내는 중..." : "Notion으로 내보내기"}
+                  </button>
+                </div>
 
                 {/* 저장 버튼 */}
                 <button

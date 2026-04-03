@@ -192,6 +192,15 @@ public class MeetingService {
         return taskService.createTask(projectId, enriched, user);
     }
 
+    // ── 컨트롤러용 엔티티 직접 반환 (Notion 내보내기 등) ────────────────────
+
+    @Transactional(readOnly = true)
+    public Meeting getRawMeeting(UUID projectId, UUID meetingId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        accessChecker.requireMember(project, user);
+        return findMeeting(meetingId, project);
+    }
+
     // ── internal ──────────────────────────────────────────────────────────
 
     private Meeting findMeeting(UUID meetingId, Project project) {

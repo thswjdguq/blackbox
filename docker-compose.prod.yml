@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────
+# 프로덕션 프로필 (데모/발표용 SSL 포함)
+# 사용:
+#   1. sh ssl/gen-certs.sh          # 인증서 최초 생성 (1회)
+#   2. docker compose -f docker-compose.prod.yml up -d
+# ─────────────────────────────────────────────────────────────
+
+services:
+
+  # ─────────────────────────────────────────
+  # 1. DATABASE
+  # ─────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: blackbox_db
+    restart: always
+    environment:
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - blackbox_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # 2. BACKEND (Spring Boot)
+  # ─────────────────────────────────────────
+  backend:
+    image: qbuzxj370/blackbox-backend:latest
+    container_name: blackbox_backend
+    restart: always
+    environment:
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://db:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET:                 ${JWT_SECRET}
+      JWT_ACCESS_EXPIRY:          ${JWT_ACCESS_EXPIRY:-1800000}
+      JWT_REFRESH_EXPIRY:         ${JWT_REFRESH_EXPIRY:-604800000}
+      UPLOAD_PATH:                /data/uploads
+      CLAUDE_API_KEY:             ${CLAUDE_API_KEY}
+      NOTION_API_KEY:             ${NOTION_API_KEY:-}
+      NOTION_PARENT_PAGE_ID:      ${NOTION_PARENT_PAGE_ID:-}
+    volumes:
+      - uploads:/data/uploads
+    networks:
+      - blackbox_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────
+  # 3. FRONTEND (Next.js)
+  # ─────────────────────────────────────────
+  frontend:
+    image: qbuzxj370/blackbox-frontend:latest
+    container_name: blackbox_frontend
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://localhost/api}
+    networks:
+      - blackbox_net
+    depends_on:
+      - backend
+
+  # ─────────────────────────────────────────
+  # 4. NGINX (SSL 리버스 프록시)
+  # ─────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: blackbox_nginx
+    restart: always
+    ports:
+      - "80:80"    # HTTP → HTTPS 리다이렉트
+      - "443:443"  # HTTPS
+    volumes:
+      - ./nginx/nginx-ssl.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl/server.crt:/etc/nginx/ssl/server.crt:ro
+      - ./ssl/server.key:/etc/nginx/ssl/server.key:ro
+      - uploads:/data/uploads:ro
+    networks:
+      - blackbox_net
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata:
+    driver: local
+  uploads:
+    driver: local
+
+networks:
+  blackbox_net:
+    driver: bridge
