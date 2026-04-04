@@ -11,6 +11,8 @@ import {
   ChevronDown,
   FolderKanban,
   AlertCircle,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 
 interface Member {
@@ -56,6 +58,8 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [notionUrl, setNotionUrl] = useState<string | null>(null);
 
   // Project selector (if no projectId — redirect to dashboard)
   useEffect(() => {
@@ -108,6 +112,21 @@ export default function BoardPage() {
       setScoreMap(map);
     } catch { /* silent */ }
     finally { setRefreshing(false); }
+  }
+
+  async function handleNotionSync() {
+    setSyncing(true);
+    setNotionUrl(null);
+    try {
+      const res = await api.post<{ pageUrl: string; taskCount: number; message: string }>(
+        `/projects/${projectId}/tasks/notion/sync`
+      );
+      setNotionUrl(res.data.pageUrl);
+    } catch {
+      setError("Notion 동기화에 실패했습니다. NOTION_API_KEY를 확인해주세요.");
+    } finally {
+      setSyncing(false);
+    }
   }
 
   // Stats
@@ -212,6 +231,21 @@ export default function BoardPage() {
                 </div>
               </div>
 
+              {/* Notion sync */}
+              <button
+                onClick={handleNotionSync}
+                disabled={syncing}
+                title="칸반 보드를 Notion으로 내보내기"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-bb-surface border border-bb-border
+                           text-xs text-bb-text2 hover:text-white hover:bg-[#191919] hover:border-[#191919]
+                           transition-all disabled:opacity-50 font-medium"
+              >
+                {syncing
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <span className="text-[11px]">N</span>}
+                Notion
+              </button>
+
               {/* Score refresh */}
               <button
                 onClick={handleRefreshScores}
@@ -225,6 +259,22 @@ export default function BoardPage() {
             </div>
           </div>
         </div>
+
+        {/* Notion sync result banner */}
+        {notionUrl && (
+          <div className="mx-8 mt-4 flex items-center gap-3 px-4 py-3 bg-[#191919] border border-[#333] rounded-xl text-sm text-white">
+            <span className="text-[11px] font-bold bg-white text-[#191919] px-1.5 py-0.5 rounded">N</span>
+            <span className="text-xs text-gray-300">Notion 페이지가 생성됐습니다</span>
+            <a
+              href={notionUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto flex items-center gap-1 text-xs text-teal-400 hover:underline"
+            >
+              열기 <ExternalLink size={11} />
+            </a>
+          </div>
+        )}
 
         {/* Board area */}
         <div className="flex-1 p-8 overflow-x-auto">

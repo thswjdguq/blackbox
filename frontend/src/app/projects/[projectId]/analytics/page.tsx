@@ -8,13 +8,25 @@ import { ScoreEntry, Alert, AlertType } from "@/types/vault";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, LineChart,
-  Line, Legend,
+  Line, RadialBarChart, RadialBar,
 } from "recharts";
 import {
   BarChart2, RefreshCw, AlertTriangle, Star, TrendingUp,
   Users, Loader2, AlertCircle, Zap, FileText, CheckSquare,
-  Video, GitBranch, Download, ShieldCheck,
+  Video, GitBranch, Download, ShieldCheck, Gauge, Clock,
 } from "lucide-react";
+
+// ── 타입 ──────────────────────────────────────────────────────────────────
+interface RiskData {
+  riskScore: number;
+  level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  totalTasks: number;
+  doneTasks: number;
+  overdueTasks: number;
+  completionRate: number;
+  daysRemaining: number | null;
+  reasons: string[];
+}
 
 // ── 상수 ──────────────────────────────────────────────────────────────────
 const MEMBER_COLORS = ["#6366F1", "#2DD4BF", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
@@ -186,6 +198,7 @@ export default function AnalyticsPage() {
 
   const [scores,        setScores]        = useState<ScoreEntry[]>([]);
   const [alerts,        setAlerts]        = useState<Alert[]>([]);
+  const [risk,          setRisk]          = useState<RiskData | null>(null);
   const [loading,       setLoading]       = useState(true);
   const [recalculating, setRecalculating] = useState(false);
   const [error,         setError]         = useState("");
@@ -204,12 +217,14 @@ export default function AnalyticsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const [scoreRes, alertRes] = await Promise.all([
+      const [scoreRes, alertRes, riskRes] = await Promise.all([
         api.get<ScoreEntry[]>(`/projects/${projectId}/scores`),
         api.get<Alert[]>(`/projects/${projectId}/alerts`),
+        api.get<RiskData>(`/projects/${projectId}/risk`),
       ]);
       setScores(normalise(scoreRes.data));
       setAlerts(alertRes.data);
+      setRisk(riskRes.data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) { router.replace("/login"); return; }
@@ -528,6 +543,138 @@ export default function AnalyticsPage() {
                 )}
               </div>
             </section>
+
+            {/* ── 역할 분포 + 위험도 ───────────────────────────────────── */}
+            <div className="grid grid-cols-5 gap-4 mb-8">
+
+              {/* 역할별 기여 분포 (3/5) */}
+              <section className="col-span-3">
+                <SectionTitle><Users size={13} />역할별 기여 분포</SectionTitle>
+                <div className="bg-white dark:bg-bb-surface border border-bb-border rounded-xl p-6 shadow-sm">
+                  <div className="space-y-3">
+                    {sorted.map((s, i) => {
+                      const t = s.taskScore + s.meetingScore + s.docScore + s.gitScore || 1;
+                      const bars = [
+                        { label: "태스크", val: s.taskScore,    color: "#6366F1" },
+                        { label: "회의",   val: s.meetingScore, color: "#2DD4BF" },
+                        { label: "파일",   val: s.docScore,     color: "#F59E0B" },
+                        { label: "Git",    val: s.gitScore,     color: "#EF4444" },
+                      ];
+                      return (
+                        <div key={s.userId}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-bb-text">{s.name}</span>
+                            <span className="text-xs text-bb-text2">{s.totalScore.toFixed(0)}점</span>
+                          </div>
+                          <div className="flex h-5 rounded-full overflow-hidden gap-px">
+                            {bars.map((b) => {
+                              const pct = Math.round((b.val / t) * 100);
+                              return pct > 0 ? (
+                                <div
+                                  key={b.label}
+                                  title={`${b.label}: ${pct}%`}
+                                  style={{ width: `${pct}%`, background: b.color }}
+                                  className="transition-all"
+                                />
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 범례 */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-4 pt-3 border-t border-bb-border">
+                    {[
+                      { label: "태스크", color: "#6366F1" },
+                      { label: "회의",   color: "#2DD4BF" },
+                      { label: "파일",   color: "#F59E0B" },
+                      { label: "Git",    color: "#EF4444" },
+                    ].map((l) => (
+                      <div key={l.label} className="flex items-center gap-1.5 text-xs text-bb-text2">
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ background: l.color }} />
+                        {l.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* 마감 위험도 (2/5) */}
+              {risk && (
+                <section className="col-span-2">
+                  <SectionTitle><Gauge size={13} />마감 위험도</SectionTitle>
+                  <div className="bg-white dark:bg-bb-surface border border-bb-border rounded-xl p-6 shadow-sm h-[calc(100%-2rem)] flex flex-col">
+                    {/* 위험도 게이지 */}
+                    <div className="flex items-center justify-center mb-4">
+                      <div className="relative w-32 h-32">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadialBarChart
+                            cx="50%" cy="50%"
+                            innerRadius="60%" outerRadius="85%"
+                            startAngle={225} endAngle={-45}
+                            data={[{ value: risk.riskScore, fill:
+                              risk.level === "CRITICAL" ? "#EF4444" :
+                              risk.level === "HIGH"     ? "#F59E0B" :
+                              risk.level === "MEDIUM"   ? "#6366F1" : "#2DD4BF"
+                            }]}
+                          >
+                            <RadialBar dataKey="value" cornerRadius={6} background={{ fill: "#f1f5f9" }} />
+                          </RadialBarChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-2xl font-bold text-bb-text">{risk.riskScore}</span>
+                          <span className="text-[10px] text-bb-text2">/ 100</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 레벨 뱃지 */}
+                    <div className="text-center mb-3">
+                      <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${
+                        risk.level === "CRITICAL" ? "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400" :
+                        risk.level === "HIGH"     ? "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400" :
+                        risk.level === "MEDIUM"   ? "bg-indigo-100 dark:bg-bb-primary/20 text-bb-primary" :
+                                                    "bg-teal-100 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400"
+                      }`}>
+                        {risk.level === "CRITICAL" ? "심각" :
+                         risk.level === "HIGH"     ? "위험" :
+                         risk.level === "MEDIUM"   ? "주의" : "안전"}
+                      </span>
+                    </div>
+
+                    {/* 통계 */}
+                    <div className="grid grid-cols-2 gap-2 mb-3 text-center">
+                      <div className="bg-bb-surface2/50 rounded-lg p-2">
+                        <p className="text-xs text-bb-text2">완료율</p>
+                        <p className="text-sm font-bold text-bb-text">{risk.completionRate}%</p>
+                      </div>
+                      <div className="bg-bb-surface2/50 rounded-lg p-2">
+                        <p className="text-xs text-bb-text2">지연 태스크</p>
+                        <p className={`text-sm font-bold ${risk.overdueTasks > 0 ? "text-red-500" : "text-bb-text"}`}>
+                          {risk.overdueTasks}개
+                        </p>
+                      </div>
+                    </div>
+                    {risk.daysRemaining !== null && (
+                      <div className="flex items-center gap-1.5 justify-center text-xs text-bb-text2 mb-3">
+                        <Clock size={11} />
+                        마감까지 {risk.daysRemaining >= 0 ? `${risk.daysRemaining}일` : `${Math.abs(risk.daysRemaining)}일 초과`}
+                      </div>
+                    )}
+
+                    {/* 위험 이유 */}
+                    <div className="space-y-1 mt-auto">
+                      {risk.reasons.map((r, i) => (
+                        <p key={i} className="text-[11px] text-bb-text2 flex items-start gap-1.5">
+                          <span className="shrink-0 mt-0.5">•</span>{r}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              )}
+            </div>
 
             {/* ── 무결성 PDF 리포트 ─────────────────────────────────── */}
             <section>

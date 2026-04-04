@@ -81,4 +81,11 @@ public class TaskController {
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(taskService.setAssignees(projectId, taskId, req, user));
     }
+
+    @PostMapping("/notion/sync")
+    public ResponseEntity<com.blackbox.dto.NotionSyncResponse> syncToNotion(
+            @PathVariable UUID projectId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(taskService.syncToNotion(projectId, user));
+    }
 }

@@ -1,6 +1,7 @@
 package com.blackbox.service;
 
 import com.blackbox.entity.Meeting;
+import com.blackbox.entity.Task;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Notion API 연동 서비스.
@@ -40,6 +42,120 @@ public class NotionService {
     }
 
     // ── 공개 API ─────────────────────────────────────────────────────────
+
+    /**
+     * 칸반 보드 태스크를 Notion 페이지로 내보냅니다.
+     *
+     * @param projectName 프로젝트 이름
+     * @param tasks       태스크 목록
+     * @param assigneeMap 태스크 ID → 담당자 이름 목록
+     * @return 생성된 Notion 페이지 URL
+     */
+    public String syncKanban(String projectName,
+                             List<Task> tasks,
+                             Map<UUID, List<String>> assigneeMap) {
+        validateConfig();
+
+        String title = "칸반 보드 — " + projectName
+                + " (" + java.time.LocalDate.now() + " 스냅샷)";
+
+        List<Map<String, Object>> children = buildKanbanBlocks(tasks, assigneeMap);
+
+        Map<String, Object> body = Map.of(
+                "parent",     Map.of("type", "page_id", "page_id", parentPageId),
+                "properties", Map.of(
+                        "title", Map.of("title", List.of(
+                                Map.of("text", Map.of("content", title))
+                        ))
+                ),
+                "children", children
+        );
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = webClient.post()
+                .uri("/v1/pages")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        if (response == null) throw new RuntimeException("Notion API 응답 없음");
+
+        String pageId = (String) response.get("id");
+        if (pageId == null) throw new RuntimeException("Notion 페이지 ID 없음");
+
+        return "https://www.notion.so/" + pageId.replace("-", "");
+    }
+
+    private List<Map<String, Object>> buildKanbanBlocks(List<Task> tasks,
+                                                         Map<UUID, List<String>> assigneeMap) {
+        List<Map<String, Object>> blocks = new ArrayList<>();
+
+        // 요약 callout
+        long todo       = tasks.stream().filter(t -> "TODO".equals(t.getStatus())).count();
+        long inProgress = tasks.stream().filter(t -> "IN_PROGRESS".equals(t.getStatus())).count();
+        long done       = tasks.stream().filter(t -> "DONE".equals(t.getStatus())).count();
+        blocks.add(callout(
+                String.format("전체 %d개 태스크 — 할 일 %d / 진행 중 %d / 완료 %d",
+                        tasks.size(), todo, inProgress, done),
+                "📊"
+        ));
+        blocks.add(divider());
+
+        // 상태별로 섹션 출력
+        for (String[] section : new String[][]{
+                {"TODO", "📋 할 일"},
+                {"IN_PROGRESS", "⚡ 진행 중"},
+                {"DONE", "✅ 완료"}
+        }) {
+            String status = section[0];
+            String header = section[1];
+
+            List<Task> group = tasks.stream()
+                    .filter(t -> status.equals(t.getStatus()))
+                    .toList();
+
+            blocks.add(heading2(header + " (" + group.size() + ")"));
+
+            if (group.isEmpty()) {
+                blocks.add(paragraph("(없음)"));
+            } else {
+                for (Task t : group) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(priorityEmoji(t.getPriority())).append(" ").append(t.getTitle());
+
+                    if (t.getDueDate() != null) {
+                        sb.append("  📅 ").append(t.getDueDate());
+                    }
+                    if (t.getTag() != null && !t.getTag().isBlank()) {
+                        sb.append("  🏷 ").append(t.getTag());
+                    }
+                    List<String> assignees = assigneeMap.getOrDefault(t.getId(), List.of());
+                    if (!assignees.isEmpty()) {
+                        sb.append("  👤 ").append(String.join(", ", assignees));
+                    }
+
+                    blocks.add(bulletItem(sb.toString()));
+                }
+            }
+            blocks.add(divider());
+        }
+
+        blocks.add(paragraph("📎 이 페이지는 Team Blackbox에서 자동 생성되었습니다."));
+        return blocks;
+    }
+
+    private String priorityEmoji(String priority) {
+        if (priority == null) return "•";
+        return switch (priority) {
+            case "URGENT" -> "🔴";
+            case "HIGH"   -> "🟠";
+            case "MEDIUM" -> "🟡";
+            default       -> "🟢";
+        };
+    }
 
     /**
      * 회의록을 Notion 페이지로 내보냅니다.

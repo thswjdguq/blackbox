@@ -1,9 +1,11 @@
 package com.blackbox.controller;
 
 import com.blackbox.dto.AlertResponse;
+import com.blackbox.dto.RiskResponse;
 import com.blackbox.dto.ScoreResponse;
 import com.blackbox.entity.User;
 import com.blackbox.service.AlertService;
+import com.blackbox.service.RiskService;
 import com.blackbox.service.ScoreService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,10 +20,12 @@ public class ScoreController {
 
     private final ScoreService scoreService;
     private final AlertService alertService;
+    private final RiskService  riskService;
 
-    public ScoreController(ScoreService scoreService, AlertService alertService) {
+    public ScoreController(ScoreService scoreService, AlertService alertService, RiskService riskService) {
         this.scoreService = scoreService;
         this.alertService = alertService;
+        this.riskService  = riskService;
     }
 
     @GetMapping("/scores")
@@ -43,5 +47,12 @@ public class ScoreController {
             @PathVariable UUID projectId,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(alertService.getAlerts(projectId));
+    }
+
+    @GetMapping("/risk")
+    public ResponseEntity<RiskResponse> getRisk(
+            @PathVariable UUID projectId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(riskService.assess(projectId, user));
     }
 }

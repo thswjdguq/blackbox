@@ -38,6 +38,7 @@ backend/gradle.properties
 # ===== 인증서 / 키 파일 =====
 *.pem
 *.key
+*.crt
 *.p12
 *.jks
 *.keystore

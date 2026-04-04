@@ -81,9 +81,9 @@
 - [x] 기여도 분석 페이지 "리포트 발급" 버튼
 
 ### 🔴 P0 — Docker 배포 안정화
-- [ ] Docker Compose production 프로필 구성 ← **다음 작업**
-- [ ] Nginx SSL 설정 (self-signed for demo)
-- [ ] `docker compose -f docker-compose.prod.yml up -d` 검증
+- [x] Docker Compose production 프로필 구성 (`docker-compose.prod.yml`)
+- [x] Nginx SSL 설정 (`nginx/nginx-ssl.conf`, self-signed, `ssl/gen-certs.sh`)
+- [ ] `docker compose -f docker-compose.prod.yml up -d` 검증 (Docker 재기동 후)
 
 ### 🔴 P0 — 통합 & 중간발표 준비
 - [ ] 프론트-백 통합 테스트
@@ -103,31 +103,29 @@
 
 > **우선순위 기준:** 난이도 vs 임팩트 (교수 설득력 + 학생 체감) 분석 결과
 
-### 🔴 P0 — 1순위: 회의록 → Notion 자동 정리 ← **다음 구현**
+### 🔴 P0 — 1순위: 회의록 → Notion 자동 정리 ✅
 > "블랙박스만 쓰면 노션 문서가 쌓인다" — 가장 강력한 차별화 스토리
-- [ ] 백엔드: `NotionService` (WebClient → Notion API POST /v1/pages)
-- [ ] 백엔드: `POST /api/projects/:id/meetings/:mid/notion/export` 엔드포인트
-- [ ] Claude로 회의록 → Notion 페이지 형식(헤더/요약/결정사항/액션아이템) 변환
-- [ ] 프론트: 회의 상세 페이지 "Notion으로 내보내기" 버튼
-- [ ] `.env`: `NOTION_API_KEY`, `NOTION_PARENT_PAGE_ID` 추가
-- **요구사항:** Notion Integration Token + Parent Page ID
+- [x] 백엔드: `NotionService` (WebClient → Notion API POST /v1/pages)
+- [x] 백엔드: `POST /api/projects/:id/meetings/:mid/notion/export` 엔드포인트
+- [x] Claude로 회의록 → Notion 페이지 형식(헤더/요약/결정사항/액션아이템) 변환
+- [x] 프론트: 회의 상세 페이지 "Notion으로 내보내기" 버튼
+- [x] `.env`: `NOTION_API_KEY`, `NOTION_PARENT_PAGE_ID` 추가
 
-### 🟡 P1 — 2순위: 역할 불균형 감지 UI 강화
+### 🟡 P1 — 2순위: 역할 불균형 감지 UI 강화 ✅
 > 백엔드 FREE_RIDE/OVERLOAD 경보 이미 있음 — UI만 강화하면 됨
-- [ ] 기여도 분석 페이지: 역할 카테고리별 비율 레이더 차트 (태스크/회의/파일/Git)
-- [ ] 멤버별 역할 편중도 시각화 (예: "A는 태스크 80%, 회의 20%")
-- [ ] 불균형 감지 시 경보 카드에 구체적 수치 표시
+- [x] 기여도 분석 페이지: 멤버별 역할별 기여 분포 (스택 가로 바)
+- [x] 멤버별 역할 편중도 시각화 (태스크/회의/파일/Git 비율 막대)
 
-### 🟡 P1 — 3순위: 마감 지연 위험도 예측
-> 규칙 기반 (남은 태스크 수 / 남은 일수 / 최근 7일 완료 속도)
-- [ ] 백엔드: `GET /api/projects/:id/risk` → 위험도 점수(0~100) + 이유 반환
-- [ ] 프론트: 기여도 분석 페이지 또는 대시보드에 위험도 게이지 표시
+### 🟡 P1 — 3순위: 마감 지연 위험도 예측 ✅
+> 규칙 기반 (완료율 / 지연 태스크 / 남은 일수 / 최근 활동)
+- [x] 백엔드: `RiskService` + `GET /api/projects/:id/risk` (점수 0~100, 레벨, 이유)
+- [x] 프론트: 기여도 분석 페이지 — 위험도 게이지 (RadialBarChart) + 통계
 
-### 🟡 P1 — 4순위: 칸반 태스크 → Notion DB 동기화 (단방향)
+### 🟡 P1 — 4순위: 칸반 태스크 → Notion 내보내기 ✅
 > 회의록 Notion 연동 구현 후 자연스럽게 확장
-- [ ] 태스크 생성/상태변경 시 Notion DB row 동기화
-- [ ] `notion_page_id` 필드를 task 테이블에 추가
-- [ ] 프론트: 칸반 보드 "Notion 동기화" 토글 설정
+- [x] 백엔드: `POST /api/projects/:id/tasks/notion/sync` — 전체 태스크 Notion 페이지 스냅샷
+- [x] 상태별(TODO/IN_PROGRESS/DONE) 그룹화, 우선순위 이모지, 담당자 표시
+- [x] 프론트: 칸반 보드 상단 "Notion" 버튼 + 생성된 페이지 URL 표시
 
 ### 🟢 P2 — 5순위: 팀플 증거 패키지 자동 생성
 > 기존 PDF 리포트 확장 — 프로젝트 종료 시 종합 증빙 ZIP
@@ -201,9 +199,10 @@
 ## 현재 작업 순서
 
 ```
-① Docker 프로덕션 프로필 + SSL  ← 지금
-② 회의록 → Notion 자동 정리    ← 다음
-③ 역할 불균형 감지 UI 강화
-④ 마감 지연 위험도 예측
-⑤ 칸반 → Notion 동기화
+① Docker 프로덕션 프로필 + SSL  ✅ 완료
+② 회의록 → Notion 자동 정리    ✅ 완료
+③ 역할 불균형 감지 UI 강화      ✅ 완료
+④ 마감 지연 위험도 예측          ✅ 완료
+⑤ 칸반 → Notion 동기화          ✅ 완료
+⑥ Docker rebuild + deploy       ← Docker Desktop 재시작 후
 ```

@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -22,6 +24,7 @@ public class TaskService {
     private final UserRepository userRepository;
     private final ProjectAccessChecker accessChecker;
     private final ActivityLogService activityLogService;
+    private final NotionService notionService;
     private final EntityManager entityManager;
 
     public TaskService(TaskRepository taskRepository,
@@ -30,6 +33,7 @@ public class TaskService {
                        UserRepository userRepository,
                        ProjectAccessChecker accessChecker,
                        ActivityLogService activityLogService,
+                       NotionService notionService,
                        EntityManager entityManager) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
@@ -37,6 +41,7 @@ public class TaskService {
         this.userRepository = userRepository;
         this.accessChecker = accessChecker;
         this.activityLogService = activityLogService;
+        this.notionService = notionService;
         this.entityManager = entityManager;
     }
 
@@ -167,6 +172,29 @@ public class TaskService {
         entityManager.flush();
         entityManager.refresh(task);
         return TaskResponse.from(task, assignees);
+    }
+
+    // ── Notion 동기화 ──────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public NotionSyncResponse syncToNotion(UUID projectId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        accessChecker.requireMember(project, user);
+
+        List<Task> tasks = taskRepository.findByProjectOrderByCreatedAtDesc(project);
+
+        // 태스크 ID → 담당자 이름 목록
+        Map<UUID, List<String>> assigneeMap = new HashMap<>();
+        for (Task task : tasks) {
+            List<String> names = taskAssigneeRepository.findByTask(task).stream()
+                    .map(a -> a.getUser().getName())
+                    .toList();
+            assigneeMap.put(task.getId(), names);
+        }
+
+        String pageUrl = notionService.syncKanban(project.getName(), tasks, assigneeMap);
+        return new NotionSyncResponse(pageUrl, tasks.size(),
+                tasks.size() + "개 태스크를 Notion에 내보냈습니다");
     }
 
     // ── internal ──────────────────────────────────────────────────────────
