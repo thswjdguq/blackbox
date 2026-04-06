@@ -43,6 +43,7 @@ services:
       JWT_ACCESS_EXPIRY:          ${JWT_ACCESS_EXPIRY:-1800000}
       JWT_REFRESH_EXPIRY:         ${JWT_REFRESH_EXPIRY:-604800000}
       UPLOAD_PATH:                /data/uploads
+      APP_CORS_ORIGINS:           https://localhost,http://localhost
       CLAUDE_API_KEY:             ${CLAUDE_API_KEY}
       NOTION_API_KEY:             ${NOTION_API_KEY:-}
       NOTION_PARENT_PAGE_ID:      ${NOTION_PARENT_PAGE_ID:-}
