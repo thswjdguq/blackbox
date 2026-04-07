@@ -38,6 +38,7 @@ export interface CreateTaskPayload {
   tag?: string;
   dueDate?: string; // "YYYY-MM-DD"
   assigneeIds?: string[];
+  status?: TaskStatus;
 }
 
 export interface UpdateTaskStatusPayload {

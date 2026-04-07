@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -10,7 +10,10 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
+  MeasuringStrategy,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import {
@@ -43,12 +46,27 @@ export default function KanbanBoard({
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
+  // Track new status during drag — avoids stale-closure bug in handleDragEnd
+  const dragStatusRef = useRef<TaskStatus | null>(null);
+
   // Modal state
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  // Custom collision detection: pointer-within first, then closest center.
+  // This ensures empty columns are properly detected as drop targets.
+  const collisionDetection = useCallback(
+    (args: Parameters<typeof closestCenter>[0]) => {
+      const pointerCollisions = pointerWithin(args);
+      if (pointerCollisions.length > 0) return pointerCollisions;
+      return rectIntersection(args);
+    },
+    []
   );
 
   // ── Column grouping ────────────────────────────────────────────────────
@@ -62,7 +80,10 @@ export default function KanbanBoard({
 
   function handleDragStart({ active }: DragStartEvent) {
     const found = tasks.find((t) => t.id === active.id);
-    if (found) setActiveTask(found);
+    if (found) {
+      setActiveTask(found);
+      dragStatusRef.current = found.status; // initial status
+    }
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
@@ -80,6 +101,9 @@ export default function KanbanBoard({
         ? (overId as TaskStatus)
         : (prev.find((t) => t.id === overId)?.status ?? prev[activeIdx].status);
 
+      // Always update ref so handleDragEnd has the latest status
+      dragStatusRef.current = newStatus;
+
       if (prev[activeIdx].status === newStatus) return prev;
 
       const updated = [...prev];
@@ -90,42 +114,43 @@ export default function KanbanBoard({
 
   async function handleDragEnd({ active, over }: DragEndEvent) {
     setActiveTask(null);
-    if (!over) return;
+
+    const newStatus = dragStatusRef.current;
+    dragStatusRef.current = null;
+
+    if (!over || newStatus === null) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    // Reorder within same column if dropped on another task
     setTasks((prev) => {
       const activeIdx = prev.findIndex((t) => t.id === activeId);
       const overIdx = prev.findIndex((t) => t.id === overId);
       if (activeIdx === -1) return prev;
-
-      // Reorder within same column
       if (overIdx !== -1 && activeIdx !== overIdx) {
         return arrayMove(prev, activeIdx, overIdx);
       }
       return prev;
     });
 
-    // Persist status to backend
-    const task = tasks.find((t) => t.id === activeId);
-    if (!task) return;
+    // Persist status to backend using ref value (not stale closure)
     try {
       await api.patch(
         `/projects/${projectId}/tasks/${activeId}/status`,
-        { status: task.status }
+        { status: newStatus }
       );
       onTasksChange?.(tasks);
     } catch (err) {
       console.error("Status update failed:", err);
-      // Revert optimistically updated state on error
       setTasks(initialTasks);
     }
   }
 
   // ── Modal handlers ─────────────────────────────────────────────────────
 
-  const openCreate = () => {
+  const openCreate = (status: TaskStatus = "TODO") => {
+    setCreateStatus(status);
     setEditingTask(null);
     setModalMode("create");
   };
@@ -165,7 +190,8 @@ export default function KanbanBoard({
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -199,6 +225,7 @@ export default function KanbanBoard({
           mode={modalMode}
           task={editingTask}
           members={members}
+          defaultStatus={createStatus}
           onClose={closeModal}
           onCreate={handleCreate}
           onUpdate={handleUpdate}

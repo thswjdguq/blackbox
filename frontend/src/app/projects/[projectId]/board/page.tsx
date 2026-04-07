@@ -123,7 +123,7 @@ export default function BoardPage() {
       );
       setNotionUrl(res.data.pageUrl);
     } catch {
-      setError("Notion 동기화에 실패했습니다. NOTION_API_KEY를 확인해주세요.");
+      setError("Notion 동기화 실패 — Notion 페이지에 Integration 연결이 되어있는지 확인해주세요 (페이지 → ... → Connections).");
     } finally {
       setSyncing(false);
     }
@@ -291,6 +291,75 @@ export default function BoardPage() {
               onTasksChange={setTasks}
             />
           </div>
+
+          {/* 팀원별 진행 현황 */}
+          {members.length > 0 && (
+            <div className="min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-bb-text mb-4 flex items-center gap-2">
+                <FolderKanban size={14} className="text-indigo-400" />
+                팀원별 태스크 현황
+              </h2>
+              <div className="grid gap-3">
+                {members.map((m) => {
+                  const myTasks = tasks.filter((t) =>
+                    t.assignees.some((a) => a.userId === m.userId)
+                  );
+                  const myTodo = myTasks.filter((t) => t.status === "TODO").length;
+                  const myInProgress = myTasks.filter((t) => t.status === "IN_PROGRESS").length;
+                  const myDone = myTasks.filter((t) => t.status === "DONE").length;
+                  const total = myTasks.length;
+                  const pct = total > 0 ? Math.round((myDone / total) * 100) : 0;
+                  const hue = m.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+
+                  return (
+                    <div key={m.userId} className="flex items-center gap-4">
+                      {/* Avatar */}
+                      <div
+                        style={{ background: `hsl(${hue} 55% 45%)` }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                      >
+                        {m.name.slice(0, 2).toUpperCase()}
+                      </div>
+
+                      {/* Name */}
+                      <span className="text-sm text-bb-text w-20 shrink-0 truncate">{m.name}</span>
+
+                      {/* Pill badges */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                          할 일 {myTodo}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          진행 {myInProgress}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-400/10 text-teal-400 border border-teal-400/20">
+                          완료 {myDone}
+                        </span>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-bb-text2 w-8 text-right shrink-0">
+                          {total > 0 ? `${pct}%` : "-"}
+                        </span>
+                      </div>
+
+                      {/* Unassigned indicator */}
+                      {total === 0 && (
+                        <span className="text-[10px] text-bb-text2 shrink-0">미배정</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

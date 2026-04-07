@@ -8,23 +8,27 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * OpenAI API 연동 서비스.
+ * Claude API 키가 없을 때 폴백으로 사용.
+ * 필요 환경변수: OPENAI_API_KEY
+ */
 @Service
-public class ClaudeService {
+public class OpenAiService {
 
     private final WebClient webClient;
     private final String model;
     private final String apiKey;
 
-    public ClaudeService(
-            @Value("${external.claude.base-url}") String baseUrl,
-            @Value("${external.claude.model}") String model,
-            @Value("${external.claude.api-key}") String apiKey) {
+    public OpenAiService(
+            @Value("${external.openai.base-url}") String baseUrl,
+            @Value("${external.openai.model}")    String model,
+            @Value("${external.openai.api-key}")  String apiKey) {
         this.model  = model;
         this.apiKey = apiKey;
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader("anthropic-version", "2023-06-01")
-                .defaultHeader("content-type", "application/json")
+                .defaultHeader("Content-Type", "application/json")
                 .build();
     }
 
@@ -32,51 +36,49 @@ public class ClaudeService {
         return apiKey != null && !apiKey.isBlank();
     }
 
-    // ── 회의록 AI 요약 ──────────────────────────────────────────────────────
+    // ── 회의록 AI 요약 ────────────────────────────────────────────────────
 
     public String summarizeMeeting(String title, String purpose, String notes, String decisions) {
-        String prompt = buildSummaryPrompt(title, purpose, notes, decisions);
-        return callClaude(prompt, 1500);
+        return call(buildSummaryPrompt(title, purpose, notes, decisions), 1500);
     }
 
-    // ── AI 액션아이템 추출 ────────────────────────────────────────────────────
+    // ── AI 액션아이템 추출 ────────────────────────────────────────────────
 
     public List<String> extractActionItems(String notes, String decisions) {
-        String prompt = buildExtractPrompt(notes, decisions);
-        String raw = callClaude(prompt, 800);
+        String raw = call(buildExtractPrompt(notes, decisions), 800);
         return parseLines(raw);
     }
 
-    // ── internal ─────────────────────────────────────────────────────────────
+    // ── internal ─────────────────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")
-    private String callClaude(String userPrompt, int maxTokens) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("CLAUDE_API_KEY가 설정되지 않았습니다");
+    private String call(String userPrompt, int maxTokens) {
+        if (!isConfigured()) {
+            throw new IllegalStateException("OPENAI_API_KEY가 설정되지 않았습니다");
         }
 
         Map<String, Object> body = Map.of(
-                "model", model,
+                "model",      model,
                 "max_tokens", maxTokens,
-                "messages", List.of(Map.of("role", "user", "content", userPrompt))
+                "messages",   List.of(Map.of("role", "user", "content", userPrompt))
         );
 
         Map<?, ?> response = webClient.post()
-                .uri("/v1/messages")
-                .header("x-api-key", apiKey)
+                .uri("/v1/chat/completions")
+                .header("Authorization", "Bearer " + apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block();
 
-        if (response == null) throw new RuntimeException("Claude API 응답 없음");
+        if (response == null) throw new RuntimeException("OpenAI API 응답 없음");
 
-        List<?> content = (List<?>) response.get("content");
-        if (content == null || content.isEmpty()) throw new RuntimeException("Claude API 응답 비어 있음");
+        List<?> choices = (List<?>) response.get("choices");
+        if (choices == null || choices.isEmpty()) throw new RuntimeException("OpenAI API 응답 비어 있음");
 
-        Map<?, ?> first = (Map<?, ?>) content.get(0);
-        return (String) first.get("text");
+        Map<?, ?> message = (Map<?, ?>) ((Map<?, ?>) choices.get(0)).get("message");
+        return (String) message.get("content");
     }
 
     private String buildSummaryPrompt(String title, String purpose, String notes, String decisions) {
@@ -102,8 +104,7 @@ public class ClaudeService {
                 - (다음에 해야 할 일들을 bullet point로)
 
                 마크다운 형식을 유지하고, 불필요한 서론 없이 바로 시작하세요.
-                """.formatted(
-                nvl(title), nvl(purpose), nvl(notes), nvl(decisions));
+                """.formatted(nvl(title), nvl(purpose), nvl(notes), nvl(decisions));
     }
 
     private String buildExtractPrompt(String notes, String decisions) {
@@ -122,15 +123,9 @@ public class ClaudeService {
                 - 추출된 아이템만 출력, 번호나 기호 없이 텍스트만
                 - 최대 8개
                 - 액션아이템이 없으면 빈 줄만 출력
-
-                출력 예시:
-                API 명세서 작성
-                로그인 버그 수정
-                다음 회의 일정 조율
                 """.formatted(nvl(notes), nvl(decisions));
     }
 
-    /** 응답 텍스트를 줄 단위로 파싱, 빈 줄/공백 제거 */
     private List<String> parseLines(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
         return raw.lines()
@@ -140,7 +135,5 @@ public class ClaudeService {
                 .toList();
     }
 
-    private String nvl(String s) {
-        return s != null ? s : "";
-    }
+    private String nvl(String s) { return s != null ? s : ""; }
 }

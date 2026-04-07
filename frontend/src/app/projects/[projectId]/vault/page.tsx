@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Loader2,
   FileIcon,
+  ExternalLink,
 } from "lucide-react";
 
 // ── 바이트 → 사람이 읽기 좋은 크기 ────────────────────────────────────
@@ -222,18 +223,21 @@ function UploadZone({ projectId, onUploaded }: UploadZoneProps) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [notionUrl, setNotionUrl] = useState<string | null>(null);
 
   const uploadFile = async (file: File) => {
     setUploading(true);
     setUploadError("");
+    setNotionUrl(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const { data } = await api.post<FileUploadResult>(
         `/projects/${projectId}/files`,
         formData,
-        // Content-Type은 Axios가 boundary 포함해 자동 설정 — 수동 지정 시 boundary 누락으로 업로드 실패
+        { headers: { "Content-Type": undefined } }, // boundary 자동 설정을 위해 명시적 제거
       );
+      if (data.notionPageUrl) setNotionUrl(data.notionPageUrl);
       onUploaded(data);
     } catch {
       setUploadError("업로드에 실패했습니다. 파일 크기나 권한을 확인해주세요.");
@@ -300,6 +304,22 @@ function UploadZone({ projectId, onUploaded }: UploadZoneProps) {
         <div className="flex items-center gap-2 mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
           <AlertCircle size={14} className="text-red-400 shrink-0" />
           <p className="text-xs text-red-400">{uploadError}</p>
+        </div>
+      )}
+
+      {/* Notion 자동 동기화 성공 */}
+      {notionUrl && (
+        <div className="flex items-center gap-2 mt-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+          <CheckCircle2 size={14} className="text-indigo-400 shrink-0" />
+          <p className="text-xs text-indigo-300">Notion 페이지 자동 생성됨</p>
+          <a
+            href={notionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 underline"
+          >
+            열기 <ExternalLink size={11} />
+          </a>
         </div>
       )}
     </div>

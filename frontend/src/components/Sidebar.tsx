@@ -12,16 +12,9 @@ import {
   LogOut,
   Sun,
   Moon,
+  LayoutDashboard,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-
-const NAV_ITEMS = [
-  { href: "/dashboard",  icon: FolderKanban, label: "내 프로젝트" },
-  { href: "/board",      icon: Kanban,       label: "칸반 보드",  needsProject: true },
-  { href: "/meetings",   icon: FileText,     label: "회의록",     needsProject: true },
-  { href: "/vault",      icon: Files,        label: "Hash Vault", needsProject: true },
-  { href: "/analytics",  icon: BarChart2,    label: "기여도",     needsProject: true },
-];
 
 interface SidebarProps {
   hasProjects?: boolean;
@@ -32,6 +25,19 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const router   = useRouter();
   const [isDark, setIsDark] = useState(true);
   const [toast,  setToast]  = useState(false);
+
+  // URL에서 현재 프로젝트 ID 추출 (/projects/[id]/xxx)
+  const projectIdMatch = pathname.match(/\/projects\/([^/]+)/);
+  const currentProjectId = projectIdMatch?.[1] ?? null;
+
+  const NAV_ITEMS = [
+    { href: "/dashboard",                                                                          icon: FolderKanban,    label: "내 프로젝트", exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}`           : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈", needsProject: true, exactActive: true },
+    { href: currentProjectId ? `/projects/${currentProjectId}/board`     : "/board",               icon: Kanban,          label: "칸반 보드",  needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/meetings`  : "/meetings",            icon: FileText,        label: "회의록",     needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/vault`     : "/vault",               icon: Files,           label: "Hash Vault", needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/analytics` : "/analytics",           icon: BarChart2,       label: "기여도",     needsProject: true, exactActive: false },
+  ];
 
   useEffect(() => {
     const theme = localStorage.getItem("theme") ?? "dark";
@@ -74,7 +80,10 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
     <>
       <aside className="w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-30">
         {/* 로고 */}
-        <div className="px-6 py-5 border-b border-bb-border">
+        <div
+          className="px-6 py-5 border-b border-bb-border cursor-pointer hover:bg-bb-surface2 transition-colors"
+          onClick={() => router.push("/dashboard")}
+        >
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-bb-primary/10 flex items-center justify-center">
               <Shield size={16} className="text-bb-primary" />
@@ -85,8 +94,14 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
 
         {/* 네비게이션 */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject }) => {
-            const active = pathname === href || pathname.startsWith(href + "/");
+          {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject, exactActive }) => {
+            // exactActive=true → exact pathname match only (프로젝트 홈 등)
+            const segment = href.split("/").pop()!;
+            const active = exactActive
+              ? pathname === href
+              : (pathname === href
+                || pathname.endsWith(`/${segment}`)
+                || pathname.includes(`/${segment}/`));
             return (
               <Link
                 key={href}

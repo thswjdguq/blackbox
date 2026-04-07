@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, TaskPriority, CreateTaskPayload } from "@/types/task";
+import { Task, TaskPriority, TaskStatus, CreateTaskPayload } from "@/types/task";
 import { X, Trash2, Save, Plus } from "lucide-react";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
@@ -16,6 +16,7 @@ interface TaskModalProps {
   mode: "create" | "edit";
   task: Task | null;
   members: Member[];
+  defaultStatus?: TaskStatus;
   onClose: () => void;
   onCreate: (payload: CreateTaskPayload) => Promise<void>;
   onUpdate: (taskId: string, payload: Partial<CreateTaskPayload>) => Promise<void>;
@@ -41,6 +42,7 @@ export default function TaskModal({
   mode,
   task,
   members,
+  defaultStatus = "TODO",
   onClose,
   onCreate,
   onUpdate,
@@ -90,6 +92,7 @@ export default function TaskModal({
         tag:         tag.trim() || undefined,
         dueDate:     dueDate || undefined,
         assigneeIds: selectedAssignees,
+        status:      mode === "create" ? defaultStatus : undefined,
       };
       if (mode === "create") {
         await onCreate(payload);

@@ -10,6 +10,9 @@ export interface Meeting {
   notes: string | null;         // 회의록 내용
   decisions: string | null;     // 결정사항
   checkinCode: string;          // 6자리 체크인 코드
+  aiSummary: string | null;     // AI 요약 (저장됨)
+  notionPageId: string | null;  // Notion 동기화 URL
+  notionSyncedAt: string | null; // 마지막 동기화 시각
   createdBy: string;
   createdAt: string;
 }

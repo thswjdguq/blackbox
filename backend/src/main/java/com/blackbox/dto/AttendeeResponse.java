@@ -10,7 +10,10 @@ public record AttendeeResponse(
         String name,
         String email,
         boolean checkedIn,
-        OffsetDateTime checkedAt
+        OffsetDateTime checkedAt,
+        UUID meetingId,
+        String meetingTitle,
+        UUID projectId
 ) {
     public static AttendeeResponse from(MeetingAttendee a) {
         return new AttendeeResponse(
@@ -18,7 +21,10 @@ public record AttendeeResponse(
                 a.getUser().getName(),
                 a.getUser().getEmail(),
                 a.isCheckedIn(),
-                a.getCheckedAt()
+                a.getCheckedAt(),
+                a.getMeeting().getId(),
+                a.getMeeting().getTitle(),
+                a.getMeeting().getProject().getId()
         );
     }
 }

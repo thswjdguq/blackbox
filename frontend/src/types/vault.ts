@@ -20,8 +20,8 @@ export interface FileUploadResult {
   fileSize: number;
   version: number;
   tamperDetected: boolean;      // true 이면 이전 버전과 해시 불일치 → 경고 표시
-  storagePath: string;
   uploadedAt: string;
+  notionPageUrl: string | null; // Notion 연동 시 자동 생성된 페이지 URL
 }
 
 // ── 경보 관련 타입 ─────────────────────────────────────────────────────

@@ -11,10 +11,19 @@ import {
   X,
   LogIn,
   Trash2,
+  CheckSquare,
+  Clock,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import DatePicker from "@/components/DatePicker";
 import api from "@/lib/api";
+
+interface CheckinRecord {
+  meetingId: string;
+  meetingTitle: string;
+  projectId: string;
+  checkedAt: string;
+}
 
 interface Project {
   id: string;
@@ -37,34 +46,30 @@ export default function DashboardPage() {
   // 프로젝트 생성 모달
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
-    name: "",
-    description: "",
-    courseName: "",
-    semester: "",
-    startDate: "",
-    endDate: "",
+    name: "", description: "", courseName: "", semester: "", startDate: "", endDate: "",
   });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
-  // 초대 코드 참여 모달
+  // 코드 참여 모달 (프로젝트 초대 OR 회의 체크인 통합)
   const [showJoin, setShowJoin] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
+  const [code, setCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const [joinSuccess, setJoinSuccess] = useState<{ type: "project" | "checkin"; label: string } | null>(null);
 
   // 프로젝트 삭제 모달
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // 인증 확인 + 프로젝트 목록 조회
+  // 내 체크인 내역
+  const [myCheckins, setMyCheckins] = useState<CheckinRecord[]>([]);
+
+  // 인증 확인 + 초기 데이터
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
+    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchProjects();
+    api.get<CheckinRecord[]>("/my/checkins").then(({ data }) => setMyCheckins(data)).catch(() => {});
   }, []);
 
   const fetchProjects = async () => {
@@ -90,7 +95,6 @@ export default function DashboardPage() {
       localStorage.setItem("projectCount", updated.length.toString());
       setShowDeleteId(null);
     } catch {
-      // 실패 시 모달 닫기만 (에러 표시 없이)
       setShowDeleteId(null);
     } finally {
       setDeleting(false);
@@ -103,15 +107,14 @@ export default function DashboardPage() {
     setCreating(true);
     setCreateError("");
     try {
-      const payload = {
+      const { data } = await api.post<Project>("/projects", {
         name: createForm.name,
         description: createForm.description || null,
         courseName: createForm.courseName || null,
         semester: createForm.semester || null,
         startDate: createForm.startDate || null,
         endDate: createForm.endDate || null,
-      };
-      const { data } = await api.post<Project>("/projects", payload);
+      });
       setProjects((prev) => [data, ...prev]);
       setShowCreate(false);
       setCreateForm({ name: "", description: "", courseName: "", semester: "", startDate: "", endDate: "" });
@@ -123,19 +126,39 @@ export default function DashboardPage() {
     }
   };
 
-  // 초대 코드 참여
+  // 코드 참여 — 프로젝트 초대코드 시도 → 실패 시 회의 체크인 시도
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     setJoining(true);
     setJoinError("");
+    setJoinSuccess(null);
+    const trimmed = code.trim().toUpperCase();
+
     try {
-      await api.post("/projects/join", { inviteCode: inviteCode.trim().toUpperCase() });
-      setShowJoin(false);
-      setInviteCode("");
+      // 1차: 프로젝트 참여 시도
+      await api.post("/projects/join", { inviteCode: trimmed });
+      setJoinSuccess({ type: "project", label: "프로젝트에 참여했습니다!" });
+      setCode("");
       fetchProjects();
-    } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setJoinError(detail || "참여에 실패했습니다");
+      setTimeout(() => { setShowJoin(false); setJoinSuccess(null); }, 1500);
+    } catch (projectErr: unknown) {
+      const status = (projectErr as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        // 2차: 회의 체크인 시도
+        try {
+          const { data } = await api.post<CheckinRecord>("/meetings/checkin", { checkinCode: trimmed });
+          setJoinSuccess({ type: "checkin", label: `"${data.meetingTitle}" 체크인 완료!` });
+          setCode("");
+          setMyCheckins((prev) => [data, ...prev.filter((c) => c.meetingId !== data.meetingId)]);
+          setTimeout(() => { setShowJoin(false); setJoinSuccess(null); }, 2000);
+        } catch (checkinErr: unknown) {
+          const detail = (checkinErr as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+          setJoinError(detail || "유효하지 않은 코드입니다. 프로젝트 초대 코드 또는 회의 체크인 코드를 확인하세요.");
+        }
+      } else {
+        const detail = (projectErr as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        setJoinError(detail || "참여에 실패했습니다");
+      }
     } finally {
       setJoining(false);
     }
@@ -150,7 +173,8 @@ export default function DashboardPage() {
   const closeJoin = () => {
     setShowJoin(false);
     setJoinError("");
-    setInviteCode("");
+    setJoinSuccess(null);
+    setCode("");
   };
 
   return (
@@ -162,9 +186,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-bb-text">내 프로젝트</h1>
-            <p className="text-sm text-bb-text2 mt-1">
-              참여 중인 프로젝트 {projects.length}개
-            </p>
+            <p className="text-sm text-bb-text2 mt-1">참여 중인 프로젝트 {projects.length}개</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -172,7 +194,7 @@ export default function DashboardPage() {
               className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
               <Hash size={15} />
-              초대 코드 참여
+              코드 참여
             </button>
             <button
               onClick={() => setShowCreate(true)}
@@ -188,13 +210,10 @@ export default function DashboardPage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="bg-bb-surface border border-bb-border rounded-xl p-6 animate-pulse"
-              >
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-3" />
-                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-6" />
-                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full" />
+              <div key={i} className="bg-bb-surface border border-bb-border rounded-xl p-6 animate-pulse">
+                <div className="h-4 bg-slate-700 rounded w-2/3 mb-3" />
+                <div className="h-3 bg-slate-700 rounded w-1/2 mb-6" />
+                <div className="h-3 bg-slate-700 rounded w-full" />
               </div>
             ))}
           </div>
@@ -204,16 +223,14 @@ export default function DashboardPage() {
               <FolderKanban size={28} className="text-bb-text2" />
             </div>
             <p className="text-sm font-medium text-bb-text2 mb-1">프로젝트가 없습니다</p>
-            <p className="text-xs text-bb-text2 mb-6">
-              새 프로젝트를 만들거나 초대 코드로 참여해 보세요
-            </p>
+            <p className="text-xs text-bb-text2 mb-6">새 프로젝트를 만들거나 코드로 참여해 보세요</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowJoin(true)}
                 className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <Hash size={15} />
-                초대 코드 참여
+                코드 참여
               </button>
               <button
                 onClick={() => setShowCreate(true)}
@@ -227,13 +244,44 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onDelete={() => setShowDeleteId(project.id)}
-              />
+              <ProjectCard key={project.id} project={project} onDelete={() => setShowDeleteId(project.id)} />
             ))}
           </div>
+        )}
+
+        {/* 내 체크인 회의 내역 */}
+        {myCheckins.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-sm font-semibold text-bb-text2 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Clock size={14} />
+              내 체크인 회의
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {myCheckins.map((c) => (
+                <div
+                  key={c.meetingId}
+                  className="bg-bb-surface border border-bb-border rounded-xl p-4 flex items-center gap-3"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                    <CheckSquare size={15} className="text-green-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-bb-text truncate">{c.meetingTitle}</p>
+                    {c.checkedAt && (
+                      <p className="text-xs text-bb-text2 mt-0.5">
+                        {new Date(c.checkedAt).toLocaleDateString("ko-KR", {
+                          month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-[10px] bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full shrink-0">
+                    체크인
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
       </main>
 
@@ -284,24 +332,14 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="시작일">
-                <DatePicker
-                  value={createForm.startDate}
-                  onChange={(v) => setCreateForm({ ...createForm, startDate: v })}
-                  placeholder="YYYY-MM-DD"
-                />
+                <DatePicker value={createForm.startDate} onChange={(v) => setCreateForm({ ...createForm, startDate: v })} placeholder="YYYY-MM-DD" />
               </Field>
               <Field label="종료일">
-                <DatePicker
-                  value={createForm.endDate}
-                  onChange={(v) => setCreateForm({ ...createForm, endDate: v })}
-                  placeholder="YYYY-MM-DD"
-                />
+                <DatePicker value={createForm.endDate} onChange={(v) => setCreateForm({ ...createForm, endDate: v })} placeholder="YYYY-MM-DD" />
               </Field>
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={closeCreate} className={BTN_SECONDARY}>
-                취소
-              </button>
+              <button type="button" onClick={closeCreate} className={BTN_SECONDARY}>취소</button>
               <button type="submit" disabled={creating} className={BTN_PRIMARY}>
                 {creating ? <Spinner /> : "만들기"}
               </button>
@@ -310,34 +348,42 @@ export default function DashboardPage() {
         </Modal>
       )}
 
-      {/* 초대 코드 참여 모달 */}
+      {/* 코드 참여 모달 (프로젝트 초대 + 회의 체크인 통합) */}
       {showJoin && (
-        <Modal title="초대 코드로 참여" onClose={closeJoin}>
+        <Modal title="코드로 참여" onClose={closeJoin}>
           <form onSubmit={handleJoin} className="space-y-4">
             {joinError && (
               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
                 {joinError}
               </div>
             )}
+            {joinSuccess && (
+              <div className={`p-3 rounded-lg text-sm font-medium ${
+                joinSuccess.type === "project"
+                  ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
+                  : "bg-green-500/10 border border-green-500/20 text-green-400"
+              }`}>
+                {joinSuccess.type === "checkin" && <CheckSquare size={14} className="inline mr-1.5" />}
+                {joinSuccess.label}
+              </div>
+            )}
             <Field label="초대 코드">
               <input
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder="예: ABCD1234"
                 maxLength={8}
                 required
                 className={INPUT_CLS + " tracking-widest font-mono uppercase"}
               />
               <p className="text-xs text-slate-500 mt-1.5">
-                팀장에게 받은 8자리 초대 코드를 입력하세요
+                프로젝트 초대 코드 또는 회의 체크인 코드를 입력하세요 — 자동으로 구분합니다
               </p>
             </Field>
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={closeJoin} className={BTN_SECONDARY}>
-                취소
-              </button>
+              <button type="button" onClick={closeJoin} className={BTN_SECONDARY}>취소</button>
               <button type="submit" disabled={joining} className={BTN_PRIMARY}>
-                {joining ? <Spinner /> : <><LogIn size={15} /> 참여하기</>}
+                {joining ? <Spinner /> : <><LogIn size={15} /> 참여</>}
               </button>
             </div>
           </form>
@@ -349,16 +395,10 @@ export default function DashboardPage() {
         <Modal title="프로젝트 삭제" onClose={() => setShowDeleteId(null)}>
           <div className="space-y-4">
             <p className="text-sm text-slate-300">
-              이 프로젝트를 삭제하면 모든 데이터(태스크, 회의록, 파일 등)가
-              영구적으로 삭제됩니다. 정말 삭제하시겠습니까?
+              이 프로젝트를 삭제하면 모든 데이터(태스크, 회의록, 파일 등)가 영구적으로 삭제됩니다. 정말 삭제하시겠습니까?
             </p>
             <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteId(null)}
-                disabled={deleting}
-                className={BTN_SECONDARY}
-              >
+              <button type="button" onClick={() => setShowDeleteId(null)} disabled={deleting} className={BTN_SECONDARY}>
                 취소
               </button>
               <button
@@ -379,18 +419,10 @@ export default function DashboardPage() {
 
 // ── 프로젝트 카드 ───────────────────────────────────────────────────────────
 
-function ProjectCard({
-  project,
-  onDelete,
-}: {
-  project: Project;
-  onDelete: () => void;
-}) {
+function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => void }) {
   const router = useRouter();
-
   const formatDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) : null;
-
   const dateRange =
     project.startDate && project.endDate
       ? `${formatDate(project.startDate)} ~ ${formatDate(project.endDate)}`
@@ -398,24 +430,18 @@ function ProjectCard({
 
   return (
     <div
-      onClick={() => router.push(`/projects/${project.id}/board`)}
+      onClick={() => router.push(`/projects/${project.id}`)}
       className="bg-bb-surface border border-bb-border rounded-xl p-6 cursor-pointer hover:border-bb-primary/30 hover:shadow-sm transition-all group"
     >
-      {/* Top */}
       <div className="flex items-start justify-between mb-3">
         <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
           <FolderKanban size={18} className="text-indigo-500 dark:text-indigo-400" />
         </div>
         <div className="flex items-center gap-2">
-          <span className="bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-xs">
-            진행 중
-          </span>
+          <span className="bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full text-xs">진행 중</span>
           {project.myRole === "LEADER" && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
               className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
               title="프로젝트 삭제"
             >
@@ -424,35 +450,16 @@ function ProjectCard({
           )}
         </div>
       </div>
-
-      {/* Title */}
-      <h3 className="text-sm font-semibold text-bb-text mb-1 line-clamp-1">
-        {project.name}
-      </h3>
-      {project.description && (
-        <p className="text-xs text-bb-text2 mb-3 line-clamp-2">{project.description}</p>
-      )}
-      {!project.description && project.courseName && (
-        <p className="text-xs text-bb-text2 mb-3">{project.courseName}</p>
-      )}
-
-      {/* Meta */}
+      <h3 className="text-sm font-semibold text-bb-text mb-1 line-clamp-1">{project.name}</h3>
+      {project.description && <p className="text-xs text-bb-text2 mb-3 line-clamp-2">{project.description}</p>}
+      {!project.description && project.courseName && <p className="text-xs text-bb-text2 mb-3">{project.courseName}</p>}
       <div className="flex items-center gap-4 mt-auto pt-3 border-t border-bb-border">
-        <span className="flex items-center gap-1.5 text-xs text-bb-text2">
-          <Users size={12} />
-          {project.memberCount}명
-        </span>
+        <span className="flex items-center gap-1.5 text-xs text-bb-text2"><Users size={12} />{project.memberCount}명</span>
         {project.semester && (
-          <span className="flex items-center gap-1.5 text-xs text-bb-text2">
-            <Calendar size={12} />
-            {project.semester}
-          </span>
+          <span className="flex items-center gap-1.5 text-xs text-bb-text2"><Calendar size={12} />{project.semester}</span>
         )}
         {dateRange && !project.semester && (
-          <span className="flex items-center gap-1.5 text-xs text-bb-text2">
-            <Calendar size={12} />
-            {dateRange}
-          </span>
+          <span className="flex items-center gap-1.5 text-xs text-bb-text2"><Calendar size={12} />{dateRange}</span>
         )}
         {project.myRole && (
           <span className="ml-auto text-xs font-medium text-indigo-500 dark:text-indigo-400">
@@ -473,10 +480,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="relative w-full max-w-md bg-bb-surface border border-bb-border rounded-xl p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-bb-text">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-bb-text2 hover:text-bb-text transition-colors p-1 rounded-lg hover:bg-bb-surface2"
-          >
+          <button onClick={onClose} className="text-bb-text2 hover:text-bb-text transition-colors p-1 rounded-lg hover:bg-bb-surface2">
             <X size={18} />
           </button>
         </div>

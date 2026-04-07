@@ -56,7 +56,7 @@ public class TaskService {
         task.setProject(project);
         task.setTitle(req.title());
         task.setDescription(req.description());
-        task.setStatus("TODO");
+        task.setStatus(req.status() != null ? req.status() : "TODO");
         task.setPriority(req.priority() != null ? req.priority() : "MEDIUM");
         task.setTag(req.tag());
         task.setDueDate(req.dueDate());

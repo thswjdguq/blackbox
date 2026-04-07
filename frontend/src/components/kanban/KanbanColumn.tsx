@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Task, KanbanColumn as ColumnMeta, ScoreMap } from "@/types/task";
+import { Task, TaskStatus, KanbanColumn as ColumnMeta, ScoreMap } from "@/types/task";
 import TaskCard from "./TaskCard";
 import { Plus } from "lucide-react";
 
@@ -10,7 +10,7 @@ interface KanbanColumnProps {
   column: ColumnMeta;
   tasks: Task[];
   scoreMap: ScoreMap;
-  onAddTask: () => void;
+  onAddTask: (status: TaskStatus) => void;
   onEditTask: (task: Task) => void;
 }
 
@@ -37,17 +37,15 @@ export default function KanbanColumn({
           </span>
         </div>
 
-        {/* Add task — only on TODO */}
-        {column.id === "TODO" && (
-          <button
-            onClick={onAddTask}
-            className="text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10
-                       p-1.5 rounded-lg transition-all duration-150"
-            aria-label="태스크 추가"
-          >
-            <Plus size={15} />
-          </button>
-        )}
+        {/* Add task — all columns */}
+        <button
+          onClick={() => onAddTask(column.id)}
+          className="text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10
+                     p-1.5 rounded-lg transition-all duration-150"
+          aria-label="태스크 추가"
+        >
+          <Plus size={15} />
+        </button>
       </div>
 
       {/* Drop zone */}
@@ -71,13 +69,18 @@ export default function KanbanColumn({
           ))}
         </SortableContext>
 
-        {/* Empty state */}
+        {/* Empty state — clickable to add task */}
         {tasks.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center py-8 text-xs text-slate-600">
-            <div className="w-8 h-8 rounded-lg border border-dashed border-slate-700 flex items-center justify-center mb-2">
+          <div
+            onClick={() => onAddTask(column.id)}
+            className="flex-1 flex flex-col items-center justify-center py-8 text-xs text-slate-600
+                       cursor-pointer hover:text-slate-400 hover:bg-slate-800/30 rounded-lg transition-all"
+          >
+            <div className="w-8 h-8 rounded-lg border border-dashed border-slate-700 flex items-center justify-center mb-2
+                            group-hover:border-slate-500 transition-colors">
               <Plus size={14} className="text-slate-600" />
             </div>
-            여기로 드래그하세요
+            드래그하거나 클릭하여 추가
           </div>
         )}
       </div>
