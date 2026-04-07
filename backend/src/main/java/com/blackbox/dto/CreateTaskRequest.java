@@ -14,5 +14,6 @@ public record CreateTaskRequest(
         @Pattern(regexp = "LOW|MEDIUM|HIGH|URGENT") String priority,
         @Size(max = 30) String tag,
         LocalDate dueDate,
-        List<UUID> assigneeIds
+        List<UUID> assigneeIds,
+        @Pattern(regexp = "TODO|IN_PROGRESS|DONE") String status
 ) {}

@@ -79,18 +79,19 @@ function AttendeeAvatar({ attendee }: { attendee: Attendee }) {
 // ── AI 요약 패널 ───────────────────────────────────────────────────────
 function AiSummaryPanel({ summary, onClose }: { summary: string; onClose: () => void }) {
   return (
-    <div className="mt-4 p-4 bg-bb-primary/5 border border-bb-primary/20 rounded-xl relative">
+    <div className="mt-4 p-4 bg-indigo-950/60 border border-indigo-700/40 rounded-xl relative">
       <button
         onClick={onClose}
-        className="absolute top-3 right-3 text-bb-text2 hover:text-bb-text transition-colors"
+        className="absolute top-3 right-3 text-indigo-400/70 hover:text-indigo-300 transition-colors"
       >
         <X size={14} />
       </button>
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={14} className="text-bb-primary" />
-        <span className="text-xs font-semibold text-bb-primary">AI 요약</span>
+        <Sparkles size={14} className="text-indigo-400" />
+        <span className="text-xs font-semibold text-indigo-300">AI 요약</span>
+        <span className="text-[10px] text-indigo-500 ml-auto mr-6">Claude 생성</span>
       </div>
-      <div className="text-sm text-bb-text leading-relaxed whitespace-pre-wrap">
+      <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
         {summary}
       </div>
     </div>
@@ -132,26 +133,39 @@ export default function MeetingDetailPage() {
   const [exporting,    setExporting]    = useState(false);
   const [notionUrl,    setNotionUrl]    = useState<string | null>(null);
 
+  // Notion 캘린더 동기화
+  const [calendarSyncing, setCalendarSyncing] = useState(false);
+  const [calendarUrl,     setCalendarUrl]     = useState<string | null>(null);
+
   // AI 액션아이템 추출
   const [extracting,      setExtracting]      = useState(false);
   const [aiItems,         setAiItems]         = useState<string[] | null>(null);
   const [checkedAiItems,  setCheckedAiItems]  = useState<Set<number>>(new Set());
+  const [aiItemAssignees, setAiItemAssignees] = useState<Record<number, string>>({});
   const [addingAiItems,   setAddingAiItems]   = useState(false);
   const [aiItemsOpen,     setAiItemsOpen]     = useState(true);
+
+  // 프로젝트 멤버 (역할 배정용)
+  const [members, setMembers] = useState<{ userId: string; name: string; email: string }[]>([]);
 
   // ── 데이터 로드 ──────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [meetRes, attenRes] = await Promise.all([
+      const [meetRes, attenRes, memberRes] = await Promise.all([
         api.get<Meeting>(`/projects/${projectId}/meetings/${meetingId}`),
         api.get<Attendee[]>(`/projects/${projectId}/meetings/${meetingId}/attendees`),
+        api.get<{ userId: string; name: string; email: string }[]>(`/projects/${projectId}/members`),
       ]);
       setMeeting(meetRes.data);
       setAttendees(attenRes.data);
+      setMembers(memberRes.data);
       setEditNotes(meetRes.data.notes ?? "");
       setEditDecisions(meetRes.data.decisions ?? "");
+      // 이전에 저장된 AI 요약 / Notion URL 복원
+      if (meetRes.data.aiSummary) setAiSummary(meetRes.data.aiSummary);
+      if (meetRes.data.notionPageId) setNotionUrl(meetRes.data.notionPageId);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) { router.replace("/login"); return; }
@@ -166,24 +180,45 @@ export default function MeetingDetailPage() {
     fetchAll();
   }, [fetchAll]);
 
-  // ── 저장 ─────────────────────────────────────────────────────────────
+  // ── 저장 (내부 공유용) ───────────────────────────────────────────────
+  const saveNow = async (): Promise<boolean> => {
+    const payload: UpdateMeetingPayload = {
+      notes:     editNotes     || undefined,
+      decisions: editDecisions || undefined,
+    };
+    const { data } = await api.patch<Meeting>(
+      `/projects/${projectId}/meetings/${meetingId}`, payload,
+    );
+    setMeeting(data);
+    return true;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: UpdateMeetingPayload = {
-        notes: editNotes || undefined,
-        decisions: editDecisions || undefined,
-      };
-      const { data } = await api.patch<Meeting>(
-        `/projects/${projectId}/meetings/${meetingId}`, payload,
-      );
-      setMeeting(data);
+      await saveNow();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch {
-      setError("저장에 실패했습니다. 리더 권한이 필요합니다.");
+      setError("저장에 실패했습니다.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Notion 캘린더 동기화 ──────────────────────────────────────────────
+  const handleCalendarSync = async () => {
+    setCalendarSyncing(true);
+    try {
+      const { data } = await api.post<{ pageUrl: string }>(
+        `/projects/${projectId}/meetings/${meetingId}/notion/calendar`
+      );
+      setCalendarUrl(data.pageUrl);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? "Notion 캘린더 동기화 실패. Notion 설정을 확인하세요.");
+    } finally {
+      setCalendarSyncing(false);
     }
   };
 
@@ -231,6 +266,7 @@ export default function MeetingDetailPage() {
     }
     setSummarizing(true);
     try {
+      await saveNow();   // 최신 내용 먼저 저장
       const { data } = await api.post<{ summary: string }>(
         `/projects/${projectId}/meetings/${meetingId}/ai/summarize`,
       );
@@ -246,18 +282,21 @@ export default function MeetingDetailPage() {
   // ── Notion 내보내기 ──────────────────────────────────────────
   const handleNotionExport = async () => {
     if (!editNotes.trim() && !editDecisions.trim()) {
-      setError("회의록 내용을 먼저 입력하고 저장하세요.");
+      setError("회의록 내용을 먼저 입력하세요.");
       return;
     }
     setExporting(true);
     try {
+      await saveNow();   // 최신 내용 먼저 저장
+      // AI 요약을 미리 실행했다면 함께 전송, 아니면 요약 없이 내보냄
       const { data } = await api.post<{ pageUrl: string }>(
         `/projects/${projectId}/meetings/${meetingId}/notion/export`,
+        { aiSummary: aiSummary || null },
       );
       setNotionUrl(data.pageUrl);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "Notion 내보내기 실패. NOTION_API_KEY와 NOTION_PARENT_PAGE_ID를 확인하세요.");
+      setError(msg ?? "Notion 내보내기 실패. Notion 페이지에 Integration 연결을 확인하세요.");
     } finally {
       setExporting(false);
     }
@@ -271,7 +310,9 @@ export default function MeetingDetailPage() {
     }
     setExtracting(true);
     setAiItems(null);
+    setAiItemAssignees({});
     try {
+      await saveNow();  // 최신 내용 먼저 저장
       const { data } = await api.post<{ items: string[] }>(
         `/projects/${projectId}/meetings/${meetingId}/ai/extract-actions`,
       );
@@ -280,7 +321,7 @@ export default function MeetingDetailPage() {
       setAiItemsOpen(true);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "AI 추출에 실패했습니다. CLAUDE_API_KEY를 확인하세요.");
+      setError(msg ?? "AI 추출에 실패했습니다. API 키를 확인하세요.");
     } finally {
       setExtracting(false);
     }
@@ -290,18 +331,21 @@ export default function MeetingDetailPage() {
   const handleAddAiItems = async () => {
     if (!aiItems || checkedAiItems.size === 0) return;
     setAddingAiItems(true);
-    const selected = aiItems.filter((_, i) => checkedAiItems.has(i));
     try {
       await Promise.all(
-        selected.map((title) =>
-          api.post(`/projects/${projectId}/meetings/${meetingId}/action-items`, {
-            title,
-            assigneeIds: [],
-          }),
-        ),
+        aiItems
+          .map((title, i) => ({ title, i }))
+          .filter(({ i }) => checkedAiItems.has(i))
+          .map(({ title, i }) =>
+            api.post(`/projects/${projectId}/meetings/${meetingId}/action-items`, {
+              title,
+              assigneeIds: aiItemAssignees[i] ? [aiItemAssignees[i]] : [],
+            }),
+          ),
       );
       setAiItems(null);
       setCheckedAiItems(new Set());
+      setAiItemAssignees({});
     } catch {
       setError("일부 액션아이템 추가에 실패했습니다.");
     } finally {
@@ -366,7 +410,22 @@ export default function MeetingDetailPage() {
 
           {/* 회의 헤더 */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-6 mb-6">
-            <h1 className="text-2xl font-bold text-bb-text mb-3">{meeting.title}</h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-bold text-bb-text mb-3">{meeting.title}</h1>
+              {/* Notion 캘린더에 추가 버튼 */}
+              <button
+                onClick={handleCalendarSync}
+                disabled={calendarSyncing}
+                className="shrink-0 flex items-center gap-1.5 text-xs text-bb-text2
+                           hover:text-white hover:bg-[#191919] border border-bb-border hover:border-[#333]
+                           px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+              >
+                {calendarSyncing
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <span className="text-[10px] font-bold bg-white text-[#191919] px-1 rounded">N</span>}
+                {calendarSyncing ? "추가 중..." : "캘린더에 추가"}
+              </button>
+            </div>
             <div className="flex flex-wrap items-center gap-4 text-sm text-bb-text2">
               <span className="flex items-center gap-1.5">
                 <Calendar size={14} />
@@ -381,6 +440,17 @@ export default function MeetingDetailPage() {
               <p className="mt-3 text-sm text-bb-text2 leading-relaxed border-t border-bb-border/60 pt-3">
                 {meeting.purpose}
               </p>
+            )}
+            {/* Notion 캘린더 동기화 결과 */}
+            {calendarUrl && (
+              <div className="flex items-center gap-2 mt-3 p-2.5 bg-[#191919]/50 border border-[#333] rounded-lg">
+                <span className="text-[10px] font-bold bg-white text-[#191919] px-1 rounded shrink-0">N</span>
+                <span className="text-xs text-gray-400">Notion 캘린더에 추가됨</span>
+                <a href={calendarUrl} target="_blank" rel="noopener noreferrer"
+                   className="ml-auto text-xs text-teal-400 hover:underline flex items-center gap-1">
+                  열기 <ExternalLink size={10} />
+                </a>
+              </div>
             )}
           </div>
 
@@ -583,25 +653,49 @@ export default function MeetingDetailPage() {
                     {aiItems.length === 0 ? (
                       <p className="text-xs text-bb-text2 py-2">추출된 액션아이템이 없습니다.</p>
                     ) : (
-                      aiItems.map((item, i) => (
-                        <label
-                          key={i}
-                          className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-bb-surface2/50 cursor-pointer transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checkedAiItems.has(i)}
-                            onChange={() => toggleAiItem(i)}
-                            className="w-4 h-4 rounded accent-indigo-500"
-                          />
-                          <span className="text-sm text-bb-text">{item}</span>
-                        </label>
-                      ))
+                      <>
+                        <p className="text-xs text-bb-text2 pb-1">담당자를 선택하면 칸반 태스크에 자동 배정됩니다.</p>
+                        {aiItems.map((item, i) => (
+                          <div
+                            key={i}
+                            className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
+                              checkedAiItems.has(i) ? "bg-bb-surface2/50" : "opacity-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checkedAiItems.has(i)}
+                              onChange={() => toggleAiItem(i)}
+                              className="w-4 h-4 rounded accent-indigo-500 shrink-0"
+                            />
+                            <span className="text-sm text-bb-text flex-1">{item}</span>
+                            {/* 담당자 선택 */}
+                            <select
+                              value={aiItemAssignees[i] ?? ""}
+                              onChange={(e) =>
+                                setAiItemAssignees((prev) => ({
+                                  ...prev,
+                                  [i]: e.target.value,
+                                }))
+                              }
+                              className="text-xs bg-bb-bg border border-bb-border rounded-lg px-2 py-1
+                                         text-bb-text2 focus:outline-none focus:border-indigo-500 shrink-0"
+                            >
+                              <option value="">미배정</option>
+                              {members.map((m) => (
+                                <option key={m.userId} value={m.userId}>
+                                  {m.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </>
                     )}
                     {aiItems.length > 0 && (
                       <div className="flex justify-end gap-2 pt-2 border-t border-bb-border/60">
                         <button
-                          onClick={() => setAiItems(null)}
+                          onClick={() => { setAiItems(null); setAiItemAssignees({}); }}
                           className="text-xs text-bb-text2 hover:text-bb-text px-3 py-1.5 transition-colors"
                         >
                           취소

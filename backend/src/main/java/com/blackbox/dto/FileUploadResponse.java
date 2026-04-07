@@ -13,13 +13,22 @@ public record FileUploadResponse(
         Long fileSize,
         Integer version,
         boolean tamperDetected,
-        OffsetDateTime uploadedAt
+        OffsetDateTime uploadedAt,
+        String notionPageUrl        // null if Notion not configured or sync failed
 ) {
     public static FileUploadResponse of(FileVault v, boolean tamperDetected) {
         return new FileUploadResponse(
                 v.getId(), v.getProject().getId(),
                 v.getFileName(), v.getFileHash(), v.getFileSize(),
-                v.getVersion(), tamperDetected, v.getUploadedAt()
+                v.getVersion(), tamperDetected, v.getUploadedAt(), null
+        );
+    }
+
+    public static FileUploadResponse of(FileVault v, boolean tamperDetected, String notionPageUrl) {
+        return new FileUploadResponse(
+                v.getId(), v.getProject().getId(),
+                v.getFileName(), v.getFileHash(), v.getFileSize(),
+                v.getVersion(), tamperDetected, v.getUploadedAt(), notionPageUrl
         );
     }
 }

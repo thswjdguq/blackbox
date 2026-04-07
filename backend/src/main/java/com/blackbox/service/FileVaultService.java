@@ -25,6 +25,7 @@ public class FileVaultService {
     private final FileStorageService fileStorageService;
     private final ProjectAccessChecker accessChecker;
     private final ActivityLogService activityLogService;
+    private final NotionService notionService;
 
     public FileVaultService(FileVaultRepository fileVaultRepository,
                             TamperDetectionLogRepository tamperLogRepository,
@@ -32,7 +33,8 @@ public class FileVaultService {
                             HashService hashService,
                             FileStorageService fileStorageService,
                             ProjectAccessChecker accessChecker,
-                            ActivityLogService activityLogService) {
+                            ActivityLogService activityLogService,
+                            NotionService notionService) {
         this.fileVaultRepository = fileVaultRepository;
         this.tamperLogRepository = tamperLogRepository;
         this.alertRepository = alertRepository;
@@ -40,6 +42,7 @@ public class FileVaultService {
         this.fileStorageService = fileStorageService;
         this.accessChecker = accessChecker;
         this.activityLogService = activityLogService;
+        this.notionService = notionService;
     }
 
     // ── 업로드 ─────────────────────────────────────────────────────────────
@@ -95,7 +98,25 @@ public class FileVaultService {
                 "{\"fileId\":\"" + vault.getId() + "\",\"fileName\":\"" + escapeJson(originalName)
                         + "\",\"version\":" + nextVersion + "}");
 
-        return FileUploadResponse.of(vault, tamperDetected);
+        // Notion 자동 동기화 (실패해도 업로드 자체는 성공)
+        String notionPageUrl = null;
+        if (notionService.isConfigured()) {
+            try {
+                notionPageUrl = notionService.syncFileEntry(
+                        project.getName(),
+                        originalName,
+                        newHash,
+                        uploader.getName(),
+                        nextVersion,
+                        fileSize,
+                        vault.getUploadedAt()
+                );
+            } catch (Exception ignored) {
+                // Notion 동기화 실패는 업로드 결과에 영향 없음
+            }
+        }
+
+        return FileUploadResponse.of(vault, tamperDetected, notionPageUrl);
     }
 
     // ── 다운로드 ───────────────────────────────────────────────────────────

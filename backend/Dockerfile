@@ -3,7 +3,8 @@ WORKDIR /app
 COPY build.gradle settings.gradle ./
 RUN gradle dependencies --no-daemon || true
 COPY src/ src/
-RUN gradle bootJar --no-daemon -x test
+RUN gradle bootJar --no-daemon -x test \
+    || gradle bootJar --no-daemon -x test --offline
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app

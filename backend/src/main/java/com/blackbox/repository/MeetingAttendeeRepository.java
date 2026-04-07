@@ -12,4 +12,5 @@ import java.util.Optional;
 public interface MeetingAttendeeRepository extends JpaRepository<MeetingAttendee, MeetingAttendeeId> {
     List<MeetingAttendee> findByMeeting(Meeting meeting);
     Optional<MeetingAttendee> findByMeetingAndUser(Meeting meeting, User user);
+    List<MeetingAttendee> findByUserAndCheckedInTrueOrderByCheckedAtDesc(User user);
 }

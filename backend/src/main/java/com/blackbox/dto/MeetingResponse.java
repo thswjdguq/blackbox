@@ -14,6 +14,9 @@ public record MeetingResponse(
         String notes,
         String decisions,
         String checkinCode,
+        String aiSummary,
+        String notionPageId,
+        OffsetDateTime notionSyncedAt,
         UUID createdBy,
         OffsetDateTime createdAt
 ) {
@@ -23,6 +26,7 @@ public record MeetingResponse(
                 m.getTitle(), m.getMeetingDate(),
                 m.getPurpose(), m.getNotes(), m.getDecisions(),
                 m.getCheckinCode(),
+                m.getAiSummary(), m.getNotionPageId(), m.getNotionSyncedAt(),
                 m.getCreatedBy().getId(),
                 m.getCreatedAt()
         );

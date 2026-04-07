@@ -10,7 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +28,7 @@ public class MeetingService {
     private final MeetingRepository meetingRepository;
     private final MeetingAttendeeRepository meetingAttendeeRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final TaskRepository taskRepository;
     private final TaskService taskService;
     private final ProjectAccessChecker accessChecker;
     private final ActivityLogService activityLogService;
@@ -31,6 +37,7 @@ public class MeetingService {
     public MeetingService(MeetingRepository meetingRepository,
                           MeetingAttendeeRepository meetingAttendeeRepository,
                           ProjectMemberRepository projectMemberRepository,
+                          TaskRepository taskRepository,
                           TaskService taskService,
                           ProjectAccessChecker accessChecker,
                           ActivityLogService activityLogService,
@@ -38,6 +45,7 @@ public class MeetingService {
         this.meetingRepository = meetingRepository;
         this.meetingAttendeeRepository = meetingAttendeeRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.taskRepository = taskRepository;
         this.taskService = taskService;
         this.accessChecker = accessChecker;
         this.activityLogService = activityLogService;
@@ -62,13 +70,15 @@ public class MeetingService {
         entityManager.flush();
         entityManager.refresh(meeting);
 
-        // 모든 프로젝트 멤버를 attendee로 등록 (checked_in=false)
+        // 모든 프로젝트 멤버를 attendee로 등록 (생성자는 자동 체크인)
         List<ProjectMember> members = projectMemberRepository.findByProject(project);
         for (ProjectMember pm : members) {
             MeetingAttendee attendee = new MeetingAttendee();
             attendee.setMeeting(meeting);
             attendee.setUser(pm.getUser());
-            attendee.setCheckedIn(false);
+            boolean isCreator = pm.getUser().getId().equals(creator.getId());
+            attendee.setCheckedIn(isCreator);
+            if (isCreator) attendee.setCheckedAt(OffsetDateTime.now());
             meetingAttendeeRepository.save(attendee);
         }
 
@@ -98,7 +108,7 @@ public class MeetingService {
     public MeetingResponse updateMeeting(UUID projectId, UUID meetingId,
                                          UpdateMeetingRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireLeader(project, user);
+        accessChecker.requireMember(project, user);
         Meeting meeting = findMeeting(meetingId, project);
 
         if (req.title() != null)       meeting.setTitle(req.title());
@@ -155,10 +165,43 @@ public class MeetingService {
         attendee.setCheckedAt(OffsetDateTime.now());
         meetingAttendeeRepository.save(attendee);
 
-        activityLogService.record(meeting.getProject(), user, "CHECKIN",
+        // 프로젝트 멤버가 아니면 MEMBER로 자동 추가 — 이후 프로젝트 전체 접근 가능
+        Project project = meeting.getProject();
+        if (!projectMemberRepository.existsByProjectAndUser(project, user)) {
+            ProjectMember newMember = new ProjectMember();
+            newMember.setProject(project);
+            newMember.setUser(user);
+            newMember.setRole("MEMBER");
+            newMember.setConsentPlatform(true);
+            newMember.setConsentGithub(false);
+            newMember.setConsentDrive(false);
+            newMember.setConsentAiAnalysis(false);
+            projectMemberRepository.save(newMember);
+
+            // 기존 미등록 회의들에 attendee로 추가 (체크인 false)
+            meetingRepository.findByProjectOrderByMeetingDateDesc(project).forEach(m -> {
+                if (meetingAttendeeRepository.findByMeetingAndUser(m, user).isEmpty()) {
+                    MeetingAttendee a = new MeetingAttendee();
+                    a.setMeeting(m);
+                    a.setUser(user);
+                    a.setCheckedIn(false);
+                    meetingAttendeeRepository.save(a);
+                }
+            });
+        }
+
+        activityLogService.record(project, user, "CHECKIN",
                 "{\"meetingId\":\"" + meeting.getId() + "\",\"title\":\"" + escapeJson(meeting.getTitle()) + "\",\"checkedInAt\":\"" + attendee.getCheckedAt() + "\"}");
 
         return AttendeeResponse.from(attendee);
+    }
+
+    // ── 내 체크인 내역 (비멤버도 조회 가능) ───────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<AttendeeResponse> myCheckins(User user) {
+        return meetingAttendeeRepository.findByUserAndCheckedInTrueOrderByCheckedAtDesc(user)
+                .stream().map(AttendeeResponse::from).toList();
     }
 
     // ── 참석자 목록 ────────────────────────────────────────────────────────
@@ -187,9 +230,32 @@ public class MeetingService {
                 + "\n[Action item from meeting: " + (meeting.getTitle() != null ? meeting.getTitle() : meeting.getId()) + "]";
 
         CreateTaskRequest enriched = new CreateTaskRequest(
-                req.title(), description, req.priority(), req.tag(), req.dueDate(), req.assigneeIds()
+                req.title(), description, req.priority(), req.tag(), req.dueDate(), req.assigneeIds(), null
         );
         return taskService.createTask(projectId, enriched, user);
+    }
+
+    // ── AI 요약 저장 ──────────────────────────────────────────────────────
+
+    @Transactional
+    public void saveAiSummary(UUID projectId, UUID meetingId, String summary, User user) {
+        Project project = accessChecker.getProject(projectId);
+        accessChecker.requireMember(project, user);
+        Meeting meeting = findMeeting(meetingId, project);
+        meeting.setAiSummary(summary);
+        meetingRepository.save(meeting);
+    }
+
+    // ── Notion 동기화 정보 저장 ───────────────────────────────────────────
+
+    @Transactional
+    public void saveNotionInfo(UUID projectId, UUID meetingId, String pageUrl, User user) {
+        Project project = accessChecker.getProject(projectId);
+        accessChecker.requireMember(project, user);
+        Meeting meeting = findMeeting(meetingId, project);
+        meeting.setNotionPageId(pageUrl);
+        meeting.setNotionSyncedAt(OffsetDateTime.now());
+        meetingRepository.save(meeting);
     }
 
     // ── 컨트롤러용 엔티티 직접 반환 (Notion 내보내기 등) ────────────────────
@@ -199,6 +265,75 @@ public class MeetingService {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireMember(project, user);
         return findMeeting(meetingId, project);
+    }
+
+    // ── 회의 시간 추천 ────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public MeetingRecommendResponse recommendMeetingTime(UUID projectId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        accessChecker.requireMember(project, user);
+
+        List<Meeting> meetings = meetingRepository.findByProjectOrderByMeetingDateDesc(project);
+        List<Task> tasks = taskRepository.findByProjectOrderByCreatedAtDesc(project);
+
+        // 미완료 태스크 중 가장 빠른 마감일
+        LocalDate nearestDeadline = tasks.stream()
+                .filter(t -> t.getDueDate() != null && !"DONE".equals(t.getStatus()))
+                .map(Task::getDueDate)
+                .filter(d -> !d.isBefore(LocalDate.now()))
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+
+        OffsetDateTime suggested;
+        String reason;
+
+        if (meetings.isEmpty()) {
+            suggested = nextWeekday(OffsetDateTime.now(ZoneOffset.UTC).plusDays(1));
+            reason = "아직 회의 이력이 없습니다. 빠른 시일 내 첫 팀 미팅을 권장합니다.";
+        } else {
+            Meeting last = meetings.get(0);
+            OffsetDateTime lastDate = last.getMeetingDate() != null
+                    ? last.getMeetingDate() : OffsetDateTime.now(ZoneOffset.UTC).minusDays(7);
+
+            long intervalDays = 7;
+            if (meetings.size() >= 2) {
+                Meeting prev = meetings.get(1);
+                OffsetDateTime prevDate = prev.getMeetingDate() != null
+                        ? prev.getMeetingDate() : lastDate.minusDays(7);
+                long diff = Math.abs(ChronoUnit.DAYS.between(prevDate, lastDate));
+                intervalDays = Math.max(3, Math.min(diff, 14));
+            }
+
+            suggested = nextWeekday(lastDate.plusDays(intervalDays));
+            reason = String.format("최근 회의 주기 (~%d일) 기준 다음 권장 시간입니다.", intervalDays);
+        }
+
+        // 마감일이 더 촉박하면 조정
+        if (nearestDeadline != null) {
+            OffsetDateTime deadlineDt = nearestDeadline.minusDays(2)
+                    .atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
+            if (deadlineDt.isAfter(OffsetDateTime.now(ZoneOffset.UTC))
+                    && deadlineDt.isBefore(suggested)) {
+                suggested = nextWeekday(deadlineDt);
+                reason = String.format(
+                        "태스크 마감일(%s)이 다가옵니다. 마감 전 점검 회의를 권장합니다.", nearestDeadline);
+            }
+        }
+
+        // 현재보다 과거면 내일로
+        if (!suggested.isAfter(OffsetDateTime.now(ZoneOffset.UTC))) {
+            suggested = nextWeekday(OffsetDateTime.now(ZoneOffset.UTC).plusDays(1));
+        }
+
+        return new MeetingRecommendResponse(suggested.toString(), reason);
+    }
+
+    private OffsetDateTime nextWeekday(OffsetDateTime dt) {
+        while (dt.getDayOfWeek() == DayOfWeek.SATURDAY || dt.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            dt = dt.plusDays(1);
+        }
+        return dt.withHour(14).withMinute(0).withSecond(0).withNano(0);
     }
 
     // ── internal ──────────────────────────────────────────────────────────

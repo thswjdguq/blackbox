@@ -42,6 +42,15 @@ public class Meeting {
     @Column(name = "checkin_code", unique = true, length = 8)
     private String checkinCode;
 
+    @Column(name = "ai_summary", columnDefinition = "TEXT")
+    private String aiSummary;
+
+    @Column(name = "notion_page_id", length = 255)
+    private String notionPageId;
+
+    @Column(name = "notion_synced_at")
+    private OffsetDateTime notionSyncedAt;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by", nullable = false, updatable = false)
     private User createdBy;

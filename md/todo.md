@@ -18,7 +18,7 @@
 - [x] `docker compose up -d` 전체 스택 기동 확인 ✅
 - [x] `.env` 환경변수 파일 구성 (DB 비밀번호, JWT 시크릿 등)
 
-### 🔴 P0 — DB 스키마 v1 배포 (Flyway)
+### 🔴 P0 — DB 스키마 v1 배포 (Flyway)2
 - [x] V1~V9 마이그레이션 전체 완료 (users / projects / tasks / meetings / logs / vault / scores / triggers)
 
 ---

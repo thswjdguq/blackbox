@@ -17,6 +17,14 @@ import {
 } from "lucide-react";
 
 // ── 타입 ──────────────────────────────────────────────────────────────────
+interface TaskSummary {
+  id: string;
+  title: string;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  dueDate: string | null;
+  assignees: { userId: string; name: string }[];
+}
+
 interface RiskData {
   riskScore: number;
   level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -199,6 +207,7 @@ export default function AnalyticsPage() {
   const [scores,        setScores]        = useState<ScoreEntry[]>([]);
   const [alerts,        setAlerts]        = useState<Alert[]>([]);
   const [risk,          setRisk]          = useState<RiskData | null>(null);
+  const [tasks,         setTasks]         = useState<TaskSummary[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [recalculating, setRecalculating] = useState(false);
   const [error,         setError]         = useState("");
@@ -217,14 +226,16 @@ export default function AnalyticsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const [scoreRes, alertRes, riskRes] = await Promise.all([
+      const [scoreRes, alertRes, riskRes, taskRes] = await Promise.all([
         api.get<ScoreEntry[]>(`/projects/${projectId}/scores`),
         api.get<Alert[]>(`/projects/${projectId}/alerts`),
         api.get<RiskData>(`/projects/${projectId}/risk`),
+        api.get<TaskSummary[]>(`/projects/${projectId}/tasks`),
       ]);
       setScores(normalise(scoreRes.data));
       setAlerts(alertRes.data);
       setRisk(riskRes.data);
+      setTasks(taskRes.data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) { router.replace("/login"); return; }
@@ -378,6 +389,101 @@ export default function AnalyticsPage() {
                       <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
                       <p className="text-xs text-bb-text2 mt-0.5">{alert.message}</p>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── 팀원별 TDL 완료 현황 ───────────────────────────────────── */}
+        {tasks.length > 0 && scores.length > 0 && (
+          <div className="mb-8">
+            <SectionTitle>
+              <CheckSquare size={14} className="text-indigo-400" />
+              팀원별 TDL 완료 현황
+            </SectionTitle>
+            <div className="space-y-4">
+              {scores.map((member) => {
+                const myTasks = tasks.filter((t) =>
+                  t.assignees.some((a) => a.userId === member.userId)
+                );
+                const done       = myTasks.filter((t) => t.status === "DONE");
+                const inProgress = myTasks.filter((t) => t.status === "IN_PROGRESS");
+                const todo       = myTasks.filter((t) => t.status === "TODO");
+                const pct = myTasks.length > 0 ? Math.round((done.length / myTasks.length) * 100) : 0;
+                const hue = member.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+
+                return (
+                  <div key={member.userId} className="bg-bb-surface border border-bb-border rounded-xl p-4">
+                    {/* 멤버 헤더 */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        style={{ background: `hsl(${hue} 50% 45%)` }}
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                      >
+                        {member.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-bb-text">{member.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-teal-400">✅ {done.length}완료</span>
+                          <span className="text-[10px] text-indigo-400">🔄 {inProgress.length}진행</span>
+                          <span className="text-[10px] text-bb-text2">⬜ {todo.length}예정</span>
+                        </div>
+                      </div>
+                      {/* 완료율 */}
+                      <div className="text-right shrink-0">
+                        <p className={`text-xl font-bold ${
+                          pct === 100 ? "text-teal-400" : pct >= 50 ? "text-indigo-400" : "text-bb-text2"
+                        }`}>{myTasks.length > 0 ? `${pct}%` : "-"}</p>
+                        <p className="text-[10px] text-bb-text2">완료율</p>
+                      </div>
+                    </div>
+
+                    {/* 진행 바 */}
+                    {myTasks.length > 0 && (
+                      <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-3">
+                        <div
+                          className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
+
+                    {/* 태스크 목록 */}
+                    {myTasks.length === 0 ? (
+                      <p className="text-xs text-bb-text2 italic">배정된 태스크가 없습니다</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {myTasks.map((task) => {
+                          const overdue = task.dueDate && task.status !== "DONE"
+                            && new Date(task.dueDate) < new Date();
+                          return (
+                            <div key={task.id} className="flex items-center gap-2.5">
+                              {/* 상태 아이콘 */}
+                              <span className="shrink-0 text-sm">
+                                {task.status === "DONE" ? "✅"
+                                  : task.status === "IN_PROGRESS" ? "🔄" : "⬜"}
+                              </span>
+                              <span className={`text-xs flex-1 ${
+                                task.status === "DONE" ? "line-through text-bb-text2" : "text-bb-text"
+                              }`}>
+                                {task.title}
+                              </span>
+                              {task.dueDate && (
+                                <span className={`text-[10px] shrink-0 ${
+                                  overdue ? "text-red-400 font-medium" : "text-bb-text2"
+                                }`}>
+                                  {overdue ? "⚠️ " : ""}
+                                  {new Date(task.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}

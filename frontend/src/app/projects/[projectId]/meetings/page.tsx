@@ -14,6 +14,8 @@ import {
   AlertCircle,
   X,
   Loader2,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
@@ -60,6 +62,31 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
   const [purpose, setPurpose] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [recommending, setRecommending] = useState(false);
+  const [recommendReason, setRecommendReason] = useState<string | null>(null);
+
+  // 추천 시간을 ISO → datetime-local 형식으로 변환
+  const toLocalInput = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const handleRecommend = async () => {
+    setRecommending(true);
+    setRecommendReason(null);
+    try {
+      const { data } = await api.get<{ suggestedDateTime: string; reason: string }>(
+        `/projects/${projectId}/meetings/recommend`
+      );
+      setMeetingDate(toLocalInput(data.suggestedDateTime));
+      setRecommendReason(data.reason);
+    } catch {
+      setError("추천 시간을 가져오지 못했습니다.");
+    } finally {
+      setRecommending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,15 +148,36 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
             />
           </div>
 
-          {/* 일시 */}
+          {/* 일시 + 추천 버튼 */}
           <div>
-            <label className="block text-xs font-medium text-bb-text2 mb-1.5">회의 일시</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-bb-text2">회의 일시</label>
+              <button
+                type="button"
+                onClick={handleRecommend}
+                disabled={recommending}
+                className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300
+                           px-2 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/10
+                           transition-all disabled:opacity-50"
+              >
+                {recommending
+                  ? <Loader2 size={11} className="animate-spin" />
+                  : <Sparkles size={11} />}
+                AI 추천 시간
+              </button>
+            </div>
             <input
               type="datetime-local"
               value={meetingDate}
               onChange={(e) => setMeetingDate(e.target.value)}
               className={INPUT_CLS}
             />
+            {recommendReason && (
+              <p className="mt-1.5 text-[11px] text-indigo-400 flex items-center gap-1">
+                <Sparkles size={10} />
+                {recommendReason}
+              </p>
+            )}
           </div>
 
           {/* 목적/안건 */}
@@ -208,7 +256,7 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
         )}
       </div>
 
-      {/* 상태 + 화살표 */}
+      {/* 상태 + Notion 배지 + 화살표 */}
       <div className="flex items-center gap-2 shrink-0">
         <span
           className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
@@ -219,6 +267,17 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
         >
           {hasNotes ? "작성 완료" : "미작성"}
         </span>
+        {/* Notion 동기화 배지 */}
+        {meeting.notionPageId ? (
+          <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-400">
+            <span className="text-[8px] font-bold bg-white text-[#191919] px-0.5 rounded leading-tight">N</span>
+            동기화됨
+          </span>
+        ) : (
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800/50 text-slate-600 border border-slate-700/50">
+            미동기화
+          </span>
+        )}
         <ChevronRight size={15} className="text-slate-600 group-hover:text-bb-text2 transition-colors" />
       </div>
     </div>
