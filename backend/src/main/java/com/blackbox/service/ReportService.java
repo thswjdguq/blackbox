@@ -176,44 +176,57 @@ public class ReportService {
         doc.add(sep);
     }
 
-    // ── 기여도 점수 섹션 ──────────────────────────────────────────────────────
+    // ── 참여 여부 섹션 ──────────────────────────────────────────────────────
+
+    private static final Color GREEN_LIGHT = new Color(240, 253, 250);
+    private static final Color TEAL_DARK   = new Color(20,  184, 166);
+    private static final Color YELLOW      = new Color(234, 179,  8);
 
     private void addScoreSection(Document doc, List<ContributionScore> scores) throws DocumentException {
-        doc.add(sectionTitle("기여도 점수 (Score Engine)"));
+        doc.add(sectionTitle("팀원별 참여 여부 (역할 수행)"));
 
         if (scores.isEmpty()) {
-            doc.add(emptyNote("아직 점수 데이터가 없습니다."));
+            doc.add(emptyNote("아직 참여 데이터가 없습니다."));
             doc.add(spacer(8));
             return;
         }
 
-        PdfPTable table = new PdfPTable(new float[]{16f, 12f, 10f, 10f, 10f, 12f, 18f});
+        PdfPTable table = new PdfPTable(new float[]{20f, 14f, 14f, 14f, 16f, 12f, 10f});
         table.setWidthPercentage(100);
 
-        String[] headers = {"이름", "총점", "태스크", "회의", "파일", "Git", "마지막 계산"};
-        Color[]  colors  = {INDIGO, INDIGO, TEAL, TEAL, AMBER, RED, GRAY_MID};
+        String[] headers = {"이름", "태스크 완료", "회의 참석", "파일 업로드", "액션아이템", "종합", "계산 일시"};
+        Color[]  colors  = {INDIGO, TEAL, TEAL, AMBER, TEAL, INDIGO, GRAY_MID};
         for (int i = 0; i < headers.length; i++) {
-            PdfPCell c = headerCell(headers[i], colors[i]);
-            table.addCell(c);
+            table.addCell(headerCell(headers[i], colors[i]));
         }
 
-        int rank = 1;
         for (ContributionScore s : scores) {
-            Color rowBg = (rank == 1) ? INDIGO_LIGHT : WHITE;
-            String rowHash = sha256(s.getUser().getId() + "|" +
-                    s.getTotalScore() + "|" + s.getTaskScore() + "|" +
-                    s.getMeetingScore() + "|" + s.getDocScore() + "|" + s.getGitScore());
+            Color levelColor = "FULL".equals(s.getParticipationLevel())    ? TEAL_DARK
+                             : "PARTIAL".equals(s.getParticipationLevel()) ? YELLOW
+                             :                                               RED;
+            Color rowBg = "FULL".equals(s.getParticipationLevel()) ? GREEN_LIGHT : WHITE;
 
-            table.addCell(dataCell(rank + ". " + s.getUser().getName(), rowBg, Font.BOLD));
-            table.addCell(dataCell(fmt(s.getTotalScore()), rowBg, Font.BOLD));
-            table.addCell(dataCell(fmt(s.getTaskScore()),    rowBg, Font.NORMAL));
-            table.addCell(dataCell(fmt(s.getMeetingScore()), rowBg, Font.NORMAL));
-            table.addCell(dataCell(fmt(s.getDocScore()),     rowBg, Font.NORMAL));
-            table.addCell(dataCell(fmt(s.getGitScore()),     rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.getUser().getName(), rowBg, Font.BOLD));
+            table.addCell(dataCell(s.isTaskParticipated()    ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.isMeetingParticipated() ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.isFileParticipated()    ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.isActionParticipated()  ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
+
+            PdfPCell levelCell = new PdfPCell(new Phrase(levelKo(s.getParticipationLevel()), font(8, WHITE, Font.BOLD)));
+            levelCell.setBackgroundColor(levelColor);
+            levelCell.setPadding(4);
+            levelCell.setBorderColor(GRAY_LIGHT);
+            levelCell.setBorderWidth(0.3f);
+            table.addCell(levelCell);
+
             table.addCell(dataCell(s.getCalculatedAt() != null ? s.getCalculatedAt().format(FMT) : "-", rowBg, Font.NORMAL));
-            rank++;
         }
         doc.add(table);
+        doc.add(spacer(6));
+        doc.add(para("* 태스크: 담당 태스크 1개↑ 완료 / 회의: 전체 50%↑ 체크인 / 파일: 1개↑ 업로드 / 액션아이템: 담당 1개↑ 완료",
+                font(7, GRAY_MID, Font.ITALIC)));
+        doc.add(para("* 전체참여(4개 모두) / 부분참여(2~3개) / 미참여(0~1개)",
+                font(7, GRAY_MID, Font.ITALIC)));
         doc.add(spacer(12));
     }
 
@@ -430,6 +443,14 @@ public class ReportService {
             case "DROPOUT"   -> "이탈";
             case "TAMPER"    -> "변조";
             default          -> t;
+        };
+    }
+
+    private String levelKo(String level) {
+        return switch (level) {
+            case "FULL"    -> "전체참여";
+            case "PARTIAL" -> "부분참여";
+            default        -> "미참여";
         };
     }
 

@@ -1,6 +1,7 @@
 package com.blackbox.controller;
 
 import com.blackbox.entity.User;
+import com.blackbox.service.EvidencePackageService;
 import com.blackbox.service.ReportService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -15,10 +16,13 @@ import java.util.UUID;
 @RequestMapping("/api/projects/{projectId}")
 public class ReportController {
 
-    private final ReportService reportService;
+    private final ReportService           reportService;
+    private final EvidencePackageService  evidencePackageService;
 
-    public ReportController(ReportService reportService) {
-        this.reportService = reportService;
+    public ReportController(ReportService reportService,
+                            EvidencePackageService evidencePackageService) {
+        this.reportService          = reportService;
+        this.evidencePackageService = evidencePackageService;
     }
 
     @GetMapping("/report")
@@ -35,5 +39,21 @@ public class ReportController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .contentLength(pdf.length)
                 .body(pdf);
+    }
+
+    @GetMapping("/evidence-package")
+    public ResponseEntity<byte[]> downloadEvidencePackage(
+            @PathVariable UUID projectId,
+            @AuthenticationPrincipal User user) {
+
+        byte[] zip = evidencePackageService.generatePackage(projectId, user);
+
+        String filename = "blackbox-evidence-" + LocalDate.now() + ".zip";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .contentLength(zip.length)
+                .body(zip);
     }
 }
