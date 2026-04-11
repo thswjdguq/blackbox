@@ -10,9 +10,9 @@ import { Meeting } from "@/types/meeting";
 import { FileRecord, ScoreEntry, Alert } from "@/types/vault";
 import {
   Kanban, FileText, Files, BarChart2,
-  Copy, Check, AlertTriangle, Users,
-  Calendar, Clock, ChevronRight, Loader2,
-  AlertCircle, TrendingUp, Hash,
+  Copy, Check, AlertTriangle,
+  Calendar, ChevronRight,
+  AlertCircle, Hash, Archive, Download,
 } from "lucide-react";
 
 // ── 타입 ─────────────────────────────────────────────────────────────────
@@ -148,6 +148,9 @@ export default function ProjectHomePage() {
   // 초대코드 복사 토스트
   const [copied, setCopied] = useState(false);
 
+  // 증거 패키지 다운로드
+  const [downloading, setDownloading] = useState(false);
+
   const fetchAll = useCallback(async () => {
     if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     setLoading(true);
@@ -180,6 +183,29 @@ export default function ProjectHomePage() {
   }, [projectId, router]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const downloadEvidencePackage = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(`/api/projects/${projectId}/evidence-package`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("download failed");
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `blackbox-evidence-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("증거 패키지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const copyInviteCode = async () => {
     if (!project) return;
@@ -241,10 +267,7 @@ export default function ProjectHomePage() {
   const totalTasks = tasks.length;
   const doneRate   = totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0;
 
-  const avgScore   = scores.length > 0
-    ? Math.round(scores.reduce((s, e) => s + e.totalScore, 0) / scores.length)
-    : 0;
-  const maxScore   = scores.length > 0 ? Math.max(...scores.map((s) => s.totalScore)) : 1;
+  const fullCount  = scores.filter((s) => s.participationLevel === "FULL").length;
 
   const health     = getHealth(alerts, tasks);
   const recentTasks    = [...tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3);
@@ -367,9 +390,9 @@ export default function ProjectHomePage() {
             />
             <KpiCard
               icon={BarChart2}
-              label="평균 기여도"
-              value={scores.length > 0 ? avgScore : "-"}
-              sub={scores.length > 0 ? `${scores.length}명 기준` : "점수 없음"}
+              label="전체 참여"
+              value={scores.length > 0 ? `${fullCount}명` : "-"}
+              sub={scores.length > 0 ? `${scores.length}명 중 전체참여` : "재계산 필요"}
               color="bg-amber-500/10 text-amber-400"
             />
           </div>
@@ -484,44 +507,36 @@ export default function ProjectHomePage() {
 
             {scores.length === 0 ? (
               <p className="text-xs text-bb-text2 text-center py-4">
-                아직 기여도 점수가 없습니다. 태스크를 완료하면 자동 계산됩니다.
+                아직 참여 데이터가 없습니다. 태스크 완료·회의 체크인 후 재계산하세요.
               </p>
             ) : (
-              <div className="space-y-3">
-                {[...scores]
-                  .sort((a, b) => b.totalScore - a.totalScore)
-                  .map((s) => {
-                    const pct = maxScore > 0 ? (s.totalScore / maxScore) * 100 : 0;
-                    const memberAlert = activeAlerts.find((a) => a.userId === s.userId);
-                    return (
-                      <div key={s.userId} className="flex items-center gap-3">
-                        <Avatar name={s.name} size={7} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-medium text-bb-text truncate">{s.name}</span>
-                            <div className="flex items-center gap-2 shrink-0 ml-2">
-                              {memberAlert && (
-                                <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10
-                                                 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                                  <AlertTriangle size={9} />
-                                  {ALERT_LABEL[memberAlert.alertType] ?? memberAlert.alertType}
-                                </span>
-                              )}
-                              <span className="text-xs font-bold text-bb-text">
-                                {Math.round(s.totalScore)}점
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-1.5 bg-bb-bg rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-teal-400 transition-all duration-500"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
+              <div className="space-y-2">
+                {scores.map((s) => {
+                  const memberAlert = activeAlerts.find((a) => a.userId === s.userId);
+                  const levelCfg = {
+                    FULL:    { label: "전체 참여", cls: "text-teal-400 bg-teal-500/10 border-teal-500/25" },
+                    PARTIAL: { label: "부분 참여", cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/25" },
+                    NONE:    { label: "미참여",    cls: "text-red-400 bg-red-500/10 border-red-500/25" },
+                  }[s.participationLevel];
+                  return (
+                    <div key={s.userId} className="flex items-center gap-3 p-2 rounded-lg bg-bb-bg/40">
+                      <Avatar name={s.name} size={7} />
+                      <span className="text-xs font-medium text-bb-text flex-1 truncate">{s.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {memberAlert && (
+                          <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10
+                                           border border-amber-500/20 px-2 py-0.5 rounded-full">
+                            <AlertTriangle size={9} />
+                            {ALERT_LABEL[memberAlert.alertType] ?? memberAlert.alertType}
+                          </span>
+                        )}
+                        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${levelCfg.cls}`}>
+                          {levelCfg.label}
+                        </span>
                       </div>
-                    );
-                  })}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -536,7 +551,7 @@ export default function ProjectHomePage() {
           </div>
 
           {/* ── Hash Vault ───────────────────────────────────────────────── */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-5">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
             <SectionHeader
               title="Hash Vault"
               icon={Files}
@@ -571,6 +586,56 @@ export default function ProjectHomePage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* ── 팀플 종료 — 증거 패키지 ─────────────────────────────────── */}
+          <div className="bg-gradient-to-br from-indigo-950/60 to-bb-surface border border-indigo-700/30 rounded-2xl p-6">
+            <div className="flex items-start gap-4 flex-wrap">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
+                <Archive size={18} className="text-indigo-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold text-bb-text mb-1">팀플 종료 — 증거 패키지 발급</h2>
+                <p className="text-xs text-bb-text2 leading-relaxed">
+                  회의록 전체 · 기여도 PDF · Hash Vault 이력을 하나의 ZIP으로 묶어 교수님께 제출하세요.
+                  PDF에는 SHA-256 무결성 해시가 포함되어 데이터 위변조를 방지합니다.
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {[
+                    `회의록 ${meetings.length}건`,
+                    `파일 이력 ${files.length}건`,
+                    "기여도 PDF",
+                    "SHA-256 무결성",
+                  ].map((tag) => (
+                    <li
+                      key={tag}
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                    >
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                onClick={downloadEvidencePackage}
+                disabled={downloading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl
+                           bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60
+                           text-white text-sm font-semibold transition-colors shrink-0"
+              >
+                {downloading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    생성 중...
+                  </>
+                ) : (
+                  <>
+                    <Download size={15} />
+                    ZIP 다운로드
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
         </div>

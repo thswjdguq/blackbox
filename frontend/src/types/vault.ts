@@ -42,19 +42,16 @@ export interface Alert {
 
 // ── 기여도 점수 관련 타입 ──────────────────────────────────────────────
 
-/** 기여도 점수 응답 DTO */
+/** 기여도 참여 여부 응답 DTO */
 export interface ScoreEntry {
   userId: string;
   name: string;
   email: string;
-  gitScore: number;
-  docScore: number;
-  meetingScore: number;
-  taskScore: number;
-  totalScore: number;
-  weightGit: number;
-  weightDoc: number;
-  weightMeeting: number;
-  weightTask: number;
+  taskParticipated: boolean;
+  meetingParticipated: boolean;
+  fileParticipated: boolean;
+  actionParticipated: boolean;
+  /** FULL | PARTIAL | NONE */
+  participationLevel: "FULL" | "PARTIAL" | "NONE";
   calculatedAt: string;
 }
