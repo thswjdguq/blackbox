@@ -2,31 +2,31 @@ package com.blackbox.dto;
 
 import com.blackbox.entity.ContributionScore;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record ScoreResponse(
-        UUID userId,
-        String name,
-        String email,
-        BigDecimal gitScore,
-        BigDecimal docScore,
-        BigDecimal meetingScore,
-        BigDecimal taskScore,
-        BigDecimal totalScore,
-        BigDecimal weightGit,
-        BigDecimal weightDoc,
-        BigDecimal weightMeeting,
-        BigDecimal weightTask,
+        UUID    userId,
+        String  name,
+        String  email,
+        boolean taskParticipated,
+        boolean meetingParticipated,
+        boolean fileParticipated,
+        boolean actionParticipated,
+        /** FULL | PARTIAL | NONE */
+        String  participationLevel,
         OffsetDateTime calculatedAt
 ) {
     public static ScoreResponse from(ContributionScore s) {
         return new ScoreResponse(
-                s.getUser().getId(), s.getUser().getName(), s.getUser().getEmail(),
-                s.getGitScore(), s.getDocScore(), s.getMeetingScore(), s.getTaskScore(),
-                s.getTotalScore(),
-                s.getWeightGit(), s.getWeightDoc(), s.getWeightMeeting(), s.getWeightTask(),
+                s.getUser().getId(),
+                s.getUser().getName(),
+                s.getUser().getEmail(),
+                s.isTaskParticipated(),
+                s.isMeetingParticipated(),
+                s.isFileParticipated(),
+                s.isActionParticipated(),
+                s.getParticipationLevel(),
                 s.getCalculatedAt()
         );
     }

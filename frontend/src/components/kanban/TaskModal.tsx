@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, TaskPriority, TaskStatus, CreateTaskPayload } from "@/types/task";
+import { Task, TaskPriority, TaskStatus, CreateTaskPayload, KANBAN_COLUMNS } from "@/types/task";
 import { X, Trash2, Save, Plus } from "lucide-react";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
@@ -56,6 +56,7 @@ export default function TaskModal({
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>(
     task?.assignees.map((a) => a.userId) ?? []
   );
+  const [status, setStatus]           = useState<TaskStatus>(task?.status ?? defaultStatus);
   const [submitting, setSubmitting]   = useState(false);
   const [error, setError]             = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -66,6 +67,7 @@ export default function TaskModal({
     setTitle(task.title);
     setDescription(task.description ?? "");
     setPriority(task.priority);
+    setStatus(task.status);
     setTag(task.tag ?? "");
     setDueDate(task.dueDate ?? "");
     setSelectedAssignees(task.assignees.map((a) => a.userId));
@@ -92,7 +94,7 @@ export default function TaskModal({
         tag:         tag.trim() || undefined,
         dueDate:     dueDate || undefined,
         assigneeIds: selectedAssignees,
-        status:      mode === "create" ? defaultStatus : undefined,
+        status,
       };
       if (mode === "create") {
         await onCreate(payload);
@@ -178,6 +180,33 @@ export default function TaskModal({
               className={`${INPUT_CLS} resize-none`}
             />
           </div>
+
+          {/* 상태 선택 (편집 모드) */}
+          {mode === "edit" && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">상태</label>
+              <div className="flex gap-2">
+                {KANBAN_COLUMNS.map((col) => {
+                  const isActive = status === col.id;
+                  const colorMap: Record<string, string> = {
+                    TODO:        isActive ? "border-slate-400 bg-slate-700 text-slate-100" : "border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-400",
+                    IN_PROGRESS: isActive ? "border-indigo-500 bg-indigo-500/20 text-indigo-300" : "border-slate-700 text-slate-500 hover:border-indigo-500/40 hover:text-indigo-400",
+                    DONE:        isActive ? "border-teal-500 bg-teal-500/20 text-teal-300" : "border-slate-700 text-slate-500 hover:border-teal-500/40 hover:text-teal-400",
+                  };
+                  return (
+                    <button
+                      key={col.id}
+                      type="button"
+                      onClick={() => setStatus(col.id)}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${colorMap[col.id]}`}
+                    >
+                      {col.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* 우선순위 + 태그 */}
           <div className="grid grid-cols-2 gap-3">

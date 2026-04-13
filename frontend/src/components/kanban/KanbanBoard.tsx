@@ -173,8 +173,31 @@ export default function KanbanBoard({
   };
 
   const handleUpdate = async (taskId: string, payload: Partial<CreateTaskPayload>) => {
+    const original = tasks.find((t) => t.id === taskId);
+
+    // 1) 기본 필드 업데이트 (title/description/priority/tag/dueDate)
     const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}`, payload);
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? data : t)));
+    let finalTask = data;
+
+    // 2) 담당자 변경 — 별도 PUT 엔드포인트 사용 (UpdateTaskRequest에 assigneeIds 없음)
+    if (payload.assigneeIds !== undefined) {
+      const { data: assigneeData } = await api.put<Task>(
+        `/projects/${projectId}/tasks/${taskId}/assignees`,
+        { assigneeIds: payload.assigneeIds }
+      );
+      finalTask = assigneeData;
+    }
+
+    // 3) 상태 변경 — 별도 PATCH 엔드포인트 사용 (UpdateTaskRequest에 status 없음)
+    if (payload.status && original?.status !== payload.status) {
+      const { data: statusData } = await api.patch<Task>(
+        `/projects/${projectId}/tasks/${taskId}/status`,
+        { status: payload.status }
+      );
+      finalTask = statusData;
+    }
+
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? finalTask : t)));
     closeModal();
   };
 
@@ -182,6 +205,27 @@ export default function KanbanBoard({
     await api.delete(`/projects/${projectId}/tasks/${taskId}`);
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     closeModal();
+  };
+
+  // ── 버튼 클릭으로 상태 이동 (To Do→In Progress, In Progress→Done) ─────
+  const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+    const original = tasks.find((t) => t.id === taskId);
+    if (!original || original.status === newStatus) return;
+
+    // 낙관적 업데이트
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+
+    try {
+      await api.patch(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
+    } catch (err) {
+      console.error("Task move failed:", err);
+      // 실패 시 원상복구
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? original : t))
+      );
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -205,6 +249,7 @@ export default function KanbanBoard({
               scoreMap={scoreMap}
               onAddTask={openCreate}
               onEditTask={openEdit}
+              onMoveTask={handleMoveTask}
             />
           ))}
         </div>

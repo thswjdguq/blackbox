@@ -13,7 +13,9 @@ import {
   Trash2,
   CheckSquare,
   Clock,
+  ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import DatePicker from "@/components/DatePicker";
 import api from "@/lib/api";
@@ -36,6 +38,7 @@ interface Project {
   inviteCode: string;
   memberCount: number;
   myRole: string | null;
+  createdAt: string | null;
 }
 
 export default function DashboardPage() {
@@ -150,6 +153,8 @@ export default function DashboardPage() {
           setJoinSuccess({ type: "checkin", label: `"${data.meetingTitle}" 체크인 완료!` });
           setCode("");
           setMyCheckins((prev) => [data, ...prev.filter((c) => c.meetingId !== data.meetingId)]);
+          // 체크인 시 프로젝트 멤버로 자동 추가되므로 프로젝트 목록도 갱신
+          fetchProjects();
           setTimeout(() => { setShowJoin(false); setJoinSuccess(null); }, 2000);
         } catch (checkinErr: unknown) {
           const detail = (checkinErr as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -258,15 +263,21 @@ export default function DashboardPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {myCheckins.map((c) => (
-                <div
+                <Link
                   key={c.meetingId}
-                  className="bg-bb-surface border border-bb-border rounded-xl p-4 flex items-center gap-3"
+                  href={`/projects/${c.projectId}/meetings/${c.meetingId}`}
+                  className="bg-bb-surface border border-bb-border rounded-xl p-4 flex items-center gap-3
+                             hover:border-indigo-500/40 hover:bg-slate-800/60 hover:shadow-md hover:shadow-indigo-500/5
+                             transition-all group cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0
+                                  group-hover:bg-green-500/20 transition-colors">
                     <CheckSquare size={15} className="text-green-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-bb-text truncate">{c.meetingTitle}</p>
+                    <p className="text-sm font-medium text-bb-text truncate group-hover:text-white transition-colors">
+                      {c.meetingTitle}
+                    </p>
                     {c.checkedAt && (
                       <p className="text-xs text-bb-text2 mt-0.5">
                         {new Date(c.checkedAt).toLocaleDateString("ko-KR", {
@@ -275,10 +286,13 @@ export default function DashboardPage() {
                       </p>
                     )}
                   </div>
-                  <span className="text-[10px] bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full shrink-0">
-                    체크인
-                  </span>
-                </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">
+                      체크인
+                    </span>
+                    <ChevronRight size={13} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
+                  </div>
+                </Link>
               ))}
             </div>
           </section>
@@ -427,6 +441,10 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
     project.startDate && project.endDate
       ? `${formatDate(project.startDate)} ~ ${formatDate(project.endDate)}`
       : null;
+  // YYYY.MM.DD 포맷
+  const createdAtLabel = project.createdAt
+    ? project.createdAt.slice(0, 10).replace(/-/g, ".")
+    : null;
 
   return (
     <div
@@ -453,14 +471,26 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
       <h3 className="text-sm font-semibold text-bb-text mb-1 line-clamp-1">{project.name}</h3>
       {project.description && <p className="text-xs text-bb-text2 mb-3 line-clamp-2">{project.description}</p>}
       {!project.description && project.courseName && <p className="text-xs text-bb-text2 mb-3">{project.courseName}</p>}
-      <div className="flex items-center gap-4 mt-auto pt-3 border-t border-bb-border">
+      <div className="flex items-center gap-3 mt-auto pt-3 border-t border-bb-border flex-wrap">
         <span className="flex items-center gap-1.5 text-xs text-bb-text2"><Users size={12} />{project.memberCount}명</span>
-        {project.semester && (
-          <span className="flex items-center gap-1.5 text-xs text-bb-text2"><Calendar size={12} />{project.semester}</span>
-        )}
-        {dateRange && !project.semester && (
-          <span className="flex items-center gap-1.5 text-xs text-bb-text2"><Calendar size={12} />{dateRange}</span>
-        )}
+        {/* 학기 + 생성일 (학기 옆에 표시) */}
+        {project.semester ? (
+          <span className="flex items-center gap-1.5 text-xs text-bb-text2">
+            <Calendar size={12} />
+            {project.semester}
+            {createdAtLabel && (
+              <span className="text-slate-600">· {createdAtLabel}</span>
+            )}
+          </span>
+        ) : dateRange ? (
+          <span className="flex items-center gap-1.5 text-xs text-bb-text2">
+            <Calendar size={12} />{dateRange}
+          </span>
+        ) : createdAtLabel ? (
+          <span className="flex items-center gap-1.5 text-xs text-bb-text2">
+            <Calendar size={12} />{createdAtLabel}
+          </span>
+        ) : null}
         {project.myRole && (
           <span className="ml-auto text-xs font-medium text-indigo-500 dark:text-indigo-400">
             {project.myRole === "LEADER" ? "팀장" : "팀원"}

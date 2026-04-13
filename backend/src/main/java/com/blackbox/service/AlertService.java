@@ -8,7 +8,6 @@ import com.blackbox.repository.ProjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -16,26 +15,23 @@ import java.util.UUID;
 @Service
 public class AlertService {
 
-    private static final BigDecimal FREE_RIDE_THRESHOLD = new BigDecimal("0.60"); // 팀 평균의 60% 미만
-    private static final double OVERLOAD_THRESHOLD = 0.60;                       // 총합의 60% 초과
-
-    private final AlertRepository alertRepository;
-    private final ActivityLogRepository activityLogRepository;
-    private final ProjectRepository projectRepository;
+    private final AlertRepository        alertRepository;
+    private final ActivityLogRepository  activityLogRepository;
+    private final ProjectRepository      projectRepository;
 
     public AlertService(AlertRepository alertRepository,
                         ActivityLogRepository activityLogRepository,
                         ProjectRepository projectRepository) {
-        this.alertRepository = alertRepository;
-        this.activityLogRepository = activityLogRepository;
-        this.projectRepository = projectRepository;
+        this.alertRepository        = alertRepository;
+        this.activityLogRepository  = activityLogRepository;
+        this.projectRepository      = projectRepository;
     }
 
     // ── 경보 감지 (점수 재계산 후 호출) ───────────────────────────────────
 
     public void checkAlerts(Project project, List<ProjectMember> members,
                             List<ContributionScore> scores) {
-        if (members.size() < 2) return; // 1인 프로젝트는 감지 불필요
+        if (members.size() < 2) return;
 
         checkFreeRide(project, scores);
         checkOverload(project, scores);
@@ -53,46 +49,37 @@ public class AlertService {
                 .toList();
     }
 
-    // ── FREE_RIDE: 팀 평균 60% 미만 ───────────────────────────────────────
+    // ── FREE_RIDE: 미참여(NONE) 감지 ──────────────────────────────────────
 
     private void checkFreeRide(Project project, List<ContributionScore> scores) {
-        if (scores.isEmpty()) return;
-        BigDecimal avg = scores.stream()
-                .map(ContributionScore::getTotalScore)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(scores.size()), 2, java.math.RoundingMode.HALF_UP);
-
-        BigDecimal threshold = avg.multiply(FREE_RIDE_THRESHOLD);
-
         for (ContributionScore s : scores) {
-            if (s.getTotalScore().compareTo(threshold) < 0
+            if ("NONE".equals(s.getParticipationLevel())
                     && !alertRepository.existsByProjectAndUserAndAlertTypeAndIsReadFalse(
                     project, s.getUser(), "FREE_RIDE")) {
                 createAlert(project, s.getUser(), "FREE_RIDE", "MEDIUM",
-                        s.getUser().getName() + "님의 기여도 점수(" + s.getTotalScore()
-                                + ")가 팀 평균(" + avg + ")의 60% 미만입니다");
+                        s.getUser().getName() + "님이 태스크·회의·파일·액션아이템 중 1개 이하에만 참여했습니다 (미참여)");
             }
         }
     }
 
-    // ── OVERLOAD: 1인이 총합의 60% 초과 ──────────────────────────────────
+    // ── OVERLOAD: 혼자 FULL 이고 나머지가 NONE/PARTIAL ────────────────────
 
     private void checkOverload(Project project, List<ContributionScore> scores) {
-        BigDecimal total = scores.stream()
-                .map(ContributionScore::getTotalScore)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long fullCount    = scores.stream().filter(s -> "FULL".equals(s.getParticipationLevel())).count();
+        long nonFullCount = scores.stream().filter(s -> !"FULL".equals(s.getParticipationLevel())).count();
 
-        if (total.compareTo(BigDecimal.ZERO) <= 0) return;
-
-        for (ContributionScore s : scores) {
-            double ratio = s.getTotalScore().doubleValue() / total.doubleValue();
-            if (ratio > OVERLOAD_THRESHOLD
-                    && !alertRepository.existsByProjectAndUserAndAlertTypeAndIsReadFalse(
-                    project, s.getUser(), "OVERLOAD")) {
-                createAlert(project, s.getUser(), "OVERLOAD", "MEDIUM",
-                        s.getUser().getName() + "님이 팀 전체 기여의 "
-                                + String.format("%.0f%%", ratio * 100) + "를 담당하고 있습니다 (과부하 위험)");
-            }
+        // FULL 이 1명이고 나머지가 2명 이상 NONE/PARTIAL → 과부하 경보
+        if (fullCount == 1 && nonFullCount >= 2) {
+            scores.stream()
+                    .filter(s -> "FULL".equals(s.getParticipationLevel()))
+                    .findFirst()
+                    .ifPresent(s -> {
+                        if (!alertRepository.existsByProjectAndUserAndAlertTypeAndIsReadFalse(
+                                project, s.getUser(), "OVERLOAD")) {
+                            createAlert(project, s.getUser(), "OVERLOAD", "MEDIUM",
+                                    s.getUser().getName() + "님이 팀에서 유일하게 전체 참여 중입니다 (과부하 위험)");
+                        }
+                    });
         }
     }
 
@@ -101,7 +88,6 @@ public class AlertService {
     private void checkDropout(Project project, List<ProjectMember> members) {
         OffsetDateTime twoWeeksAgo = OffsetDateTime.now().minusDays(14);
         for (ProjectMember pm : members) {
-            // 가입 후 14일이 지난 멤버만 검사
             if (pm.getJoinedAt() != null && pm.getJoinedAt().isAfter(twoWeeksAgo)) continue;
             User u = pm.getUser();
             boolean hasActivity = activityLogRepository.hasActivityAfter(project, u, twoWeeksAgo);

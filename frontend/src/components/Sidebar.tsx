@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuthStore } from "@/lib/store/authStore";
 
 interface SidebarProps {
   hasProjects?: boolean;
@@ -25,6 +26,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const router   = useRouter();
   const [isDark, setIsDark] = useState(true);
   const [toast,  setToast]  = useState(false);
+  const clearTokens = useAuthStore((s) => s.clearTokens);
 
   // URL에서 현재 프로젝트 ID 추출 (/projects/[id]/xxx)
   const projectIdMatch = pathname.match(/\/projects\/([^/]+)/);
@@ -70,8 +72,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    clearTokens();
     localStorage.removeItem("projectCount");
     router.push("/login");
   };

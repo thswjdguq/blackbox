@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Task, ScoreMap } from "@/types/task";
+import { Task, TaskStatus, ScoreMap } from "@/types/task";
 import {
   GripVertical,
   Calendar,
@@ -12,15 +13,17 @@ import {
   ChevronDown,
   ChevronsUp,
   Star,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 
 interface TaskCardProps {
   task: Task;
   scoreMap: ScoreMap;
   onEdit: (task: Task) => void;
+  onMove?: (taskId: string, newStatus: TaskStatus) => void;
 }
 
-// ── Priority config ────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
   URGENT: { icon: ChevronsUp,  label: "긴급", cls: "text-rose-400 bg-rose-400/10" },
   HIGH:   { icon: ChevronUp,   label: "높음", cls: "text-orange-400 bg-orange-400/10" },
@@ -28,7 +31,6 @@ const PRIORITY_CONFIG = {
   LOW:    { icon: ChevronDown, label: "낮음", cls: "text-slate-400 bg-slate-700" },
 };
 
-// ── Due-date helpers ───────────────────────────────────────────────────────
 function formatDue(dueDate: string | null): { label: string; cls: string } | null {
   if (!dueDate) return null;
   const due = new Date(dueDate);
@@ -41,10 +43,8 @@ function formatDue(dueDate: string | null): { label: string; cls: string } | nul
   return { label, cls: "text-slate-400" };
 }
 
-// ── Avatar ─────────────────────────────────────────────────────────────────
 function Avatar({ name }: { name: string }) {
   const initials = name.slice(0, 2).toUpperCase();
-  // deterministic hue from name
   const hue = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
   return (
     <div
@@ -57,7 +57,6 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-// ── Score chip ─────────────────────────────────────────────────────────────
 function ScoreChip({ score }: { score: number }) {
   const color =
     score >= 120 ? "text-teal-300 bg-teal-400/10" :
@@ -72,50 +71,92 @@ function ScoreChip({ score }: { score: number }) {
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────
-export default function TaskCard({ task, scoreMap, onEdit }: TaskCardProps) {
+export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardProps) {
+  const [isMoving, setIsMoving] = useState(false);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
 
-  const style = {
+  // 카드 전체에 drag listeners 적용 — 어디서든 드래그 가능
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.4 : isMoving ? 0 : 1,
   };
 
   const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
   const PriorityIcon = priority.icon;
   const dueInfo = formatDue(task.dueDate);
+  const representativeScore =
+    task.assignees.length > 0 ? scoreMap[task.assignees[0].userId] : undefined;
+  const isDone = task.status === "DONE";
 
-  // Representative score = first assignee's score (or undefined)
-  const representativeScore = task.assignees.length > 0
-    ? scoreMap[task.assignees[0].userId]
-    : undefined;
+  // 버튼 클릭 → 이동 트리거 (drag와 분리)
+  const triggerMove = (e: React.MouseEvent, newStatus: TaskStatus) => {
+    e.stopPropagation();       // 카드 onClick(모달) 방지
+    if (isMoving || !onMove) return;
+    setIsMoving(true);
+    // 160ms 페이드아웃 후 실제 이동
+    setTimeout(() => onMove(task.id, newStatus), 160);
+  };
+
+  // 버튼에서 포인터 다운 시 drag 시작 방지
+  const stopPointer = (e: React.PointerEvent) => e.stopPropagation();
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() => onEdit(task)}
-      className="group bg-slate-800 border border-slate-700/60 rounded-xl p-4 cursor-pointer
-                 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5
-                 transition-all duration-200 select-none"
+      // 카드 전체에 drag listeners 부착 (grip 아이콘 외에도 드래그 가능)
+      {...attributes}
+      {...listeners}
+      onClick={() => !isMoving && onEdit(task)}
+      className={`group bg-slate-800 border rounded-xl p-4 cursor-grab active:cursor-grabbing
+                  transition-colors duration-200 select-none
+                  ${isDone
+                    ? "border-slate-700/40 opacity-60"
+                    : "border-slate-700/60 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5"
+                  }`}
     >
-      {/* Card Top Row */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        {/* Drag handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          className="mt-0.5 text-slate-600 hover:text-slate-400 transition-colors cursor-grab active:cursor-grabbing shrink-0"
-          aria-label="드래그 핸들"
-        >
-          <GripVertical size={14} />
-        </button>
+      {/* Top Row */}
+      <div className="flex items-start gap-2 mb-3">
+
+        {/* TODO 체크박스 — 클릭 시 In Progress 이동 */}
+        {task.status === "TODO" && (
+          <button
+            onPointerDown={stopPointer}   // drag 시작 방지
+            onClick={(e) => triggerMove(e, "IN_PROGRESS")}
+            className="mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 border-indigo-500/40
+                       hover:border-indigo-500 hover:bg-indigo-500/20
+                       flex items-center justify-center transition-all duration-150 group/cb"
+            aria-label="진행 중으로 이동"
+          >
+            <Check
+              size={10}
+              className="text-indigo-500 opacity-0 group-hover/cb:opacity-100 transition-opacity duration-100"
+            />
+          </button>
+        )}
+
+        {/* DONE 완료 표시 */}
+        {task.status === "DONE" && (
+          <div className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-teal-500/20 border-2 border-teal-500/60
+                          flex items-center justify-center">
+            <Check size={10} className="text-teal-400" />
+          </div>
+        )}
+
+        {/* 드래그 핸들 (시각 힌트) */}
+        <GripVertical
+          size={14}
+          className="mt-0.5 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0"
+        />
 
         {/* Title */}
-        <p className="flex-1 text-sm font-medium text-slate-200 leading-snug group-hover:text-white transition-colors line-clamp-2">
+        <p className={`flex-1 text-sm font-medium leading-snug line-clamp-2 transition-colors
+                       ${isDone
+                         ? "line-through text-slate-500"
+                         : "text-slate-200 group-hover:text-white"}`}>
           {task.title}
         </p>
 
@@ -143,7 +184,7 @@ export default function TaskCard({ task, scoreMap, onEdit }: TaskCardProps) {
         </div>
       )}
 
-      {/* Bottom Row: assignees + score + due */}
+      {/* Bottom Row */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/60">
         {/* Assignee avatars */}
         <div className="flex items-center">
@@ -161,7 +202,7 @@ export default function TaskCard({ task, scoreMap, onEdit }: TaskCardProps) {
           )}
         </div>
 
-        {/* Score + Due */}
+        {/* Score + Due + IN_PROGRESS → Done 버튼 */}
         <div className="flex items-center gap-2">
           {representativeScore !== undefined && (
             <ScoreChip score={representativeScore} />
@@ -171,6 +212,21 @@ export default function TaskCard({ task, scoreMap, onEdit }: TaskCardProps) {
               <Calendar size={9} />
               {dueInfo.label}
             </span>
+          )}
+
+          {task.status === "IN_PROGRESS" && (
+            <button
+              onPointerDown={stopPointer}   // drag 시작 방지
+              onClick={(e) => triggerMove(e, "DONE")}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold
+                         text-teal-400 bg-teal-400/10 border border-teal-400/20
+                         hover:bg-teal-400/20 hover:border-teal-400/50
+                         transition-all duration-150"
+              aria-label="완료로 이동"
+            >
+              <ArrowRight size={9} />
+              완료
+            </button>
           )}
         </div>
       </div>

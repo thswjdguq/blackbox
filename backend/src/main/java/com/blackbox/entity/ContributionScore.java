@@ -30,6 +30,7 @@ public class ContributionScore {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // ── 기존 숫자 점수 컬럼 (하위 호환 유지) ──────────────────────────────
     @Column(name = "git_score", nullable = false, precision = 5, scale = 2)
     private BigDecimal gitScore = BigDecimal.ZERO;
 
@@ -56,6 +57,27 @@ public class ContributionScore {
 
     @Column(name = "weight_task", nullable = false, precision = 3, scale = 2)
     private BigDecimal weightTask = new BigDecimal("0.25");
+
+    // ── 참여 여부 필드 (V11) ──────────────────────────────────────────────
+    /** 담당 태스크 중 1개 이상 DONE */
+    @Column(name = "task_participated", nullable = false)
+    private boolean taskParticipated = false;
+
+    /** 프로젝트 회의 중 50% 이상 체크인 */
+    @Column(name = "meeting_participated", nullable = false)
+    private boolean meetingParticipated = false;
+
+    /** 파일 1개 이상 업로드 */
+    @Column(name = "file_participated", nullable = false)
+    private boolean fileParticipated = false;
+
+    /** 담당 액션아이템 중 1개 이상 DONE */
+    @Column(name = "action_participated", nullable = false)
+    private boolean actionParticipated = false;
+
+    /** FULL (4개 참) / PARTIAL (2~3개 참) / NONE (0~1개 참) */
+    @Column(name = "participation_level", nullable = false, length = 10)
+    private String participationLevel = "NONE";
 
     // Java에서 직접 관리 (재계산 시 갱신)
     @Column(name = "calculated_at", nullable = false)

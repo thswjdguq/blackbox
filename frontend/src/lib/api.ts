@@ -1,4 +1,5 @@
-import axios from "axios";
+import axios, { InternalAxiosRequestConfig } from "axios";
+import { useAuthStore } from "@/lib/store/authStore";
 
 const api = axios.create({
   baseURL: "/api",
@@ -14,24 +15,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
 // 응답 인터셉터: 401 시 refresh 시도
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    const original = error.config;
+    const original = error.config as RetryConfig;
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       const refreshToken = localStorage.getItem("refreshToken");
       if (refreshToken) {
         try {
           const { data } = await axios.post("/api/auth/refresh", { refreshToken });
-          localStorage.setItem("accessToken", data.accessToken);
-          localStorage.setItem("refreshToken", data.refreshToken);
+          useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
           original.headers.Authorization = `Bearer ${data.accessToken}`;
           return api(original);
         } catch {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
+          useAuthStore.getState().clearTokens();
           window.location.href = "/login";
         }
       } else {
