@@ -39,7 +39,7 @@ services:
       JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
       FILE_UPLOAD_DIR: /data/uploads
       # CORS — 브라우저 origin 허용 목록
-      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-https://localhost,http://localhost:3000,http://localhost}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-https://localhost,https://localhost:443,http://localhost,http://localhost:3000}
       # 확장 기능 API 키
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -79,16 +79,16 @@ services:
   # 4. NGINX (리버스 프록시 + SSL)
   # ─────────────────────────────────────────
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: blackbox_nginx
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx-ssl.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl/server.crt:/etc/nginx/ssl/server.crt:ro
-      - ./ssl/server.key:/etc/nginx/ssl/server.key:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - uploads:/data/uploads:ro
     networks:
       - blackbox_net

@@ -2,7 +2,7 @@
 
 ## 현재 Phase: MVP 완성 + AI/Notion 확장 (진행 중)
 
-> **업데이트 2026-04-03:** MVP 핵심 기능 완성. 이제 AI·Notion 연동으로 차별화 강화.
+> **업데이트 2026-04-13 (week5 → 버그수정):** 칸반 담당자 저장 버그, 대시보드 UX 개선, Chrome HTTPS 이슈 수정 완료.
 
 ---
 
@@ -18,8 +18,10 @@
 - [x] `docker compose up -d` 전체 스택 기동 확인 ✅
 - [x] `.env` 환경변수 파일 구성 (DB 비밀번호, JWT 시크릿 등)
 
-### 🔴 P0 — DB 스키마 v1 배포 (Flyway)2
+### 🔴 P0 — DB 스키마 v1 배포 (Flyway)
 - [x] V1~V9 마이그레이션 전체 완료 (users / projects / tasks / meetings / logs / vault / scores / triggers)
+- [x] V10 마이그레이션: meetings 테이블에 ai_summary / notion_page_id / notion_synced_at 컬럼 추가
+- [x] V11 마이그레이션: contribution_scores 테이블에 참여 여부 컬럼 5개 추가
 
 ---
 
@@ -63,13 +65,13 @@
 
 ### 🔴 P0 — 백엔드
 - [x] FileStorageService, SHA-256 HashService, 파일 업로드/다운로드/버전관리/변조감지
-- [x] Score Engine (30분 스케줄러, 항목별 점수, 팀 평균 정규화, 수동 재계산)
-- [x] 경보 시스템 (FREE_RIDE / DROPOUT / OVERLOAD)
+- [x] Score Engine — **참여 여부 방식 전환** (태스크 완료·회의 체크인·파일 업로드·액션아이템 → FULL/PARTIAL/NONE)
+- [x] 경보 시스템 (FREE_RIDE: NONE 판정 / DROPOUT: 2주 무활동 / OVERLOAD: 1인 독점)
 
 ### 🟡 P1 — 프론트엔드
 - [x] Hash Vault 페이지 (파일 업로드/다운로드/이력/해시 표시)
-- [x] 기여도 분석 페이지 (KPI 카드, 인사이트, 멤버 순위, 차트 3종, 경보 표시)
-- [x] 점수 재계산 버튼
+- [x] 기여도 분석 페이지 — **참여 여부 테이블** (✓/✗ + FULL/PARTIAL/NONE 배지) + 마감 위험도 게이지
+- [x] 재계산 버튼 / PDF 리포트 다운로드 버튼
 
 ---
 
@@ -83,7 +85,8 @@
 ### 🔴 P0 — Docker 배포 안정화
 - [x] Docker Compose production 프로필 구성 (`docker-compose.prod.yml`)
 - [x] Nginx SSL 설정 (`nginx/nginx-ssl.conf`, self-signed, `ssl/gen-certs.sh`)
-- [ ] `docker compose -f docker-compose.prod.yml up -d` 검증 (Docker 재기동 후)
+- [x] **Chrome HTTPS 이슈 수정** — nginx/Dockerfile 신규 생성 (OpenSSL 자체 서명 인증서 자동 생성), nginx.conf HTTPS 서버 블록 추가, docker-compose.yml 포트 443 노출 및 nginx build 방식 전환
+- [ ] `docker compose up -d --build` 재검증 (HTTPS 전환 후)
 
 ### 🔴 P0 — 통합 & 중간발표 준비
 - [ ] 프론트-백 통합 테스트
@@ -133,7 +136,6 @@
 - [x] 프론트: 칸반 보드 상단 "Notion" 버튼 + 생성된 페이지 URL 표시
 
 ### 🔴 P0 — 5순위: 팀플 증거 패키지 자동 생성 ✅ ← **교수 대시보드 대체**
-> 기존 PDF 리포트 확장 — 프로젝트 종료 시 종합 증빙 ZIP (교수에게 제출)
 > 교수 전용 대시보드 대신 이 패키지가 "교수용 증거 제출물"이 됨
 - [x] 회의록 전체 + 기여도 PDF + Hash Vault 이력을 하나의 ZIP으로 묶기
 - [x] `GET /api/projects/:id/evidence-package` → ZIP 다운로드
@@ -180,7 +182,10 @@
 - [x] WeightConfig 엔티티 — 프로젝트별 가중치 커스터마이징
 - [x] ActivityLogService, TamperDetectionLog, ScoreController, HealthController
 - [x] ClaudeService (WebClient) — AI 요약/액션아이템 추출 엔드포인트
-- [x] ReportService / ReportController — SHA-256 무결성 PDF
+- [x] ReportService / ReportController — SHA-256 무결성 PDF (참여 여부 테이블 형식)
+- [x] EvidencePackageService — 회의록+PDF+Vault ZIP 패키지 생성
+- [x] RiskService — 규칙 기반 마감 위험도 (0~100, LOW/MEDIUM/HIGH/CRITICAL)
+- [x] NotionService — 회의록·칸반 Notion 동기화
 - [x] OpenPDF 의존성 추가
 
 ### 프론트엔드
@@ -189,6 +194,14 @@
 - [x] PageProgress (상단 로딩바)
 - [x] Kanban 컴포넌트 분리 (KanbanBoard / KanbanColumn / TaskCard / TaskModal)
 - [x] 글로벌 디자인 토큰 (bb-* CSS 변수, Tailwind 확장, 다크모드)
+- [x] 프로젝트 홈 대시보드 (`/projects/[id]`) — 건강도 배지, KPI, 참여 현황, 증거 패키지 버튼
+- [x] 회의록 AI 요약 + Notion 동기화 결과 DB 저장 및 페이지 로드 시 복원
+- [x] **칸반 버그 수정** — 드래그앤드롭 복구 (listeners 카드 전체 적용), 모달 상태 변경 저장 (PATCH /status 별도 호출), 담당자 수정 저장 (PUT /assignees 별도 호출)
+- [x] **대시보드 UX 개선** — 체크인 후 fetchProjects() 호출 (프로젝트 목록 즉시 갱신), 체크인 회의 카드 Link 연결 + 호버 피드백, 프로젝트 카드에 생성일(createdAt) YYYY.MM.DD 표시
+
+### 로컬 개발 환경
+- [x] `docker-compose.db-only.yml` — DB만 Docker로 실행
+- [x] `start-local.ps1` / `start-local.bat` — 로컬 개발 원클릭 시작 스크립트
 
 ---
 
@@ -205,11 +218,18 @@
 ## 현재 작업 순서
 
 ```
-① Docker 프로덕션 프로필 + SSL  ✅ 완료
-② 회의록 → Notion 자동 정리    ✅ 완료
-③ 역할 불균형 감지 UI 강화      ✅ 완료
-④ 마감 지연 위험도 예측          ✅ 완료
-⑤ 칸반 → Notion 동기화          ✅ 완료
-⑥ 팀플 증거 패키지 ZIP           ✅ 완료
-⑦ Docker rebuild + deploy       ← 배포 전 최종 검증
+① Docker 프로덕션 프로필 + SSL          ✅ 완료
+② 회의록 → Notion 자동 정리             ✅ 완료
+③ 역할 불균형 감지 UI 강화               ✅ 완료
+④ 마감 지연 위험도 예측                   ✅ 완료
+⑤ 칸반 → Notion 동기화                   ✅ 완료
+⑥ 프로젝트 홈 대시보드                   ✅ 완료 (week5)
+⑦ 기여도 참여 여부 방식 전환              ✅ 완료 (week5)
+⑧ 팀플 증거 패키지 ZIP                   ✅ 완료 (week5)
+⑨ 칸반 DnD + 모달 저장 버그 수정         ✅ 완료 (week6 버그픽스)
+⑩ 칸반 담당자 수정 저장 버그 수정         ✅ 완료 (week6 버그픽스)
+⑪ 대시보드 체크인 UX + 프로젝트 카드 개선 ✅ 완료 (week6 버그픽스)
+⑫ Chrome HTTPS 이슈 + nginx SSL 재구성   ✅ 완료 (week6 버그픽스)
+⑬ Docker rebuild + 통합 테스트           ← 다음 작업
+⑭ 중간발표 데모 리허설                   ← 다음 작업
 ```

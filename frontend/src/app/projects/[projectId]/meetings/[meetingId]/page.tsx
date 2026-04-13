@@ -98,6 +98,18 @@ function AiSummaryPanel({ summary, onClose }: { summary: string; onClose: () => 
   );
 }
 
+// ── JWT에서 현재 유저 ID 파싱 ─────────────────────────────────────────
+function getCurrentUserId(): string | null {
+  try {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.sub as string;
+  } catch {
+    return null;
+  }
+}
+
 // ── 메인 페이지 ────────────────────────────────────────────────────────
 export default function MeetingDetailPage() {
   const params    = useParams();
@@ -147,6 +159,10 @@ export default function MeetingDetailPage() {
 
   // 프로젝트 멤버 (역할 배정용)
   const [members, setMembers] = useState<{ userId: string; name: string; email: string }[]>([]);
+
+  // 체크인
+  const [checkingIn,   setCheckingIn]   = useState(false);
+  const [checkinDone,  setCheckinDone]  = useState(false);
 
   // ── 데이터 로드 ──────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -234,6 +250,27 @@ export default function MeetingDetailPage() {
       setError("코드 재생성에 실패했습니다.");
     } finally {
       setRegenerating(false);
+    }
+  };
+
+  // ── 내 체크인 ────────────────────────────────────────────────────────
+  const handleCheckin = async () => {
+    if (!meeting) return;
+    setCheckingIn(true);
+    setError("");
+    try {
+      await api.post("/meetings/checkin", { checkinCode: meeting.checkinCode });
+      setCheckinDone(true);
+      // 참석자 목록 갱신
+      const { data } = await api.get<Attendee[]>(
+        `/projects/${projectId}/meetings/${meetingId}/attendees`
+      );
+      setAttendees(data);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg ?? "체크인에 실패했습니다.");
+    } finally {
+      setCheckingIn(false);
     }
   };
 
@@ -380,7 +417,11 @@ export default function MeetingDetailPage() {
 
   if (!meeting) return null;
 
-  const checkinCount = attendees.filter((a) => a.checkedIn).length;
+  const checkinCount  = attendees.filter((a) => a.checkedIn).length;
+  const currentUserId = getCurrentUserId();
+  const isCreator     = currentUserId === meeting.createdBy;
+  const myAttendee    = attendees.find((a) => a.userId === currentUserId);
+  const isCheckedIn   = checkinDone || myAttendee?.checkedIn === true;
 
   return (
     <div className="min-h-screen bg-bb-bg">
@@ -454,30 +495,67 @@ export default function MeetingDetailPage() {
             )}
           </div>
 
-          {/* 체크인 코드 */}
+          {/* 체크인 코드 / 체크인 버튼 */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-bb-text flex items-center gap-2">
                 <Hash size={16} className="text-bb-primary" />
-                체크인 코드
+                {isCreator ? "체크인 코드" : "출석 체크인"}
               </h2>
-              <button
-                onClick={handleRegenerateCode}
-                disabled={regenerating}
-                className="flex items-center gap-1.5 text-xs text-bb-text2 hover:text-bb-text
-                           px-3 py-1.5 rounded-lg border border-bb-border hover:border-bb-border
-                           transition-all disabled:opacity-50"
-              >
-                <RefreshCw size={12} className={regenerating ? "animate-spin" : ""} />
-                재생성
-              </button>
+              {/* 재생성 버튼은 방장만 */}
+              {isCreator && (
+                <button
+                  onClick={handleRegenerateCode}
+                  disabled={regenerating}
+                  className="flex items-center gap-1.5 text-xs text-bb-text2 hover:text-bb-text
+                             px-3 py-1.5 rounded-lg border border-bb-border hover:border-bb-border
+                             transition-all disabled:opacity-50"
+                >
+                  <RefreshCw size={12} className={regenerating ? "animate-spin" : ""} />
+                  재생성
+                </button>
+              )}
             </div>
-            <div className="bg-bb-bg rounded-xl p-6 text-center">
-              <span className="font-mono text-4xl font-bold text-bb-primary tracking-[0.3em]">
-                {meeting.checkinCode}
-              </span>
-              <p className="text-xs text-bb-text2 mt-2">팀원에게 이 코드를 공유해 출석을 확인하세요</p>
-            </div>
+
+            {isCreator ? (
+              /* 방장: 코드 대형 표시 */
+              <div className="bg-bb-bg rounded-xl p-6 text-center">
+                <span className="font-mono text-4xl font-bold text-bb-primary tracking-[0.3em]">
+                  {meeting.checkinCode}
+                </span>
+                <p className="text-xs text-bb-text2 mt-2">팀원에게 이 코드를 공유해 출석을 확인하세요</p>
+              </div>
+            ) : isCheckedIn ? (
+              /* 참여자: 체크인 완료 */
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-5 text-center">
+                <CheckCircle2 size={28} className="text-green-400 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-green-400">출석 체크인 완료</p>
+                <p className="text-xs text-bb-text2 mt-1">이 회의에 참석자로 등록되었습니다</p>
+              </div>
+            ) : (
+              /* 참여자: 체크인 버튼 */
+              <div className="space-y-4">
+                <div className="bg-bb-bg rounded-xl p-4 text-center border border-bb-border/50">
+                  <p className="text-xs text-bb-text2 mb-1">방장에게 받은 체크인 코드:</p>
+                  <span className="font-mono text-2xl font-bold text-bb-primary tracking-[0.25em]">
+                    {meeting.checkinCode}
+                  </span>
+                </div>
+                <button
+                  onClick={handleCheckin}
+                  disabled={checkingIn}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4
+                             bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60
+                             text-white text-sm font-medium rounded-xl transition-all"
+                >
+                  {checkingIn ? (
+                    <><Loader2 size={15} className="animate-spin" /> 체크인 중...</>
+                  ) : (
+                    <><CheckCircle2 size={15} /> 출석 체크인하기</>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 참석자 */}
