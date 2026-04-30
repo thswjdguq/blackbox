@@ -23,6 +23,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { CalendarRecommendation, MemberCalendarStatus } from "@/types/calendar";
+import SmartDateInput from "@/components/SmartDateInput";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
 function formatDate(iso: string | null): string {
@@ -501,11 +502,11 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
               <label className="block text-xs font-medium text-bb-text2 mb-1.5">
                 {dateMode === "custom" ? "날짜 및 시간 선택" : "또는 직접 입력"}
               </label>
-              <input
-                type="datetime-local"
+              <SmartDateInput
+                withTime
                 value={meetingDate}
-                onChange={(e) => { setMeetingDate(e.target.value); setSelectedRank(null); }}
-                className={INPUT_CLS}
+                onChange={(v) => { setMeetingDate(v); setSelectedRank(null); }}
+                className="w-full"
               />
             </div>
           </div>
