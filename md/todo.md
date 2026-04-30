@@ -2,7 +2,7 @@
 
 ## 현재 Phase: MVP 완성 + AI/Notion 확장 (진행 중)
 
-> **업데이트 2026-04-13 (week5 → 버그수정):** 칸반 담당자 저장 버그, 대시보드 UX 개선, Chrome HTTPS 이슈 수정 완료.
+> **업데이트 2026-04-23 (week8):** 프로필 설정 페이지 + 일정 조율 페이지 + 버그 수정 + 경보 자동 해제 완료.
 
 ---
 
@@ -22,6 +22,9 @@
 - [x] V1~V9 마이그레이션 전체 완료 (users / projects / tasks / meetings / logs / vault / scores / triggers)
 - [x] V10 마이그레이션: meetings 테이블에 ai_summary / notion_page_id / notion_synced_at 컬럼 추가
 - [x] V11 마이그레이션: contribution_scores 테이블에 참여 여부 컬럼 5개 추가
+- [x] V12 마이그레이션: oauth_tokens 테이블 (Google Calendar 토큰 저장)
+- [x] V13 마이그레이션: alerts 테이블에 is_resolved / resolved_at / resolve_reason 컬럼 추가
+- [x] V14 마이그레이션: meeting_attendees 테이블에 checked_in_date DATE 컬럼 추가 (날짜별 체크인 독립성)
 
 ---
 
@@ -29,7 +32,8 @@
 
 ### 🔴 P0 — 백엔드: 인증
 - [x] 회원가입/로그인 API, JWT 발급, Refresh Token
-- [x] JWT 필터 & SecurityConfig
+- [x] JWT 필터 & SecurityConfig (permitAll 범위를 특정 엔드포인트로 축소)
+- [x] `GET /api/auth/profile`, `PUT /api/auth/profile` (이름 수정), `PUT /api/auth/password` (비밀번호 변경)
 - [ ] 역할 기반 접근 제어 (PROFESSOR/TA 분기 로직) — 미구현
 
 ### 🔴 P0 — 백엔드: 프로젝트 관리
@@ -50,6 +54,8 @@
 
 ### 🔴 P0 — 프론트엔드: 칸반 보드
 - [x] 3단 칼럼, 드래그앤드롭(@dnd-kit), 태스크 카드, 생성/편집/삭제 모달
+- [x] 칸반 상단 프로젝트 선택 드롭다운 (전체 프로젝트 목록, 클릭 시 해당 프로젝트로 이동)
+- [x] SmartDateInput 컴포넌트 (연/월/일 분리 입력, 자동 포커스 이동, 연도 버그 수정)
 - [ ] 필터 (담당자/태그/우선순위)
 
 ### 🟡 P1 — 프론트엔드: 회의록
@@ -57,7 +63,9 @@
 - [x] 회의 상세 (체크인 코드, 참석자, 회의록 편집, 결정사항)
 - [x] 체크인 코드 UI (대형 표시 + 재생성)
 - [x] 액션아이템 → 태스크 생성 (수동 + **AI 자동 추출** ✨)
+- [x] AI 자동 추출: 호버 툴팁 + 빈 메모 토스트 + 성공 토스트 (추출 개수 표시)
 - [x] AI 회의 요약 버튼 (Claude API) ✨
+- [x] 회의 생성 모달: 참석자 기본 미선택, "2시간 이상" 커스텀 시간 옵션 추가
 
 ---
 
@@ -67,9 +75,12 @@
 - [x] FileStorageService, SHA-256 HashService, 파일 업로드/다운로드/버전관리/변조감지
 - [x] Score Engine — **참여 여부 방식 전환** (태스크 완료·회의 체크인·파일 업로드·액션아이템 → FULL/PARTIAL/NONE)
 - [x] 경보 시스템 (FREE_RIDE: NONE 판정 / DROPOUT: 2주 무활동 / OVERLOAD: 1인 독점)
+- [x] 경보 자동 해제: TaskService(DONE), MeetingService(체크인), FileVaultService(업로드) 시 reevaluate() 호출
+- [x] 체크인 날짜 독립성: isCheckedInToday() (LocalDate 기반, 날짜 바뀌면 재체크인 가능)
 
 ### 🟡 P1 — 프론트엔드
 - [x] Hash Vault 페이지 (파일 업로드/다운로드/이력/해시 표시)
+- [x] Hash Vault 텍스트 변경: "파일 변조 의심/변조 감지" → "파일 변경 내역", v1 레이블 "최초 업로드"
 - [x] 기여도 분석 페이지 — **참여 여부 테이블** (✓/✗ + FULL/PARTIAL/NONE 배지) + 마감 위험도 게이지
 - [x] 재계산 버튼 / PDF 리포트 다운로드 버튼
 
@@ -141,10 +152,15 @@
 - [x] `GET /api/projects/:id/evidence-package` → ZIP 다운로드
 - [x] 프론트: 프로젝트 홈 "팀플 종료 — 증거 패키지 발급" 버튼
 
-### 🟢 P2 — 6순위: 회의 시간 자동 조율 + Google Calendar 등록
-- [ ] 팀원 가능 시간 입력 UI (타임슬롯 그리드)
-- [ ] 겹치는 시간 자동 추천 알고리즘
-- [ ] Google Calendar API 연동 → 일정 생성
+### 🟢 P2 — 6순위: 회의 시간 자동 조율 + Google Calendar 등록 ✅
+- [x] Google OAuth 연동 (authorize/callback, 토큰 저장 — V12 마이그레이션)
+- [x] 팀원 캘린더 freeBusy API 조회 → 공통 빈 시간 계산
+- [x] Claude AI 일정 추천 3개 (이유 포함)
+- [x] 확정 회의 → 팀원 전체 Google Calendar 자동 등록
+- [x] 프로젝트 설정 페이지 — 캘린더 섹션 제거, 프로필 설정 페이지로 리다이렉트 링크
+- [x] 일정 조율 페이지 (`/projects/[id]/schedule`) — 팀원 캘린더 상태, 날짜/시간 선택, AI 추천 3개, 회의 자동 생성
+- [x] 프로필 설정 페이지 (`/profile/settings`) — 이름 수정, 비밀번호 변경, Google Calendar 연동/해제
+- [x] 사이드바: "일정 조율" 메뉴 추가 (board~meetings 사이), 하단 "프로필 설정" 링크 추가
 
 ### 🟢 P2 — 7순위: 발표자료 변경점 자동 추적
 > Google Drive OAuth 필요 — 난이도 상
@@ -230,6 +246,10 @@
 ⑩ 칸반 담당자 수정 저장 버그 수정         ✅ 완료 (week6 버그픽스)
 ⑪ 대시보드 체크인 UX + 프로젝트 카드 개선 ✅ 완료 (week6 버그픽스)
 ⑫ Chrome HTTPS 이슈 + nginx SSL 재구성   ✅ 완료 (week6 버그픽스)
-⑬ Docker rebuild + 통합 테스트           ← 다음 작업
-⑭ 중간발표 데모 리허설                   ← 다음 작업
+⑬ Docker rebuild + 통합 테스트           ✅ 완료 (week7)
+⑭ Google Calendar 연동 + AI 일정 추천   ✅ 완료 (week7)
+⑮ 경보 자동 해제 + 체크인 날짜 독립성     ✅ 완료 (week8)
+⑯ 버그 수정 6종 (회의 모달/칸반 드롭다운/Vault 텍스트/날짜 입력/AI 액션아이템 UX)  ✅ 완료 (week8)
+⑰ 프로필 설정 페이지 + 일정 조율 페이지 + 사이드바 재구성  ✅ 완료 (week8)
+⑱ 중간발표 데모 리허설                   ← 다음 작업
 ```

@@ -13,6 +13,9 @@ import {
   Sun,
   Moon,
   LayoutDashboard,
+  Settings,
+  CalendarClock,
+  UserCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -33,12 +36,14 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const currentProjectId = projectIdMatch?.[1] ?? null;
 
   const NAV_ITEMS = [
-    { href: "/dashboard",                                                                          icon: FolderKanban,    label: "내 프로젝트", exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}`           : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈", needsProject: true, exactActive: true },
-    { href: currentProjectId ? `/projects/${currentProjectId}/board`     : "/board",               icon: Kanban,          label: "칸반 보드",  needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/meetings`  : "/meetings",            icon: FileText,        label: "회의록",     needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/vault`     : "/vault",               icon: Files,           label: "Hash Vault", needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/analytics` : "/analytics",           icon: BarChart2,       label: "기여도",     needsProject: true, exactActive: false },
+    { href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
+    { href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "칸반 보드",    needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "Hash Vault",   needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/analytics`  : "/analytics",           icon: BarChart2,       label: "기여도",       needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false },
   ];
 
   useEffect(() => {
@@ -132,6 +137,17 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
             {isDark ? "라이트 모드" : "다크 모드"}
           </button>
+          <Link
+            href="/profile/settings"
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              pathname.startsWith("/profile")
+                ? "bg-bb-primary/10 text-bb-primary font-medium"
+                : "text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+            }`}
+          >
+            <UserCircle size={16} className={pathname.startsWith("/profile") ? "text-bb-primary" : "text-bb-text2"} />
+            프로필 설정
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm

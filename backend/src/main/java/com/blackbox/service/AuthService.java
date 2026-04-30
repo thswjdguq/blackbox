@@ -1,9 +1,6 @@
 package com.blackbox.service;
 
-import com.blackbox.dto.AuthResponse;
-import com.blackbox.dto.LoginRequest;
-import com.blackbox.dto.RefreshRequest;
-import com.blackbox.dto.SignupRequest;
+import com.blackbox.dto.*;
 import com.blackbox.entity.User;
 import com.blackbox.exception.DuplicateEmailException;
 import com.blackbox.exception.InvalidCredentialsException;
@@ -69,6 +66,27 @@ public class AuthService {
         } catch (JwtException ex) {
             throw new InvalidCredentialsException();
         }
+    }
+
+    @Transactional
+    public ProfileResponse updateProfile(User user, ProfileUpdateRequest req) {
+        user.setName(req.name().trim());
+        userRepository.save(user);
+        return ProfileResponse.from(user);
+    }
+
+    @Transactional
+    public void changePassword(User user, PasswordChangeRequest req) {
+        if (!passwordEncoder.matches(req.currentPassword(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+        user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileResponse getProfile(User user) {
+        return ProfileResponse.from(user);
     }
 
     private AuthResponse issueTokenPair(String email) {

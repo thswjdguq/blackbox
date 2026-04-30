@@ -66,11 +66,13 @@ function HistoryItem({
     window.open(`/api/files/${record.id}/download`, "_blank");
   };
 
+  const versionLabel = record.version === 1 ? "최초 업로드" : isTampered ? "파일 변경 내역" : `v${record.version} 재업로드`;
+
   return (
     <div
       className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
         isTampered
-          ? "bg-red-500/5 border-red-500/30"
+          ? "bg-amber-500/5 border-amber-500/20"
           : "bg-bb-surface/50 border-bb-border/50"
       }`}
     >
@@ -78,22 +80,27 @@ function HistoryItem({
       <div className="flex flex-col items-center self-stretch shrink-0">
         <div
           className={`w-3 h-3 rounded-full mt-1 ${
-            isTampered ? "bg-red-500" : "bg-indigo-500"
+            isTampered ? "bg-amber-400" : record.version === 1 ? "bg-teal-500" : "bg-indigo-500"
           }`}
         />
       </div>
 
       {/* 버전 뱃지 */}
-      <span className="text-xs font-mono font-bold text-bb-text2 shrink-0 w-8">
-        v{record.version}
-      </span>
+      <div className="shrink-0 w-24">
+        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+          record.version === 1
+            ? "bg-teal-500/15 text-teal-400"
+            : isTampered
+            ? "bg-amber-500/15 text-amber-400"
+            : "bg-indigo-500/15 text-indigo-400"
+        }`}>
+          {versionLabel}
+        </span>
+      </div>
 
       {/* 해시 */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          {isTampered && (
-            <AlertTriangle size={12} className="text-red-400 shrink-0" />
-          )}
           <span className="font-mono text-xs text-bb-text2 truncate">
             {shortHash(record.fileHash)}
           </span>
@@ -162,9 +169,9 @@ function FileGroup({
             <span className="text-sm font-semibold text-bb-text truncate">{fileName}</span>
             {hasTamper && (
               <span className="shrink-0 flex items-center gap-1 text-[10px] font-medium
-                               px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">
+                               px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                 <AlertTriangle size={9} />
-                변조 감지
+                파일 변경 내역
               </span>
             )}
           </div>
@@ -362,7 +369,7 @@ export default function VaultPage() {
   const handleUploaded = (result: FileUploadResult) => {
     if (result.tamperDetected) {
       setTamperAlert(
-        `⚠️ "${result.fileName}" 파일의 해시가 이전 버전과 다릅니다. 변조 의심 경보가 생성되었습니다.`,
+        `"${result.fileName}" 파일의 해시가 이전 버전과 다릅니다. 파일 변경 내역이 기록되었습니다.`,
       );
     }
     // 파일 목록 새로고침
@@ -418,14 +425,14 @@ export default function VaultPage() {
           </div>
         </div>
 
-        {/* 변조 감지 알림 */}
+        {/* 파일 변경 내역 알림 */}
         {tamperAlert && (
-          <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30
-                          rounded-xl mb-6 animate-pulse-once">
-            <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30
+                          rounded-xl mb-6">
+            <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-400">변조 감지 경보</p>
-              <p className="text-xs text-red-400/80 mt-0.5">{tamperAlert}</p>
+              <p className="text-sm font-medium text-amber-400">파일 변경 내역 감지</p>
+              <p className="text-xs text-amber-400/80 mt-0.5">{tamperAlert}</p>
             </div>
             <button
               onClick={() => setTamperAlert(null)}

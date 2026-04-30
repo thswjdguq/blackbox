@@ -35,7 +35,7 @@ server:
 
 app:
   cors:
-    origins: ${APP_CORS_ORIGINS:http://localhost:3000}
+    origins: ${APP_CORS_ORIGINS:http://localhost:3000,https://localhost,http://localhost,https://192.168.225.23,http://192.168.225.23}
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:1800000}                    # access token 30분
@@ -52,6 +52,7 @@ external:
   google:
     client-id: ${GOOGLE_CLIENT_ID:}
     client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost/api/auth/google/callback}
   claude:
     api-key: ${CLAUDE_API_KEY:}
     model: claude-sonnet-4-6

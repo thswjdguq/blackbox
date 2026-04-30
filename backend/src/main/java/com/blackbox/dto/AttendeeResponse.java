@@ -2,6 +2,7 @@ package com.blackbox.dto;
 
 import com.blackbox.entity.MeetingAttendee;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -20,7 +21,7 @@ public record AttendeeResponse(
                 a.getUser().getId(),
                 a.getUser().getName(),
                 a.getUser().getEmail(),
-                a.isCheckedIn(),
+                a.isCheckedInToday(),
                 a.getCheckedAt(),
                 a.getMeeting().getId(),
                 a.getMeeting().getTitle(),

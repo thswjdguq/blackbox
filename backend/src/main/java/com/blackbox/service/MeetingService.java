@@ -32,6 +32,7 @@ public class MeetingService {
     private final TaskService taskService;
     private final ProjectAccessChecker accessChecker;
     private final ActivityLogService activityLogService;
+    private final AlertService alertService;
     private final EntityManager entityManager;
 
     public MeetingService(MeetingRepository meetingRepository,
@@ -41,6 +42,7 @@ public class MeetingService {
                           TaskService taskService,
                           ProjectAccessChecker accessChecker,
                           ActivityLogService activityLogService,
+                          AlertService alertService,
                           EntityManager entityManager) {
         this.meetingRepository = meetingRepository;
         this.meetingAttendeeRepository = meetingAttendeeRepository;
@@ -49,6 +51,7 @@ public class MeetingService {
         this.taskService = taskService;
         this.accessChecker = accessChecker;
         this.activityLogService = activityLogService;
+        this.alertService = alertService;
         this.entityManager = entityManager;
     }
 
@@ -157,12 +160,13 @@ public class MeetingService {
                     return a;
                 });
 
-        if (attendee.isCheckedIn()) {
-            throw new ForbiddenException("이미 체크인되었습니다");
+        if (attendee.isCheckedInToday()) {
+            throw new ForbiddenException("오늘은 이미 체크인되었습니다");
         }
 
         attendee.setCheckedIn(true);
         attendee.setCheckedAt(OffsetDateTime.now());
+        attendee.setCheckedInDate(LocalDate.now());
         meetingAttendeeRepository.save(attendee);
 
         // 프로젝트 멤버가 아니면 MEMBER로 자동 추가 — 이후 프로젝트 전체 접근 가능
@@ -192,6 +196,8 @@ public class MeetingService {
 
         activityLogService.record(project, user, "CHECKIN",
                 "{\"meetingId\":\"" + meeting.getId() + "\",\"title\":\"" + escapeJson(meeting.getTitle()) + "\",\"checkedInAt\":\"" + attendee.getCheckedAt() + "\"}");
+
+        alertService.reevaluate(user, project);
 
         return AttendeeResponse.from(attendee);
     }

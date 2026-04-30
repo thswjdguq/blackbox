@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
@@ -52,6 +52,8 @@ export default function BoardPage() {
   const projectId = params?.projectId as string;
 
   const [project, setProject] = useState<ProjectInfo | null>(null);
+  const [allProjects, setAllProjects] = useState<ProjectInfo[]>([]);
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [scoreMap, setScoreMap] = useState<ScoreMap>({});
@@ -61,7 +63,6 @@ export default function BoardPage() {
   const [syncing, setSyncing] = useState(false);
   const [notionUrl, setNotionUrl] = useState<string | null>(null);
 
-  // Project selector (if no projectId — redirect to dashboard)
   useEffect(() => {
     if (!projectId) {
       router.replace("/dashboard");
@@ -70,6 +71,8 @@ export default function BoardPage() {
     const token = localStorage.getItem("accessToken");
     if (!token) { router.replace("/login"); return; }
     bootstrap();
+    // 참여 중인 프로젝트 목록 로드
+    api.get<ProjectInfo[]>("/projects").then(({ data }) => setAllProjects(data)).catch(() => {});
   }, [projectId]);
 
   async function bootstrap() {
@@ -197,13 +200,65 @@ export default function BoardPage() {
                   className="hover:text-bb-text cursor-pointer transition-colors"
                   onClick={() => router.push("/dashboard")}
                 >
-                  {project?.name ?? "프로젝트"}
+                  대시보드
                 </span>
                 <ChevronDown size={10} className="-rotate-90" />
                 <span className="text-bb-text2">칸반 보드</span>
               </div>
 
-              <h1 className="text-xl font-bold text-bb-text">칸반 보드</h1>
+              {/* 프로젝트 선택 드롭다운 */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowProjectDropdown((v) => !v)}
+                  className="flex items-center gap-2 group"
+                >
+                  <h1 className="text-xl font-bold text-bb-text group-hover:text-indigo-400 transition-colors">
+                    {project?.name ?? "프로젝트"}
+                  </h1>
+                  <ChevronDown
+                    size={16}
+                    className={`text-bb-text2 transition-transform ${showProjectDropdown ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {showProjectDropdown && allProjects.length > 0 && (
+                  <div className="absolute top-full left-0 mt-1 z-30 w-64 bg-bb-surface border border-bb-border rounded-xl shadow-xl overflow-hidden">
+                    <div className="px-3 py-2 border-b border-bb-border">
+                      <p className="text-[11px] text-bb-text2 font-medium">참여 중인 프로젝트</p>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {allProjects.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            setShowProjectDropdown(false);
+                            router.push(`/projects/${p.id}/board`);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-bb-surface2 transition-colors ${
+                            p.id === projectId ? "bg-indigo-500/10" : ""
+                          }`}
+                        >
+                          <div className="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
+                            <FolderKanban size={12} className="text-indigo-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm truncate ${p.id === projectId ? "text-indigo-300 font-medium" : "text-bb-text"}`}>
+                              {p.name}
+                            </p>
+                            {p.courseName && (
+                              <p className="text-[11px] text-bb-text2 truncate">{p.courseName}</p>
+                            )}
+                          </div>
+                          {p.id === projectId && (
+                            <span className="text-[10px] text-indigo-400 shrink-0">현재</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {project?.courseName && (
                 <p className="text-xs text-bb-text2 mt-1">
                   {project.courseName}

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -30,4 +31,11 @@ public class MeetingAttendee {
 
     @Column(name = "checked_at")
     private OffsetDateTime checkedAt;
+
+    @Column(name = "checked_in_date")
+    private LocalDate checkedInDate;
+
+    public boolean isCheckedInToday() {
+        return checkedInDate != null && checkedInDate.equals(LocalDate.now());
+    }
 }

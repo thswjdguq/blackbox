@@ -43,6 +43,16 @@ public class Alert {
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
 
+    @Column(name = "resolved_at")
+    private OffsetDateTime resolvedAt;
+
+    @Column(name = "resolve_reason", length = 200)
+    private String resolveReason;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    public boolean isResolved() {
+        return resolvedAt != null;
+    }
 }

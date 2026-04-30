@@ -12,14 +12,18 @@ public record AlertResponse(
         String severity,
         String message,
         boolean isRead,
-        OffsetDateTime createdAt
+        boolean isResolved,
+        OffsetDateTime createdAt,
+        OffsetDateTime resolvedAt,
+        String resolveReason
 ) {
     public static AlertResponse from(Alert a) {
         return new AlertResponse(
                 a.getId(),
                 a.getUser() != null ? a.getUser().getId() : null,
                 a.getAlertType(), a.getSeverity(), a.getMessage(),
-                a.isRead(), a.getCreatedAt()
+                a.isRead(), a.isResolved(),
+                a.getCreatedAt(), a.getResolvedAt(), a.getResolveReason()
         );
     }
 }

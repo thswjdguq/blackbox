@@ -157,6 +157,13 @@ export default function MeetingDetailPage() {
   const [addingAiItems,   setAddingAiItems]   = useState(false);
   const [aiItemsOpen,     setAiItemsOpen]     = useState(true);
 
+  // 토스트
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
   // 프로젝트 멤버 (역할 배정용)
   const [members, setMembers] = useState<{ userId: string; name: string; email: string }[]>([]);
 
@@ -189,7 +196,9 @@ export default function MeetingDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectId, meetingId, router]);
+  // router는 Next.js App Router에서 안정적 참조 — 의존성 제외해 불필요한 리패치 방지
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, meetingId]);
 
   useEffect(() => {
     if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
@@ -199,24 +208,29 @@ export default function MeetingDetailPage() {
   // ── 저장 (내부 공유용) ───────────────────────────────────────────────
   const saveNow = async (): Promise<boolean> => {
     const payload: UpdateMeetingPayload = {
-      notes:     editNotes     || undefined,
-      decisions: editDecisions || undefined,
+      notes:     editNotes     ?? "",
+      decisions: editDecisions ?? "",
     };
     const { data } = await api.patch<Meeting>(
       `/projects/${projectId}/meetings/${meetingId}`, payload,
     );
     setMeeting(data);
+    setEditNotes(data.notes ?? "");
+    setEditDecisions(data.decisions ?? "");
     return true;
   };
 
   const handleSave = async () => {
+    setError("");
     setSaving(true);
     try {
       await saveNow();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
-    } catch {
-      setError("저장에 실패했습니다.");
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { detail?: string; message?: string } } })
+        ?.response?.data;
+      setError(data?.detail ?? data?.message ?? "저장에 실패했습니다.");
     } finally {
       setSaving(false);
     }
@@ -231,8 +245,8 @@ export default function MeetingDetailPage() {
       );
       setCalendarUrl(data.pageUrl);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "Notion 캘린더 동기화 실패. Notion 설정을 확인하세요.");
+      const d = (err as { response?: { data?: { detail?: string; message?: string } } })?.response?.data;
+      setError(d?.detail ?? d?.message ?? "Notion 캘린더 동기화 실패. Notion 설정을 확인하세요.");
     } finally {
       setCalendarSyncing(false);
     }
@@ -342,7 +356,7 @@ export default function MeetingDetailPage() {
   // ── AI 액션아이템 추출 ────────────────────────────────────────────────
   const handleAiExtract = async () => {
     if (!editNotes.trim() && !editDecisions.trim()) {
-      setError("회의록 내용을 먼저 입력하세요.");
+      showToast("먼저 회의 내용을 입력해주세요");
       return;
     }
     setExtracting(true);
@@ -356,6 +370,7 @@ export default function MeetingDetailPage() {
       setAiItems(data.items);
       setCheckedAiItems(new Set(data.items.map((_, i) => i)));
       setAiItemsOpen(true);
+      showToast(`액션아이템 ${data.items.length}개가 추출되었습니다`);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? "AI 추출에 실패했습니다. API 키를 확인하세요.");
@@ -426,6 +441,16 @@ export default function MeetingDetailPage() {
   return (
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
+
+      {/* 토스트 알림 */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+                        flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-bb-border
+                        rounded-xl shadow-xl text-sm text-bb-text animate-fade-in">
+          <Sparkles size={14} className="text-indigo-400 shrink-0" />
+          {toast}
+        </div>
+      )}
 
       <main className="ml-64 min-h-screen p-8">
         <div className="max-w-3xl">
@@ -675,25 +700,34 @@ export default function MeetingDetailPage() {
 
           {/* 액션 아이템 */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-bb-text flex items-center gap-2">
                 <ClipboardList size={16} className="text-bb-accent" />
                 액션 아이템
               </h2>
               <div className="flex items-center gap-2">
                 {/* AI 자동 추출 버튼 */}
-                <button
-                  onClick={handleAiExtract}
-                  disabled={extracting}
-                  className="flex items-center gap-1.5 text-xs text-bb-primary hover:text-bb-primary-h
-                             px-3 py-1.5 rounded-lg border border-bb-primary/30 hover:border-bb-primary/50
-                             bg-bb-primary/5 hover:bg-bb-primary/10 transition-all disabled:opacity-50"
-                >
-                  {extracting
-                    ? <Loader2 size={12} className="animate-spin" />
-                    : <Sparkles size={12} />}
-                  {extracting ? "추출 중..." : "AI 자동 추출"}
-                </button>
+                <div className="relative group">
+                  <button
+                    onClick={handleAiExtract}
+                    disabled={extracting}
+                    className="flex items-center gap-1.5 text-xs text-bb-primary hover:text-bb-primary-h
+                               px-3 py-1.5 rounded-lg border border-bb-primary/30 hover:border-bb-primary/50
+                               bg-bb-primary/5 hover:bg-bb-primary/10 transition-all disabled:opacity-50"
+                  >
+                    {extracting
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <Sparkles size={12} />}
+                    {extracting ? "추출 중..." : "AI 자동 추출"}
+                  </button>
+                  {/* 툴팁 */}
+                  <div className="absolute bottom-full right-0 mb-2 w-56 px-3 py-2 bg-slate-900 border border-bb-border
+                                  rounded-lg text-[11px] text-bb-text2 leading-relaxed shadow-lg
+                                  opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    회의 내용 입력 후 AI가 할 일 목록을 자동으로 추출합니다
+                    <div className="absolute top-full right-4 border-4 border-transparent border-t-slate-900" />
+                  </div>
+                </div>
                 {/* 수동 추가 버튼 */}
                 <button
                   onClick={() => setShowActionForm((v) => !v)}

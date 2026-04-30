@@ -47,6 +47,11 @@ public class ClaudeService {
         return parseLines(raw);
     }
 
+    /** 외부 서비스(GoogleCalendarService 등)에서 직접 호출하는 공개 메서드 */
+    public String rawCall(String userPrompt, int maxTokens) {
+        return callClaude(userPrompt, maxTokens);
+    }
+
     // ── internal ─────────────────────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")

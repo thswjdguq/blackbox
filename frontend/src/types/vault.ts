@@ -37,7 +37,10 @@ export interface Alert {
   severity: AlertSeverity;
   message: string;
   isRead: boolean;
+  isResolved: boolean;
   createdAt: string;
+  resolvedAt: string | null;
+  resolveReason: string | null;
 }
 
 // ── 기여도 점수 관련 타입 ──────────────────────────────────────────────

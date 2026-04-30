@@ -25,6 +25,7 @@ public class FileVaultService {
     private final FileStorageService fileStorageService;
     private final ProjectAccessChecker accessChecker;
     private final ActivityLogService activityLogService;
+    private final AlertService alertService;
     private final NotionService notionService;
 
     public FileVaultService(FileVaultRepository fileVaultRepository,
@@ -34,6 +35,7 @@ public class FileVaultService {
                             FileStorageService fileStorageService,
                             ProjectAccessChecker accessChecker,
                             ActivityLogService activityLogService,
+                            AlertService alertService,
                             NotionService notionService) {
         this.fileVaultRepository = fileVaultRepository;
         this.tamperLogRepository = tamperLogRepository;
@@ -42,6 +44,7 @@ public class FileVaultService {
         this.fileStorageService = fileStorageService;
         this.accessChecker = accessChecker;
         this.activityLogService = activityLogService;
+        this.alertService = alertService;
         this.notionService = notionService;
     }
 
@@ -116,6 +119,8 @@ public class FileVaultService {
             }
         }
 
+        alertService.reevaluate(uploader, project);
+
         return FileUploadResponse.of(vault, tamperDetected, notionPageUrl);
     }
 
@@ -168,12 +173,12 @@ public class FileVaultService {
     }
 
     private void createTamperAlert(Project project, User uploader, String fileName) {
-        if (!alertRepository.existsByProjectAndUserIsNullAndAlertTypeAndIsReadFalse(project, "TAMPER")) {
+        if (!alertRepository.existsByProjectAndUserIsNullAndAlertTypeAndResolvedAtIsNull(project, "TAMPER")) {
             Alert alert = new Alert();
             alert.setProject(project);
             alert.setAlertType("TAMPER");
             alert.setSeverity("HIGH");
-            alert.setMessage("파일 변조 의심: '" + fileName + "' 재업로드 시 해시가 변경되었습니다");
+            alert.setMessage("파일 변경 내역: '" + fileName + "' 재업로드 시 해시가 변경되었습니다");
             alertRepository.save(alert);
         }
     }

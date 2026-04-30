@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Task, TaskPriority, TaskStatus, CreateTaskPayload, KANBAN_COLUMNS } from "@/types/task";
 import { X, Trash2, Save, Plus } from "lucide-react";
+import SmartDateInput from "@/components/SmartDateInput";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
 interface Member {
@@ -239,11 +240,10 @@ export default function TaskModal({
           {/* 마감일 */}
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">마감일</label>
-            <input
-              type="date"
+            <SmartDateInput
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className={INPUT_CLS}
+              onChange={setDueDate}
+              className="w-full"
             />
           </div>
 

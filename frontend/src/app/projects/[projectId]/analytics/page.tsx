@@ -175,7 +175,7 @@ export default function AnalyticsPage() {
   const fullCount    = scores.filter((s) => s.participationLevel === "FULL").length;
   const partialCount = scores.filter((s) => s.participationLevel === "PARTIAL").length;
   const noneCount    = scores.filter((s) => s.participationLevel === "NONE").length;
-  const unreadAlerts = alerts.filter((a) => !a.isRead);
+  const unreadAlerts = alerts.filter((a) => !a.isResolved);
 
   // 위험도 게이지 데이터
   const riskGaugeData = risk ? [{ name: "위험도", value: risk.riskScore, fill: getRiskColor(risk.level) }] : [];

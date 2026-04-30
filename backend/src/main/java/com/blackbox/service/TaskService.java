@@ -25,6 +25,7 @@ public class TaskService {
     private final ProjectAccessChecker accessChecker;
     private final ActivityLogService activityLogService;
     private final NotionService notionService;
+    private final AlertService alertService;
     private final EntityManager entityManager;
 
     public TaskService(TaskRepository taskRepository,
@@ -34,6 +35,7 @@ public class TaskService {
                        ProjectAccessChecker accessChecker,
                        ActivityLogService activityLogService,
                        NotionService notionService,
+                       AlertService alertService,
                        EntityManager entityManager) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
@@ -42,6 +44,7 @@ public class TaskService {
         this.accessChecker = accessChecker;
         this.activityLogService = activityLogService;
         this.notionService = notionService;
+        this.alertService = alertService;
         this.entityManager = entityManager;
     }
 
@@ -149,6 +152,7 @@ public class TaskService {
             entityManager.refresh(task);
             activityLogService.record(project, user, "TASK_COMPLETE",
                     "{\"taskId\":\"" + task.getId() + "\",\"title\":\"" + escapeJson(task.getTitle()) + "\",\"completedAt\":\"" + task.getCompletedAt() + "\"}");
+            alertService.reevaluate(user, project);
         } else {
             if (!"DONE".equals(req.status())) task.setCompletedAt(null);
             taskRepository.save(task);
