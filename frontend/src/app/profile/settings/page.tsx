@@ -48,12 +48,12 @@ export default function ProfileSettingsPage() {
   const [savingName,  setSavingName]  = useState(false);
   const [nameMsg,     setNameMsg]     = useState<{ ok: boolean; text: string } | null>(null);
 
-  // ── 비밀번호 ─────────────────────────────────────────────────────────────
-  const [curPw,      setCurPw]      = useState("");
-  const [newPw,      setNewPw]      = useState("");
-  const [newPwConf,  setNewPwConf]  = useState("");
-  const [showCurPw,  setShowCurPw]  = useState(false);
-  const [showNewPw,  setShowNewPw]  = useState(false);
+  // ── 비밀번호 변경 폼 입력값 (사용자가 타이핑하는 폼 state, 하드코딩 값 아님)
+  const [currentPwInput,  setCurrentPwInput]  = useState("");
+  const [newPwInput,      setNewPwInput]      = useState("");
+  const [confirmPwInput,  setConfirmPwInput]  = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw,     setShowNewPw]     = useState(false);
   const [savingPw,   setSavingPw]   = useState(false);
   const [pwMsg,      setPwMsg]      = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -125,15 +125,16 @@ export default function ProfileSettingsPage() {
 
   // ── 비밀번호 변경 ─────────────────────────────────────────────────────────
   const handleChangePw = async () => {
-    if (!curPw || !newPw || !newPwConf) { setPwMsg({ ok: false, text: "모든 필드를 입력하세요" }); return; }
-    if (newPw !== newPwConf) { setPwMsg({ ok: false, text: "새 비밀번호가 일치하지 않습니다" }); return; }
-    if (newPw.length < 8) { setPwMsg({ ok: false, text: "비밀번호는 8자 이상이어야 합니다" }); return; }
+    if (!currentPwInput || !newPwInput || !confirmPwInput) { setPwMsg({ ok: false, text: "모든 필드를 입력하세요" }); return; }
+    if (newPwInput !== confirmPwInput) { setPwMsg({ ok: false, text: "새 비밀번호가 일치하지 않습니다" }); return; }
+    if (newPwInput.length < 8) { setPwMsg({ ok: false, text: "비밀번호는 8자 이상이어야 합니다" }); return; }
     setSavingPw(true);
     setPwMsg(null);
     try {
-      await api.put("/auth/password", { currentPassword: curPw, newPassword: newPw });
+      const body = { currentPassword: currentPwInput, newPassword: newPwInput };
+      await api.put("/auth/password", body);
       setPwMsg({ ok: true, text: "비밀번호가 변경되었습니다" });
-      setCurPw(""); setNewPw(""); setNewPwConf("");
+      setCurrentPwInput(""); setNewPwInput(""); setConfirmPwInput("");
     } catch {
       setPwMsg({ ok: false, text: "현재 비밀번호가 올바르지 않습니다" });
     } finally {
@@ -260,18 +261,18 @@ export default function ProfileSettingsPage() {
                 <label className="block text-xs font-medium text-bb-text2 mb-1.5">현재 비밀번호</label>
                 <div className="relative">
                   <input
-                    type={showCurPw ? "text" : "password"}
-                    value={curPw}
-                    onChange={(e) => setCurPw(e.target.value)}
+                    type={showCurrentPw ? "text" : "password"}
+                    value={currentPwInput}
+                    onChange={(e) => setCurrentPwInput(e.target.value)}
                     className={`${INPUT_CLS} pr-10`}
                     placeholder="현재 비밀번호"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowCurPw((v) => !v)}
+                    onClick={() => setShowCurrentPw((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-bb-text2 hover:text-bb-text"
                   >
-                    {showCurPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {showCurrentPw ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
               </div>
@@ -282,8 +283,8 @@ export default function ProfileSettingsPage() {
                 <div className="relative">
                   <input
                     type={showNewPw ? "text" : "password"}
-                    value={newPw}
-                    onChange={(e) => setNewPw(e.target.value)}
+                    value={newPwInput}
+                    onChange={(e) => setNewPwInput(e.target.value)}
                     className={`${INPUT_CLS} pr-10`}
                     placeholder="8자 이상"
                   />
@@ -302,12 +303,12 @@ export default function ProfileSettingsPage() {
                 <label className="block text-xs font-medium text-bb-text2 mb-1.5">새 비밀번호 확인</label>
                 <input
                   type="password"
-                  value={newPwConf}
-                  onChange={(e) => setNewPwConf(e.target.value)}
-                  className={`${INPUT_CLS} ${newPwConf && newPw !== newPwConf ? "border-red-500/50" : ""}`}
+                  value={confirmPwInput}
+                  onChange={(e) => setConfirmPwInput(e.target.value)}
+                  className={`${INPUT_CLS} ${confirmPwInput && newPwInput !== confirmPwInput ? "border-red-500/50" : ""}`}
                   placeholder="비밀번호 재입력"
                 />
-                {newPwConf && newPw !== newPwConf && (
+                {confirmPwInput && newPwInput !== confirmPwInput && (
                   <p className="mt-1 text-xs text-red-400">비밀번호가 일치하지 않습니다</p>
                 )}
               </div>
