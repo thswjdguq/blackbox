@@ -13,7 +13,11 @@ import {
   AlertCircle,
   ExternalLink,
   Loader2,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
+import { KanbanFilter } from "@/components/kanban/KanbanBoard";
+import { TaskPriority } from "@/types/task";
 
 interface Member {
   userId: string;
@@ -62,6 +66,11 @@ export default function BoardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [notionUrl, setNotionUrl] = useState<string | null>(null);
+
+  // ── 필터 ──────────────────────────────────────────────────────────────────
+  const [filter, setFilter] = useState<KanbanFilter>({ assigneeId: null, priority: null, tag: "" });
+  const isFiltered = filter.assigneeId !== null || filter.priority !== null || filter.tag !== "";
+  const clearFilter = () => setFilter({ assigneeId: null, priority: null, tag: "" });
 
   useEffect(() => {
     if (!projectId) {
@@ -331,6 +340,70 @@ export default function BoardPage() {
           </div>
         )}
 
+        {/* ── 필터 바 ──────────────────────────────────────────────────────── */}
+        <div className="px-8 py-3 border-b border-slate-800 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-bb-text2 shrink-0">
+            <SlidersHorizontal size={13} />
+            <span>필터</span>
+          </div>
+
+          {/* 담당자 */}
+          <select
+            value={filter.assigneeId ?? ""}
+            onChange={(e) => setFilter((f) => ({ ...f, assigneeId: e.target.value || null }))}
+            className="text-xs bg-bb-surface border border-bb-border rounded-lg px-2.5 py-1.5
+                       text-bb-text2 focus:outline-none focus:border-indigo-500 transition-all"
+          >
+            <option value="">담당자 전체</option>
+            {members.map((m) => (
+              <option key={m.userId} value={m.userId}>{m.name}</option>
+            ))}
+          </select>
+
+          {/* 우선순위 */}
+          {(["LOW", "MEDIUM", "HIGH", "URGENT"] as TaskPriority[]).map((p) => {
+            const labels: Record<TaskPriority, string> = { LOW: "낮음", MEDIUM: "보통", HIGH: "높음", URGENT: "긴급" };
+            const colors: Record<TaskPriority, string> = {
+              LOW: "border-slate-600 text-slate-400 data-[active=true]:bg-slate-600/30 data-[active=true]:text-slate-200",
+              MEDIUM: "border-blue-500/50 text-blue-400 data-[active=true]:bg-blue-500/20 data-[active=true]:text-blue-300",
+              HIGH: "border-orange-500/50 text-orange-400 data-[active=true]:bg-orange-500/20 data-[active=true]:text-orange-300",
+              URGENT: "border-red-500/50 text-red-400 data-[active=true]:bg-red-500/20 data-[active=true]:text-red-300",
+            };
+            return (
+              <button
+                key={p}
+                data-active={filter.priority === p}
+                onClick={() => setFilter((f) => ({ ...f, priority: f.priority === p ? null : p }))}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-all ${colors[p]}`}
+              >
+                {labels[p]}
+              </button>
+            );
+          })}
+
+          {/* 태그 */}
+          <input
+            type="text"
+            value={filter.tag}
+            onChange={(e) => setFilter((f) => ({ ...f, tag: e.target.value }))}
+            placeholder="태그 검색"
+            className="text-xs bg-bb-surface border border-bb-border rounded-lg px-2.5 py-1.5
+                       text-bb-text placeholder-slate-500 focus:outline-none focus:border-indigo-500
+                       transition-all w-28"
+          />
+
+          {/* 초기화 */}
+          {isFiltered && (
+            <button
+              onClick={clearFilter}
+              className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors ml-auto"
+            >
+              <X size={12} />
+              필터 초기화
+            </button>
+          )}
+        </div>
+
         {/* Board area */}
         <div className="flex-1 p-8 overflow-x-auto">
           <div className="min-w-[900px]">
@@ -343,6 +416,7 @@ export default function BoardPage() {
                 email: m.email,
               }))}
               scoreMap={scoreMap}
+              filter={filter}
               onTasksChange={setTasks}
             />
           </div>

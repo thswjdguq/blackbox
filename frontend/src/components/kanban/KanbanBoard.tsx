@@ -19,6 +19,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import {
   Task,
   TaskStatus,
+  TaskPriority,
   ScoreMap,
   KANBAN_COLUMNS,
   CreateTaskPayload,
@@ -28,11 +29,18 @@ import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
 import api from "@/lib/api";
 
+export interface KanbanFilter {
+  assigneeId: string | null;
+  priority: TaskPriority | null;
+  tag: string;
+}
+
 interface KanbanBoardProps {
   projectId: string;
   initialTasks: Task[];
   members: { userId: string; name: string; email: string }[];
   scoreMap: ScoreMap;
+  filter?: KanbanFilter;
   onTasksChange?: (tasks: Task[]) => void;
 }
 
@@ -41,6 +49,7 @@ export default function KanbanBoard({
   initialTasks,
   members,
   scoreMap,
+  filter,
   onTasksChange,
 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -69,11 +78,26 @@ export default function KanbanBoard({
     []
   );
 
-  // ── Column grouping ────────────────────────────────────────────────────
+  // ── Column grouping (filter 적용) ────────────────────────────────────
 
   const tasksByStatus = useCallback(
-    (status: TaskStatus) => tasks.filter((t) => t.status === status),
-    [tasks]
+    (status: TaskStatus) => {
+      let filtered = tasks.filter((t) => t.status === status);
+      if (filter?.assigneeId) {
+        filtered = filtered.filter((t) =>
+          t.assignees.some((a) => a.userId === filter.assigneeId)
+        );
+      }
+      if (filter?.priority) {
+        filtered = filtered.filter((t) => t.priority === filter.priority);
+      }
+      if (filter?.tag) {
+        const q = filter.tag.toLowerCase();
+        filtered = filtered.filter((t) => t.tag?.toLowerCase().includes(q));
+      }
+      return filtered;
+    },
+    [tasks, filter]
   );
 
   // ── Drag handlers ──────────────────────────────────────────────────────
