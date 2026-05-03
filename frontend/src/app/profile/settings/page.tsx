@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
@@ -38,7 +38,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function ProfileSettingsPage() {
+function ProfileSettingsContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -398,5 +398,13 @@ export default function ProfileSettingsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ProfileSettingsPage() {
+  return (
+    <Suspense>
+      <ProfileSettingsContent />
+    </Suspense>
   );
 }
