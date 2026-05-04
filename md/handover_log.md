@@ -10,7 +10,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 마지막 업데이트 | 2026-03-30 (KST) |
+| 마지막 업데이트 | 2026-05-04 (KST) |
 | 작업자 | Antigravity Agent (Claude Sonnet 4.6 Thinking) |
 | 저장소 위치 | `c:\blackbox` |
 | 전체 todo | `c:\blackbox\md\todo.md` |
@@ -483,3 +483,109 @@ c:\blackbox\
 
 *이 로그는 매 주요 기능 구현 완료 시 업데이트되어야 한다.*
 *마지막 업데이트: 2026-03-30 — Antigravity Agent*
+
+---
+
+## 8. Bug Fix Log — 2026-05-04
+
+### 8.1 회의록 수정 저장 버그 수정
+
+**증상:**
+- 회의록 내용 수정 후 저장하면 내용이 날아가거나 저장이 안 됨
+- 노션 연동 해제 후 저장하면 됨
+- 노션 내보내기 후 재수정해도 Notion 페이지에는 이전 내용이 유지됨
+
+**원인 분석 (3개 버그):**
+
+| # | 파일 | 원인 |
+|---|------|------|
+| 1 | `[meetingId]/page.tsx` `saveNow()` | 저장 성공 후 `setEditNotes(data.notes ?? "")` 로 서버 응답값이 textarea를 덮어씀 → 서버가 null 반환 시 입력 내용이 초기화됨 |
+| 2 | `MeetingService.java` `updateMeeting()` | `""` 빈 문자열이 `!= null` 체크를 통과해 DB에 빈 값으로 저장됨 |
+| 3 | Notion 내보내기 UX | Notion API는 기존 페이지 UPDATE가 없고 항상 새 페이지 CREATE → 사용자가 이전 URL을 보면 변경 없어 보임 |
+
+**수정 내용:**
+
+1. **`frontend/.../[meetingId]/page.tsx`** — `saveNow()` 함수:
+   - `setEditNotes(data.notes ?? "")` / `setEditDecisions(data.decisions ?? "")` **제거** (서버 응답으로 textarea 덮어쓰기 방지)
+   - `notes: editNotes ?? ""` → `notes: editNotes.trim() || undefined` 로 변경 (빈 문자열은 undefined로 전송, 백엔드 skip 처리)
+
+2. **`backend/.../MeetingService.java`** — `updateMeeting()`:
+   - `req.notes().isBlank() ? null : req.notes()` 패턴으로 빈 문자열 → null 변환
+
+3. **`frontend/.../[meetingId]/page.tsx`** — `handleNotionExport()`:
+   - 이미 내보낸 적 있을 때 (`notionUrl` 존재) `window.confirm()` 으로 "새 페이지가 생성됩니다" 사전 안내
+
+**백엔드 재빌드 필요:** `MeetingService.java` 수정으로 `docker compose up -d --build backend` 실행 필요.
+
+*수정: 2026-05-04 — Antigravity Agent (Claude Sonnet 4.6 Thinking)*
+
+---
+
+## 9. Bug Fix Log — 2026-05-04 (Session 2)
+
+### 9.1 `POST /api/calendar/recommend` 403 Forbidden 원인 분석 및 수정
+
+**증상:**
+- 팀원 중 1명만 Google Calendar 연동, 나머지 2명 미연동 상태
+- `POST /api/calendar/recommend` 호출 시 403 Forbidden 반환
+
+**원인 분석 — 3단계 체인:**
+
+| 단계 | 위치 | 내용 |
+|------|------|------|
+| 1 | `CLAUDE_API_KEY=` (빈 값) | ClaudeService.callClaude()에서 `IllegalStateException` throw |
+| 2 | `GlobalExceptionHandler` | `IllegalStateException` 핸들러 없음 |
+| 3 | Spring Security `ExceptionTranslationFilter` | 미처리 예외를 가로채 403으로 변환 |
+
+**보조 원인 (Google 토큰 만료 시 추가 발생 가능):**
+- `refreshAccessToken()` 내 `WebClient.retrieve()`에 에러 핸들러 없음
+- Google API가 403 반환 시 `WebClientResponseException` 이 전파되어 전체 API 503/403으로 이어짐
+
+**수정한 파일:**
+
+1. **`GoogleCalendarService.java`** — WebClient 3계층 방어
+   - `refreshAccessToken()`: `.onErrorReturn(Map.of())` 추가 → Google 4xx 시 예외 전파 차단
+   - `ensureFreshToken()`: `newAccessToken != null` 체크 → 갱신 실패 시 기존 토큰 유지
+   - `recommendMeetingTimes()` / `createCalendarEvents()`: `ifPresent` 람다를 try-catch로 감싸 → 토큰 오류 시 해당 멤버만 스킵
+
+2. **`OpenAiService.java`** — `rawCall(String, int)` 메서드 추가 (ClaudeService와 동일 시그니처)
+
+3. **`GoogleCalendarService.java`** — AI 추천 호출을 Claude → OpenAI 폴백 구조로 교체
+   ```java
+   if (claudeService.isConfigured()) {
+       raw = claudeService.rawCall(prompt, 1000);
+   } else if (openAiService.isConfigured()) {
+       raw = openAiService.rawCall(prompt, 1000);
+   } else {
+       throw new IllegalStateException("AI API 키 미설정");
+   }
+   ```
+
+**현재 `.env` 상태:**
+- `CLAUDE_API_KEY=` → 비어 있음 (Claude 스킵)
+- `OPENAI_API_KEY=sk-proj-...` → 입력됨 ✅ → **gpt-4o-mini** 사용 중
+
+---
+
+### 9.2 Docker Hub DNS 오류 시 빌드 우회법
+
+**증상:** `docker compose up -d --build backend` 실행 시 DNS 오류
+```
+lookup registry-1.docker.io: no such host
+```
+
+**원인:** Docker Desktop의 DNS 설정 이슈 (네트워크 상태에 따라 간헐적 발생)
+
+**해결 — 캐시된 base 이미지 재사용:**
+```bash
+# docker compose build 대신 buildx 사용
+docker buildx build --pull=false --no-cache -t blackbox-backend -f backend/Dockerfile backend/
+docker compose up -d backend
+```
+
+- `--pull=false`: Docker Hub에서 새 이미지 다운로드 시도 안 함 (로컬 캐시 사용)
+- `--no-cache`: 이전 소스 캐시 무시 → 변경된 소스 재컴파일 강제
+
+> ⚠️ PowerShell에서는 `&&` 대신 `;` 로 명령어 연결할 것
+
+*수정: 2026-05-04 — Antigravity Agent (Claude Sonnet 4.6 Thinking)*

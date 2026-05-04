@@ -41,6 +41,7 @@ public class GoogleCalendarService {
     private final ProjectRepository             projectRepo;
     private final ProjectMemberRepository       memberRepo;
     private final ClaudeService                 claudeService;
+    private final OpenAiService                 openAiService;
 
     private final WebClient webClient = WebClient.builder().build();
 
@@ -52,7 +53,8 @@ public class GoogleCalendarService {
             UserRepository userRepo,
             ProjectRepository projectRepo,
             ProjectMemberRepository memberRepo,
-            ClaudeService claudeService) {
+            ClaudeService claudeService,
+            OpenAiService openAiService) {
         this.clientId     = clientId;
         this.clientSecret = clientSecret;
         this.redirectUri  = redirectUri;
@@ -60,7 +62,8 @@ public class GoogleCalendarService {
         this.userRepo     = userRepo;
         this.projectRepo  = projectRepo;
         this.memberRepo   = memberRepo;
-        this.claudeService = claudeService;
+        this.claudeService  = claudeService;
+        this.openAiService  = openAiService;
     }
 
     public boolean isConfigured() {
@@ -150,8 +153,12 @@ public class GoogleCalendarService {
 
         for (User attendee : attendees) {
             tokenRepo.findByUser(attendee).ifPresent(tok -> {
-                String accessToken = ensureFreshToken(tok);
-                createGoogleEvent(accessToken, req, attendees);
+                try {
+                    String accessToken = ensureFreshToken(tok);
+                    createGoogleEvent(accessToken, req, attendees);
+                } catch (Exception ignored) {
+                    // 토큰 갱신 실패 시 해당 참석자 캘린더 등록 스킵
+                }
             });
         }
     }
@@ -178,11 +185,16 @@ public class GoogleCalendarService {
         List<String> connectedNames = new ArrayList<>();
         for (User m : targetMembers) {
             tokenRepo.findByUser(m).ifPresent(tok -> {
-                String at = ensureFreshToken(tok);
-                List<CalendarAvailabilityResponse.BusySlot> busy = fetchBusySlots(at, timeMin, timeMax, m.getName());
-                connectedNames.add(m.getName());
-                for (var slot : busy) {
-                    busySummaries.add(m.getName() + ": " + slot.start() + " ~ " + slot.end());
+                try {
+                    String at = ensureFreshToken(tok);
+                    List<CalendarAvailabilityResponse.BusySlot> busy = fetchBusySlots(at, timeMin, timeMax, m.getName());
+                    connectedNames.add(m.getName());
+                    for (var slot : busy) {
+                        busySummaries.add(m.getName() + ": " + slot.start() + " ~ " + slot.end());
+                    }
+                } catch (Exception ignored) {
+                    // 토큰 갱신하거나 freeBusy 호출 중 예외 발생 시
+                    // 해당 멤버를 조용히 스킵하고 나머지 진행
                 }
             });
         }
@@ -190,9 +202,16 @@ public class GoogleCalendarService {
         // 팀원 이름 목록
         List<String> memberNames = targetMembers.stream().map(User::getName).collect(Collectors.toList());
 
-        // Claude API 호출
+        // Claude 우선, 없으면 OpenAI 폴백
         String prompt = buildRecommendPrompt(memberNames, busySummaries, req.projectDeadline(), targetDate);
-        String raw = claudeService.rawCall(prompt, 1000);
+        String raw;
+        if (claudeService.isConfigured()) {
+            raw = claudeService.rawCall(prompt, 1000);
+        } else if (openAiService.isConfigured()) {
+            raw = openAiService.rawCall(prompt, 1000);
+        } else {
+            throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
+        }
         return parseRecommendations(raw);
     }
 
@@ -254,6 +273,9 @@ public class GoogleCalendarService {
                 .body(BodyInserters.fromFormData(form))
                 .retrieve()
                 .bodyToMono(Map.class)
+                // Google이 4xx/5xx 반환할 경우 (토큰 만료/취소/스코프 문제)
+                // 예외를 널리지 않고 빈 맵으로 대체해 호출자가 안전하게 처리하게 함
+                .onErrorReturn(Map.of())
                 .block();
     }
 
@@ -261,10 +283,16 @@ public class GoogleCalendarService {
     public String ensureFreshToken(GoogleCalendarToken token) {
         if (token.isExpired() && token.getRefreshToken() != null) {
             Map<?, ?> resp = refreshAccessToken(token.getRefreshToken());
-            token.setAccessToken((String) resp.get("access_token"));
-            Number exp = (Number) resp.get("expires_in");
-            if (exp != null) token.setTokenExpiry(OffsetDateTime.now().plusSeconds(exp.longValue()));
-            tokenRepo.save(token);
+            // 갱신 성공 여부를 access_token 필드로 판단
+            String newAccessToken = (String) resp.get("access_token");
+            if (newAccessToken != null) {
+                token.setAccessToken(newAccessToken);
+                Number exp = (Number) resp.get("expires_in");
+                if (exp != null) token.setTokenExpiry(OffsetDateTime.now().plusSeconds(exp.longValue()));
+                tokenRepo.save(token);
+            }
+            // newAccessToken == null 이면 갱신 실패 → 기존 토큰 유지
+            // (fetchBusySlots는 onErrorReturn으로 보호되어 빈 목록을 안전하게 반환)
         }
         return token.getAccessToken();
     }

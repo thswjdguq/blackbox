@@ -49,6 +49,11 @@ public class OpenAiService {
         return parseLines(raw);
     }
 
+    /** GoogleCalendarService 등 외부 서비스에서 직접 호출하는 공개 메서드 (ClaudeService.rawCall과 동일 시그니처) */
+    public String rawCall(String userPrompt, int maxTokens) {
+        return call(userPrompt, maxTokens);
+    }
+
     // ── internal ─────────────────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")

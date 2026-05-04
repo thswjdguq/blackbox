@@ -2,7 +2,7 @@
 
 ## 현재 Phase: MVP 완성 + AI/Notion 확장 (진행 중)
 
-> **업데이트 2026-04-23 (week8):** 프로필 설정 페이지 + 일정 조율 페이지 + 버그 수정 + 경보 자동 해제 완료.
+> **업데이트 2026-05-04 (week9):** 회의록 저장 버그 3종 + Calendar 403 버그 수정 + Claude→OpenAI AI 서비스 마이그레이션 완료.
 
 ---
 
@@ -214,6 +214,9 @@
 - [x] 회의록 AI 요약 + Notion 동기화 결과 DB 저장 및 페이지 로드 시 복원
 - [x] **칸반 버그 수정** — 드래그앤드롭 복구 (listeners 카드 전체 적용), 모달 상태 변경 저장 (PATCH /status 별도 호출), 담당자 수정 저장 (PUT /assignees 별도 호출)
 - [x] **대시보드 UX 개선** — 체크인 후 fetchProjects() 호출 (프로젝트 목록 즉시 갱신), 체크인 회의 카드 Link 연결 + 호버 피드백, 프로젝트 카드에 생성일(createdAt) YYYY.MM.DD 표시
+- [x] **회의록 저장 버그 수정 (2026-05-04)** — `saveNow()`가 서버 응답으로 textarea를 덮어쓰는 버그 제거, 빈 문자열을 undefined로 전송해 백엔드 null 체크 정상화, 백엔드 `updateMeeting()`에서 blank string → null 변환 추가, Notion 재내보내기 시 confirm 다이얼로그로 "새 페이지 생성" 사전 안내
+- [x] **Calendar AI 추천 403 수정 (2026-05-04)** — `CLAUDE_API_KEY` 미설정 시 `IllegalStateException`이 Spring Security `ExceptionTranslationFilter`를 타고 403 반환되는 버그 수정. `GoogleCalendarService` WebClient 3계층 에러 방어 추가 (`refreshAccessToken onErrorReturn` / `ensureFreshToken null 체크` / `ifPresent try-catch`)
+- [x] **Claude → OpenAI AI 서비스 교체 (2026-05-04)** — `OpenAiService`에 `rawCall()` 추가, `GoogleCalendarService`에 Claude→OpenAI 폴백 구조 적용. `MeetingController`는 이미 폴백 구조 있었음. 현재 `gpt-4o-mini` 사용 중
 
 ### 로컬 개발 환경
 - [x] `docker-compose.db-only.yml` — DB만 Docker로 실행
@@ -251,5 +254,21 @@
 ⑮ 경보 자동 해제 + 체크인 날짜 독립성     ✅ 완료 (week8)
 ⑯ 버그 수정 6종 (회의 모달/칸반 드롭다운/Vault 텍스트/날짜 입력/AI 액션아이템 UX)  ✅ 완료 (week8)
 ⑰ 프로필 설정 페이지 + 일정 조율 페이지 + 사이드바 재구성  ✅ 완료 (week8)
-⑱ 중간발표 데모 리허설                   ← 다음 작업
+⑱ 회의록 저장 버그 3종 수정 (saveNow/blank string/Notion UX)  ✅ 완료 (week9)
+⑲ Calendar AI 추천 403 수정 + WebClient 3계층 에러 방어      ✅ 완료 (week9)
+⑳ Claude → OpenAI AI 서비스 폴백 마이그레이션               ✅ 완료 (week9)
+㉑ 중간발표 데모 리허설                                       ← 다음 작업
 ```
+
+---
+
+## ⚙️ 운영 메모 (Docker DNS 오류 우회)
+
+Docker Hub DNS 오류 발생 시 (`lookup registry-1.docker.io: no such host`) 아래 명령 사용:
+
+```bash
+docker buildx build --pull=false --no-cache -t blackbox-backend -f backend/Dockerfile backend/
+docker compose up -d backend
+```
+
+> PowerShell에서는 `&&` 대신 명령을 두 줄로 분리할 것

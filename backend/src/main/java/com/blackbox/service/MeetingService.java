@@ -117,8 +117,15 @@ public class MeetingService {
         if (req.title() != null)       meeting.setTitle(req.title());
         if (req.meetingDate() != null) meeting.setMeetingDate(req.meetingDate());
         if (req.purpose() != null)     meeting.setPurpose(req.purpose());
-        if (req.notes() != null)       meeting.setNotes(req.notes());
-        if (req.decisions() != null)   meeting.setDecisions(req.decisions());
+
+        // notes / decisions: null = 변경 없음 (skip)
+        //                    빈 문자열("") = null로 저장 (내용 제거 의도)
+        //                    실제 텍스트 = 그대로 저장
+        if (req.notes() != null)
+            meeting.setNotes(req.notes().isBlank() ? null : req.notes());
+        if (req.decisions() != null)
+            meeting.setDecisions(req.decisions().isBlank() ? null : req.decisions());
+
         meetingRepository.save(meeting);
 
         return MeetingResponse.from(meeting);

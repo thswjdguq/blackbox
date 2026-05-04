@@ -207,16 +207,18 @@ export default function MeetingDetailPage() {
 
   // ── 저장 (내부 공유용) ───────────────────────────────────────────────
   const saveNow = async (): Promise<boolean> => {
+    // 빈 문자열은 undefined로 변환 — 백엔드 null 체크가 올바르게 작동하도록 함
+    // (빈 문자열을 보내면 백엔드가 기존 내용을 빈 값으로 덮어씀)
     const payload: UpdateMeetingPayload = {
-      notes:     editNotes     ?? "",
-      decisions: editDecisions ?? "",
+      notes:     editNotes.trim()     || undefined,
+      decisions: editDecisions.trim() || undefined,
     };
     const { data } = await api.patch<Meeting>(
       `/projects/${projectId}/meetings/${meetingId}`, payload,
     );
+    // 서버 응답으로 meeting 메타데이터만 동기화
+    // editNotes / editDecisions 는 사용자 입력값을 유지 — 덮어쓰지 않음
     setMeeting(data);
-    setEditNotes(data.notes ?? "");
-    setEditDecisions(data.decisions ?? "");
     return true;
   };
 
@@ -336,9 +338,20 @@ export default function MeetingDetailPage() {
       setError("회의록 내용을 먼저 입력하세요.");
       return;
     }
+    // 이미 내보낸 적 있으면 재내보내기 안내
+    // (Notion API는 페이지 UPDATE가 아닌 항상 새 페이지 CREATE)
+    if (notionUrl) {
+      const ok = window.confirm(
+        "Notion으로 다시 내보내면 새 페이지가 생성됩니다.\n" +
+        "기존 Notion 페이지는 자동으로 업데이트되지 않습니다.\n\n" +
+        "계속하시겠습니까?"
+      );
+      if (!ok) return;
+    }
     setExporting(true);
     try {
-      await saveNow();   // 최신 내용 먼저 저장
+      // 최신 내용을 먼저 DB에 저장한 뒤 Notion으로 내보냄
+      await saveNow();
       // AI 요약을 미리 실행했다면 함께 전송, 아니면 요약 없이 내보냄
       const { data } = await api.post<{ pageUrl: string }>(
         `/projects/${projectId}/meetings/${meetingId}/notion/export`,
