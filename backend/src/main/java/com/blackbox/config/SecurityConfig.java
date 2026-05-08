@@ -69,7 +69,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         // allowedOriginPatterns: allowCredentials=true 와 함께 wildcard 사용 가능
         for (String origin : corsOrigins.split(",")) {
-            config.addAllowedOrigin(origin.trim());
+            config.addAllowedOriginPattern(origin.trim());
         }
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));

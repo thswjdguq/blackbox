@@ -101,7 +101,10 @@ export default function BoardPage() {
       try {
         const scoreRes = await api.get<ScoreEntry[]>(`/projects/${projectId}/scores`);
         const map: ScoreMap = {};
-        scoreRes.data.forEach((s) => { map[s.userId] = Number(s.totalScore); });
+        scoreRes.data.forEach((s) => {
+          const n = Number(s.totalScore);
+          if (!isNaN(n)) map[s.userId] = n;
+        });
         setScoreMap(map);
       } catch {
         // No scores yet — leave scoreMap empty

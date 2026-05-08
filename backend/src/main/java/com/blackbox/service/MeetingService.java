@@ -33,6 +33,7 @@ public class MeetingService {
     private final ProjectAccessChecker accessChecker;
     private final ActivityLogService activityLogService;
     private final AlertService alertService;
+    private final DiscordNotificationService discordService;
     private final EntityManager entityManager;
 
     public MeetingService(MeetingRepository meetingRepository,
@@ -43,6 +44,7 @@ public class MeetingService {
                           ProjectAccessChecker accessChecker,
                           ActivityLogService activityLogService,
                           AlertService alertService,
+                          DiscordNotificationService discordService,
                           EntityManager entityManager) {
         this.meetingRepository = meetingRepository;
         this.meetingAttendeeRepository = meetingAttendeeRepository;
@@ -52,6 +54,7 @@ public class MeetingService {
         this.accessChecker = accessChecker;
         this.activityLogService = activityLogService;
         this.alertService = alertService;
+        this.discordService = discordService;
         this.entityManager = entityManager;
     }
 
@@ -87,6 +90,11 @@ public class MeetingService {
 
         activityLogService.record(project, creator, "MEETING_ATTEND",
                 "{\"meetingId\":\"" + meeting.getId() + "\",\"title\":\"" + escapeJson(meeting.getTitle()) + "\"}");
+
+        // 회의 생성 Discord 알림
+        List<String> attendeeNames = members.stream()
+                .map(pm -> pm.getUser().getName()).toList();
+        discordService.notifyMeetingCreated(meeting, attendeeNames, project);
 
         return MeetingResponse.from(meeting);
     }

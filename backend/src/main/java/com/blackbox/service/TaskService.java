@@ -26,6 +26,7 @@ public class TaskService {
     private final ActivityLogService activityLogService;
     private final NotionService notionService;
     private final AlertService alertService;
+    private final DiscordNotificationService discordService;
     private final EntityManager entityManager;
 
     public TaskService(TaskRepository taskRepository,
@@ -36,6 +37,7 @@ public class TaskService {
                        ActivityLogService activityLogService,
                        NotionService notionService,
                        AlertService alertService,
+                       DiscordNotificationService discordService,
                        EntityManager entityManager) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
@@ -45,6 +47,7 @@ public class TaskService {
         this.activityLogService = activityLogService;
         this.notionService = notionService;
         this.alertService = alertService;
+        this.discordService = discordService;
         this.entityManager = entityManager;
     }
 
@@ -72,6 +75,12 @@ public class TaskService {
 
         activityLogService.record(project, creator, "TASK_CREATE",
                 "{\"taskId\":\"" + task.getId() + "\",\"title\":\"" + escapeJson(task.getTitle()) + "\",\"priority\":\"" + task.getPriority() + "\"}");
+
+        // 담당자 배정 알림 (생성 시 assignee 있을 때)
+        if (!assignees.isEmpty()) {
+            discordService.notifyTaskAssigned(task,
+                    assignees.stream().map(TaskAssignee::getUser).toList(), project);
+        }
 
         return TaskResponse.from(task, assignees);
     }
@@ -153,6 +162,7 @@ public class TaskService {
             activityLogService.record(project, user, "TASK_COMPLETE",
                     "{\"taskId\":\"" + task.getId() + "\",\"title\":\"" + escapeJson(task.getTitle()) + "\",\"completedAt\":\"" + task.getCompletedAt() + "\"}");
             alertService.reevaluate(user, project);
+            discordService.notifyTaskCompleted(task, user, project);
         } else {
             if (!"DONE".equals(req.status())) task.setCompletedAt(null);
             taskRepository.save(task);
@@ -175,6 +185,13 @@ public class TaskService {
         List<TaskAssignee> assignees = setAssigneesInternal(task, req.assigneeIds());
         entityManager.flush();
         entityManager.refresh(task);
+
+        // 담당자 변경 알림 (명시적 배정 액션)
+        if (!assignees.isEmpty()) {
+            discordService.notifyTaskAssigned(task,
+                    assignees.stream().map(TaskAssignee::getUser).toList(), project);
+        }
+
         return TaskResponse.from(task, assignees);
     }
 

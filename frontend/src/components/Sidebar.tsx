@@ -66,6 +66,12 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
 
   const handleNavClick = (e: React.MouseEvent, href: string, needsProject?: boolean) => {
     if (!needsProject) return;
+    // 현재 URL에 projectId가 없으면 무조건 차단 (폴백 URL은 존재하지 않는 경로)
+    if (!currentProjectId) {
+      e.preventDefault();
+      showNoProjectToast();
+      return;
+    }
     const stored = localStorage.getItem("projectCount");
     const count  = hasProjects !== undefined
       ? (hasProjects ? 1 : 0)

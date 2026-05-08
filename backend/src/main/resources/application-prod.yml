@@ -1,0 +1,3 @@
+app:
+  cors:
+    origins: https://teamblackbox.com

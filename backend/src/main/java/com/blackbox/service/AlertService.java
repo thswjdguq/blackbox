@@ -19,17 +19,20 @@ public class AlertService {
     private final ProjectRepository             projectRepository;
     private final ProjectMemberRepository       memberRepository;
     private final ContributionScoreRepository   scoreRepository;
+    private final DiscordNotificationService    discordService;
 
     public AlertService(AlertRepository alertRepository,
                         ActivityLogRepository activityLogRepository,
                         ProjectRepository projectRepository,
                         ProjectMemberRepository memberRepository,
-                        ContributionScoreRepository scoreRepository) {
+                        ContributionScoreRepository scoreRepository,
+                        DiscordNotificationService discordService) {
         this.alertRepository       = alertRepository;
         this.activityLogRepository = activityLogRepository;
         this.projectRepository     = projectRepository;
         this.memberRepository      = memberRepository;
         this.scoreRepository       = scoreRepository;
+        this.discordService        = discordService;
     }
 
     // ── 경보 조회 (활성만) ────────────────────────────────────────────────
@@ -172,5 +175,6 @@ public class AlertService {
         alert.setSeverity(severity);
         alert.setMessage(message);
         alertRepository.save(alert);
+        discordService.notifyAlert(alert, project);
     }
 }

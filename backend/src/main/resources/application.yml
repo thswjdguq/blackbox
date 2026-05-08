@@ -35,13 +35,14 @@ server:
 
 app:
   cors:
-    origins: ${APP_CORS_ORIGINS:http://localhost:3000,https://localhost,http://localhost,https://192.168.225.23,http://192.168.225.23}
+    origins: ${APP_CORS_ORIGINS:*}
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:1800000}                    # access token 30분
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}  # refresh token 7일
   file:
     upload-dir: ${FILE_UPLOAD_DIR:/data/uploads}
+  frontend-base-url: ${FRONTEND_BASE_URL:}       # 10분 전 알림 URL 생성용 (예: https://yourdomain.com)
 
 external:
   github:
@@ -66,3 +67,5 @@ external:
     parent-page-id: ${NOTION_PARENT_PAGE_ID:}
     calendar-db-id: ${NOTION_CALENDAR_DB_ID:}   # Notion 캘린더 데이터베이스 ID (선택)
     base-url: https://api.notion.com
+  discord:
+    webhook-url: ${DISCORD_WEBHOOK_URL:}         # 글로벌 폴백용 (현재 미사용, per-project DB에서 관리)
