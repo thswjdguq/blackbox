@@ -5,7 +5,7 @@ interface AuthState {
   refreshToken: string | null;
   setTokens: (accessToken: string, refreshToken: string) => void;
   clearTokens: () => void;
-  initFromStorage: () => void;
+  initFromStorage: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -27,6 +27,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   initFromStorage: () => {
     const accessToken = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
-    set({ accessToken, refreshToken });
+    const hasTokens = Boolean(accessToken && refreshToken);
+
+    if (hasTokens) {
+      set({ accessToken, refreshToken });
+      return true;
+    }
+
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    set({ accessToken: null, refreshToken: null });
+    return false;
   },
 }));

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
 import PageProgress from "@/components/PageProgress";
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default function RootLayout({
       </head>
       <body className="bg-bb-bg text-bb-text">
         <PageProgress />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
