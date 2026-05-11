@@ -38,3 +38,32 @@
 **다른 PC 진입 시 추가 확인:**
 - 본 entry + DECISIONS DEC-WORKFLOW-001~009 + DEC-REJECT-001~006 읽기
 - 메모리는 비어있겠지만 위만으로 충분 (DEC-WORKFLOW-009)
+
+---
+
+## 2026-05-09 — Session 1.1: 인프라 commit + push (이어서)
+
+**진행자:** 사용자 (push 직접 수행) + Claude Code (Opus 4.7, 커밋 작성)
+
+**한 일:**
+- `refactor/main` → `origin` push (이전엔 로컬만)
+- `refactor/setup-infrastructure` 분기 후 PRINCIPLES §5 "한 커밋에 한 종류" 룰 따라 4개 commit:
+  - `f856f06` chore(refactor): Copilot 가드 (.github/copilot-instructions.md + refactor-guard.yml)
+  - `b6d86e6` docs(refactor): 원칙·로드맵·템플릿·실행 가이드 (PRINCIPLES/PLAN/TASK_TEMPLATE/EXECUTION_PLAYBOOK)
+  - `fe4d51f` docs(refactor): Claude Code 운영 정책·추적 (CLAUDE/CLAUDE_WORKFLOW/DECISIONS/SESSION_LOG)
+  - `1099a6f` docs(refactor): Phase 0/1 작업지시서 11개 (tasks/00~07, 10~12)
+- Claude Code의 OAuth가 `workflow` scope 부재로 `.github/workflows/*.yml` push 거부 → 사용자가 본인 환경에서 직접 push 수행
+
+**핵심 결정:**
+- 부트스트랩 commit도 PR 패턴 적용 (직접 `refactor/main` commit 회피)
+- Workflow 파일 OAuth 제한은 차후 동일 패턴 발생 시 사용자 push 기본 가정
+
+**다음 세션 진입점:**
+- (a) 사용자: setup-infrastructure PR 생성·검토·머지 (`refactor/main`으로 squash merge)
+- (b) PR 머지 후: Phase 1 두 번째 묶음 (Task 13/14/15) 작성 또는 Phase 0 실행 시작 (강의 시간)
+
+**미해결:**
+- PR 생성·검토·머지 (사용자 액션)
+- 본 SESSION_LOG 갱신(이 entry)이 5번째 commit 후보로 남음 → 어떻게 머지 PR에 포함할지 결정 필요
+- DRIFT_INVENTORY.md, DEFERRED.md는 lazy 생성 (Phase 1 시점)
+- Phase 2~6 작업지시서 미작성 (Phase 1 결과 보고 진행)
