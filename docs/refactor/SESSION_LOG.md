@@ -67,3 +67,32 @@
 - 본 SESSION_LOG 갱신(이 entry)이 5번째 commit 후보로 남음 → 어떻게 머지 PR에 포함할지 결정 필요
 - DRIFT_INVENTORY.md, DEFERRED.md는 lazy 생성 (Phase 1 시점)
 - Phase 2~6 작업지시서 미작성 (Phase 1 결과 보고 진행)
+
+---
+
+## 2026-05-11 — Task 70: 로그인 auth 리다이렉트 수정
+
+**진행자:** 사용자 + Copilot
+
+**한 일:**
+- `frontend/src/components/AuthProvider.tsx` 신규 추가
+- `frontend/src/app/layout.tsx` 에서 `AuthProvider`로 `children` 감싸기만 수행
+- `frontend/src/app/login/page.tsx` 에서 마운트 시 auth 체크 + `router.replace('/dashboard')` 적용
+- `frontend/src/lib/store/authStore.ts` 의 `initFromStorage()` 를 boolean 반환으로 보강하고, 토큰 미보유 시 localStorage/store 정리
+- 로그인 성공 후 이동도 `router.push` 대신 `router.replace` 로 변경
+
+**핵심 결정:**
+- layout은 서버 컴포넌트로 유지하고, 인증 재수화/서버 검증은 클라이언트용 `AuthProvider` 에서 처리
+- 브라우저 히스토리에 `/login` 이 남지 않도록 로그인 성공 리다이렉트는 `replace` 사용
+
+**검증 상태:**
+- 정적 검사로 신규 컴포넌트/스토어 수정은 통과
+- 로그인 페이지 쪽 타입 경고는 의존성 갱신 후 해소
+- 브라우저 뒤로/앞으로 시나리오 수동 검증은 다음 단계
+
+**다음 진입점:**
+- 수동 브라우저 검증 3건 실행 후 PR 작성
+
+**미해결:**
+- 뒤로/앞으로 및 새 탭 직접 진입 시나리오 수동 검증 미완료
+- PR 생성 전 최종 diff 확인 필요
