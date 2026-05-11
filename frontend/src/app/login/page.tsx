@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isDark, setIsDark] = useState(true);
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const setTokens = useAuthStore.getState().setTokens;
 
   useEffect(() => {
     const theme = localStorage.getItem("theme") || "dark";
@@ -48,13 +48,21 @@ export default function LoginPage() {
 
       const data = await res.json();
       setTokens(data.accessToken, data.refreshToken);
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const hasToken = useAuthStore.getState().initFromStorage();
+
+    if (hasToken) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-bb-bg flex items-center justify-center p-4">
