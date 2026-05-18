@@ -1,0 +1,201 @@
+name: Refactor Guard
+
+on:
+  pull_request:
+    branches:
+      - refactor/main
+      - 'refactor/**'
+  push:
+    branches:
+      - refactor/main
+
+permissions:
+  contents: read
+
+jobs:
+  drift-checks:
+    runs-on: ubuntu-latest
+    name: gc.md CODE-01~03 위반 탐지
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: CRITICAL — file_vault UPDATE/DELETE/SET 시도 (INV-02)
+        run: |
+          set -e
+          echo "::group::Searching backend Java for file_vault mutation"
+          violations=$(grep -rnE "file_vault" --include="*.java" backend/src/ \
+            | grep -iE "update|delete|remove|\bset\b" \
+            | grep -v "//" || true)
+          if [ -n "$violations" ]; then
+            echo "::error::file_vault에 UPDATE/DELETE/SET 시도가 발견되었습니다 (INV-02 위반)"
+            echo "$violations"
+            exit 1
+          fi
+          echo "OK: file_vault 불변성 유지"
+          echo "::endgroup::"
+
+      - name: CRITICAL — 외부 managed 서비스 URL (INV-05)
+        run: |
+          set -e
+          echo "::group::Searching for external managed service hosts"
+          violations=$(grep -rnE "supabase\.(co|io)|vercel\.app|render\.com|railway\.app|amazonaws\.com|fly\.io" \
+            --include="*.java" --include="*.yml" --include="*.yaml" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=build --exclude-dir=.git \
+            backend/ frontend/ docs/ md/ 2>/dev/null || true)
+          if [ -n "$violations" ]; then
+            echo "::error::외부 managed 서비스 호스트가 발견되었습니다 (INV-05 위반)"
+            echo "$violations"
+            exit 1
+          fi
+          echo "OK: Docker 자체완결성 유지"
+          echo "::endgroup::"
+
+      - name: CRITICAL — 기존 Flyway 마이그레이션 수정 금지
+        run: |
+          set -e
+          echo "::group::Detecting modifications to existing V*.sql files"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref="origin/${{ github.base_ref }}"
+            git fetch origin "${{ github.base_ref }}" --depth=50 || true
+            modified=$(git diff --name-status "$base_ref"...HEAD -- 'backend/src/main/resources/db/migration/V*.sql' \
+              | awk '$1 == "M" || $1 == "D" {print $2}' || true)
+            if [ -n "$modified" ]; then
+              echo "::error::기존 Flyway 마이그레이션이 수정/삭제되었습니다. V18+ 새 파일로 추가해야 합니다."
+              echo "$modified"
+              exit 1
+            fi
+          fi
+          echo "OK: 기존 마이그레이션 보존"
+          echo "::endgroup::"
+
+      - name: WARN — Hardcoded secrets 의심
+        run: |
+          echo "::group::Searching for hardcoded secrets"
+          violations=$(grep -rnE 'password\s*[:=]\s*"[^$"][^"]*"' \
+            --include="*.java" --include="*.yml" --include="*.yaml" --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=build --exclude-dir=test \
+            --exclude-dir=tests backend/ frontend/ 2>/dev/null \
+            | grep -viE "example|placeholder|change_me|your_|test|mock" || true)
+          if [ -n "$violations" ]; then
+            echo "::warning::하드코딩 비밀번호 의심 항목 (검토 필요)"
+            echo "$violations"
+          else
+            echo "OK: 하드코딩 비밀번호 없음"
+          fi
+          echo "::endgroup::"
+
+      - name: WARN — TypeScript ': any' 사용
+        run: |
+          echo "::group::Counting ': any' usage in TypeScript"
+          count=$(grep -rnE ":\s*any(\s|;|,|\)|\]|>|$)" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next \
+            frontend/src/ 2>/dev/null | wc -l || echo 0)
+          echo "현재 ': any' 사용 건수: $count"
+          if [ "$count" -gt 0 ]; then
+            echo "::warning:: ': any' 사용 ${count}건 — gc.md CODE-01 위반 후보"
+            grep -rnE ":\s*any(\s|;|,|\)|\]|>|$)" \
+              --include="*.ts" --include="*.tsx" \
+              --exclude-dir=node_modules --exclude-dir=.next \
+              frontend/src/ 2>/dev/null | head -50
+          fi
+          echo "::endgroup::"
+
+      - name: WARN — Controller에서 Entity 직접 노출 의심
+        run: |
+          echo "::group::Detecting Entity exposure in Controllers"
+          violations=$(grep -rnE "ResponseEntity<.*Entity[ ,>]|return [a-zA-Z]+Entity\b" \
+            --include="*.java" backend/src/main/java/com/blackbox/controller/ 2>/dev/null || true)
+          if [ -n "$violations" ]; then
+            echo "::warning::Controller에서 Entity 직접 노출 의심 — DTO 분리 검토 필요"
+            echo "$violations"
+          else
+            echo "OK: Controller가 Entity 직접 노출하지 않음"
+          fi
+          echo "::endgroup::"
+
+      - name: WARN — console.log / System.out.println 잔류
+        run: |
+          echo "::group::Counting debug print statements"
+          ts_count=$(grep -rnE "console\.(log|debug)" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next \
+            frontend/src/ 2>/dev/null | wc -l || echo 0)
+          java_count=$(grep -rnE "System\.(out|err)\.print" \
+            --include="*.java" backend/src/main/java/ 2>/dev/null | wc -l || echo 0)
+          echo "console.log/debug 건수: $ts_count"
+          echo "System.out.print 건수: $java_count"
+          if [ "$ts_count" -gt 0 ] || [ "$java_count" -gt 0 ]; then
+            echo "::warning::디버그 print 잔류 (Logger 사용 권장)"
+          fi
+          echo "::endgroup::"
+
+  branch-policy:
+    runs-on: ubuntu-latest
+    name: Branch policy 검증
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: PR base가 refactor/main인지 확인
+        run: |
+          base="${{ github.base_ref }}"
+          if [ "$base" = "main" ]; then
+            echo "::error::PR base가 main입니다. 리팩토링 기간 동안 main 직접 PR은 금지됩니다 (refactor/main으로 변경하세요)"
+            exit 1
+          fi
+          echo "OK: PR base = $base"
+
+  pr-size-guard:
+    runs-on: ubuntu-latest
+    name: PR 변경 크기 가드 (과도수정 탐지)
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 변경 라인 수 측정
+        id: measure
+        run: |
+          base_ref="origin/${{ github.base_ref }}"
+          git fetch origin "${{ github.base_ref }}" --depth=100 || true
+          # 코드 파일만 카운트(문서/설정 제외)
+          stats=$(git diff --numstat "$base_ref"...HEAD -- \
+            'backend/src/**/*.java' \
+            'frontend/src/**/*.ts' \
+            'frontend/src/**/*.tsx' \
+            'backend/src/main/resources/db/migration/*.sql' 2>/dev/null \
+            | awk '{added+=$1; removed+=$2} END {print added"\t"removed}')
+          added=$(echo "$stats" | cut -f1)
+          removed=$(echo "$stats" | cut -f2)
+          added=${added:-0}
+          removed=${removed:-0}
+          total=$((added + removed))
+          files=$(git diff --name-only "$base_ref"...HEAD -- \
+            'backend/src/**/*.java' \
+            'frontend/src/**/*.ts' \
+            'frontend/src/**/*.tsx' \
+            'backend/src/main/resources/db/migration/*.sql' 2>/dev/null | wc -l)
+          echo "added=$added" >> "$GITHUB_OUTPUT"
+          echo "removed=$removed" >> "$GITHUB_OUTPUT"
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+          echo "코드 변경: +$added / -$removed (총 $total 라인) / $files 파일"
+
+      - name: 임계값 검사
+        run: |
+          total=${{ steps.measure.outputs.total }}
+          files=${{ steps.measure.outputs.files }}
+          # 단일 Task PR 기준: 300라인 또는 5파일 초과 시 warn
+          if [ "$total" -gt 300 ] || [ "$files" -gt 5 ]; then
+            echo "::warning::PR이 ${total}라인 / ${files}파일 변경 — 단일 Task치고 큽니다."
+            echo "::warning::과도수정 또는 Task 분할 누락 의심. PRINCIPLES §6 (Copilot 협업 규칙) 검토 권장."
+          else
+            echo "OK: 변경 규모 ${total}라인 / ${files}파일 (단일 Task 범위)"
+          fi
+          # 700라인 또는 10파일 초과는 강한 경고 (fail은 아님 — 정당한 경우 있을 수 있음)
+          if [ "$total" -gt 700 ] || [ "$files" -gt 10 ]; then
+            echo "::warning::[STRONG] 변경 규모가 매우 큼 — Task 분할 또는 PR 분리를 강력히 권장합니다."
+          fi

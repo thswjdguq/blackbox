@@ -1,3 +1,10 @@
+<!--
+ARCHIVED 2026-05-09 — 정본 아님. 인용 금지.
+이 문서는 프로젝트 초기 버전(MySQL / Vercel·Railway·Render 기반)의 스냅샷입니다.
+현재는 PostgreSQL + Docker 자체완결 구조로 전환되었습니다.
+정본: md/claude.md
+-->
+
 # Team Blackbox — 프로젝트 컨텍스트
 
 ## 이 파일의 목적

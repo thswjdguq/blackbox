@@ -2,7 +2,7 @@
 
 > **목적:** 이 문서는 Claude 에이전트 간 컨텍스트 공유를 위한 핸드오버 기록이다.
 > 새로운 Claude 세션이 시작될 때, **이 파일을 가장 먼저 읽어라.**
-> 프로젝트 루트: `c:\blackbox`
+> 프로젝트 루트: `<repo>`
 
 ---
 
@@ -12,8 +12,8 @@
 |------|------|
 | 마지막 업데이트 | 2026-05-04 (KST) |
 | 작업자 | Antigravity Agent (Claude Sonnet 4.6 Thinking) |
-| 저장소 위치 | `c:\blackbox` |
-| 전체 todo | `c:\blackbox\md\todo.md` |
+| 저장소 위치 | `<repo>` |
+| 전체 todo | `md/todo.md` |
 
 ---
 
@@ -424,7 +424,7 @@ docker compose up -d
 ## 6. Architecture Overview (현재 시점)
 
 ```
-c:\blackbox\
+<repo>/
 ├── docker-compose.yml          ← PostgreSQL + Spring + Next.js + Nginx
 ├── nginx/default.conf          ← /api → :8080, / → :3000
 ├── .env                        ← DB_PASSWORD, JWT_SECRET 등

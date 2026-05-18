@@ -70,7 +70,6 @@ export default function DashboardPage() {
 
   // 인증 확인 + 초기 데이터
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchProjects();
     api.get<CheckinRecord[]>("/my/checkins").then(({ data }) => setMyCheckins(data)).catch(() => {});
   }, []);

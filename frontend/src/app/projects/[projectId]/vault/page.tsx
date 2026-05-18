@@ -361,7 +361,6 @@ export default function VaultPage() {
   }, [projectId, router]);
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchFiles();
   }, [fetchFiles]);
 
