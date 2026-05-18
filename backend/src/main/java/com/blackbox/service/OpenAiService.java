@@ -1,5 +1,8 @@
 package com.blackbox.service;
 
+import com.blackbox.dto.ActionItemDto;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -42,7 +45,20 @@ public class OpenAiService {
         return call(buildSummaryPrompt(title, purpose, notes, decisions), 1500);
     }
 
-    // ── AI 액션아이템 추출 ────────────────────────────────────────────────
+    // ── AI 액션아이템 추출 (구조화) ──────────────────────────────────────
+
+    public List<ActionItemDto> extractStructuredActionItems(String notes, String decisions) {
+        String systemPrompt =
+            "너는 회의록에서 액션아이템을 추출하는 assistant야. " +
+            "반드시 JSON 배열만 반환하고 다른 텍스트는 절대 포함하지 마.";
+        String userPrompt =
+            "아래 회의록에서 액션아이템을 추출해줘. " +
+            "각 항목은 {\"title\": \"할 일 제목\", \"assignee\": \"담당자 이름 또는 null\", " +
+            "\"due_date\": \"YYYY-MM-DD 또는 null\", \"priority\": \"HIGH/MEDIUM/LOW\"} 형식으로.\n\n" +
+            "회의록:\n" + nvl(notes) + "\n\n결정사항:\n" + nvl(decisions);
+        String raw = callWithSystem(systemPrompt, userPrompt, 1200);
+        return parseStructured(raw, systemPrompt, userPrompt);
+    }
 
     public List<String> extractActionItems(String notes, String decisions) {
         String raw = call(buildExtractPrompt(notes, decisions), 800);
@@ -56,7 +72,6 @@ public class OpenAiService {
 
     // ── internal ─────────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private String call(String userPrompt, int maxTokens) {
         if (!isConfigured()) {
             throw new IllegalStateException("OPENAI_API_KEY가 설정되지 않았습니다");
@@ -84,6 +99,61 @@ public class OpenAiService {
 
         Map<?, ?> message = (Map<?, ?>) ((Map<?, ?>) choices.get(0)).get("message");
         return (String) message.get("content");
+    }
+
+    private String callWithSystem(String systemPrompt, String userPrompt, int maxTokens) {
+        if (!isConfigured()) {
+            throw new IllegalStateException("OPENAI_API_KEY가 설정되지 않았습니다");
+        }
+
+        Map<String, Object> body = Map.of(
+                "model",      model,
+                "max_tokens", maxTokens,
+                "messages",   List.of(
+                        Map.of("role", "system",  "content", systemPrompt),
+                        Map.of("role", "user",    "content", userPrompt)
+                )
+        );
+
+        Map<?, ?> response = webClient.post()
+                .uri("/v1/chat/completions")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        if (response == null) throw new RuntimeException("OpenAI API 응답 없음");
+        List<?> choices = (List<?>) response.get("choices");
+        if (choices == null || choices.isEmpty()) throw new RuntimeException("OpenAI API 응답 비어 있음");
+        Map<?, ?> message = (Map<?, ?>) ((Map<?, ?>) choices.get(0)).get("message");
+        return (String) message.get("content");
+    }
+
+    private List<ActionItemDto> parseStructured(String raw, String systemPrompt, String userPrompt) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            String json = extractJsonArray(raw);
+            return mapper.readValue(json, new TypeReference<List<ActionItemDto>>() {});
+        } catch (Exception first) {
+            // 1회 재시도
+            try {
+                String retried = callWithSystem(systemPrompt, userPrompt, 1200);
+                String json = extractJsonArray(retried);
+                return mapper.readValue(json, new TypeReference<List<ActionItemDto>>() {});
+            } catch (Exception second) {
+                throw new RuntimeException("AI 응답을 JSON으로 파싱할 수 없습니다: " + second.getMessage());
+            }
+        }
+    }
+
+    private String extractJsonArray(String raw) {
+        if (raw == null) throw new RuntimeException("AI 응답이 null입니다");
+        int start = raw.indexOf('[');
+        int end   = raw.lastIndexOf(']');
+        if (start < 0 || end < 0) throw new RuntimeException("JSON 배열을 찾을 수 없습니다");
+        return raw.substring(start, end + 1);
     }
 
     private String buildSummaryPrompt(String title, String purpose, String notes, String decisions) {

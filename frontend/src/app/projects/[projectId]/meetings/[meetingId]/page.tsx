@@ -5,7 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { Meeting, Attendee, UpdateMeetingPayload } from "@/types/meeting";
-import { CreateTaskPayload } from "@/types/task";
+import { CreateTaskPayload, TaskPriority } from "@/types/task";
+
+interface ActionItem {
+  title: string;
+  assignee: string | null;
+  due_date: string | null;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+}
 import {
   ArrowLeft,
   Calendar,
@@ -151,7 +158,7 @@ export default function MeetingDetailPage() {
 
   // AI 액션아이템 추출
   const [extracting,      setExtracting]      = useState(false);
-  const [aiItems,         setAiItems]         = useState<string[] | null>(null);
+  const [aiItems,         setAiItems]         = useState<ActionItem[] | null>(null);
   const [checkedAiItems,  setCheckedAiItems]  = useState<Set<number>>(new Set());
   const [aiItemAssignees, setAiItemAssignees] = useState<Record<number, string>>({});
   const [addingAiItems,   setAddingAiItems]   = useState(false);
@@ -376,12 +383,24 @@ export default function MeetingDetailPage() {
     setAiItems(null);
     setAiItemAssignees({});
     try {
-      await saveNow();  // 최신 내용 먼저 저장
-      const { data } = await api.post<{ items: string[] }>(
+      await saveNow();
+      const { data } = await api.post<{ items: ActionItem[] }>(
         `/projects/${projectId}/meetings/${meetingId}/ai/extract-actions`,
       );
       setAiItems(data.items);
+      // 체크박스 전체 선택
       setCheckedAiItems(new Set(data.items.map((_, i) => i)));
+      // AI가 제안한 담당자를 이름으로 멤버 목록에서 매칭해 pre-fill
+      const preAssign: Record<number, string> = {};
+      data.items.forEach((item, i) => {
+        if (item.assignee) {
+          const matched = members.find(
+            (m) => m.name === item.assignee || m.name.includes(item.assignee!)
+          );
+          if (matched) preAssign[i] = matched.userId;
+        }
+      });
+      setAiItemAssignees(preAssign);
       setAiItemsOpen(true);
       showToast(`액션아이템 ${data.items.length}개가 추출되었습니다`);
     } catch (err: unknown) {
@@ -399,15 +418,22 @@ export default function MeetingDetailPage() {
     try {
       await Promise.all(
         aiItems
-          .map((title, i) => ({ title, i }))
+          .map((item, i) => ({ item, i }))
           .filter(({ i }) => checkedAiItems.has(i))
-          .map(({ title, i }) =>
-            api.post(`/projects/${projectId}/meetings/${meetingId}/action-items`, {
-              title,
+          .map(({ item, i }) => {
+            const payload: CreateTaskPayload = {
+              title: item.title,
+              priority: item.priority as TaskPriority,
+              dueDate: item.due_date ?? undefined,
               assigneeIds: aiItemAssignees[i] ? [aiItemAssignees[i]] : [],
-            }),
-          ),
+            };
+            return api.post(
+              `/projects/${projectId}/meetings/${meetingId}/action-items`,
+              payload,
+            );
+          }),
       );
+      showToast(`${checkedAiItems.size}개 태스크가 생성되었습니다`);
       setAiItems(null);
       setCheckedAiItems(new Set());
       setAiItemAssignees({});
@@ -723,7 +749,7 @@ export default function MeetingDetailPage() {
                 <div className="relative group">
                   <button
                     onClick={handleAiExtract}
-                    disabled={extracting}
+                    disabled={extracting || (!editNotes.trim() && !editDecisions.trim())}
                     className="flex items-center gap-1.5 text-xs text-bb-primary hover:text-bb-primary-h
                                px-3 py-1.5 rounded-lg border border-bb-primary/30 hover:border-bb-primary/50
                                bg-bb-primary/5 hover:bg-bb-primary/10 transition-all disabled:opacity-50"
@@ -783,7 +809,7 @@ export default function MeetingDetailPage() {
                         {aiItems.map((item, i) => (
                           <div
                             key={i}
-                            className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
+                            className={`flex items-start gap-3 p-2.5 rounded-lg transition-colors ${
                               checkedAiItems.has(i) ? "bg-bb-surface2/50" : "opacity-50"
                             }`}
                           >
@@ -791,9 +817,25 @@ export default function MeetingDetailPage() {
                               type="checkbox"
                               checked={checkedAiItems.has(i)}
                               onChange={() => toggleAiItem(i)}
-                              className="w-4 h-4 rounded accent-indigo-500 shrink-0"
+                              className="w-4 h-4 rounded accent-indigo-500 shrink-0 mt-0.5"
                             />
-                            <span className="text-sm text-bb-text flex-1">{item}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm text-bb-text">{item.title}</span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                  item.priority === "HIGH"
+                                    ? "bg-red-500/15 text-red-400"
+                                    : item.priority === "MEDIUM"
+                                    ? "bg-amber-500/15 text-amber-400"
+                                    : "bg-slate-500/15 text-slate-400"
+                                }`}>
+                                  {item.priority === "HIGH" ? "높음" : item.priority === "MEDIUM" ? "보통" : "낮음"}
+                                </span>
+                                {item.due_date && (
+                                  <span className="text-[10px] text-bb-text2">{item.due_date}</span>
+                                )}
+                              </div>
+                            </div>
                             {/* 담당자 선택 */}
                             <select
                               value={aiItemAssignees[i] ?? ""}

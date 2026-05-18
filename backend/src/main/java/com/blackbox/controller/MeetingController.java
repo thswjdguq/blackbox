@@ -44,11 +44,11 @@ public class MeetingController {
         throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
     }
 
-    private java.util.List<String> aiExtract(String notes, String decisions) {
+    private java.util.List<ActionItemDto> aiExtractStructured(String notes, String decisions) {
         if (claudeService.isConfigured()) {
-            return claudeService.extractActionItems(notes, decisions);
+            return claudeService.extractStructuredActionItems(notes, decisions);
         } else if (openAiService.isConfigured()) {
-            return openAiService.extractActionItems(notes, decisions);
+            return openAiService.extractStructuredActionItems(notes, decisions);
         }
         throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
     }
@@ -142,7 +142,7 @@ public class MeetingController {
             @PathVariable UUID meetingId,
             @AuthenticationPrincipal User user) {
         MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
-        List<String> items = aiExtract(meeting.notes(), meeting.decisions());
+        List<ActionItemDto> items = aiExtractStructured(meeting.notes(), meeting.decisions());
         return ResponseEntity.ok(new AiActionItemsResponse(items));
     }
 

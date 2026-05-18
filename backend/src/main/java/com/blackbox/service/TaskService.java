@@ -8,6 +8,8 @@ import com.blackbox.repository.*;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
@@ -27,6 +29,7 @@ public class TaskService {
     private final NotionService notionService;
     private final AlertService alertService;
     private final DiscordNotificationService discordService;
+    private final ScoreService scoreService;
     private final EntityManager entityManager;
 
     public TaskService(TaskRepository taskRepository,
@@ -38,6 +41,7 @@ public class TaskService {
                        NotionService notionService,
                        AlertService alertService,
                        DiscordNotificationService discordService,
+                       ScoreService scoreService,
                        EntityManager entityManager) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
@@ -48,6 +52,7 @@ public class TaskService {
         this.notionService = notionService;
         this.alertService = alertService;
         this.discordService = discordService;
+        this.scoreService = scoreService;
         this.entityManager = entityManager;
     }
 
@@ -163,6 +168,13 @@ public class TaskService {
                     "{\"taskId\":\"" + task.getId() + "\",\"title\":\"" + escapeJson(task.getTitle()) + "\",\"completedAt\":\"" + task.getCompletedAt() + "\"}");
             alertService.reevaluate(user, project);
             discordService.notifyTaskCompleted(task, user, project);
+            UUID projectIdForScore = project.getId();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    scoreService.recalculateAsync(projectIdForScore);
+                }
+            });
         } else {
             if (!"DONE".equals(req.status())) task.setCompletedAt(null);
             taskRepository.save(task);

@@ -5,6 +5,7 @@ import com.blackbox.entity.*;
 import com.blackbox.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -130,6 +131,17 @@ public class ScoreService {
         alertService.checkAlerts(project, members, savedScores);
 
         return savedScores.stream().map(ScoreResponse::from).toList();
+    }
+
+    // ── 태스크 완료 이벤트용 비동기 재계산 ─────────────────────────────────
+
+    @Async
+    public void recalculateAsync(UUID projectId) {
+        try {
+            recalculate(projectId);
+        } catch (Exception e) {
+            log.warn("Async score recalculation failed for project {}: {}", projectId, e.getMessage());
+        }
     }
 
     // ── 조회 ──────────────────────────────────────────────────────────────

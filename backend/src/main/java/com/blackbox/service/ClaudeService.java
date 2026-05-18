@@ -1,5 +1,8 @@
 package com.blackbox.service;
 
+import com.blackbox.dto.ActionItemDto;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -39,7 +42,20 @@ public class ClaudeService {
         return callClaude(prompt, 1500);
     }
 
-    // ── AI 액션아이템 추출 ────────────────────────────────────────────────────
+    // ── AI 액션아이템 추출 (구조화) ──────────────────────────────────────────
+
+    public List<ActionItemDto> extractStructuredActionItems(String notes, String decisions) {
+        String systemPrompt =
+            "너는 회의록에서 액션아이템을 추출하는 assistant야. " +
+            "반드시 JSON 배열만 반환하고 다른 텍스트는 절대 포함하지 마.";
+        String userPrompt =
+            "아래 회의록에서 액션아이템을 추출해줘. " +
+            "각 항목은 {\"title\": \"할 일 제목\", \"assignee\": \"담당자 이름 또는 null\", " +
+            "\"due_date\": \"YYYY-MM-DD 또는 null\", \"priority\": \"HIGH/MEDIUM/LOW\"} 형식으로.\n\n" +
+            "회의록:\n" + nvl(notes) + "\n\n결정사항:\n" + nvl(decisions);
+        String raw = callClaudeWithSystem(systemPrompt, userPrompt, 1200);
+        return parseStructured(raw, systemPrompt, userPrompt);
+    }
 
     public List<String> extractActionItems(String notes, String decisions) {
         String prompt = buildExtractPrompt(notes, decisions);
@@ -54,7 +70,6 @@ public class ClaudeService {
 
     // ── internal ─────────────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private String callClaude(String userPrompt, int maxTokens) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("CLAUDE_API_KEY가 설정되지 않았습니다");
@@ -82,6 +97,57 @@ public class ClaudeService {
 
         Map<?, ?> first = (Map<?, ?>) content.get(0);
         return (String) first.get("text");
+    }
+
+    private String callClaudeWithSystem(String systemPrompt, String userPrompt, int maxTokens) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("CLAUDE_API_KEY가 설정되지 않았습니다");
+        }
+
+        Map<String, Object> body = Map.of(
+                "model",      model,
+                "max_tokens", maxTokens,
+                "system",     systemPrompt,
+                "messages",   List.of(Map.of("role", "user", "content", userPrompt))
+        );
+
+        Map<?, ?> response = webClient.post()
+                .uri("/v1/messages")
+                .header("x-api-key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        if (response == null) throw new RuntimeException("Claude API 응답 없음");
+        List<?> content = (List<?>) response.get("content");
+        if (content == null || content.isEmpty()) throw new RuntimeException("Claude API 응답 비어 있음");
+        return (String) ((Map<?, ?>) content.get(0)).get("text");
+    }
+
+    private List<ActionItemDto> parseStructured(String raw, String systemPrompt, String userPrompt) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            String json = extractJsonArray(raw);
+            return mapper.readValue(json, new TypeReference<List<ActionItemDto>>() {});
+        } catch (Exception first) {
+            try {
+                String retried = callClaudeWithSystem(systemPrompt, userPrompt, 1200);
+                String json = extractJsonArray(retried);
+                return mapper.readValue(json, new TypeReference<List<ActionItemDto>>() {});
+            } catch (Exception second) {
+                throw new RuntimeException("AI 응답을 JSON으로 파싱할 수 없습니다: " + second.getMessage());
+            }
+        }
+    }
+
+    private String extractJsonArray(String raw) {
+        if (raw == null) throw new RuntimeException("AI 응답이 null입니다");
+        int start = raw.indexOf('[');
+        int end   = raw.lastIndexOf(']');
+        if (start < 0 || end < 0) throw new RuntimeException("JSON 배열을 찾을 수 없습니다");
+        return raw.substring(start, end + 1);
     }
 
     private String buildSummaryPrompt(String title, String purpose, String notes, String decisions) {
