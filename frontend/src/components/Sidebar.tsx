@@ -16,9 +16,167 @@ import {
   Settings,
   CalendarClock,
   UserCircle,
+  Bell,
+  AlertTriangle,
+  Zap,
+  TrendingDown,
+  ShieldAlert,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
+import api from "@/lib/api";
+import { Alert } from "@/types/vault";
+
+// ── 알림 유틸 ──────────────────────────────────────────────────────────────
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1)  return "방금";
+  if (mins < 60) return `${mins}분 전`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}시간 전`;
+  return `${Math.floor(hrs / 24)}일 전`;
+}
+
+const ALERT_CFG = {
+  FREE_RIDE: { label: "무임승차",  color: "text-amber-400",  bg: "bg-amber-500/15",  Icon: TrendingDown  },
+  OVERLOAD:  { label: "과부하",    color: "text-orange-400", bg: "bg-orange-500/15", Icon: Zap           },
+  DROPOUT:   { label: "이탈 감지", color: "text-red-400",    bg: "bg-red-500/15",    Icon: AlertTriangle },
+  TAMPER:    { label: "파일 변조", color: "text-purple-400", bg: "bg-purple-500/15", Icon: ShieldAlert   },
+} as const;
+
+// ── 알림 벨 컴포넌트 ────────────────────────────────────────────────────────
+
+function NotificationBell({ projectId }: { projectId: string }) {
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [open,   setOpen]   = useState(false);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const res = await api.get<Alert[]>(`/projects/${projectId}/alerts`);
+      setAlerts(res.data);
+    } catch { /* 벨은 비핵심 — 실패해도 무시 */ }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchAlerts();
+    const id = setInterval(fetchAlerts, 30_000);
+    return () => clearInterval(id);
+  }, [fetchAlerts]);
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const handleMarkRead = (alert: Alert) => {
+    if (!alert.isRead) {
+      api.patch(`/projects/${projectId}/alerts/${alert.id}/read`)
+        .then(() => setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, isRead: true } : a)))
+        .catch(() => {});
+    }
+    setOpen(false);
+  };
+
+  const unread    = alerts.filter(a => !a.isRead).length;
+  const displayed = alerts.slice(0, 10);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      {/* 벨 버튼 */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="relative p-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2 transition-colors"
+        aria-label="알림"
+      >
+        <Bell size={15} />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5
+                           bg-red-500 rounded-full text-[10px] font-bold text-white
+                           flex items-center justify-center leading-none">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      {/* 드롭다운 */}
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-80
+                        bg-bb-surface border border-bb-border rounded-xl
+                        shadow-2xl z-50 overflow-hidden">
+          {/* 헤더 */}
+          <div className="px-4 py-3 border-b border-bb-border flex items-center justify-between">
+            <span className="text-sm font-semibold text-bb-text">알림</span>
+            {unread > 0 && (
+              <span className="text-xs text-bb-text2">{unread}개 읽지 않음</span>
+            )}
+          </div>
+
+          {/* 목록 */}
+          <div className="max-h-80 overflow-y-auto">
+            {displayed.length === 0 ? (
+              <div className="py-10 text-center text-sm text-bb-text2">
+                새로운 알림이 없습니다
+              </div>
+            ) : (
+              displayed.map((alert) => {
+                const cfg = ALERT_CFG[alert.alertType as keyof typeof ALERT_CFG] ?? ALERT_CFG.FREE_RIDE;
+                return (
+                  <button
+                    key={alert.id}
+                    onClick={() => handleMarkRead(alert)}
+                    className={`w-full text-left px-4 py-3 transition-colors
+                                border-b border-bb-border/40 last:border-0
+                                hover:bg-bb-bg/60
+                                ${!alert.isRead ? "bg-bb-bg/30" : ""}`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      {/* 타입 배지 */}
+                      <span className={`mt-0.5 shrink-0 text-[10px] font-semibold
+                                        px-1.5 py-0.5 rounded
+                                        ${cfg.color} ${cfg.bg}`}>
+                        {cfg.label}
+                      </span>
+                      {/* 메시지 + 시간 */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-bb-text leading-relaxed">{alert.message}</p>
+                        <p className="text-[10px] text-bb-text2 mt-1">{timeAgo(alert.createdAt)}</p>
+                      </div>
+                      {/* 읽지 않음 점 */}
+                      {!alert.isRead && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-bb-primary shrink-0 mt-1.5" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* 전체 보기 */}
+          <div className="px-4 py-2.5 border-t border-bb-border">
+            <Link
+              href={`/projects/${projectId}/analytics`}
+              onClick={() => setOpen(false)}
+              className="block w-full text-xs text-bb-text2 hover:text-bb-primary
+                         transition-colors text-center py-1"
+            >
+              전체 보기 →
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface SidebarProps {
   hasProjects?: boolean;
@@ -91,17 +249,18 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   return (
     <>
       <aside className="w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-30">
-        {/* 로고 */}
-        <div
-          className="px-6 py-5 border-b border-bb-border cursor-pointer hover:bg-bb-surface2 transition-colors"
-          onClick={() => router.push("/dashboard")}
-        >
-          <div className="flex items-center gap-2">
+        {/* 로고 + 알림 벨 */}
+        <div className="px-6 py-5 border-b border-bb-border flex items-center justify-between">
+          <div
+            className="flex items-center gap-2 cursor-pointer hover:opacity-75 transition-opacity"
+            onClick={() => router.push("/dashboard")}
+          >
             <div className="w-8 h-8 rounded-lg bg-bb-primary/10 flex items-center justify-center">
               <Shield size={16} className="text-bb-primary" />
             </div>
             <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
           </div>
+          {currentProjectId && <NotificationBell projectId={currentProjectId} />}
         </div>
 
         {/* 네비게이션 */}
