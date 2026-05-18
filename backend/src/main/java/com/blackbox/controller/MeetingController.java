@@ -160,10 +160,10 @@ public class MeetingController {
         String aiSummary = (body != null) ? body.get("aiSummary") : null;
 
         Meeting meeting = meetingService.getRawMeeting(projectId, meetingId, user);
-        String pageUrl = notionService.exportMeeting(meeting, aiSummary);
-        meetingService.saveNotionInfo(projectId, meetingId, pageUrl, user);
+        NotionService.NotionExportResult result = notionService.exportMeeting(meeting, aiSummary);
+        meetingService.saveNotionInfo(projectId, meetingId, result.pageId(), user);
 
-        return ResponseEntity.ok(new NotionExportResponse(pageUrl));
+        return ResponseEntity.ok(new NotionExportResponse(result.pageUrl()));
     }
 
     // ── Notion 캘린더 동기화 ─────────────────────────────────────────────────

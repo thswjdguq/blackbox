@@ -190,7 +190,7 @@ function FileGroup({
           {!hasTamper && (
             <span className="flex items-center gap-1 text-xs text-green-400">
               <CheckCircle2 size={12} />
-              무결성 확인
+              변경 없음
             </span>
           )}
           {open ? (
@@ -292,7 +292,7 @@ function UploadZone({ projectId, onUploaded }: UploadZoneProps) {
                 파일을 드래그하거나 클릭하여 업로드
               </p>
               <p className="text-xs text-bb-text2 mt-1">
-                SHA-256 해시가 자동으로 생성되어 변조 여부를 추적합니다
+                SHA-256 해시가 자동으로 생성되어 파일 변경 내역을 추적합니다
               </p>
             </div>
           </div>
@@ -420,7 +420,7 @@ export default function VaultPage() {
               Hash Vault
             </h1>
             <p className="text-sm text-bb-text2 mt-1">
-              파일 무결성을 SHA-256 해시로 추적합니다
+              파일 변경 내역을 SHA-256 해시로 추적합니다
             </p>
           </div>
         </div>
@@ -459,7 +459,7 @@ export default function VaultPage() {
           {[
             { label: "등록 파일", value: uniqueFiles, color: "text-indigo-400", icon: Files },
             { label: "전체 버전", value: totalVersions, color: "text-bb-text", icon: Hash },
-            { label: "변조 감지", value: tamperFiles, color: tamperFiles > 0 ? "text-red-400" : "text-green-400", icon: AlertTriangle },
+            { label: "해시 변경", value: tamperFiles, color: tamperFiles > 0 ? "text-amber-400" : "text-green-400", icon: AlertTriangle },
           ].map(({ label, value, color, icon: Icon }) => (
             <div key={label} className="bg-bb-surface border border-bb-border rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">

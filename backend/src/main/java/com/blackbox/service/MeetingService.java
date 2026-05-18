@@ -34,6 +34,7 @@ public class MeetingService {
     private final ActivityLogService activityLogService;
     private final AlertService alertService;
     private final DiscordNotificationService discordService;
+    private final NotionService notionService;
     private final EntityManager entityManager;
 
     public MeetingService(MeetingRepository meetingRepository,
@@ -45,6 +46,7 @@ public class MeetingService {
                           ActivityLogService activityLogService,
                           AlertService alertService,
                           DiscordNotificationService discordService,
+                          NotionService notionService,
                           EntityManager entityManager) {
         this.meetingRepository = meetingRepository;
         this.meetingAttendeeRepository = meetingAttendeeRepository;
@@ -55,6 +57,7 @@ public class MeetingService {
         this.activityLogService = activityLogService;
         this.alertService = alertService;
         this.discordService = discordService;
+        this.notionService = notionService;
         this.entityManager = entityManager;
     }
 
@@ -143,7 +146,21 @@ public class MeetingService {
     public void deleteMeeting(UUID projectId, UUID meetingId, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireLeader(project, user);
-        meetingRepository.delete(findMeeting(meetingId, project));
+        Meeting meeting = findMeeting(meetingId, project);
+
+        // Notion 페이지 아카이브 (실패해도 DB 삭제는 진행)
+        String notionPageId = meeting.getNotionPageId();
+        if (notionPageId != null && !notionPageId.isBlank()
+                && !notionPageId.startsWith("http")
+                && notionService.isConfigured()) {
+            try {
+                notionService.archivePage(notionPageId);
+            } catch (Exception e) {
+                // 로그는 NotionService 내부에서 처리
+            }
+        }
+
+        meetingRepository.delete(meeting);
     }
 
     // ── 체크인 코드 재생성 ──────────────────────────────────────────────────
@@ -270,11 +287,11 @@ public class MeetingService {
     // ── Notion 동기화 정보 저장 ───────────────────────────────────────────
 
     @Transactional
-    public void saveNotionInfo(UUID projectId, UUID meetingId, String pageUrl, User user) {
+    public void saveNotionInfo(UUID projectId, UUID meetingId, String pageId, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireMember(project, user);
         Meeting meeting = findMeeting(meetingId, project);
-        meeting.setNotionPageId(pageUrl);
+        meeting.setNotionPageId(pageId);  // URL이 아닌 실제 Notion page ID 저장
         meeting.setNotionSyncedAt(OffsetDateTime.now());
         meetingRepository.save(meeting);
     }
