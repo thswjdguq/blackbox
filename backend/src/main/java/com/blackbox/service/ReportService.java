@@ -12,6 +12,7 @@ import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
+import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.ColumnText;
 import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfPageEventHelper;
@@ -34,6 +35,19 @@ import java.util.UUID;
 public class ReportService {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    // ── 한글 폰트 (NanumGothic, classpath 임베드) ─────────────────────────────
+    private static final BaseFont NANUM;
+    static {
+        try {
+            NANUM = BaseFont.createFont(
+                    "/fonts/NanumGothic.ttf",
+                    BaseFont.IDENTITY_H,
+                    BaseFont.EMBEDDED);
+        } catch (Exception e) {
+            throw new ExceptionInInitializerError("NanumGothic 폰트 로드 실패: " + e.getMessage());
+        }
+    }
 
     // ── 색상 팔레트 ──────────────────────────────────────────────────────────
     private static final Color INDIGO      = new Color(99,  102, 241);
@@ -392,7 +406,7 @@ public class ReportService {
     }
 
     private Font font(int size, Color color, int style) {
-        Font f = new Font(Font.HELVETICA, size, style);
+        Font f = new Font(NANUM, size, style);
         f.setColor(color);
         return f;
     }
@@ -463,7 +477,7 @@ public class ReportService {
         @Override
         public void onEndPage(PdfWriter writer, Document document) {
             PdfContentByte cb = writer.getDirectContent();
-            Font f = new Font(Font.HELVETICA, 7, Font.NORMAL);
+            Font f = new Font(NANUM, 7, Font.NORMAL);
             f.setColor(new Color(148, 163, 184));
 
             ColumnText.showTextAligned(cb, Element.ALIGN_CENTER,
