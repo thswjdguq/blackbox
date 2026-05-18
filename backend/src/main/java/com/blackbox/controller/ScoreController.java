@@ -49,6 +49,15 @@ public class ScoreController {
         return ResponseEntity.ok(alertService.getAlerts(projectId));
     }
 
+    @PatchMapping("/alerts/{alertId}/read")
+    public ResponseEntity<Void> markAlertRead(
+            @PathVariable UUID projectId,
+            @PathVariable UUID alertId,
+            @AuthenticationPrincipal User user) {
+        alertService.markAsRead(projectId, alertId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/risk")
     public ResponseEntity<RiskResponse> getRisk(
             @PathVariable UUID projectId,

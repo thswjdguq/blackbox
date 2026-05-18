@@ -2,6 +2,8 @@ package com.blackbox.service;
 
 import com.blackbox.dto.AlertResponse;
 import com.blackbox.entity.*;
+import com.blackbox.exception.ForbiddenException;
+import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,19 @@ public class AlertService {
         this.memberRepository      = memberRepository;
         this.scoreRepository       = scoreRepository;
         this.discordService        = discordService;
+    }
+
+    // ── 읽음 처리 ─────────────────────────────────────────────────────────
+
+    @Transactional
+    public void markAsRead(UUID projectId, UUID alertId) {
+        Alert alert = alertRepository.findById(alertId)
+                .orElseThrow(() -> new NotFoundException("경보를 찾을 수 없습니다"));
+        if (!alert.getProject().getId().equals(projectId)) {
+            throw new ForbiddenException("접근 권한이 없습니다");
+        }
+        alert.setRead(true);
+        alertRepository.save(alert);
     }
 
     // ── 경보 조회 (활성만) ────────────────────────────────────────────────
