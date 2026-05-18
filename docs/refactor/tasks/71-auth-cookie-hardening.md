@@ -17,6 +17,19 @@
   - `frontend/src/app/login/page.tsx`
   - `frontend/src/components/Sidebar.tsx`
   - `frontend/src/types/auth.ts`
+  - `frontend/src/app/dashboard/page.tsx`
+  - `frontend/src/app/board/page.tsx`
+  - `frontend/src/app/meetings/page.tsx`
+  - `frontend/src/app/vault/page.tsx`
+  - `frontend/src/app/analytics/page.tsx`
+  - `frontend/src/app/profile/settings/page.tsx`
+  - `frontend/src/app/projects/[projectId]/page.tsx`
+  - `frontend/src/app/projects/[projectId]/board/page.tsx`
+  - `frontend/src/app/projects/[projectId]/meetings/page.tsx`
+  - `frontend/src/app/projects/[projectId]/meetings/[meetingId]/page.tsx`
+  - `frontend/src/app/projects/[projectId]/vault/page.tsx`
+  - `frontend/src/app/projects/[projectId]/analytics/page.tsx`
+  - `frontend/src/app/projects/[projectId]/schedule/page.tsx`
 - **메서드/함수/클래스 (이외 금지):**
   - `AuthController.login()` / `signup()` / `refresh()` / `logout()`
   - `AuthService.login()` / `signup()` / `refresh()` / `logout()` / `issueTokenPair()`
@@ -26,8 +39,8 @@
   - `login/page.tsx`의 mount auth 체크와 submit 핸들러
   - `Sidebar`의 logout 핸들러
   - `api.ts`의 request/response interceptor
-- **예상 변경 라인 수:** ~160~220줄
-- **예상 변경 파일 수:** 8~9개
+- **예상 변경 라인 수:** ~220~300줄
+- **예상 변경 파일 수:** 20~21개
 
 ## 3. 절대 건드리지 말 것 (Out of Scope)
 
@@ -37,6 +50,7 @@
 - DB 스키마/마이그레이션 추가
 - `layout.tsx`에 auth 로직을 다시 분산시키는 변경
 - 토큰 저장을 다른 브라우저 저장소로 옮기는 우회안
+- auth와 무관한 페이지 기능 변경
 
 ## 4. 컨텍스트 / 의도
 
