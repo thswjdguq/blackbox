@@ -178,7 +178,6 @@ export default function SchedulePage() {
   }, [projectId]);
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchStatus();
   }, [fetchStatus, router]);
 

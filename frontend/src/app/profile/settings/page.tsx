@@ -94,8 +94,6 @@ function ProfileSettingsContent() {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
-
     api.get<Profile>("/auth/profile")
       .then(({ data }) => { setProfile(data); setNameEdit(data.name); })
       .catch(() => router.replace("/login"));

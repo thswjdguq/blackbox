@@ -105,18 +105,6 @@ function AiSummaryPanel({ summary, onClose }: { summary: string; onClose: () => 
   );
 }
 
-// ── JWT에서 현재 유저 ID 파싱 ─────────────────────────────────────────
-function getCurrentUserId(): string | null {
-  try {
-    const token = localStorage.getItem("accessToken");
-    if (!token) return null;
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.sub as string;
-  } catch {
-    return null;
-  }
-}
-
 // ── 메인 페이지 ────────────────────────────────────────────────────────
 export default function MeetingDetailPage() {
   const params    = useParams();
@@ -126,6 +114,7 @@ export default function MeetingDetailPage() {
 
   const [meeting,   setMeeting]   = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState("");
 
@@ -183,14 +172,16 @@ export default function MeetingDetailPage() {
     setLoading(true);
     setError("");
     try {
-      const [meetRes, attenRes, memberRes] = await Promise.all([
+      const [meetRes, attenRes, memberRes, profileRes] = await Promise.all([
         api.get<Meeting>(`/projects/${projectId}/meetings/${meetingId}`),
         api.get<Attendee[]>(`/projects/${projectId}/meetings/${meetingId}/attendees`),
         api.get<{ userId: string; name: string; email: string }[]>(`/projects/${projectId}/members`),
+        api.get<{ id: string }>("/auth/profile"),
       ]);
       setMeeting(meetRes.data);
       setAttendees(attenRes.data);
       setMembers(memberRes.data);
+      setCurrentUserId(profileRes.data.id);
       setEditNotes(meetRes.data.notes ?? "");
       setEditDecisions(meetRes.data.decisions ?? "");
       // 이전에 저장된 AI 요약 / Notion URL 복원
@@ -208,7 +199,6 @@ export default function MeetingDetailPage() {
   }, [projectId, meetingId]);
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchAll();
   }, [fetchAll]);
 
@@ -472,7 +462,6 @@ export default function MeetingDetailPage() {
   if (!meeting) return null;
 
   const checkinCount  = attendees.filter((a) => a.checkedIn).length;
-  const currentUserId = getCurrentUserId();
   const isCreator     = currentUserId === meeting.createdBy;
   const myAttendee    = attendees.find((a) => a.userId === currentUserId);
   const isCheckedIn   = checkinDone || myAttendee?.checkedIn === true;

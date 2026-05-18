@@ -69,3 +69,4 @@ logs/
 
 # ===== 업로드 데이터 (Hash Vault 로컬 볼륨) =====
 data/
+*:Zone.Identifier
