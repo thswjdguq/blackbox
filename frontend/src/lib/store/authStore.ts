@@ -1,42 +1,24 @@
 import { create } from "zustand";
 
 interface AuthState {
-  accessToken: string | null;
-  refreshToken: string | null;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  isAuthenticated: boolean;
+  setTokens: () => void;
   clearTokens: () => void;
   initFromStorage: () => boolean;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
-  refreshToken: null,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  isAuthenticated: false,
 
-  setTokens: (accessToken, refreshToken) => {
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
-    set({ accessToken, refreshToken });
+  setTokens: () => {
+    set({ isAuthenticated: true });
   },
 
   clearTokens: () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    set({ accessToken: null, refreshToken: null });
+    set({ isAuthenticated: false });
   },
 
   initFromStorage: () => {
-    const accessToken = localStorage.getItem("accessToken");
-    const refreshToken = localStorage.getItem("refreshToken");
-    const hasTokens = Boolean(accessToken && refreshToken);
-
-    if (hasTokens) {
-      set({ accessToken, refreshToken });
-      return true;
-    }
-
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    set({ accessToken: null, refreshToken: null });
-    return false;
+    return get().isAuthenticated;
   },
 }));

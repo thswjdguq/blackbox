@@ -10,8 +10,6 @@ export default function VaultRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
-
     api.get<Project[]>("/projects").then(({ data }) => {
       if (data.length > 0) {
         router.replace(`/projects/${data[0].id}/vault`);

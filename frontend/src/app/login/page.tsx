@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Shield, Sun, Moon, Eye, EyeOff, LogIn } from "lucide-react";
+import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
 
 export default function LoginPage() {
@@ -14,7 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isDark, setIsDark] = useState(true);
-  const setTokens = useAuthStore.getState().setTokens;
+  const setTokens = useAuthStore((s) => s.setTokens);
 
   useEffect(() => {
     const theme = localStorage.getItem("theme") || "dark";
@@ -35,34 +36,18 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "이메일 또는 비밀번호가 올바르지 않습니다");
-      }
-
-      const data = await res.json();
-      setTokens(data.accessToken, data.refreshToken);
+      await api.post("/auth/login", { email, password });
+      setTokens();
       router.replace("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "로그인에 실패했습니다");
+      const message =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        (err instanceof Error ? err.message : "로그인에 실패했습니다");
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    const hasToken = useAuthStore.getState().initFromStorage();
-
-    if (hasToken) {
-      router.replace("/dashboard");
-    }
-  }, [router]);
 
   return (
     <div className="min-h-screen bg-bb-bg flex items-center justify-center p-4">

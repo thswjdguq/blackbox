@@ -243,6 +243,7 @@ API surface 변경이 없는 순수 내부 리팩토링은 문서 갱신 면제.
 - 인벤토리 작성 중 발견된 항목들로 채움
 - 형식: `7N-fix-<short-description>` (예: `70-fix-meeting-save-blank-string`)
 - 이 Task들은 `refactor:` 가 아니라 `fix:` 커밋
+- `71-auth-cookie-hardening` — JWT localStorage 제거, HttpOnly 쿠키 기반 인증/로그아웃 전환 (Task 70과 별도 브랜치/PR)
 
 ### 완료 조건
 

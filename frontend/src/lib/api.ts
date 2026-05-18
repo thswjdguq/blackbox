@@ -3,16 +3,8 @@ import { useAuthStore } from "@/lib/store/authStore";
 
 const api = axios.create({
   baseURL: "/api",
+  withCredentials: true,
   headers: { "Content-Type": "application/json" },
-});
-
-// 요청 인터셉터: 토큰 자동 첨부
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
 });
 
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -22,20 +14,21 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config as RetryConfig;
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original?._retry && original?.url !== "/auth/refresh") {
       original._retry = true;
-      const refreshToken = localStorage.getItem("refreshToken");
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post("/api/auth/refresh", { refreshToken });
-          useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
-          original.headers.Authorization = `Bearer ${data.accessToken}`;
-          return api(original);
-        } catch {
-          useAuthStore.getState().clearTokens();
+      try {
+        await api.post("/auth/refresh");
+        useAuthStore.getState().setTokens();
+        return api(original);
+      } catch {
+        useAuthStore.getState().clearTokens();
+        if (window.location.pathname !== "/login") {
           window.location.href = "/login";
         }
-      } else {
+      }
+    } else if (error.response?.status === 401 && original?.url === "/auth/refresh") {
+      useAuthStore.getState().clearTokens();
+      if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
     }

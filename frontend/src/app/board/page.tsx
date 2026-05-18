@@ -10,9 +10,6 @@ export default function BoardRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) { router.replace("/login"); return; }
-
     api.get<Project[]>("/projects").then(({ data }) => {
       if (data.length > 0) {
         router.replace(`/projects/${data[0].id}/board`);

@@ -18,6 +18,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
 
 interface SidebarProps {
@@ -82,10 +83,16 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
     }
   };
 
-  const handleLogout = () => {
-    clearTokens();
-    localStorage.removeItem("projectCount");
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // 서버 상태와 무관하게 클라이언트 auth 상태는 반드시 정리
+    } finally {
+      clearTokens();
+      localStorage.removeItem("projectCount");
+      router.replace("/login");
+    }
   };
 
   return (
