@@ -715,7 +715,6 @@ export default function MeetingsPage() {
   }, [projectId, router]);
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchMeetings();
   }, [fetchMeetings]);
 

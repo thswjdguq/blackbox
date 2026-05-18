@@ -77,8 +77,6 @@ export default function BoardPage() {
       router.replace("/dashboard");
       return;
     }
-    const token = localStorage.getItem("accessToken");
-    if (!token) { router.replace("/login"); return; }
     bootstrap();
     // 참여 중인 프로젝트 목록 로드
     api.get<ProjectInfo[]>("/projects").then(({ data }) => setAllProjects(data)).catch(() => {});

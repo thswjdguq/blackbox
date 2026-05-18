@@ -152,7 +152,6 @@ export default function ProjectHomePage() {
   const [downloading, setDownloading] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     setLoading(true);
     setError("");
     try {
@@ -188,12 +187,10 @@ export default function ProjectHomePage() {
     if (downloading) return;
     setDownloading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`/api/projects/${projectId}/evidence-package`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get(`/projects/${projectId}/evidence-package`, {
+        responseType: "blob",
       });
-      if (!res.ok) throw new Error("download failed");
-      const blob = await res.blob();
+      const blob = res.data as Blob;
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href     = url;

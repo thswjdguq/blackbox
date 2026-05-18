@@ -138,7 +138,6 @@ export default function AnalyticsPage() {
   }, [projectId, router]);
 
   useEffect(() => {
-    if (!localStorage.getItem("accessToken")) { router.replace("/login"); return; }
     fetchData();
   }, [fetchData]);
 

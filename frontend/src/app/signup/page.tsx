@@ -13,6 +13,7 @@ import {
   Users,
   GraduationCap,
 } from "lucide-react";
+import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
 
 export default function SignupPage() {
@@ -46,30 +47,19 @@ export default function SignupPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 409) {
-          throw new Error("이미 사용 중인 이메일입니다");
-        }
-        const fieldErrors = data.errors
-          ? Object.values(data.errors).join(", ")
-          : null;
-        throw new Error(
-          fieldErrors || data.detail || "회원가입에 실패했습니다"
-        );
-      }
-
-      const data = await res.json();
-      setTokens(data.accessToken, data.refreshToken);
-      router.push("/dashboard");
+      await api.post("/auth/signup", { email, name, password });
+      setTokens();
+      router.replace("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "회원가입에 실패했습니다");
+      const errorData = (err as { response?: { status?: number; data?: { detail?: string; errors?: Record<string, string> } } })?.response;
+      if (errorData?.status === 409) {
+        setError("이미 사용 중인 이메일입니다");
+      } else {
+        const fieldErrors = errorData?.data?.errors
+          ? Object.values(errorData.data.errors).join(", ")
+          : null;
+        setError(fieldErrors || errorData?.data?.detail || "회원가입에 실패했습니다");
+      }
     } finally {
       setLoading(false);
     }

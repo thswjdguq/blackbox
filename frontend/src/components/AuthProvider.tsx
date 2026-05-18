@@ -14,18 +14,21 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const pathname = usePathname();
 
   useEffect(() => {
+    const isPublicPath = pathname === "/login" || pathname === "/signup";
+
     const verifyAuth = async () => {
-      const hasToken = useAuthStore.getState().initFromStorage();
-
-      if (!hasToken) {
-        return;
-      }
-
       try {
         await api.get("/auth/profile");
+        useAuthStore.getState().setTokens();
+
+        if (isPublicPath) {
+          router.replace("/dashboard");
+        }
       } catch {
         useAuthStore.getState().clearTokens();
-        router.replace("/login");
+        if (!isPublicPath) {
+          router.replace("/login");
+        }
       }
     };
 
