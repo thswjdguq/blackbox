@@ -571,12 +571,35 @@ export default function MeetingDetailPage() {
             </div>
 
             {isCreator ? (
-              /* 방장: 코드 대형 표시 */
-              <div className="bg-bb-bg rounded-xl p-6 text-center">
-                <span className="font-mono text-4xl font-bold text-bb-primary tracking-[0.3em]">
-                  {meeting.checkinCode}
-                </span>
-                <p className="text-xs text-bb-text2 mt-2">팀원에게 이 코드를 공유해 출석을 확인하세요</p>
+              /* 방장: 코드 대형 표시 + 본인 체크인 버튼 */
+              <div className="space-y-3">
+                <div className="bg-bb-bg rounded-xl p-6 text-center">
+                  <span className="font-mono text-4xl font-bold text-bb-primary tracking-[0.3em]">
+                    {meeting.checkinCode}
+                  </span>
+                  <p className="text-xs text-bb-text2 mt-2">팀원에게 이 코드를 공유해 출석을 확인하세요</p>
+                </div>
+                {isCheckedIn ? (
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center">
+                    <p className="text-sm font-semibold text-green-400 flex items-center justify-center gap-2">
+                      <CheckCircle2 size={15} /> 내 출석 체크인 완료
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleCheckin}
+                    disabled={checkingIn}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4
+                               bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60
+                               text-white text-sm font-medium rounded-xl transition-all"
+                  >
+                    {checkingIn ? (
+                      <><Loader2 size={15} className="animate-spin" /> 체크인 중...</>
+                    ) : (
+                      <><CheckCircle2 size={15} /> 내 출석 체크인하기</>
+                    )}
+                  </button>
+                )}
               </div>
             ) : isCheckedIn ? (
               /* 참여자: 체크인 완료 */
