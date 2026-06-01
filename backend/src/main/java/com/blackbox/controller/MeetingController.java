@@ -4,6 +4,7 @@ import com.blackbox.dto.*;
 import com.blackbox.entity.User;
 import com.blackbox.entity.Meeting;
 import com.blackbox.service.ClaudeService;
+import com.blackbox.service.DiscordNotionNotifier;
 import com.blackbox.service.MeetingService;
 import com.blackbox.service.NotionService;
 import com.blackbox.service.OpenAiService;
@@ -19,19 +20,22 @@ import java.util.UUID;
 @RestController
 public class MeetingController {
 
-    private final MeetingService meetingService;
-    private final ClaudeService  claudeService;
-    private final OpenAiService  openAiService;
-    private final NotionService  notionService;
+    private final MeetingService       meetingService;
+    private final ClaudeService        claudeService;
+    private final OpenAiService        openAiService;
+    private final NotionService        notionService;
+    private final DiscordNotionNotifier discordNotionNotifier;
 
     public MeetingController(MeetingService meetingService,
                              ClaudeService claudeService,
                              OpenAiService openAiService,
-                             NotionService notionService) {
-        this.meetingService = meetingService;
-        this.claudeService  = claudeService;
-        this.openAiService  = openAiService;
-        this.notionService  = notionService;
+                             NotionService notionService,
+                             DiscordNotionNotifier discordNotionNotifier) {
+        this.meetingService        = meetingService;
+        this.claudeService         = claudeService;
+        this.openAiService         = openAiService;
+        this.notionService         = notionService;
+        this.discordNotionNotifier = discordNotionNotifier;
     }
 
     /** Claude → OpenAI 순으로 사용 가능한 AI 서비스 선택 */
@@ -170,6 +174,8 @@ public class MeetingController {
             result = notionService.exportMeeting(meeting, aiSummary);
         }
         meetingService.saveNotionInfo(projectId, meetingId, result.pageId(), user);
+
+        discordNotionNotifier.notifyExported(meeting, user.getName(), result.pageUrl(), projectId);
 
         return ResponseEntity.ok(new NotionExportResponse(result.pageUrl()));
     }
