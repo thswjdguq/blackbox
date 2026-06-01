@@ -187,13 +187,13 @@ export default function SchedulePage() {
     setRecError("");
     try {
       const connectedIds = members.filter((m) => m.connected).map((m) => m.userId);
-      const { data } = await api.post<{ recommendations: CalendarRecommendation[] }>(
+      const { data } = await api.post<{ recommendations: CalendarRecommendation[]; message?: string }>(
         `/calendar/recommend`,
         { projectId, targetDate: dateMode, attendeeIds: connectedIds }
       );
       setRecs(data.recommendations ?? []);
       if ((data.recommendations ?? []).length === 0) {
-        setRecError("적합한 시간대를 찾지 못했습니다. 날짜 범위를 변경해 보세요.");
+        setRecError(data.message ?? "적합한 시간대를 찾지 못했습니다. 날짜 범위를 변경해 보세요.");
       }
     } catch {
       setRecError("AI 추천 중 오류가 발생했습니다.");
@@ -406,14 +406,14 @@ export default function SchedulePage() {
           {(recs.length > 0 || recError) && (
             <div className="space-y-3">
               {recError && (
-                <p className="text-sm text-bb-text2 text-center py-4">{recError}</p>
+                <p className="text-sm text-bb-text text-center py-4">{recError}</p>
               )}
               {recs.map((rec) => (
                 <div
                   key={rec.rank}
                   className={`relative rounded-xl border p-5 transition-all ${
                     rec.rank === 1
-                      ? "border-indigo-500/50 bg-indigo-500/8"
+                      ? "border-indigo-500/50 bg-indigo-500/10"
                       : "border-bb-border bg-bb-surface"
                   }`}
                 >
@@ -426,13 +426,13 @@ export default function SchedulePage() {
 
                   <div className="flex items-start gap-3 mb-3">
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded shrink-0 ${
-                      rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-bb-surface2 text-bb-text2"
+                      rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-bb-surface2 text-bb-text"
                     }`}>
                       {rec.rank}위
                     </span>
                     <div>
                       <p className="text-sm font-semibold text-bb-text">{fmtRec(rec.time)}</p>
-                      <p className="text-xs text-bb-text2 mt-0.5">{rec.durationMinutes}분 · {rec.reason}</p>
+                      <p className="text-xs text-bb-text mt-0.5">{rec.durationMinutes}분 · {rec.reason}</p>
                     </div>
                   </div>
 

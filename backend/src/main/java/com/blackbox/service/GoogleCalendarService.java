@@ -167,7 +167,6 @@ public class GoogleCalendarService {
 
     @Transactional(readOnly = true)
     public CalendarRecommendResponse recommendMeetingTimes(CalendarRecommendRequest req, User currentUser) {
-        // 가용 시간 수집
         var project = projectRepo.findById(req.projectId())
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
@@ -176,34 +175,61 @@ public class GoogleCalendarService {
                 : memberRepo.findByProject(project).stream().map(pm -> pm.getUser()).collect(Collectors.toList());
 
         String targetDate = resolveTargetDate(req.targetDate());
-        LocalDate date = parseDate(targetDate);
-        String timeMin = date.atStartOfDay(ZoneId.of("Asia/Seoul")).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        String timeMax = date.plusDays(7).atStartOfDay(ZoneId.of("Asia/Seoul")).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        LocalDate startDate = parseDate(targetDate);
+        ZoneId kst = ZoneId.of("Asia/Seoul");
+        String timeMin = startDate.atStartOfDay(kst).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        String timeMax = startDate.plusDays(7).atStartOfDay(kst).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
-        // 연동된 팀원의 바쁜 시간 수집
-        List<String> busySummaries = new ArrayList<>();
-        List<String> connectedNames = new ArrayList<>();
+        // ── 1. 연동된 팀원 전체 바쁜 시간 수집 (구조화된 슬롯) ─────────────────
+        List<CalendarAvailabilityResponse.BusySlot> allBusy = new ArrayList<>();
         for (User m : targetMembers) {
             tokenRepo.findByUser(m).ifPresent(tok -> {
                 try {
                     String at = ensureFreshToken(tok);
-                    List<CalendarAvailabilityResponse.BusySlot> busy = fetchBusySlots(at, timeMin, timeMax, m.getName());
-                    connectedNames.add(m.getName());
-                    for (var slot : busy) {
-                        busySummaries.add(m.getName() + ": " + slot.start() + " ~ " + slot.end());
-                    }
+                    List<CalendarAvailabilityResponse.BusySlot> busy =
+                            fetchBusySlots(at, timeMin, timeMax, m.getName());
+                    allBusy.addAll(busy);
                 } catch (Exception ignored) {
-                    // 토큰 갱신하거나 freeBusy 호출 중 예외 발생 시
-                    // 해당 멤버를 조용히 스킵하고 나머지 진행
+                    // 해당 멤버 스킵 — 토큰 갱신 실패해도 나머지 진행
                 }
             });
         }
 
-        // 팀원 이름 목록
-        List<String> memberNames = targetMembers.stream().map(User::getName).collect(Collectors.toList());
+        // ── 2. 7일 범위 내 "전원 가능" 슬롯 계산 (바쁜 시간의 합집합 제거) ──────
+        List<String> freeSlotStrings = new ArrayList<>();
+        for (int dayOffset = 0; dayOffset < 7; dayOffset++) {
+            LocalDate day = startDate.plusDays(dayOffset);
 
-        // Claude 우선, 없으면 OpenAI 폴백
-        String prompt = buildRecommendPrompt(memberNames, busySummaries, req.projectDeadline(), targetDate);
+            // 해당 날짜에 걸리는 바쁜 슬롯만 필터 (start 기준 KST 날짜)
+            List<CalendarAvailabilityResponse.BusySlot> dayBusy = allBusy.stream()
+                    .filter(b -> {
+                        try {
+                            LocalDate slotDate = ZonedDateTime.parse(b.start())
+                                    .withZoneSameInstant(kst).toLocalDate();
+                            return slotDate.equals(day);
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+            List<CalendarAvailabilityResponse.FreeSlot> dayFree = computeFreeSlots(dayBusy, day);
+            for (CalendarAvailabilityResponse.FreeSlot slot : dayFree) {
+                freeSlotStrings.add(slot.start() + " ~ " + slot.end()
+                        + " (" + slot.durationMinutes() + "분 가능)");
+            }
+        }
+
+        // ── 3. 가능 슬롯 없으면 AI 호출 없이 조기 반환 ───────────────────────
+        if (freeSlotStrings.isEmpty()) {
+            return new CalendarRecommendResponse(List.of(),
+                    "해당 기간에 전원이 가능한 시간이 없습니다. 날짜 범위를 변경해 주세요.");
+        }
+
+        // ── 4. AI 호출 — 가능 슬롯 목록만 후보로 전달 ──────────────────────────
+        List<String> memberNames = targetMembers.stream().map(User::getName).collect(Collectors.toList());
+        String prompt = buildFreeSlotPrompt(memberNames, freeSlotStrings, req.projectDeadline(), targetDate);
+
         String raw;
         if (claudeService.isConfigured()) {
             raw = claudeService.rawCall(prompt, 1000);
@@ -393,6 +419,29 @@ public class GoogleCalendarService {
                 .bodyToMono(Map.class)
                 .onErrorComplete()
                 .block();
+    }
+
+    /** 전원 가능 슬롯 목록만 후보로 전달 — AI가 목록 외 시간 추천 불가 */
+    private String buildFreeSlotPrompt(List<String> memberNames, List<String> freeSlots,
+                                       String deadline, String targetDate) {
+        String freeStr    = String.join("\n", freeSlots);
+        String deadlineStr = deadline != null ? deadline : "미정";
+        return """
+                팀원 전원이 비어 있는 시간 목록이 아래에 있다.
+                반드시 이 목록 중에서만 회의하기 좋은 시간 최대 3개를 골라서 추천해줘.
+                목록에 없는 시간은 절대 추천하지 말 것.
+                각 추천에 이유도 같이 설명해줘.
+
+                팀원: %s
+                프로젝트 마감일: %s
+                기준 날짜: %s
+
+                전원 가능한 시간 (이 중에서만 선택할 것):
+                %s
+
+                반드시 아래 JSON 형식으로만 응답해. 다른 텍스트 없이 JSON만:
+                {"recommendations":[{"time":"2025-01-20T14:00:00+09:00","durationMinutes":60,"reason":"이유"},{"time":"...","durationMinutes":60,"reason":"..."},{"time":"...","durationMinutes":60,"reason":"..."}]}
+                """.formatted(String.join(", ", memberNames), deadlineStr, targetDate, freeStr);
     }
 
     private String buildRecommendPrompt(List<String> memberNames, List<String> busySlots,
