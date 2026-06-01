@@ -48,7 +48,9 @@ service_account*.json
 *credentials*.json
 
 # ===== Claude Code 내부 =====
-.claude/
+.claude/*
+# 단, 공유 서브에이전트 정의는 추적 (repo canonical — DEC-WORKFLOW-009)
+!.claude/agents/
 
 # ===== OS =====
 .DS_Store
