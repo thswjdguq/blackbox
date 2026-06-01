@@ -84,8 +84,30 @@ public class NotionService {
             String pageId = createPage(title, blocks);
             return new NotionExportResult(pageId, toUrl(pageId));
         } else {
+            // 서버 키로 접근 가능한지 먼저 확인 — 다른 유저 워크스페이스 페이지이면 새로 생성
+            if (!isPageAccessibleWithServerKey(existingPageId)) {
+                log.info("기존 Notion 페이지가 서버 키로 접근 불가 (다른 유저 워크스페이스) — 새 페이지 생성: {}", existingPageId);
+                String pageId = createPage(title, blocks);
+                return new NotionExportResult(pageId, toUrl(pageId));
+            }
             updatePage(existingPageId, title, blocks);
             return new NotionExportResult(existingPageId, toUrl(existingPageId));
+        }
+    }
+
+    /** 서버 API Key로 해당 페이지에 접근 가능한지 확인 */
+    @SuppressWarnings("unchecked")
+    private boolean isPageAccessibleWithServerKey(String pageId) {
+        try {
+            Map<String, Object> response = webClient.get()
+                    .uri("/v1/pages/" + pageId)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+            return response != null;
+        } catch (Exception e) {
+            return false;
         }
     }
 
