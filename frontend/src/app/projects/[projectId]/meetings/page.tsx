@@ -474,22 +474,45 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                             : "border-slate-700 bg-slate-800/40 hover:bg-slate-800/70"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-2">
+                        {/* 헤더: 순위 + 시간 + 점수 배지 */}
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="flex items-center gap-2.5">
                             {selectedRank === rec.rank ? (
                               <CheckCircle2 size={15} className="text-indigo-400 shrink-0" />
                             ) : (
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-700 text-slate-400"
+                                rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-700 text-slate-300"
                               }`}>{rec.rank}위</span>
                             )}
                             <div>
                               <div className="text-xs font-semibold text-slate-200">{fmtRec(rec.time)}</div>
-                              <div className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{rec.reason}</div>
+                              <div className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">{rec.reason}</div>
                             </div>
                           </div>
-                          <span className="text-[10px] text-slate-500 shrink-0 mt-0.5">{rec.durationMinutes}분</span>
+                          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                              (rec.score ?? 100) >= 90
+                                ? "bg-green-500/15 text-green-400 border-green-500/30"
+                                : (rec.score ?? 100) >= 60
+                                ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                : "bg-red-500/15 text-red-400 border-red-500/30"
+                            }`}>
+                              추천도 {rec.score ?? 100}
+                            </span>
+                            <span className="text-[10px] text-slate-500">{rec.durationMinutes}분</span>
+                          </div>
                         </div>
+                        {/* needsConfirm 경고 / 전원 가능 */}
+                        {rec.needsConfirm ? (
+                          <div className="flex items-center gap-1.5 mt-1 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1">
+                            <span className="text-[10px] text-amber-400">⚠️ {rec.softBlockMembers?.join(", ")}님 종일 일정 있음 — 직접 확인 필요</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 mt-1">
+                            <CheckCircle2 size={10} className="text-green-400" />
+                            <span className="text-[10px] text-green-400">전원 가능</span>
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>

@@ -7,6 +7,8 @@ import com.blackbox.repository.GoogleCalendarTokenRepository;
 import com.blackbox.repository.ProjectMemberRepository;
 import com.blackbox.repository.ProjectRepository;
 import com.blackbox.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class GoogleCalendarService {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleCalendarService.class);
 
     private static final String GOOGLE_AUTH_URL   = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String GOOGLE_TOKEN_URL  = "https://oauth2.googleapis.com/token";
@@ -186,8 +190,9 @@ public class GoogleCalendarService {
         String targetDate = resolveTargetDate(req.targetDate());
         LocalDate startDate = parseDate(targetDate);
         ZoneId kst = ZoneId.of("Asia/Seoul");
-        String timeMin = startDate.atStartOfDay(kst).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        String timeMax = startDate.plusDays(7).atStartOfDay(kst).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        // UTC(Z) 형식 사용 — +09:00의 '+' 가 URL 쿼리에서 공백으로 해석되는 문제 방지
+        String timeMin = startDate.atStartOfDay(kst).toInstant().toString();
+        String timeMax = startDate.plusDays(7).atStartOfDay(kst).toInstant().toString();
 
         // ── 1. 연동된 팀원 이벤트 수집 (allDay 여부 포함) ───────────────────────
         List<CalendarEventInfo> allEvents = new ArrayList<>();
@@ -433,6 +438,7 @@ public class GoogleCalendarService {
     private List<CalendarEventInfo> fetchCalendarEventsWithTypes(
             String accessToken, String timeMin, String timeMax, String memberName) {
 
+        // + 기호가 포함된 timeMin/timeMax를 URL-safe하게 인코딩
         String uri = UriComponentsBuilder
                 .fromHttpUrl(GOOGLE_CAL_URL + "/calendars/primary/events")
                 .queryParam("timeMin", timeMin)
@@ -440,7 +446,9 @@ public class GoogleCalendarService {
                 .queryParam("singleEvents", "true")
                 .queryParam("orderBy", "startTime")
                 .queryParam("maxResults", "250")
-                .build().toUriString();
+                .build()
+                .encode()          // +09:00 → %2B09%3A00 명시적 인코딩
+                .toUriString();
 
         Map<?, ?> resp = webClient.get()
                 .uri(uri)
@@ -454,12 +462,15 @@ public class GoogleCalendarService {
 
         List<CalendarEventInfo> events = new ArrayList<>();
         ZoneId kst = ZoneId.of("Asia/Seoul");
-        try {
-            List<?> items = (List<?>) resp.get("items");
-            if (items == null) return List.of();
-            for (Object obj : items) {
+
+        List<?> items = (List<?>) resp.get("items");
+        if (items == null) return List.of();
+
+        for (Object obj : items) {
+            try {
                 Map<?, ?> event = (Map<?, ?>) obj;
                 if ("cancelled".equals(event.get("status"))) continue;
+                String summary = (String) event.get("summary");
                 Map<?, ?> start = (Map<?, ?>) event.get("start");
                 Map<?, ?> end   = (Map<?, ?>) event.get("end");
                 if (start == null || end == null) continue;
@@ -474,14 +485,18 @@ public class GoogleCalendarService {
                     events.add(new CalendarEventInfo(memberName, false,
                             ZonedDateTime.parse(startDT).withZoneSameInstant(kst),
                             ZonedDateTime.parse(endDT).withZoneSameInstant(kst)));
-                } else if (startDate != null && endDate != null) {
-                    // SOFT BLOCK: 종일 일정 (endDate는 exclusive)
+                } else if (startDate != null) {
+                    // SOFT BLOCK: 종일 일정 (endDate는 exclusive, 없으면 당일+1)
+                    String resolvedEnd = (endDate != null) ? endDate
+                            : LocalDate.parse(startDate).plusDays(1).toString();
                     events.add(new CalendarEventInfo(memberName, true,
                             LocalDate.parse(startDate).atStartOfDay(kst),
-                            LocalDate.parse(endDate).atStartOfDay(kst)));
+                            LocalDate.parse(resolvedEnd).atStartOfDay(kst)));
                 }
+            } catch (Exception e) {
+                log.warn("[CAL-DEBUG] {} 이벤트 파싱 실패 (건너뜀): {}", memberName, e.getMessage());
             }
-        } catch (Exception ignored) {}
+        }
         return events;
     }
 
