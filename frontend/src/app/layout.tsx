@@ -6,6 +6,7 @@ import PageProgress from "@/components/PageProgress";
 export const metadata: Metadata = {
   title: "Team Blackbox",
   description: "팀 프로젝트 기여도 자동 증빙 플랫폼",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({
