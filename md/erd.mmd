@@ -1,0 +1,181 @@
+erDiagram
+
+    users {
+        uuid id PK
+        string email UK
+        string name
+        string password_hash
+        string role
+        string avatar_url
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    projects {
+        uuid id PK
+        string name
+        string course_name
+        string semester
+        date start_date
+        date end_date
+        string invite_code UK
+        uuid created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    project_members {
+        uuid id PK
+        uuid project_id FK
+        uuid user_id FK
+        string role
+        boolean consent_platform
+        boolean consent_github
+        boolean consent_drive
+        boolean consent_ai_analysis
+        timestamp joined_at
+    }
+
+    tasks {
+        uuid id PK
+        uuid project_id FK
+        string title
+        string status
+        string priority
+        string tag
+        date due_date
+        timestamp completed_at
+        uuid created_by FK
+        timestamp created_at
+    }
+
+    task_assignees {
+        uuid task_id PK
+        uuid user_id FK
+        timestamp assigned_at
+    }
+
+    meetings {
+        uuid id PK
+        uuid project_id FK
+        string title
+        timestamp meeting_date
+        text notes
+        text decisions
+        string checkin_code UK
+        text ai_summary
+        string notion_page_id
+        uuid created_by FK
+        timestamp created_at
+    }
+
+    meeting_attendees {
+        uuid meeting_id PK
+        uuid user_id FK
+        boolean checked_in
+        timestamp checked_at
+        date checked_in_date
+    }
+
+    file_vault {
+        uuid id PK
+        uuid project_id FK
+        uuid uploader_id FK
+        string file_name
+        string file_hash
+        bigint file_size
+        text storage_path
+        timestamp uploaded_at
+        boolean is_immutable
+        int version
+    }
+
+    tamper_detection_log {
+        uuid id PK
+        uuid vault_id FK
+        string original_hash
+        string new_hash
+        string detector_type
+        string status
+        timestamp detected_at
+    }
+
+    activity_logs {
+        uuid id PK
+        uuid project_id FK
+        uuid user_id FK
+        string source
+        string action_type
+        string metadata
+        decimal trust_level
+        timestamp occurred_at
+    }
+
+    contribution_scores {
+        uuid id PK
+        uuid project_id FK
+        uuid user_id FK
+        decimal total_score
+        boolean task_participated
+        boolean meeting_participated
+        boolean file_participated
+        boolean action_participated
+        string participation_level
+        timestamp calculated_at
+    }
+
+    alerts {
+        uuid id PK
+        uuid project_id FK
+        uuid user_id FK
+        string alert_type
+        string severity
+        text message
+        boolean is_read
+        timestamp resolved_at
+        timestamp created_at
+    }
+
+    weight_configs {
+        uuid id PK
+        uuid project_id FK
+        uuid professor_id FK
+        decimal weight_git
+        decimal weight_doc
+        decimal weight_meeting
+        decimal weight_task
+        timestamp updated_at
+    }
+
+    google_calendar_tokens {
+        uuid id PK
+        uuid user_id FK
+        text access_token
+        text refresh_token
+        timestamp token_expiry
+        timestamp updated_at
+    }
+
+    users ||--o{ projects : "creates"
+    users ||--o{ project_members : "joins"
+    projects ||--o{ project_members : "has"
+    users ||--o{ tasks : "creates"
+    projects ||--o{ tasks : "contains"
+    tasks ||--o{ task_assignees : "assigned to"
+    users ||--o{ task_assignees : "assigned"
+    projects ||--o{ meetings : "holds"
+    users ||--o{ meetings : "creates"
+    meetings ||--o{ meeting_attendees : "attended by"
+    users ||--o{ meeting_attendees : "attends"
+    projects ||--o{ file_vault : "stores"
+    users ||--o{ file_vault : "uploads"
+    file_vault ||--o{ tamper_detection_log : "detected in"
+    projects ||--o{ activity_logs : "logs"
+    users ||--o{ activity_logs : "performs"
+    projects ||--o{ contribution_scores : "scores"
+    users ||--o{ contribution_scores : "scored"
+    projects ||--o{ alerts : "generates"
+    users |o--o{ alerts : "targets"
+    projects ||--o{ weight_configs : "configures"
+    users ||--o{ weight_configs : "set by professor"
+    users ||--o| google_calendar_tokens : "has token"
