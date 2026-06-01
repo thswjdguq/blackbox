@@ -9,5 +9,18 @@ public record CalendarRecommendResponse(List<Recommendation> recommendations, St
         this(recommendations, null);
     }
 
-    public record Recommendation(String time, int durationMinutes, String reason, int rank) {}
+    public record Recommendation(
+            String time,
+            int durationMinutes,
+            String reason,
+            int rank,
+            int score,
+            List<String> softBlockMembers,
+            boolean needsConfirm
+    ) {
+        /** 기존 호환 생성자 (fallback / parseJsonManually 용) */
+        public Recommendation(String time, int durationMinutes, String reason, int rank) {
+            this(time, durationMinutes, reason, rank, 100, List.of(), false);
+        }
+    }
 }

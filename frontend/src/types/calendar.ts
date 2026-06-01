@@ -27,6 +27,9 @@ export interface CalendarRecommendation {
   durationMinutes: number;
   reason: string;
   rank: number;
+  score: number;
+  softBlockMembers: string[];
+  needsConfirm: boolean;
 }
 
 export interface CalendarRecommendResponse {

@@ -417,23 +417,48 @@ export default function SchedulePage() {
                       : "border-bb-border bg-bb-surface"
                   }`}
                 >
-                  {rec.rank === 1 && (
-                    <span className="absolute top-4 right-4 text-[10px] font-bold px-2 py-0.5
-                                     bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
-                      추천
-                    </span>
-                  )}
-
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded shrink-0 ${
-                      rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-bb-surface2 text-bb-text"
-                    }`}>
-                      {rec.rank}위
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-bb-text">{fmtRec(rec.time)}</p>
-                      <p className="text-xs text-bb-text mt-0.5">{rec.durationMinutes}분 · {rec.reason}</p>
+                  {/* 헤더: 순위 + 시간 + 점수 배지 */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-start gap-3">
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded shrink-0 mt-0.5 ${
+                        rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-bb-surface2 text-bb-text"
+                      }`}>
+                        {rec.rank}위
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-bb-text">{fmtRec(rec.time)}</p>
+                        <p className="text-xs text-bb-text mt-0.5">{rec.durationMinutes}분 · {rec.reason}</p>
+                      </div>
                     </div>
+                    {/* 추천도 점수 배지 */}
+                    <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                      (rec.score ?? 100) >= 90
+                        ? "bg-green-500/15 text-green-400 border-green-500/30"
+                        : (rec.score ?? 100) >= 60
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                        : "bg-red-500/15 text-red-400 border-red-500/30"
+                    }`}>
+                      추천도 {rec.score ?? 100}
+                    </span>
+                  </div>
+
+                  {/* 종일 일정 경고 or 전원 가능 */}
+                  <div className="mb-3">
+                    {rec.needsConfirm ? (
+                      <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20
+                                      rounded-lg px-3 py-2">
+                        <span className="text-amber-400 text-xs shrink-0">⚠️</span>
+                        <p className="text-xs text-amber-300">
+                          {rec.softBlockMembers?.join(", ")}님 종일 일정 있음 — 직접 확인 필요
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20
+                                      rounded-lg px-3 py-2">
+                        <CheckCircle2 size={12} className="text-green-400 shrink-0" />
+                        <p className="text-xs text-green-400">전원 가능</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between">

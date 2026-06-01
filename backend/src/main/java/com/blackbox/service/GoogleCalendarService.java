@@ -163,7 +163,16 @@ public class GoogleCalendarService {
         }
     }
 
-    // ── AI 일정 추천 ──────────────────────────────────────────────────────
+    // ── 점수제 추천 내부 타입 ─────────────────────────────────────────────
+
+    /** Google Calendar 이벤트 (HARD: 시간 일정 / SOFT: 종일 일정) */
+    private record CalendarEventInfo(String memberName, boolean allDay,
+                                     ZonedDateTime start, ZonedDateTime end) {}
+
+    /** 점수가 매겨진 후보 슬롯 */
+    private record ScoredSlot(ZonedDateTime start, int score, List<String> softBlockMembers) {}
+
+    // ── AI 일정 추천 (점수제) ─────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public CalendarRecommendResponse recommendMeetingTimes(CalendarRecommendRequest req, User currentUser) {
@@ -180,65 +189,61 @@ public class GoogleCalendarService {
         String timeMin = startDate.atStartOfDay(kst).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         String timeMax = startDate.plusDays(7).atStartOfDay(kst).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
-        // ── 1. 연동된 팀원 전체 바쁜 시간 수집 (구조화된 슬롯) ─────────────────
-        List<CalendarAvailabilityResponse.BusySlot> allBusy = new ArrayList<>();
+        // ── 1. 연동된 팀원 이벤트 수집 (allDay 여부 포함) ───────────────────────
+        List<CalendarEventInfo> allEvents = new ArrayList<>();
         for (User m : targetMembers) {
             tokenRepo.findByUser(m).ifPresent(tok -> {
                 try {
                     String at = ensureFreshToken(tok);
-                    List<CalendarAvailabilityResponse.BusySlot> busy =
-                            fetchBusySlots(at, timeMin, timeMax, m.getName());
-                    allBusy.addAll(busy);
+                    allEvents.addAll(fetchCalendarEventsWithTypes(at, timeMin, timeMax, m.getName()));
                 } catch (Exception ignored) {
-                    // 해당 멤버 스킵 — 토큰 갱신 실패해도 나머지 진행
+                    // 해당 멤버 스킵 — 일정 없음으로 처리
                 }
             });
         }
 
-        // ── 2. 7일 범위 내 "전원 가능" 슬롯 계산 (바쁜 시간의 합집합 제거) ──────
-        List<String> freeSlotStrings = new ArrayList<>();
-        for (int dayOffset = 0; dayOffset < 7; dayOffset++) {
-            LocalDate day = startDate.plusDays(dayOffset);
+        // ── 2. 슬롯 점수 계산 ────────────────────────────────────────────────
+        List<ScoredSlot> scoredSlots = computeScoredSlots(allEvents, startDate, 7);
 
-            // 해당 날짜에 걸리는 바쁜 슬롯만 필터 (start 기준 KST 날짜)
-            List<CalendarAvailabilityResponse.BusySlot> dayBusy = allBusy.stream()
-                    .filter(b -> {
-                        try {
-                            LocalDate slotDate = ZonedDateTime.parse(b.start())
-                                    .withZoneSameInstant(kst).toLocalDate();
-                            return slotDate.equals(day);
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    })
-                    .collect(Collectors.toList());
-
-            List<CalendarAvailabilityResponse.FreeSlot> dayFree = computeFreeSlots(dayBusy, day);
-            for (CalendarAvailabilityResponse.FreeSlot slot : dayFree) {
-                freeSlotStrings.add(slot.start() + " ~ " + slot.end()
-                        + " (" + slot.durationMinutes() + "분 가능)");
-            }
-        }
-
-        // ── 3. 가능 슬롯 없으면 AI 호출 없이 조기 반환 ───────────────────────
-        if (freeSlotStrings.isEmpty()) {
+        if (scoredSlots.isEmpty()) {
             return new CalendarRecommendResponse(List.of(),
-                    "해당 기간에 전원이 가능한 시간이 없습니다. 날짜 범위를 변경해 주세요.");
+                    "이 기간에는 시간이 명시된 일정이 전원 겹쳐서 가능한 시간이 없습니다. 다른 기간을 선택해 주세요.");
         }
 
-        // ── 4. AI 호출 — 가능 슬롯 목록만 후보로 전달 ──────────────────────────
+        // ── 3. 상위 3개 선택 + AI로 추천 이유 생성 ──────────────────────────
+        List<ScoredSlot> top3 = scoredSlots.subList(0, Math.min(3, scoredSlots.size()));
         List<String> memberNames = targetMembers.stream().map(User::getName).collect(Collectors.toList());
-        String prompt = buildFreeSlotPrompt(memberNames, freeSlotStrings, req.projectDeadline(), targetDate);
+        String prompt = buildScoredSlotPrompt(memberNames, top3, req.projectDeadline());
 
-        String raw;
-        if (claudeService.isConfigured()) {
-            raw = claudeService.rawCall(prompt, 1000);
-        } else if (openAiService.isConfigured()) {
-            raw = openAiService.rawCall(prompt, 1000);
-        } else {
-            throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
+        String[] reasons = new String[0];
+        try {
+            String raw = "";
+            if (claudeService.isConfigured()) {
+                raw = claudeService.rawCall(prompt, 500);
+            } else if (openAiService.isConfigured()) {
+                raw = openAiService.rawCall(prompt, 500);
+            } else {
+                throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
+            }
+            reasons = parseReasonArray(raw);
+        } catch (IllegalStateException e) {
+            throw e; // AI 미설정은 그대로 전파
+        } catch (Exception ignored) {
+            // AI 호출 실패 → 기본 이유로 대체
         }
-        return parseRecommendations(raw);
+
+        // ── 4. 응답 구성 ────────────────────────────────────────────────────
+        DateTimeFormatter iso = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+        List<CalendarRecommendResponse.Recommendation> recs = new ArrayList<>();
+        for (int i = 0; i < top3.size(); i++) {
+            ScoredSlot slot = top3.get(i);
+            String reason = (i < reasons.length && !reasons[i].isBlank())
+                    ? reasons[i] : defaultReason(slot);
+            recs.add(new CalendarRecommendResponse.Recommendation(
+                    slot.start().format(iso), 60, reason, i + 1,
+                    slot.score(), slot.softBlockMembers(), !slot.softBlockMembers().isEmpty()));
+        }
+        return new CalendarRecommendResponse(recs);
     }
 
     // ── 연동 상태 조회 ─────────────────────────────────────────────────────
@@ -419,6 +424,179 @@ public class GoogleCalendarService {
                 .bodyToMono(Map.class)
                 .onErrorComplete()
                 .block();
+    }
+
+    // ── 점수제 헬퍼 ──────────────────────────────────────────────────────
+
+    /** Google Calendar Events API로 이벤트 가져오기 (allDay 여부 포함) */
+    @SuppressWarnings("unchecked")
+    private List<CalendarEventInfo> fetchCalendarEventsWithTypes(
+            String accessToken, String timeMin, String timeMax, String memberName) {
+
+        String uri = UriComponentsBuilder
+                .fromHttpUrl(GOOGLE_CAL_URL + "/calendars/primary/events")
+                .queryParam("timeMin", timeMin)
+                .queryParam("timeMax", timeMax)
+                .queryParam("singleEvents", "true")
+                .queryParam("orderBy", "startTime")
+                .queryParam("maxResults", "250")
+                .build().toUriString();
+
+        Map<?, ?> resp = webClient.get()
+                .uri(uri)
+                .header("Authorization", "Bearer " + accessToken)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .onErrorReturn(Map.of())
+                .block();
+
+        if (resp == null) return List.of();
+
+        List<CalendarEventInfo> events = new ArrayList<>();
+        ZoneId kst = ZoneId.of("Asia/Seoul");
+        try {
+            List<?> items = (List<?>) resp.get("items");
+            if (items == null) return List.of();
+            for (Object obj : items) {
+                Map<?, ?> event = (Map<?, ?>) obj;
+                if ("cancelled".equals(event.get("status"))) continue;
+                Map<?, ?> start = (Map<?, ?>) event.get("start");
+                Map<?, ?> end   = (Map<?, ?>) event.get("end");
+                if (start == null || end == null) continue;
+
+                String startDT   = (String) start.get("dateTime");
+                String startDate = (String) start.get("date");
+                String endDT     = (String) end.get("dateTime");
+                String endDate   = (String) end.get("date");
+
+                if (startDT != null && endDT != null) {
+                    // HARD BLOCK: 시간이 명시된 일정
+                    events.add(new CalendarEventInfo(memberName, false,
+                            ZonedDateTime.parse(startDT).withZoneSameInstant(kst),
+                            ZonedDateTime.parse(endDT).withZoneSameInstant(kst)));
+                } else if (startDate != null && endDate != null) {
+                    // SOFT BLOCK: 종일 일정 (endDate는 exclusive)
+                    events.add(new CalendarEventInfo(memberName, true,
+                            LocalDate.parse(startDate).atStartOfDay(kst),
+                            LocalDate.parse(endDate).atStartOfDay(kst)));
+                }
+            }
+        } catch (Exception ignored) {}
+        return events;
+    }
+
+    /** 09:00–18:00, 1시간 단위 슬롯 생성 후 HARD/SOFT 기준 점수 계산 */
+    private List<ScoredSlot> computeScoredSlots(List<CalendarEventInfo> events,
+                                                 LocalDate startDate, int days) {
+        ZoneId kst = ZoneId.of("Asia/Seoul");
+        List<ScoredSlot> result = new ArrayList<>();
+
+        for (int dayOffset = 0; dayOffset < days; dayOffset++) {
+            LocalDate day = startDate.plusDays(dayOffset);
+            for (int hour = 9; hour < 18; hour++) {
+                ZonedDateTime slotStart = day.atTime(hour, 0).atZone(kst);
+                ZonedDateTime slotEnd   = slotStart.plusHours(1);
+
+                // HARD BLOCK: 시간 일정이 겹치면 후보에서 제외
+                boolean hardBlocked = events.stream().anyMatch(e -> !e.allDay()
+                        && e.start().isBefore(slotEnd)
+                        && e.end().isAfter(slotStart));
+                if (hardBlocked) continue;
+
+                // SOFT BLOCK: 종일 일정 보유 팀원 목록 (슬롯 날짜가 이벤트 범위 안인지)
+                LocalDate slotDate = slotStart.toLocalDate();
+                List<String> softBlockMembers = events.stream()
+                        .filter(e -> e.allDay()
+                                && !slotDate.isBefore(e.start().toLocalDate())
+                                && slotDate.isBefore(e.end().toLocalDate()))
+                        .map(CalendarEventInfo::memberName)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                int score = Math.max(0, 100 - softBlockMembers.size() * 30);
+                result.add(new ScoredSlot(slotStart, score, softBlockMembers));
+            }
+        }
+
+        // 점수 내림차순, 동점이면 날짜/시간 오름차순
+        result.sort(Comparator.comparingInt(ScoredSlot::score).reversed()
+                .thenComparing(s -> s.start()));
+        return result;
+    }
+
+    /** AI에게 이유(reason)만 생성 요청 — 슬롯 선택은 서버가 완료 */
+    private String buildScoredSlotPrompt(List<String> memberNames, List<ScoredSlot> slots,
+                                          String deadline) {
+        DateTimeFormatter disp = DateTimeFormatter.ofPattern("M월 d일 (E) HH:mm")
+                .withLocale(java.util.Locale.KOREAN);
+        StringBuilder sb = new StringBuilder();
+        sb.append("서버가 계산한 회의 추천 후보 슬롯 ").append(slots.size())
+          .append("개에 대해 자연스러운 한국어 추천 이유를 1~2문장으로 작성해라.\n");
+        sb.append("주어진 슬롯 외의 시간은 절대 만들지 말 것.\n\n");
+        sb.append("팀원: ").append(String.join(", ", memberNames)).append("\n");
+        if (deadline != null) sb.append("마감일: ").append(deadline).append("\n");
+        sb.append("\n후보 슬롯:\n");
+        for (int i = 0; i < slots.size(); i++) {
+            ScoredSlot s = slots.get(i);
+            sb.append(i + 1).append(". ").append(s.start().format(disp))
+              .append(" (추천도 ").append(s.score()).append(")");
+            if (!s.softBlockMembers().isEmpty()) {
+                sb.append(" — ").append(String.join(", ", s.softBlockMembers())).append("님 종일 일정");
+            }
+            sb.append("\n");
+        }
+        sb.append("\n반드시 아래 JSON으로만 응답해. 다른 텍스트 없이 JSON만:\n");
+        sb.append("{\"reasons\":[\"슬롯1 이유\",\"슬롯2 이유\"");
+        if (slots.size() >= 3) sb.append(",\"슬롯3 이유\"");
+        sb.append("]}");
+        return sb.toString();
+    }
+
+    /** {"reasons":["...","...","..."]} 배열 파싱 */
+    private String[] parseReasonArray(String raw) {
+        if (raw == null || raw.isBlank()) return new String[0];
+        try {
+            int jsonStart = raw.indexOf('{');
+            int jsonEnd   = raw.lastIndexOf('}');
+            if (jsonStart < 0 || jsonEnd < 0) return new String[0];
+            String json = raw.substring(jsonStart, jsonEnd + 1);
+
+            int arrStart = json.indexOf('[');
+            int arrEnd   = json.lastIndexOf(']');
+            if (arrStart < 0 || arrEnd <= arrStart) return new String[0];
+
+            String content = json.substring(arrStart + 1, arrEnd);
+            List<String> reasons = new ArrayList<>();
+            int pos = 0;
+            while (pos < content.length()) {
+                int q1 = content.indexOf('"', pos);
+                if (q1 < 0) break;
+                int q2 = q1 + 1;
+                while (q2 < content.length()) {
+                    char c = content.charAt(q2);
+                    if (c == '\\') { q2 += 2; continue; }
+                    if (c == '"') break;
+                    q2++;
+                }
+                if (q2 < content.length()) reasons.add(content.substring(q1 + 1, q2));
+                pos = q2 + 1;
+            }
+            return reasons.toArray(new String[0]);
+        } catch (Exception e) {
+            return new String[0];
+        }
+    }
+
+    /** AI 실패 시 시간대 기반 기본 이유 */
+    private String defaultReason(ScoredSlot slot) {
+        if (!slot.softBlockMembers().isEmpty()) {
+            String names = String.join(", ", slot.softBlockMembers());
+            return names + "님 종일 일정이 있어 확인이 필요하지만, 시간 일정 충돌 없이 가능한 시간입니다.";
+        }
+        int hour = slot.start().getHour();
+        if (hour < 12) return "오전 시간대로 집중력이 높아 회의 효율이 좋습니다.";
+        if (hour < 15) return "점심 후 활기차게 시작하기 좋은 오후 초반입니다.";
+        return "업무 마무리 전 진행 상황을 점검하기 좋은 오후 시간대입니다.";
     }
 
     /** 전원 가능 슬롯 목록만 후보로 전달 — AI가 목록 외 시간 추천 불가 */
