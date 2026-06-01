@@ -237,7 +237,181 @@ public class NotionService {
         return toUrl(pageId);
     }
 
+    // ── 유저별 키 오버로딩 ────────────────────────────────────────────────
+
+    /**
+     * 유저 개인 Notion 키로 회의록을 내보냅니다.
+     * 기존 exportMeeting(Meeting, String)은 그대로 유지됩니다.
+     */
+    public NotionExportResult exportMeeting(Meeting meeting, String aiSummary,
+                                             String userApiKey, String userPageId) {
+        String date  = meeting.getMeetingDate() != null
+                ? meeting.getMeetingDate().format(DATE_FMT) : "날짜 미정";
+        String title = "회의록 — " + meeting.getTitle() + " (" + date + ")";
+        List<Map<String, Object>> blocks = buildBlocks(meeting, aiSummary);
+
+        String existingPageId = meeting.getNotionPageId();
+        boolean hasValidPageId = existingPageId != null
+                && !existingPageId.isBlank()
+                && !existingPageId.startsWith("http");
+
+        if (!hasValidPageId) {
+            String pageId = createPage(title, blocks, userApiKey, userPageId);
+            return new NotionExportResult(pageId, toUrl(pageId));
+        } else {
+            updatePage(existingPageId, title, blocks, userApiKey);
+            return new NotionExportResult(existingPageId, toUrl(existingPageId));
+        }
+    }
+
+    /**
+     * 유저 개인 키로 Notion 페이지를 아카이브합니다.
+     */
+    public void archivePage(String pageId, String userApiKey) {
+        if (pageId == null || pageId.isBlank() || userApiKey == null || userApiKey.isBlank()) return;
+        try {
+            webClient.patch()
+                    .uri("/v1/pages/" + pageId)
+                    .header("Authorization", "Bearer " + userApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of("archived", true))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+            log.info("Notion 페이지 아카이브 완료 (유저 키): {}", pageId);
+        } catch (Exception e) {
+            log.warn("Notion 페이지 아카이브 실패 (pageId={}): {}", pageId, e.getMessage());
+        }
+    }
+
+    /**
+     * Notion API Key 유효성 검증 — 실제 API 호출로 워크스페이스 이름을 가져옵니다.
+     * @return 워크스페이스 이름 (실패 시 null)
+     */
+    @SuppressWarnings("unchecked")
+    public String validateAndGetWorkspaceName(String userApiKey) {
+        try {
+            Map<String, Object> response = webClient.get()
+                    .uri("/v1/users/me")
+                    .header("Authorization", "Bearer " + userApiKey)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+            if (response == null) return null;
+            Map<String, Object> bot = (Map<String, Object>) response.get("bot");
+            if (bot == null) return null;
+            Object name = bot.get("workspace_name");
+            return name instanceof String s ? s : "내 워크스페이스";
+        } catch (Exception e) {
+            log.warn("Notion API 유효성 검증 실패: {}", e.getMessage());
+            return null;
+        }
+    }
+
     // ── 내부 Notion API 호출 ─────────────────────────────────────────────
+
+    private String createPage(String title, List<Map<String, Object>> children,
+                              String token, String parentPage) {
+        Map<String, Object> body = Map.of(
+                "parent",     Map.of("type", "page_id", "page_id", parentPage),
+                "properties", Map.of("title", Map.of("title", List.of(
+                        Map.of("text", Map.of("content", title))
+                ))),
+                "children", children
+        );
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = webClient.post()
+                .uri("/v1/pages")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        if (response == null) throw new RuntimeException("Notion API 응답 없음");
+        String pageId = (String) response.get("id");
+        if (pageId == null) throw new RuntimeException("Notion 페이지 ID 없음");
+        return pageId;
+    }
+
+    private void updatePage(String pageId, String title, List<Map<String, Object>> newBlocks,
+                            String token) {
+        try {
+            webClient.patch()
+                    .uri("/v1/pages/" + pageId)
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of("properties", Map.of("title", Map.of("title", List.of(
+                            Map.of("text", Map.of("content", title))
+                    )))))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (Exception e) {
+            log.warn("Notion 제목 업데이트 실패: {}", e.getMessage());
+        }
+
+        List<String> blockIds = listAllBlockIds(pageId, token);
+        for (String blockId : blockIds) {
+            try {
+                webClient.delete()
+                        .uri("/v1/blocks/" + blockId)
+                        .header("Authorization", "Bearer " + token)
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .block();
+            } catch (Exception e) {
+                log.warn("Notion 블록 삭제 실패 (blockId={}): {}", blockId, e.getMessage());
+            }
+        }
+
+        try { Thread.sleep(300); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+
+        try {
+            webClient.patch()
+                    .uri("/v1/blocks/" + pageId + "/children")
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of("children", newBlocks))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (Exception e) {
+            log.warn("Notion 블록 추가 실패: {}", e.getMessage());
+            throw new RuntimeException("Notion 페이지 내용 업데이트 실패", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> listAllBlockIds(String pageId, String token) {
+        List<String> ids = new ArrayList<>();
+        String cursor = null;
+        do {
+            String uri = "/v1/blocks/" + pageId + "/children?page_size=100"
+                    + (cursor != null ? "&start_cursor=" + cursor : "");
+            try {
+                Map<String, Object> response = webClient.get()
+                        .uri(uri)
+                        .header("Authorization", "Bearer " + token)
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .block();
+                if (response == null) break;
+                List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+                if (results != null) {
+                    results.stream().map(b -> (String) b.get("id")).filter(id -> id != null).forEach(ids::add);
+                }
+                Boolean hasMore = (Boolean) response.get("has_more");
+                cursor = (hasMore != null && hasMore) ? (String) response.get("next_cursor") : null;
+            } catch (Exception e) {
+                log.warn("Notion 블록 목록 조회 실패: {}", e.getMessage());
+                break;
+            }
+        } while (cursor != null);
+        return ids;
+    }
 
     private String createPage(String title, List<Map<String, Object>> children) {
         Map<String, Object> body = Map.of(

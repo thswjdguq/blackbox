@@ -49,6 +49,12 @@ public class User implements UserDetails {
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "notion_api_key", length = 500)
+    private String notionApiKey;
+
+    @Column(name = "notion_page_id", length = 255)
+    private String notionPageId;
+
     // ── UserDetails ──────────────────────────────────────────
 
     @Override

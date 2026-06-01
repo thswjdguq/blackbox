@@ -160,7 +160,15 @@ public class MeetingController {
         String aiSummary = (body != null) ? body.get("aiSummary") : null;
 
         Meeting meeting = meetingService.getRawMeeting(projectId, meetingId, user);
-        NotionService.NotionExportResult result = notionService.exportMeeting(meeting, aiSummary);
+
+        NotionService.NotionExportResult result;
+        String userKey    = user.getNotionApiKey();
+        String userPageId = user.getNotionPageId();
+        if (userKey != null && !userKey.isBlank() && userPageId != null && !userPageId.isBlank()) {
+            result = notionService.exportMeeting(meeting, aiSummary, userKey, userPageId);
+        } else {
+            result = notionService.exportMeeting(meeting, aiSummary);
+        }
         meetingService.saveNotionInfo(projectId, meetingId, result.pageId(), user);
 
         return ResponseEntity.ok(new NotionExportResponse(result.pageUrl()));

@@ -16,6 +16,7 @@ import {
   Settings,
   CalendarClock,
   UserCircle,
+  Link2,
   Bell,
   AlertTriangle,
   Zap,
@@ -311,13 +312,24 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           <Link
             href="/profile/settings"
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname.startsWith("/profile")
+              pathname === "/profile/settings"
                 ? "bg-bb-primary/10 text-bb-primary font-medium"
                 : "text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
             }`}
           >
-            <UserCircle size={16} className={pathname.startsWith("/profile") ? "text-bb-primary" : "text-bb-text2"} />
+            <UserCircle size={16} className={pathname === "/profile/settings" ? "text-bb-primary" : "text-bb-text2"} />
             프로필 설정
+          </Link>
+          <Link
+            href="/profile/notion"
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              pathname === "/profile/notion"
+                ? "bg-bb-primary/10 text-bb-primary font-medium"
+                : "text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+            }`}
+          >
+            <Link2 size={16} className={pathname === "/profile/notion" ? "text-bb-primary" : "text-bb-text2"} />
+            Notion 연동
           </Link>
           <button
             onClick={handleLogout}
