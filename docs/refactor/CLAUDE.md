@@ -17,7 +17,7 @@
 
 ## 2. Claude Code의 역할
 
-**계획자 (Planner).** Copilot이 실행자.
+**계획자 (Planner).** 실행자는 Claude Sonnet 서브에이전트(`.claude/agents/refactor-executor.md`) — 구 GitHub Copilot은 정책 변경으로 비활성(DEC-WORKFLOW-010).
 
 - 작업지시서 작성·검수
 - 의사결정 1차안 제시 → 사용자 검토·확정
@@ -71,7 +71,7 @@
 | **프로젝트 컨텍스트** | `md/claude.md` |
 | **불변 규칙** | `md/gc.md` |
 | **최근 기술 결정** | `md/handover_log.md` |
-| **Copilot 자동 로드** | `.github/copilot-instructions.md` |
+| **실행자 가드 (always-on)** | `.claude/agents/refactor-executor.md` (구 `.github/copilot-instructions.md`는 DEPRECATED stub) |
 | **CI 가드** | `.github/workflows/refactor-guard.yml` |
 
 ---
@@ -91,4 +91,4 @@
 - ❌ "메모리에서 봤는데..."로 결정 인용 → ✅ DECISIONS·PRINCIPLES에서 인용
 - ❌ "그때 그렇게 합의했죠" → ✅ SESSION_LOG로 확인
 - ❌ 새 PC에서 컨텍스트 없이 바로 작업 시작 → ✅ §3 프로토콜 먼저
-- ❌ Claude가 코드 직접 수정 → ✅ Copilot 작업지시서 작성 (예외 §4 한정)
+- ❌ 계획자(Opus)가 코드 직접 수정 → ✅ 작업지시서 작성 후 실행자 서브에이전트에 위임 (예외 §4 한정)

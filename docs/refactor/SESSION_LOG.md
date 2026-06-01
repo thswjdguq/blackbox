@@ -96,3 +96,40 @@
 **미해결:**
 - 뒤로/앞으로 및 새 탭 직접 진입 시나리오 수동 검증 미완료
 - PR 생성 전 최종 diff 확인 필요
+
+---
+
+## 2026-06-01 — AI LLM 클라이언트 통합 작업지시서 작성 (Task 26~28)
+
+**진행자:** 사용자(팀장) + Claude Code (Opus 4.8, 계획자)
+
+**한 일:**
+- `origin/main` 6커밋 fast-forward pull (Notion 설정·Discord 알림·Calendar 확장 등). 로컬 미커밋 md 2개는 충돌 없이 보존.
+- 리팩토링 후보 조사: `ClaudeService`(217줄) ↔ `OpenAiService`(214줄)가 ~95% 중복(프롬프트·파싱 byte 단위 동일), 폴백 분기가 3곳(MeetingController ×2, GoogleCalendarService ×1) 복붙됨을 확인.
+- 소비자 전수조사: 두 AI 서비스 호출자는 `MeetingController`·`GoogleCalendarService` **단 2곳**. `extractActionItems()`(List<String>)는 호출자 0 = 죽은 코드.
+- 작업지시서 3개 신규 작성:
+  - `26-llm-client-abstraction` — `LlmClient` interface + `AbstractLlmClient`로 공통 추출 (4파일, §13 예외 명기)
+  - `27-ai-service-orchestrator` — `AiService`(List<LlmClient> + @Order 폴백) 도입, MeetingController 인라인 폴백 제거
+  - `28-calendar-use-ai-service` — GoogleCalendarService를 AiService.rawCall 위임
+
+**핵심 결정:**
+- **Phase 게이트 fast-track:** PLAN상 이 작업은 Phase 2A(cross-cutting)라 Phase 0/1 뒤에 와야 하나, 사용자가 **단독 패스트트랙(26~28만)** 결정. 순수 내부 리팩토링(동작 보존)이라 리스크 낮음.
+- **패키지 평면 유지:** `service/ai/` 이동 대신 `service/` 평면 유지 — 소비자 import 깨짐·move 커밋 혼입 방지(PRINCIPLES §5), §13 파일수 룰 유리.
+- **폴백 순서 보존 수단:** Spring `List<LlmClient>` 주입 순서 미보장 → `@Order(1/2)`로 Claude 우선 명시(Task 27).
+- API surface 불변 → 전 Task 문서 갱신 면제(PLAN §2B).
+
+**다음 진입점:**
+- (a) 사용자: Task 26~28 작업지시서 검토 → 실행자 서브에이전트(refactor-executor, Sonnet)에 Task 26부터 순차 실행(26 머지 후 27, 27 머지 후 28).
+- (b) `extractActionItems()` 죽은 코드는 Phase 3 `64-dead-code-remove` 후보로 보류.
+
+**미해결:**
+- Task 26~28은 아직 미실행(작업지시서만 작성). `refactor/main` 분기·PR은 사용자/실행자 서브에이전트 액션.
+- 로컬 미커밋 md 2개(handover_log/todo 쿠키 인증 동기화) 커밋 여부 미정.
+- fast-track 결정을 DECISIONS.md에 정식 등재할지 미정(현재 본 SESSION_LOG에만 기록).
+
+**추가 (같은 세션) — 실행자 교체:**
+- 사용자 결정으로 **실행자를 Copilot → Claude Sonnet 4.6 서브에이전트로 교체**.
+- `.claude/agents/refactor-executor.md` 신규: 작업지시서 1건을 HARD LIMIT 안에서 실행 + 빌드 자체 검증, git push/main 금지.
+- `DECISIONS.md`에 **DEC-WORKFLOW-010**(DEC-WORKFLOW-001 개정) 등재. §13 권장에 따라 Haiku 대신 Sonnet 채택.
+- **동기화 완료:** `copilot-instructions.md`(DEPRECATED stub화), `CLAUDE_WORKFLOW.md §1`, `PRINCIPLES.md §0·§12`, `CLAUDE.md §2·§5·§7`, `DECISIONS.md`(DEC-001 개정 포인터 + DEC-005 갱신).
+- **후속 동기화 필요(미반영):** `EXECUTION_PLAYBOOK.md`(강의 실행 가이드 — Copilot Edits 절차 전반 재작성 필요), `PLAN.md` 오케스트레이터/Copilot prose(18·37·41·87·120·131), `CLAUDE_WORKFLOW §4·§5`(예외실행·오케스트레이터 전제 변화), 기존 작업지시서 01·04·13·14의 Copilot 표현. SESSION_LOG 과거 entry는 사실 기록이라 보존.

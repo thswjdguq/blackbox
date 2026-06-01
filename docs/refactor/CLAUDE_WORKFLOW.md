@@ -16,10 +16,11 @@
 - 새 메타 결정 발생 시 본 문서·DECISIONS·SESSION_LOG 갱신
 - **코드를 직접 수정하지 않음** (예외 §4 참조)
 
-### GitHub Copilot (실행자)
-- 작업지시서 받아 실제 코드/문서 변경
-- 작업지시서의 HARD LIMIT·Out of Scope 엄수
-- 베이스 모델은 mini/haiku급일 수 있음 — 작업지시서가 견고해야 함 (PRINCIPLES §13)
+### 실행자 — Claude Sonnet 4.6 서브에이전트 (`.claude/agents/refactor-executor.md`)
+- 작업지시서 1건을 받아 실제 코드/문서 변경 + **빌드를 스스로 검증** (명령 실제 실행)
+- 작업지시서의 HARD LIMIT·Out of Scope 엄수. `main` push/PR/머지 금지 (편집+빌드 검증까지가 범위)
+- 모델 Sonnet 4.6 (PRINCIPLES §13: 코드 변경은 Sonnet+ 권장)
+- **구 GitHub Copilot 실행자는 정책 변경으로 비활성** (DEC-WORKFLOW-010). 작업지시서가 §13 규격으로 견고해야 하는 원칙은 유지.
 
 ### 사용자 (팀장)
 - 모든 결정 최종 확정

@@ -8,7 +8,7 @@
 
 ## 0. 대전제
 
-- **실행자는 GitHub Copilot, 계획자는 Claude.** 사용자는 두 에이전트를 지휘하는 팀장.
+- **실행자는 Claude Sonnet 서브에이전트(`.claude/agents/refactor-executor.md`), 계획자는 Claude Code(Opus).** 사용자는 두 에이전트를 지휘하는 팀장. (구 실행자 GitHub Copilot은 정책 변경으로 비활성 — DEC-WORKFLOW-010.)
 - **리팩토링은 "이해하는 코드만" 한다.** 모호한 부분은 유예한다(§7).
 - **`md/gc.md`의 INV-01~07은 절대 위반 불가**한 불변 규칙이다. 본 문서에서 중복 정의하지 않고 참조한다.
 
@@ -168,15 +168,15 @@ Phase 6에서 Copilot에게 문서 작업을 시킬 때 강제하는 규칙.
 
 ## 12. 운영 구조 (방어선 3겹)
 
-이 PRINCIPLES.md는 **사람·Claude가 보는 정본**이다. Copilot이 자동으로 읽는다고 가정하지 않는다.
+이 PRINCIPLES.md는 **사람·Claude가 보는 정본**이다. 실행자가 자동으로 읽는다고 가정하지 않는다.
 
 | 겹 | 파일 | 역할 |
 |---|---|---|
-| 1차 | `.github/copilot-instructions.md` | Copilot 자동 로드. 절대 규칙 30~50줄. |
+| 1차 | `.claude/agents/refactor-executor.md` | 실행자(Claude Sonnet) 시스템 프롬프트. 절대 규칙·HARD LIMIT 규율 상시 적용. (구 `.github/copilot-instructions.md`는 DEC-WORKFLOW-010으로 비활성 → DEPRECATED 참조 stub) |
 | 2차 | `docs/refactor/tasks/NN-xxx.md` | 작업지시서. PRINCIPLES 관련 섹션을 **본문 발췌**로 인라인 박음 (anchor 참조 ❌). |
 | 3차 | `.github/workflows/refactor-guard.yml` | CI lint. INV-02·05·Flyway 보존은 fail. `: any`·Entity 노출 등은 warn. |
 
-**작업지시서 작성 규칙:** PRINCIPLES.md를 변경하면 1차(`.github/copilot-instructions.md`)도 함께 점검. 2차 작업지시서는 매번 새로 발췌.
+**작업지시서 작성 규칙:** PRINCIPLES.md를 변경하면 1차(`.claude/agents/refactor-executor.md`)도 함께 점검. 2차 작업지시서는 매번 새로 발췌.
 
 **작업 묶음:** 한 번에 1~3개 Task의 작업지시서를 묶어서 사용자 검토 → 확정 → Copilot 순차 실행.
 

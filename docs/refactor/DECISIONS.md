@@ -18,6 +18,7 @@
 ---
 
 ## DEC-WORKFLOW-001 — Copilot이 실행자, Claude Code가 계획자
+- **⚠️ 개정됨:** **DEC-WORKFLOW-010** (2026-06-01) — 실행자가 Copilot → Claude Sonnet 서브에이전트로 교체됨. 아래는 원 결정 기록(계획자/실행자 분리 원칙은 유효).
 - **일시:** 2026-05-09
 - **결정:** 대규모 리팩토링은 Copilot이 코드를 작성하고, Claude Code는 작업지시서·계획·검수를 담당한다.
 - **사유:** Claude Code가 모든 코드를 읽고 직접 수정하면 사용량(Pro 플랜) 부담 큼. Copilot은 단가가 낮고 IDE 통합이 좋음.
@@ -43,11 +44,12 @@
 - **사유:** 1개씩 = 검토 횟수 과다. Phase 전체 = 변경 폭 과다(스파게티 위험). 1~3개가 균형점.
 - **관련:** CLAUDE_WORKFLOW §2, 메모리 `feedback_refactor_workflow.md`
 
-## DEC-WORKFLOW-005 — 3겹 방어선 (Copilot 가드)
-- **일시:** 2026-05-09
-- **결정:** Copilot 규칙 전달은 (1) `.github/copilot-instructions.md` always-on + (2) 작업지시서 인라인 발췌 + (3) CI lint 3겹.
-- **사유:** Copilot이 PRINCIPLES.md를 자동으로 안 읽음. 운영 가능한 형태로 분산 필요.
-- **관련:** PRINCIPLES §12, CLAUDE_WORKFLOW (외부 PRINCIPLES 위임)
+## DEC-WORKFLOW-005 — 3겹 방어선 (실행자 가드)
+- **일시:** 2026-05-09 (2026-06-01 갱신)
+- **결정:** 실행자 규칙 전달은 (1) 실행자 시스템 프롬프트 always-on + (2) 작업지시서 인라인 발췌 + (3) CI lint 3겹.
+- **사유:** 실행자가 PRINCIPLES.md를 자동으로 안 읽음. 운영 가능한 형태로 분산 필요.
+- **갱신(DEC-WORKFLOW-010):** 1차 always-on이 `.github/copilot-instructions.md`(Copilot) → **`.claude/agents/refactor-executor.md`**(Claude Sonnet 서브에이전트)로 이전. 구 파일은 DEPRECATED 참조 stub으로 보존.
+- **관련:** PRINCIPLES §12, CLAUDE_WORKFLOW §1, DEC-WORKFLOW-010
 
 ## DEC-WORKFLOW-006 — Claude 예외 실행 4조건
 - **일시:** 2026-05-09
@@ -74,6 +76,17 @@
 - **결정:** 메타 결정·정책은 repo 먼저 갱신. 메모리는 선택적 동기화. 메모리에만 있는 항목은 cross-PC에서 잃음.
 - **사유:** 다른 PC에서 Claude Code 신규 세션을 위해 단일 source 필요.
 - **관련:** CLAUDE_WORKFLOW §8
+
+## DEC-WORKFLOW-010 — 실행자를 Copilot → Claude Sonnet 서브에이전트로 교체 (DEC-WORKFLOW-001 개정)
+- **일시:** 2026-06-01
+- **결정:** 리팩토링 코드 변경의 실행자를 GitHub Copilot 대신 **Claude Sonnet 4.6 서브에이전트(`.claude/agents/refactor-executor.md`)**로 한다. 계획자(Claude Code, Opus)는 그대로 작업지시서 작성·검수만 담당.
+- **사유:** 사용자(팀장) 결정. Copilot의 IDE 컨텍스트 전환·인라인 제약 없이, 작업지시서를 직접 읽고 HARD LIMIT 안에서 실행 + **빌드를 스스로 검증**(명령 실행이 환각이 아닌 실제 실행)할 수 있음. PRINCIPLES §13 작업지시서 설계는 저수준 모델 대비로 이미 견고.
+- **모델 선택:** §13이 코드 변경에 "Sonnet 또는 GPT-4o 이상" 권장 → 저수준(Haiku) 대신 **Sonnet 4.6** 채택.
+- **DEC-WORKFLOW-001 대비 변경점:** 실행자 주체만 교체. 계획자/실행자 분리, main push 금지(DEC-WORKFLOW-002), 1~3 묶음(004), HARD LIMIT 규율은 모두 유지.
+- **DEC-WORKFLOW-007 영향:** 오케스트레이터 패턴(명령은 사용자가 실행)의 전제(소형 모델 환각)가 Sonnet 실행자에는 약화됨. refactor-executor는 빌드/검증 명령을 직접 실행 가능. 단 git push/main 변경은 여전히 금지(편집+빌드까지가 범위).
+- **관련:** `.claude/agents/refactor-executor.md`, PRINCIPLES §0/§13, CLAUDE_WORKFLOW §1, DEC-WORKFLOW-001/002/007
+- **재검토 조건:** 서브에이전트 실행 품질이 HARD LIMIT을 반복 위반하거나, 비용이 Copilot보다 불리할 때
+- **첫 적용:** Task 26 (llm-client-abstraction)
 
 ---
 
