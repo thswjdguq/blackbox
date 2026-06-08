@@ -1,6 +1,7 @@
 package com.blackbox.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -13,6 +14,7 @@ import java.util.Map;
  * Claude API 키가 없을 때 폴백으로 사용.
  * 필요 환경변수: OPENAI_API_KEY
  */
+@Order(2)
 @Service
 public class OpenAiService extends AbstractLlmClient {
 
