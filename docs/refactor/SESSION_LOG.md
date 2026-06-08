@@ -159,3 +159,30 @@
 - `stash@{0}`에 `md/handover_log.md`·`md/todo.md` 쿠키 인증 문서 변경 보존 중(이번 리팩토링 무관, 미처리).
 - 후속 거버넌스 동기화 미반영분(직전 entry 참조): EXECUTION_PLAYBOOK·PLAN prose·CLAUDE_WORKFLOW §4·§5·task 01/04/13/14.
 - `main`은 미변경(origin/main = a3418b2). main push는 전체 리팩토링 완료 시에만(DEC-WORKFLOW-002).
+
+---
+
+## 2026-06-08 — Task 27·28·55 실행·머지 (AI LLM 통합 fast-track 완결)
+
+**진행자:** 사용자(팀장) + Claude Code (Opus 4.8, 계획자) + refactor-executor (Sonnet 4.6, 실행자)
+
+**한 일:**
+- 세션 시작 시 `refactor/main`을 origin 최신까지 동기화(직전 핸드오프 PR #10 머지 확인).
+- **Task 27 실행·머지(PR #11, `5f3887d`):** `subagent_type: refactor-executor` 첫 정식 호출. §7 Pre-write Required → 실행자가 변경 계획 5불릿 제시 → 사용자 승인 후 구현. 신규 `AiService`(`List<LlmClient>` + `@Order(1)`Claude/`@Order(2)`OpenAI 폴백 중앙화), `MeetingController` 인라인 폴백 2메서드 제거. 예외 메시지 byte 보존, `compileJava` SUCCESSFUL.
+- **Task 28 실행·머지(PR #12, `3cbb68e`):** `GoogleCalendarService.recommendMeetingTimes()`의 마지막 인라인 폴백 → `aiService.rawCall` 위임. 라인 참조(작업지시서 219~233)가 밀려 if/else **구조 기준**으로 찾음(실제 226~232행). 바깥 try/catch 보존. **AI 폴백 분기 3곳 → 0곳 완결.**
+- **Task 55 실행·머지(PR #13, `5edd545`):** 트랙 선택(사용자: AI 후속 정리). 죽은 `extractActionItems(List<String>)` + 그것만 호출하는 `buildExtractPrompt`(+OpenAiService override)·`parseLines` 통째 제거(3파일 −65줄). 작업지시서 신규 작성(`55-remove-dead-llm-extract-path.md`).
+
+**핵심 결정:**
+- **drift 통일 fix 불필요(삭제로 자연 해소):** 트랙 B 후보 ②(buildExtractPrompt provider drift 통일=동작변경 fix)는, `buildExtractPrompt`가 죽은 `extractActionItems`만 호출함을 의존사슬로 확인 → 통째 삭제(Task 55)하면 drift가 사라져 별도 fix PR 불필요. 두 후속 항목이 단일 `refactor:` PR로 수렴.
+- **소비자 0 증명 후 삭제:** repo 전체 grep(코드 호출자 0) + 컴파일 백스톱(인터페이스 메서드 삭제 시 숨은 참조 있으면 fail) 이중 검증. 살아있는 `extractStructuredActionItems`(`/ai/extract-actions`)는 별도 메서드로 미변경.
+- Task 28 라인참조는 raw 라인 대신 구조 기준 탐색으로 해결(직전 핸드오프 주의사항 반영).
+
+**다음 진입점:**
+- (a) **거버넌스 동기화 부채(미반영, 본 PR 범위 밖):** EXECUTION_PLAYBOOK(Copilot Edits 절차 재작성)·PLAN prose(18·37·41·87·120·131행)·CLAUDE_WORKFLOW §4·§5·task 01/04/13/14의 Copilot→executor 표현. 별도 docs Task 권장.
+- (b) **로드맵 본궤도 미착수:** Phase 0 Task 02~07(build baseline·SMOKE_TESTS·REVIEW_CHECKLIST 등)·Phase 1 Task 10~15(drift scan) 작업지시서만 있고 미실행. `DRIFT_INVENTORY.md`·`baseline.md`·`SMOKE_TESTS.md` 부재 확인.
+
+**미해결 / 주의:**
+- AI fast-track(26~28) 결정을 `DECISIONS.md`에 **DEC-PHASE-003**으로 정식 등재(본 세션 PR에 포함).
+- `stash@{0}` 쿠키 인증 md 변경 여전히 미처리(무관, 보존).
+- AI API 키가 다른 PC에 있어 27·28·55 모두 런타임 테스트 불가 → `compileJava`+diff로 동작 보존 검증(작업지시서 §8 허용).
+- `main` 미변경(origin/main = a3418b2). main push는 전체 리팩토링 완료 시에만(DEC-WORKFLOW-002).
