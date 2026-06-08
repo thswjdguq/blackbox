@@ -42,77 +42,56 @@ backend(Gradle)·frontend(Next.js·TypeScript) 빌드 명령을 현재 시점에
 - 실제 코드를 읽고 쓴다. 옛 구조나 추측 금지.
 - "지금 어떻게 동작한다"로 서술.
 
-> PRINCIPLES.md §6 (Copilot 협업 규칙):
+> PRINCIPLES.md §6 (실행자 협업 규칙):
 
 - 추측 금지. 모르는 동작은 빈 함수로 두지 말고 `// [CONFIRM:?] ...` 주석으로 질문 남기기.
 
-## 6. 작업 절차 (오케스트레이터 + 사용자 실행 패턴)
+## 6. 작업 절차 (실행자 직접 실행 — DEC-WORKFLOW-010)
 
-> **Copilot은 명령을 직접 실행하지 않는다.** 사용자에게 다음 순서로 명령 실행을 요청하고, 받은 출력을 baseline.md에 정리한다.
-> 환경: **WSL Ubuntu bash** 기준 (PRINCIPLES §13).
+> **실행자(refactor-executor, Sonnet)가 빌드 명령을 직접 실행**하고 받은 실제 출력을 baseline.md에 정리한다.
+> 명령을 실제로 실행하므로 출력은 환각이 아니다. **출력을 지어내지 말 것** — 실제 실행 결과만 기록.
+> 환경: **WSL Ubuntu bash** 기준 (PRINCIPLES §13). 명령 실패는 정상 — 수정하지 말고 기록.
 
-### 6-1. 사용자에게 백엔드 빌드 요청
+### 6-1. 메타 정보 수집
+```
+git rev-parse --short HEAD; node -v; java -version
+```
+→ baseline.md 메타 섹션 채움.
 
-Copilot 발화 예시:
-> "다음 명령을 실행하고 결과를 붙여주세요:
-> ```
-> cd backend && time ./gradlew clean build -x test 2>&1 | tail -30; echo "Exit: $?"
-> ```
-> 마지막 30줄 + Exit code + `time` 출력의 real 값을 그대로 붙여주세요."
+### 6-2. 백엔드 빌드 (test 제외)
+```
+cd backend && time ./gradlew clean build -x test 2>&1 | tail -30; echo "Exit: ${PIPESTATUS[0]}"
+```
+→ 종료 코드·소요 시간(real)·마지막 20줄·경고 개수를 Backend 섹션에 기록.
 
-사용자 응답 후 처리: backend 섹션의 종료 코드·소요 시간·마지막 20줄을 그대로 인용. 환각 금지(받은 텍스트 외 추가 금지).
+### 6-3. 프론트엔드 의존성 설치
+```
+cd frontend && time npm ci 2>&1 | tail -20; echo "Exit: ${PIPESTATUS[0]}"
+```
+→ install 섹션 채움. (네트워크/락파일 문제로 실패하면 그대로 기록 + 이후 단계는 가능한 만큼 진행.)
 
-### 6-2. 사용자에게 프론트엔드 npm ci 요청
+### 6-4. 프론트엔드 type-check
+```
+cd frontend && time npm run type-check 2>&1 | tail -30; echo "Exit: ${PIPESTATUS[0]}"
+```
+→ 종료 코드·에러/경고 개수를 type-check 섹션에 기록.
 
-Copilot 발화 예시:
-> "다음 명령 실행 후 결과 부탁드려요:
-> ```
-> cd frontend && time npm ci 2>&1 | tail -20; echo "Exit: $?"
-> ```"
+### 6-5. 프론트엔드 build
+```
+cd frontend && time npm run build 2>&1 | tail -50; echo "Exit: ${PIPESTATUS[0]}"
+```
+→ build 섹션 + Next.js Route별 size 표(Page / Size / First Load JS) 기록.
 
-사용자 응답 후 처리: install 섹션 채움.
+### 6-6. 테스트 파일 카운트
+```
+find backend/src/test -type f -name '*.java' 2>/dev/null | wc -l
+find frontend -path '*/node_modules' -prune -o -type f \( -name '*.test.*' -o -name '*.spec.*' \) -print 2>/dev/null | wc -l
+```
+→ 테스트 파일 개수 섹션 채움.
 
-### 6-3. 사용자에게 type-check 요청
+### 6-7. baseline.md 최종본 작성
 
-Copilot 발화 예시:
-> "다음 명령:
-> ```
-> cd frontend && time npm run type-check 2>&1 | tail -30; echo "Exit: $?"
-> ```
-> 에러/경고가 보이면 그 개수도 알려주세요."
-
-사용자 응답 후 처리: type-check 섹션 채움.
-
-### 6-4. 사용자에게 build 요청
-
-Copilot 발화 예시:
-> "다음 명령:
-> ```
-> cd frontend && time npm run build 2>&1 | tail -50; echo "Exit: $?"
-> ```
-> Next.js가 출력하는 Route 별 size 표(Page / Size / First Load JS)도 함께 붙여주세요."
-
-사용자 응답 후 처리: build 섹션 + 번들 크기 요약 채움.
-
-### 6-5. 사용자에게 테스트 파일 카운트 요청
-
-Copilot 발화 예시:
-> "다음 두 명령 결과(숫자) 부탁드려요:
-> ```
-> find backend/src/test -type f -name '*.java' 2>/dev/null | wc -l
-> find frontend -path '*/node_modules' -prune -o -type f \\( -name '*.test.*' -o -name '*.spec.*' \\) -print 2>/dev/null | wc -l
-> ```"
-
-사용자 응답 후 처리: 테스트 파일 개수 섹션 채움.
-
-### 6-6. baseline.md 최종본 작성
-
-수집한 데이터로만 `docs/refactor/baseline.md` 작성. **사용자가 붙여주지 않은 항목은 `<사용자 미제공>` 표기. 추측·환각 금지.**
-
-### 6-7. 사용자 검증 요청
-
-Copilot 발화 예시:
-> "baseline.md 작성 완료했습니다. 본인이 본 터미널 출력과 일치하는지 spot check 부탁드립니다. 이상 있으면 알려주세요."
+실제 실행 결과로만 `docs/refactor/baseline.md` 작성. **실행 못 한 항목(명령 부재·환경 미비 등)은 `<실행 불가: 사유>` 표기. 출력 날조 금지.**
 
 ### baseline.md 골격
 
@@ -177,15 +156,15 @@ Copilot 발화 예시:
 
 ## 7. Pre-write 프로토콜 적용 여부
 
-- [x] **Skip** — 절차가 6-1~6-7로 명확. 사용자 응답 의존 구조라 자체 변동성 없음.
-- **명령은 Copilot이 절대 직접 실행하지 않음** (PRINCIPLES §13 환각 회피)
+- [x] **Skip** — 절차가 6-1~6-7로 명확. 코드 변경 없음(문서 1개 생성).
+- **실행자가 명령을 직접 실행**하고 받은 실제 출력만 기록 (날조 금지 — PRINCIPLES §13).
 - 빌드 실패 시 **수정 시도 금지**. 결과를 그대로 기록하고 Known Issues 섹션에 모음.
 
 ## 8. 검수 기준 (Acceptance Criteria)
 
 - [ ] `docs/refactor/baseline.md` 신규 생성됨
-- [ ] **모든 출력은 사용자가 실제 실행해서 붙인 내용 그대로** (Copilot이 만들어낸 출력 0건)
-- [ ] 사용자 미제공 항목은 `<사용자 미제공>` 표기
+- [ ] **모든 출력은 실행자가 실제 실행한 결과 그대로** (날조한 출력 0건)
+- [ ] 실행 불가 항목은 `<실행 불가: 사유>` 표기
 - [ ] backend·frontend 빌드 결과 기록 (성공·실패 무관)
 - [ ] 종료 코드·소요 시간·경고 개수 명시 (사용자 응답에 있는 한)
 - [ ] 테스트 파일 개수 기록
