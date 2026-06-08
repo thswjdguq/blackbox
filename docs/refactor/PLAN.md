@@ -15,7 +15,7 @@
    ↓
 [검토] 사용자: 작업지시서 검토 → 피드백 → 확정
    ↓
-[실행] Copilot Edits/Workspace: 확정된 작업지시서 받아 실행
+[실행] 실행자(refactor-executor, Sonnet): 확정된 작업지시서 받아 HARD LIMIT 안에서 구현 + 빌드 검증
    ↓
 [PR]   사용자: refactor/<task-id>-<name> 브랜치에서 PR (base: refactor/main)
    ↓
@@ -34,11 +34,11 @@
 | 로드맵 | `docs/refactor/PLAN.md` (이 파일) | Claude (사용자 검토) |
 | Task 템플릿 | `docs/refactor/TASK_TEMPLATE.md` | Claude |
 | 작업지시서 | `docs/refactor/tasks/NN-xxx.md` | Claude → 사용자 검토 |
-| Drift 인벤토리 | `docs/refactor/DRIFT_INVENTORY.md` | Phase 1에서 Copilot 1차 채움 → Claude 결정안 → 사용자 확정 |
+| Drift 인벤토리 | `docs/refactor/DRIFT_INVENTORY.md` | Phase 1에서 실행자 1차 채움 → Claude 결정안 → 사용자 확정 |
 | 의사결정 로그 | `docs/refactor/DECISIONS.md` | Claude (사용자 결정 기록) |
 | 검수 체크리스트 | `docs/refactor/REVIEW_CHECKLIST.md` | Claude |
 | 유예 항목 | `docs/refactor/DEFERRED.md` | 작업 중 발생 시 추가 |
-| Copilot always-on | `.github/copilot-instructions.md` | Claude (PRINCIPLES 변경 시 동기화) |
+| 실행자 always-on | `.claude/agents/refactor-executor.md` | Claude (PRINCIPLES 변경 시 동기화). 구 `.github/copilot-instructions.md`는 DEPRECATED stub |
 | CI 가드 | `.github/workflows/refactor-guard.yml` | Claude |
 
 ### Task ID 체계
@@ -84,7 +84,7 @@
   - 각 시나리오마다 "이전 동작 / 예상 결과" 명시
   - Phase 2~5 마일스톤마다 수동 실행
 - `06-smoke-test-baseline-run` — Task 05의 SMOKE_TESTS 시나리오 7개를 **실제로 1회 실행**하고 결과를 SMOKE_TESTS.md "실행 이력" 표 첫 행에 기록.
-  - **Copilot 오케스트레이터 + 사용자 실행 패턴** (PRINCIPLES §13)
+  - **실행자 직접 실행 가능** (Sonnet) — 오케스트레이터 패턴은 옵션 (PRINCIPLES §13)
   - 의존: Task 02 빌드 통과 + Task 05 머지
 - `07-add-review-checklist` — `docs/refactor/REVIEW_CHECKLIST.md` 신규. PRINCIPLES §11이 명시하는 검수 도구. Task 00 PR부터 사용.
 - `08~09` — **의도적 미사용 (gap)**. Phase 0에 추가 작업 발생 시 채움. lazy 생성 항목(DECISIONS.md, DEFERRED.md)은 Task ID 없이 필요 시점에 생성.
@@ -117,7 +117,7 @@
 
 - `10-drift-scan-INV` — `gc.md` INV-01~07 (불변 규칙 위반) 스캔
   - 우선순위: INV-02(file_vault), INV-05(외부서비스), INV-01(activityLog) → INV-03/04/06/07
-  - Copilot이 grep 실행 + 결과를 `DRIFT_INVENTORY.md` (INV 섹션)에 추가
+  - 실행자가 grep 실행 + 결과를 `DRIFT_INVENTORY.md` (INV 섹션)에 추가
 - `11-drift-scan-SYNC` — `gc.md` SYNC-01~05 (크로스파일 일관성) 스캔
   - SYNC-01 (DB↔Entity↔Flyway), SYNC-02 (TS↔Java DTO), SYNC-03 (API↔Controller↔훅), SYNC-04 (env), SYNC-05 (기획서↔구현)
 - `12-drift-scan-CODE` — `gc.md` CODE-01~03 (금지 패턴) 스캔
@@ -128,7 +128,7 @@
 
 ### 완료 조건
 
-- [ ] INV/SYNC/CODE 3배치 모두 스캔 완료 (Copilot)
+- [ ] INV/SYNC/CODE 3배치 모두 스캔 완료 (실행자)
 - [ ] `DRIFT_INVENTORY.md`에 모든 항목 기재
 - [ ] 모든 항목에 등급 + 결정 1차안 (Claude)
 - [ ] 모든 항목에 사용자 확정 결정 기재
