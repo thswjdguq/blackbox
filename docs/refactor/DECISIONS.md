@@ -102,6 +102,15 @@
 - **사유:** Task ID 100단위로 Phase 식별 (00~09 = Phase 0). DECISIONS·DEFERRED 등은 lazy 생성, Task ID 없음.
 - **관련:** PLAN.md
 
+## DEC-PHASE-003 — AI LLM 클라이언트 통합 fast-track (Phase 게이트 예외)
+- **일시:** 2026-06-01 (결정) / 2026-06-08 (완결·정식 등재)
+- **결정:** PLAN상 Phase 2A(cross-cutting)에 해당하는 AI LLM 클라이언트 통합(Task 26→27→28)을, Phase 0/1(안전망·Drift 인벤토리)을 건너뛰고 **단독 패스트트랙**으로 선실행한다. 후속 죽은 코드 정리(Task 55)도 같은 트랙으로 처리.
+- **사유:** 사용자(팀장) 결정. `ClaudeService`↔`OpenAiService` ~95% 중복 + 폴백 분기 3곳 복붙은 **순수 내부 리팩토링(동작 보존)**이라 Drift 분류 없이도 리스크 낮음. 소비자가 `MeetingController`·`GoogleCalendarService` 2곳뿐으로 전수조사 가능.
+- **완결 결과:** Task 26(LlmClient 추상화, PR #9) → 27(AiService 폴백 중앙화, PR #11) → 28(Calendar 위임, PR #12) → 55(죽은 extract-lines 경로 제거, PR #13) 모두 머지. AI 폴백 인라인 분기 **3곳 → 0곳**. AI API 키 부재 환경이라 `compileJava`+diff로 동작 보존 검증.
+- **DEC-PHASE-001 대비:** Phase 순서 게이트의 **일회적 예외**. 본궤도 Phase 0(02~07)·Phase 1(10~15)은 여전히 미착수 상태로 남아 있으며, 추후 진행 시 본 fast-track과 무관하게 정상 순서로 수행.
+- **관련:** PLAN.md, SESSION_LOG(2026-06-01·2026-06-08 entry), DEC-WORKFLOW-010(실행자 Sonnet 첫 적용은 Task 26)
+- **재검토 조건:** 추가 fast-track 요청 시 동일 기준(동작 보존 + 소비자 전수조사 가능 여부)으로 개별 판단.
+
 ---
 
 ## DEC-REJECT-001 — Next.js 16 존재 여부 무시
