@@ -133,3 +133,29 @@
 - `DECISIONS.md`에 **DEC-WORKFLOW-010**(DEC-WORKFLOW-001 개정) 등재. §13 권장에 따라 Haiku 대신 Sonnet 채택.
 - **동기화 완료:** `copilot-instructions.md`(DEPRECATED stub화), `CLAUDE_WORKFLOW.md §1`, `PRINCIPLES.md §0·§12`, `CLAUDE.md §2·§5·§7`, `DECISIONS.md`(DEC-001 개정 포인터 + DEC-005 갱신).
 - **후속 동기화 필요(미반영):** `EXECUTION_PLAYBOOK.md`(강의 실행 가이드 — Copilot Edits 절차 전반 재작성 필요), `PLAN.md` 오케스트레이터/Copilot prose(18·37·41·87·120·131), `CLAUDE_WORKFLOW §4·§5`(예외실행·오케스트레이터 전제 변화), 기존 작업지시서 01·04·13·14의 Copilot 표현. SESSION_LOG 과거 entry는 사실 기록이라 보존.
+
+---
+
+## 2026-06-01 — Task 26 실행·머지 (Sonnet 실행자 첫 적용) + 다음 세션 핸드오프
+
+**진행자:** 사용자(팀장) + Claude Code (Opus 4.8, 계획자) + refactor-executor (Sonnet 4.6, 실행자)
+
+**한 일:**
+- `refactor/main`을 origin/main 최신(a3418b2: SOFT BLOCK fix·주간보고서 gitignore)까지 동기화 → 리팩토링 인프라 3커밋과 함께 origin push (현재 `refactor/main` = `29737ee`).
+- **Task 26 실행** (DEC-WORKFLOW-010 첫 적용): refactor-executor 서브에이전트(Sonnet)가 `LlmClient` interface + `AbstractLlmClient` 추출, `ClaudeService`/`OpenAiService`를 상속 구조로 전환. ClaudeService −136·OpenAiService −113줄, 소비자(MeetingController/GoogleCalendarService) diff 0, `compileJava` BUILD SUCCESSFUL.
+- PR **#9** (base `refactor/main`) → squash 머지 완료(`29737ee`). 머지된 로컬·원격 작업 브랜치 정리.
+
+**핵심 결정:**
+- **buildExtractPrompt provider 차이 보존** — 원본에 이미 있던 drift(Claude엔 "출력 예시" 있고 OpenAI엔 없음). 동작 보존(PRINCIPLES §4) 위해 OpenAiService가 `@Override`로 유지. `[CONFIRM:?]` → 설명 주석으로 정리. 통일은 보류(후속 fix Task 후보).
+- Task 26 4파일 ≤3 §13 예외(2개는 순수 추출 신규)로 진행 — 문제 없었음.
+
+**다음 세션 진입점 — Task 27 실행:**
+- 새 세션은 `refactor/main`에서 시작 → `.claude/agents/refactor-executor.md`가 커밋돼 있어 **`subagent_type: refactor-executor`로 바로 호출 가능**(이번 세션엔 미등록이라 general-purpose+sonnet으로 우회했음).
+- 절차: `refactor/main`에서 `refactor/27-ai-service-orchestrator` 분기 → 실행자에 `docs/refactor/tasks/27-ai-service-orchestrator.md` 위임 → 검수 → PR(base refactor/main). 의존(Task 26 머지) **충족됨**.
+- §7 Pre-write Required(Task 27) — 코드 전 계획 확인.
+
+**미해결 / 주의:**
+- **Task 28 라인 참조 주의:** 작업지시서의 "현 219~233행"이 origin의 SOFT BLOCK 수정(55c7092)으로 밀렸을 수 있음 → 실행 시 raw 라인 대신 `recommendMeetingTimes()`의 AI 폴백 if/else 구조 기준으로 찾을 것. (Task 28 실행 전 라인 참조 최신화 권장.)
+- `stash@{0}`에 `md/handover_log.md`·`md/todo.md` 쿠키 인증 문서 변경 보존 중(이번 리팩토링 무관, 미처리).
+- 후속 거버넌스 동기화 미반영분(직전 entry 참조): EXECUTION_PLAYBOOK·PLAN prose·CLAUDE_WORKFLOW §4·§5·task 01/04/13/14.
+- `main`은 미변경(origin/main = a3418b2). main push는 전체 리팩토링 완료 시에만(DEC-WORKFLOW-002).
