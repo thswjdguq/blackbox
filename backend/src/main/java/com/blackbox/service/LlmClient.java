@@ -16,7 +16,5 @@ public interface LlmClient {
 
     List<ActionItemDto> extractStructuredActionItems(String notes, String decisions);
 
-    List<String> extractActionItems(String notes, String decisions);
-
     String rawCall(String userPrompt, int maxTokens);
 }
