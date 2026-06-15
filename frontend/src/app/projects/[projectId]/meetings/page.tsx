@@ -519,10 +519,17 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                             <span className="text-[10px] text-slate-500">{rec.durationMinutes}분</span>
                           </div>
                         </div>
-                        {/* needsConfirm 경고 / 전원 가능 */}
-                        {rec.needsConfirm ? (
-                          <div className="flex items-center gap-1.5 mt-1 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1">
-                            <span className="text-[10px] text-amber-400">⚠️ {rec.softBlockMembers?.join(", ")}님 종일 일정 있음 — 직접 확인 필요</span>
+                        {/* 종일 일정(SOFT BLOCK) 경고 / 전원 가능 */}
+                        {(rec.softBlockMembers ?? []).length > 0 ? (
+                          <div className={`flex items-start gap-1.5 mt-1.5 rounded-lg px-2.5 py-1.5 border ${
+                            rec.needsConfirm
+                              ? "bg-amber-500/20 border-amber-500/50"
+                              : "bg-amber-500/10 border-amber-500/30"
+                          }`}>
+                            <TriangleAlert size={11} className="text-amber-400 shrink-0 mt-0.5" />
+                            <span className="text-[10px] text-amber-300 leading-snug">
+                              {(rec.softBlockMembers ?? []).join("님, ")}님이 종일 일정이 있습니다. 팀원과 일정을 조율해보세요.
+                            </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 mt-1">

@@ -178,7 +178,7 @@ public class GoogleCalendarService {
 
     // ── AI 일정 추천 (점수제) ─────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
+    @Transactional   // readOnly 제거 — ensureFreshToken 내부의 tokenRepo.save() 가 반영되어야 함
     public CalendarRecommendResponse recommendMeetingTimes(CalendarRecommendRequest req, User currentUser) {
         var project = projectRepo.findById(req.projectId())
                 .orElseThrow(() -> new RuntimeException("Project not found"));
@@ -200,15 +200,43 @@ public class GoogleCalendarService {
 
         // ── 1. 연동된 팀원 이벤트 수집 (allDay 여부 포함) ───────────────────────
         List<CalendarEventInfo> allEvents = new ArrayList<>();
+        int connectedCount = 0;
+        List<String> unconnectedNames = new ArrayList<>();
+
         for (User m : targetMembers) {
-            tokenRepo.findByUser(m).ifPresent(tok -> {
-                try {
-                    String at = ensureFreshToken(tok);
-                    allEvents.addAll(fetchCalendarEventsWithTypes(at, timeMin, timeMax, m.getName()));
-                } catch (Exception ignored) {
-                    // 해당 멤버 스킵 — 일정 없음으로 처리
-                }
-            });
+            Optional<GoogleCalendarToken> tokenOpt = tokenRepo.findByUser(m);
+            if (tokenOpt.isEmpty()) {
+                log.info("[CAL-RECOMMEND] {} — 구글 캘린더 미연동, 스킵", m.getName());
+                unconnectedNames.add(m.getName());
+                continue;
+            }
+            connectedCount++;
+            try {
+                String at = ensureFreshToken(tokenOpt.get());
+                List<CalendarEventInfo> memberEvents =
+                        fetchCalendarEventsWithTypes(at, timeMin, timeMax, m.getName());
+                log.info("[CAL-RECOMMEND] {} — 이벤트 {}건 수집", m.getName(), memberEvents.size());
+                allEvents.addAll(memberEvents);
+            } catch (Exception e) {
+                log.warn("[CAL-RECOMMEND] {} — 이벤트 수집 실패: {}", m.getName(), e.getMessage());
+                unconnectedNames.add(m.getName());
+            }
+        }
+
+        log.info("[CAL-RECOMMEND] 총 연동 팀원 {}/{}명, 수집된 이벤트 {}건",
+                connectedCount, targetMembers.size(), allEvents.size());
+
+        // 연동 현황 경고 메시지 조합
+        if (!unconnectedNames.isEmpty()) {
+            String names = String.join(", ", unconnectedNames);
+            String calWarning = names + "님이 구글 캘린더를 연동하지 않아 해당 팀원의 일정은 반영되지 않았습니다.";
+            warning = (warning != null) ? warning + " / " + calWarning : calWarning;
+        }
+        if (connectedCount == 0) {
+            // 아무도 캘린더 연동 안 했으면 — 캘린더 기반 추천 불가, 명시적 안내
+            return new CalendarRecommendResponse(List.of(),
+                    "팀원 중 구글 캘린더를 연동한 멤버가 없습니다. 프로젝트 설정에서 구글 캘린더를 먼저 연동해 주세요.",
+                    warning);
         }
 
         // ── 2. 슬롯 점수 계산 ────────────────────────────────────────────────
@@ -459,8 +487,12 @@ public class GoogleCalendarService {
                 .uri(uri)
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
+                // 4xx/5xx(토큰 만료·권한 없음 등)는 RuntimeException으로 전파 → caller의 catch에서 처리
+                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .map(body -> new RuntimeException(
+                                        "Google Calendar API " + clientResponse.statusCode() + ": " + body)))
                 .bodyToMono(Map.class)
-                .onErrorReturn(Map.of())
                 .block();
 
         if (resp == null) return List.of();
@@ -509,6 +541,7 @@ public class GoogleCalendarService {
     private List<ScoredSlot> computeScoredSlots(List<CalendarEventInfo> events,
                                                  LocalDate startDate, int days) {
         ZoneId kst = ZoneId.of("Asia/Seoul");
+        ZonedDateTime now = ZonedDateTime.now(kst);
         List<ScoredSlot> result = new ArrayList<>();
 
         for (int dayOffset = 0; dayOffset < days; dayOffset++) {
@@ -516,6 +549,9 @@ public class GoogleCalendarService {
             for (int hour = 9; hour < 18; hour++) {
                 ZonedDateTime slotStart = day.atTime(hour, 0).atZone(kst);
                 ZonedDateTime slotEnd   = slotStart.plusHours(1);
+
+                // 현재 시각 이전 슬롯 제외 (과거 시간 추천 방지)
+                if (slotStart.isBefore(now)) continue;
 
                 // HARD BLOCK: 시간 일정이 겹치면 후보에서 제외
                 boolean hardBlocked = events.stream().anyMatch(e -> !e.allDay()
