@@ -88,6 +88,18 @@
 - **재검토 조건:** 서브에이전트 실행 품질이 HARD LIMIT을 반복 위반하거나, 비용이 Copilot보다 불리할 때
 - **첫 적용:** Task 26 (llm-client-abstraction)
 
+## DEC-WORKFLOW-011 — 장수 브랜치 발산 관리: main→refactor/main 전방통합 우선
+- **일시:** 2026-06-08
+- **배경:** 리팩토링이 길어지는 동안 팀원이 `main`에서 개발을 이어가면, `refactor/main`과의 발산(divergence)이 누적돼 나중에 큰 충돌·통합 오류 위험. (측정: 2026-06-08 기준 refactor/main이 main보다 15커밋 앞, 팀원 main 신규 푸시 0 — 아직 발산 미시작. 분기 기준 `a3418b2`.)
+- **결정:** 발산은 **백머지를 일찍 하는 것**이 아니라 **전방통합(forward-integration)을 자주 하는 것**으로 관리한다.
+  1. **main→refactor/main 정기 전방통합:** 매 세션 시작 시(그리고 Phase 2 도메인 Task 착수 전) `origin/main`을 `refactor/main`에 **merge**(rebase 금지 — 공유 브랜치)해서 팀원 작업을 계속 흡수. 충돌은 refactor 쪽에서 작게·자주 해소. 머지 커밋: `merge: origin/main 전방통합 (refactor/main 최신화)`. 새 main 커밋을 흡수했으면 SESSION_LOG에 1줄.
+  2. **핫파일 조율:** 충돌은 같은 파일을 동시에 고칠 때 큼. 진행 중 도메인(예: "이번 주 meeting")을 팀원에게 공유해 겹침 회피.
+  3. **충돌 해소는 refactor/main 측에서:** main은 건드리지 않는다(DEC-WORKFLOW-002 유지).
+- **DEC-WORKFLOW-002와의 관계:** **백머지(refactor/main→main) 동결은 유지.** main 통합은 리팩토링 완료 + 안전망(SMOKE_TESTS Task 05/06) green + 팀원 승인 시점에 원자적으로. 전방통합은 그 전까지 발산을 0 근처로 유지하는 수단.
+- **보류(별도 결정 필요):** "작은 동작보존·빌드검증된 리팩토링은 일반 PR로 main에 직배"하는 완화는 DEC-WORKFLOW-002 개정이 필요 → 팀원 승인 + 본 로그 별도 등재 시에만. 현재는 채택 안 함.
+- **관련:** CLAUDE_WORKFLOW §6, EXECUTION_PLAYBOOK §1, DEC-WORKFLOW-002, SESSION_LOG(2026-06-08)
+- **재검토 조건:** 전방통합에도 충돌이 과대해지거나, 사용자가 main 통합 시점을 앞당기기로 결정 시.
+
 ---
 
 ## DEC-PHASE-001 — Phase 0~6 7단계 로드맵

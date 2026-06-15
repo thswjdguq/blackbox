@@ -61,16 +61,26 @@ git log -1   # 최신 커밋 확인
 ```bash
 # 1. 환경 활성화
 cd /home/user/project/team-blackbox/blackbox
+git fetch origin --prune
 git checkout refactor/main
-git pull origin refactor/main   # 다른 머신에서 작업했다면
+git merge --ff-only origin/refactor/main   # 다른 머신에서 작업했다면 최신화
 
-# 2. 어디까지 했는지 확인
+# 2. 전방통합 — origin/main 흡수 (DEC-WORKFLOW-011, 발산 누적 방지)
+#    팀원이 main에 새로 푸시했는지 확인하고, 있으면 refactor/main에 merge.
+git log --oneline origin/refactor/main..origin/main   # 비어있으면 흡수할 것 없음
+git merge origin/main -m "merge: origin/main 전방통합 (refactor/main 최신화)"
+#  - 충돌 시: refactor/main 측에서 해소(작게·자주). main은 건드리지 않음.
+#  - 새 main 커밋을 흡수했으면 SESSION_LOG에 1줄. rebase 금지(공유 브랜치).
+git push origin refactor/main   # 흡수 머지가 있었으면
+
+# 3. 어디까지 했는지 확인
 cat docs/refactor/PLAN.md | grep -A2 "## Phase"   # Phase별 [x] 체크박스
 gh pr list --base refactor/main --state all --limit 10   # 최근 PR
 tail -40 docs/refactor/SESSION_LOG.md   # 직전 세션 핸드오프
 
-# 3. 다음 Task 결정
+# 4. 다음 Task 결정
 # PLAN.md에서 [ ] 미완료 Task 중 선행 Task가 머지된 것 선택
+# Phase 2 도메인 Task 착수 전에도 전방통합 1회 (핫파일 충돌 최소화)
 ```
 
 ---
