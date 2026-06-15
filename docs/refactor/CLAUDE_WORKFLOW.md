@@ -84,10 +84,11 @@ PRINCIPLES §13 참조.
 ## 6. 형상관리 정책
 
 - 작업은 **`refactor/main` 브랜치** 진행
-- **`main`에 절대 push/PR/merge 금지** (팀원 최종 승인 전까지)
+- **`main`에 절대 push/PR/merge 금지** (팀원 최종 승인 전까지) — 백머지 동결(DEC-WORKFLOW-002)
 - Task별 `refactor/<task-id>-<name>` 브랜치 → PR base는 항상 `refactor/main`
 - 한 커밋에 한 종류 변경만 (rename / move / refactor / fix / feat / docs / chore 분리)
 - squash merge로 머지
+- **전방통합(forward-integration, DEC-WORKFLOW-011):** 발산 누적을 막기 위해 **매 세션 시작 시 `origin/main`을 `refactor/main`에 merge**(rebase 금지)해 팀원 작업을 흡수. 충돌은 refactor 측에서 작게·자주 해소. main은 건드리지 않음. 핫파일(동시 편집)은 팀원과 조율.
 
 ---
 
