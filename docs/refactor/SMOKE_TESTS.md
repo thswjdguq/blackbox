@@ -200,7 +200,7 @@ docker compose logs -f backend  # 별도 터미널에서 모니터링
 
 | 일시 | 실행자 | 시점(Phase) | S1 | S2 | S3 | S4 | S5 | S6 | S7 | 비고 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| (미실행) | — | — | — | — | — | — | — | — | — | Task 06에서 Phase 0 baseline 1회 실행 예정 |
+| 2026-06-15 | 사용자(팀장) | Phase 0 baseline | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 전체 통과(사용자 확인). 셋업 중 발견 2건: ① 회원가입 인터셉터 `/login` 강제이동 버그 → **Task 72(#22)** fix 머지 후 통과 ② nginx upstream startup race(frontend 기동 후 `docker compose up -d --force-recreate nginx` 필요) → **Task 73 후보** |
 
 각 셀: ✅ pass / ❌ fail (issue link) / ⏭ skipped (사유)
 새 실행마다 행 추가. 표는 위에서 아래로 시간순.
