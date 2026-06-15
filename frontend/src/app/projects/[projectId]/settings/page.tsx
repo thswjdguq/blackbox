@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import BeginnerGuide from "@/components/BeginnerGuide";
 import api from "@/lib/api";
 import {
   UserCircle,
@@ -175,6 +176,44 @@ export default function ProjectSettingsPage() {
                 <p className="text-xs text-bb-text2">팀 Discord 채널에 실시간 알림을 보냅니다</p>
               </div>
             </div>
+
+            {/* 초보자 가이드 */}
+            <BeginnerGuide
+              toggleLabel="Discord가 처음이세요?"
+              steps={[
+                {
+                  emoji: "🖥️",
+                  title: "Discord 앱 또는 웹사이트 열기",
+                  lines: ["discord.com 또는 앱에서 팀 서버를 열어주세요"],
+                },
+                {
+                  emoji: "📢",
+                  title: "알림 받을 채널 선택",
+                  lines: [
+                    "예: #팀-알림 채널을 만들거나 기존 채널을 선택하세요",
+                    "채널 이름 옆 ⚙️ 아이콘을 클릭하면 채널 설정이 열립니다",
+                    "채널이 없다면 \"+ 채널 추가\" 버튼을 눌러서 새로 만드세요",
+                  ],
+                },
+                {
+                  emoji: "🔗",
+                  title: "웹훅 URL 만들기",
+                  lines: [
+                    "채널 설정 → 연동 탭 → 웹후크 클릭",
+                    "새 웹후크 → \"웹후크 URL 복사\" 클릭",
+                  ],
+                },
+                {
+                  emoji: "📋",
+                  title: "여기에 붙여넣기",
+                  lines: ["복사한 URL을 아래 입력창에 붙여넣으세요"],
+                },
+              ]}
+              faq={[
+                { q: "채널 설정이 안 보여요", a: "서버 관리자 권한이 있어야 합니다. 서버장(팀장)에게 권한을 요청하거나 직접 등록을 부탁하세요." },
+                { q: "웹후크 탭이 없어요", a: "\"연동\" 탭을 찾아보세요. 구버전 Discord는 메뉴 위치가 다를 수 있어요." },
+              ]}
+            />
 
             {/* Webhook URL */}
             <div className="mb-4">

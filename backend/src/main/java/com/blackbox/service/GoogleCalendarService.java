@@ -183,9 +183,13 @@ public class GoogleCalendarService {
         var project = projectRepo.findById(req.projectId())
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        List<User> targetMembers = req.attendeeIds() != null && !req.attendeeIds().isEmpty()
+        boolean attendeesEmpty = req.attendeeIds() == null || req.attendeeIds().isEmpty();
+        List<User> targetMembers = !attendeesEmpty
                 ? userRepo.findAllById(req.attendeeIds())
                 : memberRepo.findByProject(project).stream().map(pm -> pm.getUser()).collect(Collectors.toList());
+        // 참석자 미선택 시 전체 팀원으로 대체 — 사용자가 인지할 수 있도록 안내 메시지 동봉
+        String warning = attendeesEmpty ? "참석자를 선택하지 않아 전체 팀원 기준으로 분석했습니다" : null;
+        int durationMinutes = req.durationMinutes() != null ? req.durationMinutes() : 60;
 
         String targetDate = resolveTargetDate(req.targetDate());
         LocalDate startDate = parseDate(targetDate);
@@ -212,7 +216,8 @@ public class GoogleCalendarService {
 
         if (scoredSlots.isEmpty()) {
             return new CalendarRecommendResponse(List.of(),
-                    "이 기간에는 시간이 명시된 일정이 전원 겹쳐서 가능한 시간이 없습니다. 다른 기간을 선택해 주세요.");
+                    "이 기간에는 시간이 명시된 일정이 전원 겹쳐서 가능한 시간이 없습니다. 다른 기간을 선택해 주세요.",
+                    warning);
         }
 
         // ── 3. 상위 3개 선택 + AI로 추천 이유 생성 ──────────────────────────
@@ -245,10 +250,10 @@ public class GoogleCalendarService {
             String reason = (i < reasons.length && !reasons[i].isBlank())
                     ? reasons[i] : defaultReason(slot);
             recs.add(new CalendarRecommendResponse.Recommendation(
-                    slot.start().format(iso), 60, reason, i + 1,
+                    slot.start().format(iso), durationMinutes, reason, i + 1,
                     slot.score(), slot.softBlockMembers(), !slot.softBlockMembers().isEmpty()));
         }
-        return new CalendarRecommendResponse(recs);
+        return new CalendarRecommendResponse(recs, null, warning);
     }
 
     // ── 연동 상태 조회 ─────────────────────────────────────────────────────
@@ -612,111 +617,6 @@ public class GoogleCalendarService {
         if (hour < 12) return "오전 시간대로 집중력이 높아 회의 효율이 좋습니다.";
         if (hour < 15) return "점심 후 활기차게 시작하기 좋은 오후 초반입니다.";
         return "업무 마무리 전 진행 상황을 점검하기 좋은 오후 시간대입니다.";
-    }
-
-    /** 전원 가능 슬롯 목록만 후보로 전달 — AI가 목록 외 시간 추천 불가 */
-    private String buildFreeSlotPrompt(List<String> memberNames, List<String> freeSlots,
-                                       String deadline, String targetDate) {
-        String freeStr    = String.join("\n", freeSlots);
-        String deadlineStr = deadline != null ? deadline : "미정";
-        return """
-                팀원 전원이 비어 있는 시간 목록이 아래에 있다.
-                반드시 이 목록 중에서만 회의하기 좋은 시간 최대 3개를 골라서 추천해줘.
-                목록에 없는 시간은 절대 추천하지 말 것.
-                각 추천에 이유도 같이 설명해줘.
-
-                팀원: %s
-                프로젝트 마감일: %s
-                기준 날짜: %s
-
-                전원 가능한 시간 (이 중에서만 선택할 것):
-                %s
-
-                반드시 아래 JSON 형식으로만 응답해. 다른 텍스트 없이 JSON만:
-                {"recommendations":[{"time":"2025-01-20T14:00:00+09:00","durationMinutes":60,"reason":"이유"},{"time":"...","durationMinutes":60,"reason":"..."},{"time":"...","durationMinutes":60,"reason":"..."}]}
-                """.formatted(String.join(", ", memberNames), deadlineStr, targetDate, freeStr);
-    }
-
-    private String buildRecommendPrompt(List<String> memberNames, List<String> busySlots,
-                                        String deadline, String targetDate) {
-        String busyStr = busySlots.isEmpty() ? "없음 (캘린더 미연동)" : String.join("\n", busySlots);
-        String deadlineStr = deadline != null ? deadline : "미정";
-        return """
-                다음 팀원들의 바쁜 시간과 프로젝트 마감일을 고려해서 회의하기 좋은 시간 3개를 추천해줘.
-                각 추천에 이유도 같이 설명해줘.
-                시간은 %s 이후로 잡아줘.
-
-                팀원: %s
-
-                바쁜 시간대:
-                %s
-
-                프로젝트 마감일: %s
-
-                반드시 아래 JSON 형식으로만 응답해. 다른 텍스트 없이 JSON만:
-                {"recommendations":[{"time":"2025-01-20T14:00:00+09:00","durationMinutes":60,"reason":"이유"},{"time":"...","durationMinutes":60,"reason":"..."},{"time":"...","durationMinutes":60,"reason":"..."}]}
-                """.formatted(targetDate, String.join(", ", memberNames), busyStr, deadlineStr);
-    }
-
-    private CalendarRecommendResponse parseRecommendations(String raw) {
-        try {
-            int start = raw.indexOf('{');
-            int end   = raw.lastIndexOf('}') + 1;
-            if (start < 0 || end <= start) return fallbackRecommendations();
-            return parseJsonManually(raw.substring(start, end));
-        } catch (Exception e) {
-            return fallbackRecommendations();
-        }
-    }
-
-    private CalendarRecommendResponse parseJsonManually(String json) {
-        // 간단한 수동 파싱 — Jackson ObjectMapper 없이
-        List<CalendarRecommendResponse.Recommendation> recs = new ArrayList<>();
-        try {
-            // "time":"..." 패턴 추출
-            String[] timeParts   = extractJsonArrayValues(json, "time");
-            String[] reasonParts = extractJsonArrayValues(json, "reason");
-            String[] durParts    = extractJsonArrayValues(json, "durationMinutes");
-
-            for (int i = 0; i < Math.min(3, timeParts.length); i++) {
-                int dur = 60;
-                try { if (i < durParts.length) dur = Integer.parseInt(durParts[i].trim()); } catch (Exception ignored) {}
-                recs.add(new CalendarRecommendResponse.Recommendation(
-                        timeParts[i], dur,
-                        i < reasonParts.length ? reasonParts[i] : "팀원 스케줄 분석 결과",
-                        i + 1));
-            }
-        } catch (Exception ignored) {}
-        return recs.isEmpty() ? fallbackRecommendations() : new CalendarRecommendResponse(recs);
-    }
-
-    private String[] extractJsonArrayValues(String json, String key) {
-        List<String> vals = new ArrayList<>();
-        String search = "\"" + key + "\":";
-        int pos = 0;
-        while ((pos = json.indexOf(search, pos)) >= 0) {
-            pos += search.length();
-            char first = json.charAt(pos);
-            if (first == '"') {
-                int endQ = json.indexOf('"', pos + 1);
-                if (endQ > pos) vals.add(json.substring(pos + 1, endQ));
-            } else {
-                int endNum = pos;
-                while (endNum < json.length() && (Character.isDigit(json.charAt(endNum)) || json.charAt(endNum) == '.')) endNum++;
-                vals.add(json.substring(pos, endNum));
-            }
-        }
-        return vals.toArray(new String[0]);
-    }
-
-    private CalendarRecommendResponse fallbackRecommendations() {
-        ZonedDateTime base = LocalDate.now().plusDays(1).atTime(10, 0).atZone(ZoneId.of("Asia/Seoul"));
-        DateTimeFormatter fmt = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-        return new CalendarRecommendResponse(List.of(
-                new CalendarRecommendResponse.Recommendation(base.format(fmt), 60, "오전 시간대는 집중력이 높아 회의 효율이 좋습니다", 1),
-                new CalendarRecommendResponse.Recommendation(base.plusDays(1).withHour(14).format(fmt), 60, "오후 초반은 점심 이후 활동적인 시간대입니다", 2),
-                new CalendarRecommendResponse.Recommendation(base.plusDays(2).withHour(16).format(fmt), 60, "마감일을 고려한 여유 있는 오후 시간대입니다", 3)
-        ));
     }
 
     private LocalDate parseDate(String date) {

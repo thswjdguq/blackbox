@@ -268,12 +268,10 @@ export default function AnalyticsPage() {
         {/* ── 데이터 없음 ───────────────────────────────────────────── */}
         {scores.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-bb-surface border border-bb-border flex items-center justify-center mb-4">
-              <ListChecks size={28} className="text-bb-text2" />
-            </div>
-            <p className="text-sm font-semibold text-bb-text mb-1">아직 참여 데이터가 없습니다</p>
+            <span className="text-5xl mb-4">📊</span>
+            <p className="text-sm font-semibold text-bb-text mb-1.5">아직 분석할 데이터가 없어요</p>
             <p className="text-xs text-bb-text2 mb-6">
-              태스크를 완료하거나 회의에 체크인하면 자동으로 집계됩니다
+              태스크 완료, 회의 체크인, 파일 업로드 후 분석이 시작됩니다
             </p>
             <button
               onClick={handleRecalculate}

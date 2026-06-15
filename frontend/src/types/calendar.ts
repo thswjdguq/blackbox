@@ -35,6 +35,7 @@ export interface CalendarRecommendation {
 export interface CalendarRecommendResponse {
   recommendations: CalendarRecommendation[];
   message?: string;
+  warning?: string;
 }
 
 export interface MemberCalendarStatus {

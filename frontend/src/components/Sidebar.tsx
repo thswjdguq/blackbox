@@ -26,6 +26,7 @@ import {
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import api from "@/lib/api";
+import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Alert } from "@/types/vault";
 
 // ── 알림 유틸 ──────────────────────────────────────────────────────────────
@@ -194,6 +195,9 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const projectIdMatch = pathname.match(/\/projects\/([^/]+)/);
   const currentProjectId = projectIdMatch?.[1] ?? null;
 
+  // 미연동 항목 개수 (Discord / Notion / Google Calendar)
+  const { missingCount } = useIntegrationStatus(currentProjectId);
+
   const NAV_ITEMS = [
     { href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
     { href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
@@ -202,7 +206,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
     { href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
     { href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "Hash Vault",   needsProject: true, exactActive: false },
     { href: currentProjectId ? `/projects/${currentProjectId}/analytics`  : "/analytics",           icon: BarChart2,       label: "기여도",       needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false, badgeCount: currentProjectId ? missingCount : 0 },
   ];
 
   useEffect(() => {
@@ -272,7 +276,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
 
         {/* 네비게이션 */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject, exactActive }) => {
+          {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject, exactActive, badgeCount }) => {
             // exactActive=true → exact pathname match only (프로젝트 홈 등)
             const segment = href.split("/").pop()!;
             const active = exactActive
@@ -294,6 +298,12 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
               >
                 <Icon size={16} className={active ? "text-bb-primary" : "text-bb-text2"} />
                 {label}
+                {!!badgeCount && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 flex items-center justify-center
+                                   rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                    {badgeCount}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -476,11 +476,9 @@ export default function VaultPage() {
         {/* 파일 목록 */}
         {uniqueFiles === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-bb-surface border border-bb-border flex items-center justify-center mb-4">
-              <Files size={28} className="text-slate-600" />
-            </div>
-            <p className="text-sm font-medium text-bb-text">아직 파일이 없습니다</p>
-            <p className="text-xs text-bb-text2 mt-1">파일을 업로드하면 해시가 자동으로 기록됩니다</p>
+            <span className="text-5xl mb-4">🔐</span>
+            <p className="text-sm font-semibold text-bb-text mb-1.5">업로드된 파일이 없어요</p>
+            <p className="text-xs text-bb-text2">파일을 업로드하면 SHA-256 해시로 자동 고정됩니다</p>
           </div>
         ) : (
           <div className="space-y-3">

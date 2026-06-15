@@ -22,7 +22,7 @@ import {
   CalendarClock,
   TriangleAlert,
 } from "lucide-react";
-import { CalendarRecommendation, MemberCalendarStatus } from "@/types/calendar";
+import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import SmartDateInput from "@/components/SmartDateInput";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
@@ -138,6 +138,11 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
   const [meetingDate, setMeetingDate]         = useState("");
   const [recommending, setRecommending]       = useState(false);
   const [recommendations, setRecommendations] = useState<CalendarRecommendation[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
   const [selectedRank, setSelectedRank]       = useState<number | null>(null);
 
   // ── 3단계 상태 ──────────────────────────────────────────────────────
@@ -168,11 +173,13 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
     setRecommendations([]);
     setSelectedRank(null);
     try {
-      const { data } = await api.post<{ recommendations: CalendarRecommendation[] }>(
+      const actualDurationMin = durationMin === -1 ? (parseInt(customDurationMin) || 150) : durationMin;
+      const { data } = await api.post<CalendarRecommendResponse>(
         `/calendar/recommend`,
-        { projectId, targetDate: dateMode, attendeeIds: [...selectedIds] }
+        { projectId, targetDate: dateMode, attendeeIds: [...selectedIds], durationMinutes: actualDurationMin }
       );
       setRecommendations(data.recommendations ?? []);
+      if (data.warning) showToast(data.warning);
     } catch {
       setError("AI 일정 추천을 가져오지 못했습니다.");
     } finally {
@@ -246,6 +253,16 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+
+      {/* 토스트 알림 */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]
+                        flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-bb-border
+                        rounded-xl shadow-xl text-sm text-bb-text animate-fade-in">
+          <Sparkles size={14} className="text-indigo-400 shrink-0" />
+          {toast}
+        </div>
+      )}
 
       <div className="relative w-full max-w-lg bg-bb-surface border border-bb-border rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
 
@@ -804,18 +821,16 @@ export default function MeetingsPage() {
         {/* 빈 상태 */}
         {!error && meetings.length === 0 && (
           <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-bb-surface border border-bb-border flex items-center justify-center mb-4">
-              <FileText size={28} className="text-slate-600" />
-            </div>
-            <p className="text-sm font-medium text-bb-text mb-1">회의가 없습니다</p>
-            <p className="text-xs text-bb-text2 mb-6">첫 번째 회의를 만들어보세요</p>
+            <span className="text-5xl mb-4">📅</span>
+            <p className="text-sm font-semibold text-bb-text mb-1.5">아직 회의가 없어요</p>
+            <p className="text-xs text-bb-text2 mb-6">팀원들과 첫 회의를 만들어보세요</p>
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
-                         text-white text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500
+                         text-white text-sm font-medium rounded-lg transition-all"
             >
               <Plus size={14} />
-              새 회의 만들기
+              새 회의
             </button>
           </div>
         )}

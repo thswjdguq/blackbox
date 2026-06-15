@@ -3,22 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import BeginnerGuide from "@/components/BeginnerGuide";
 import api from "@/lib/api";
 import {
-  ExternalLink, CheckCircle2, AlertCircle, Loader2,
-  ChevronDown, ChevronUp, X, Unlink,
+  CheckCircle2, AlertCircle, Loader2,
+  X, Unlink,
 } from "lucide-react";
 
 const INPUT_CLS =
   "w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2.5 text-sm " +
   "text-bb-text placeholder-slate-500 focus:outline-none focus:border-indigo-500 " +
   "focus:ring-1 focus:ring-blue-500/30 transition-all font-mono";
-
-interface Step {
-  num: number;
-  title: string;
-  content: React.ReactNode;
-}
 
 export default function NotionConnectPage() {
   const router = useRouter();
@@ -31,7 +26,6 @@ export default function NotionConnectPage() {
   const [error,          setError]          = useState("");
   const [apiKey,         setApiKey]         = useState("");
   const [pageId,         setPageId]         = useState("");
-  const [openStep,       setOpenStep]       = useState<number | null>(1);
 
   useEffect(() => {
     api.get<{ connected: boolean; workspaceName: string | null }>("/notion/status")
@@ -85,75 +79,6 @@ export default function NotionConnectPage() {
     }
   };
 
-  const steps: Step[] = [
-    {
-      num: 1,
-      title: "Notion 통합 페이지 접속",
-      content: (
-        <a
-          href="https://www.notion.so/my-integrations"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#191919] hover:bg-[#2a2a2a]
-                     text-white text-sm rounded-lg border border-[#333] transition-colors"
-        >
-          <span className="font-bold text-[11px] bg-white text-[#191919] px-1 rounded">N</span>
-          notion.so/my-integrations 열기
-          <ExternalLink size={12} />
-        </a>
-      ),
-    },
-    {
-      num: 2,
-      title: "새 통합(Integration) 생성",
-      content: (
-        <ol className="text-sm text-bb-text2 space-y-1.5 list-decimal list-inside">
-          <li><strong className="text-bb-text">New integration</strong> 버튼 클릭</li>
-          <li>Name 입력 (예: <code className="bg-bb-bg px-1.5 py-0.5 rounded text-xs">Team Blackbox</code>)</li>
-          <li>Type은 <strong className="text-bb-text">Internal</strong> 선택</li>
-          <li><strong className="text-bb-text">Save</strong> 클릭</li>
-        </ol>
-      ),
-    },
-    {
-      num: 3,
-      title: "Internal Integration Secret 복사",
-      content: (
-        <p className="text-sm text-bb-text2">
-          생성 후 나타나는 <strong className="text-bb-text">Internal Integration Secret</strong> 옆
-          복사 버튼을 클릭하세요.{" "}
-          <code className="bg-bb-bg px-1.5 py-0.5 rounded text-xs">secret_...</code>으로 시작하는 값입니다.
-          아래 API Key 필드에 붙여넣기 해주세요.
-        </p>
-      ),
-    },
-    {
-      num: 4,
-      title: "Notion 페이지에 Integration 연결",
-      content: (
-        <ol className="text-sm text-bb-text2 space-y-1.5 list-decimal list-inside">
-          <li>회의록을 저장할 Notion 페이지로 이동</li>
-          <li>오른쪽 상단 <strong className="text-bb-text">···</strong> 메뉴 클릭</li>
-          <li><strong className="text-bb-text">Connect to</strong> 선택</li>
-          <li>방금 만든 Integration 선택</li>
-        </ol>
-      ),
-    },
-    {
-      num: 5,
-      title: "Page ID 확인",
-      content: (
-        <div className="space-y-2 text-sm text-bb-text2">
-          <p>해당 Notion 페이지 URL에서 마지막 <strong className="text-bb-text">32자리</strong>가 Page ID입니다.</p>
-          <div className="bg-bb-bg rounded-lg p-3 font-mono text-xs break-all">
-            notion.so/내-페이지-이름-
-            <span className="text-indigo-400 font-bold">xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
-          </div>
-          <p>하이픈(-) 없이 32자리 영숫자만 아래 Page ID 필드에 입력하세요.</p>
-        </div>
-      ),
-    },
-  ];
 
   if (loading) {
     return (
@@ -204,35 +129,54 @@ export default function NotionConnectPage() {
           ) : (
             /* 연결 안 된 상태 */
             <div className="space-y-4">
-              {/* 단계별 가이드 */}
-              <div className="bg-bb-surface border border-bb-border rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-bb-border">
-                  <p className="text-sm font-semibold text-bb-text">연동 방법</p>
-                </div>
-                {steps.map((step) => (
-                  <div key={step.num} className="border-b border-bb-border/60 last:border-0">
-                    <button
-                      onClick={() => setOpenStep(openStep === step.num ? null : step.num)}
-                      className="w-full flex items-center justify-between px-5 py-3.5
-                                 hover:bg-bb-surface2/50 transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-bb-primary/20 text-bb-primary
-                                          text-xs font-bold flex items-center justify-center shrink-0">
-                          {step.num}
-                        </span>
-                        <span className="text-sm font-medium text-bb-text">{step.title}</span>
-                      </div>
-                      {openStep === step.num
-                        ? <ChevronUp size={14} className="text-bb-text2 shrink-0" />
-                        : <ChevronDown size={14} className="text-bb-text2 shrink-0" />}
-                    </button>
-                    {openStep === step.num && (
-                      <div className="px-5 pb-4 pt-1">{step.content}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {/* 초보자 가이드 */}
+              <BeginnerGuide
+                toggleLabel="Notion 연동이 처음이세요?"
+                defaultOpen
+                steps={[
+                  {
+                    emoji: "🔑",
+                    title: "STEP 1 — Notion API 키 만들기",
+                    lines: [
+                      "1. notion.so/my-integrations 에 접속하세요",
+                      "2. \"+ 새 API 통합\" 버튼을 클릭하세요",
+                      "3. 이름을 입력하고 (예: 블랙박스) 저장을 누르세요",
+                      "4. \"내부 통합 시크릿\" 옆 복사 버튼을 클릭하세요",
+                      "5. 복사한 값을 아래 API 키 입력창에 붙여넣으세요",
+                    ],
+                    link: { href: "https://www.notion.so/my-integrations", label: "notion.so/my-integrations 바로가기" },
+                  },
+                  {
+                    emoji: "📄",
+                    title: "STEP 2 — 페이지 ID 찾기",
+                    lines: [
+                      "1. Notion에서 회의록을 저장할 페이지를 여세요 (없으면 새로 만드세요)",
+                      "2. 주소창 URL의 맨 마지막 32자리를 복사하세요",
+                    ],
+                    example: {
+                      before: "notion.so/내-페이지-",
+                      highlightPart: "abc123def456abc123def456abc123de",
+                      caption: "이 부분 32자리(영어+숫자)가 페이지 ID예요",
+                    },
+                  },
+                ]}
+                warning={{
+                  title: "⚠️ STEP 3 — 반드시 해야 하는 단계: Notion 페이지에 통합 연결하기",
+                  lines: [
+                    "1. Notion에서 저장할 페이지를 여세요",
+                    "2. 우측 상단 \"···\" 버튼을 클릭하세요",
+                    "3. \"연결\" → 방금 만든 통합 이름을 선택하세요",
+                    "4. 연결되었는지 확인하세요",
+                    "이 단계를 빠뜨리면 오류가 납니다!",
+                  ],
+                  tone: "red",
+                }}
+                faq={[
+                  { q: "403 오류가 나요", a: "STEP 3(통합 연결)을 했는지 다시 확인해주세요. 가장 흔한 원인이에요." },
+                  { q: "페이지 ID가 뭔지 모르겠어요", a: "Notion 페이지 주소창 URL에서 맨 마지막에 있는 영어+숫자 32자리예요." },
+                  { q: "API 키는 어디서 만들어요", a: "notion.so/my-integrations 에서 \"+ 새 API 통합\"으로 만들 수 있어요." },
+                ]}
+              />
 
               {/* 입력 폼 */}
               <div className="bg-bb-surface border border-bb-border rounded-xl p-5 space-y-4">
