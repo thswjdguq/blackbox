@@ -87,7 +87,7 @@ jobs:
           fi
           echo "::endgroup::"
 
-      - name: WARN — TypeScript ': any' 사용
+      - name: "WARN — TypeScript ': any' 사용"
         run: |
           echo "::group::Counting ': any' usage in TypeScript"
           count=$(grep -rnE ":\s*any(\s|;|,|\)|\]|>|$)" \
