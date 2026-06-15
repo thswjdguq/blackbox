@@ -2,11 +2,11 @@ package com.blackbox.dto;
 
 import java.util.List;
 
-public record CalendarRecommendResponse(List<Recommendation> recommendations, String message) {
+public record CalendarRecommendResponse(List<Recommendation> recommendations, String message, String warning) {
 
     /** 기존 호환 생성자 — 기존 호출부 변경 불필요 */
     public CalendarRecommendResponse(List<Recommendation> recommendations) {
-        this(recommendations, null);
+        this(recommendations, null, null);
     }
 
     public record Recommendation(

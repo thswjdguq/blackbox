@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Task } from "@/types/task";
 import { Meeting } from "@/types/meeting";
 import { FileRecord, ScoreEntry, Alert } from "@/types/vault";
@@ -13,7 +14,63 @@ import {
   Copy, Check, AlertTriangle,
   Calendar, ChevronRight,
   AlertCircle, Hash, Archive, Download,
+  X, ArrowRight,
 } from "lucide-react";
+
+const ONBOARDING_DISMISS_KEY = (projectId: string) => `onboarding-banner-dismissed-${projectId}`;
+
+// ── 온보딩 배너 ──────────────────────────────────────────────────────────
+function OnboardingBanner({ projectId }: { projectId: string }) {
+  const router = useRouter();
+  const { missingCount } = useIntegrationStatus(projectId);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    setDismissed(localStorage.getItem(ONBOARDING_DISMISS_KEY(projectId)) === "1");
+  }, [projectId]);
+
+  // missingCount === null → 아직 로딩 중(데이터 미확정), 0 → 전부 연동 완료
+  if (dismissed || !missingCount) return null;
+
+  const handleDismiss = () => {
+    localStorage.setItem(ONBOARDING_DISMISS_KEY(projectId), "1");
+    setDismissed(true);
+  };
+
+  return (
+    <div className="relative bg-indigo-600 rounded-2xl p-5 mb-6 flex items-start gap-4 flex-wrap">
+      <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0 text-lg">
+        🔧
+      </div>
+      <div className="flex-1 min-w-[220px]">
+        <p className="text-sm font-semibold text-white leading-relaxed">
+          Discord, Notion, Google Calendar를 연동하면<br />
+          팀 알림과 AI 기능이 활성화됩니다
+        </p>
+        <p className="text-xs text-white/75 mt-1.5">
+          {missingCount}개 항목이 연동 대기 중입니다
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => router.push(`/projects/${projectId}/settings`)}
+          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-white/90
+                     text-indigo-700 text-sm font-semibold rounded-xl transition-colors"
+        >
+          지금 설정하기
+          <ArrowRight size={14} />
+        </button>
+        <button
+          onClick={handleDismiss}
+          aria-label="배너 닫기"
+          className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── 타입 ─────────────────────────────────────────────────────────────────
 interface ProjectDetail {
@@ -361,6 +418,9 @@ export default function ProjectHomePage() {
               </div>
             )}
           </div>
+
+          {/* ── 연동 온보딩 배너 ─────────────────────────────────────────── */}
+          <OnboardingBanner projectId={projectId} />
 
           {/* ── KPI 4개 ──────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">

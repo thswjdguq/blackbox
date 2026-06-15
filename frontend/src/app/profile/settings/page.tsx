@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import BeginnerGuide from "@/components/BeginnerGuide";
 import api from "@/lib/api";
 import {
   UserCircle,
@@ -329,6 +330,37 @@ function ProfileSettingsContent() {
 
           {/* ③ 연동 서비스 */}
           <Section title="연동 서비스">
+            {/* 초보자 가이드 — 미연동 상태에서만 노출 */}
+            {!calStatus?.connected && (
+              <BeginnerGuide
+                toggleLabel="Google 캘린더 연동이 처음이세요?"
+                steps={[
+                  {
+                    emoji: "🔗",
+                    title: "1단계 — Google 계정 연결 버튼 클릭",
+                    lines: ["아래 \"Google 계정 연결\" 버튼을 클릭하면 Google 로그인 화면이 열립니다"],
+                  },
+                  {
+                    emoji: "📅",
+                    title: "2단계 — 권한 허용",
+                    lines: [
+                      "캘린더 읽기 권한을 허용해주세요",
+                      "이 권한으로 팀원들의 빈 시간을 분석합니다",
+                    ],
+                  },
+                  {
+                    emoji: "✅",
+                    title: "3단계 — 연동 완료",
+                    lines: ["연동되면 회의 일정 조율 시 AI가 팀원 모두의 빈 시간을 분석해 최적의 회의 시간을 추천해줍니다"],
+                  },
+                ]}
+                faq={[
+                  { q: "어떤 정보가 수집되나요?", a: "바쁜 시간대만 확인합니다. 일정의 제목이나 내용은 보지 않아요." },
+                  { q: "연동을 끊고 싶어요", a: "이 페이지에서 \"연동 해제\" 버튼을 누르면 언제든지 연동을 끊을 수 있어요." },
+                ]}
+              />
+            )}
+
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 {/* Google 아이콘 */}

@@ -264,19 +264,35 @@ export default function KanbanBoard({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-3 gap-6 h-full">
-          {KANBAN_COLUMNS.map((col) => (
-            <KanbanColumn
-              key={col.id}
-              column={col}
-              tasks={tasksByStatus(col.id)}
-              scoreMap={scoreMap}
-              onAddTask={openCreate}
-              onEditTask={openEdit}
-              onMoveTask={handleMoveTask}
-            />
-          ))}
-        </div>
+        {tasks.length === 0 ? (
+          /* 빈 상태 — 태스크가 하나도 없을 때 */
+          <div className="flex flex-col items-center justify-center text-center py-28">
+            <span className="text-5xl mb-4">📋</span>
+            <p className="text-base font-semibold text-bb-text mb-1.5">아직 태스크가 없어요</p>
+            <p className="text-sm text-bb-text2 mb-6">첫 태스크를 만들어 팀원에게 배정해보세요</p>
+            <button
+              onClick={() => openCreate("TODO")}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500
+                         text-white text-sm font-medium rounded-lg transition-all"
+            >
+              + 태스크 추가
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-6 h-full">
+            {KANBAN_COLUMNS.map((col) => (
+              <KanbanColumn
+                key={col.id}
+                column={col}
+                tasks={tasksByStatus(col.id)}
+                scoreMap={scoreMap}
+                onAddTask={openCreate}
+                onEditTask={openEdit}
+                onMoveTask={handleMoveTask}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Drag overlay — ghost card while dragging */}
         <DragOverlay>

@@ -43,6 +43,26 @@ function formatDue(dueDate: string | null): { label: string; cls: string } | nul
   return { label, cls: "text-slate-400" };
 }
 
+// 마감일 경고 배지 + 카드 좌측 강조선 (오늘 날짜 기준 클라이언트 계산)
+function getDueWarning(dueDate: string | null, isDone: boolean): { label: string; badgeCls: string; barCls: string } | null {
+  if (!dueDate || isDone) return null;
+  const due = new Date(dueDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+
+  if (diff < 0) {
+    return { label: `D+${Math.abs(diff)} 지연`, badgeCls: "text-red-400 bg-red-400/10 border border-red-400/20", barCls: "bg-red-500" };
+  }
+  if (diff === 0) {
+    return { label: "오늘 마감", badgeCls: "text-orange-400 bg-orange-400/10 border border-orange-400/20", barCls: "bg-orange-500" };
+  }
+  if (diff <= 3) {
+    return { label: `D-${diff}`, badgeCls: "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20", barCls: "bg-yellow-500" };
+  }
+  return null;
+}
+
 function Avatar({ name }: { name: string }) {
   const initials = name.slice(0, 2).toUpperCase();
   const hue = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
@@ -87,6 +107,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
   const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
   const PriorityIcon = priority.icon;
   const dueInfo = formatDue(task.dueDate);
+  const dueWarning = getDueWarning(task.dueDate, task.status === "DONE");
   const representativeScore =
     task.assignees.length > 0 ? scoreMap[task.assignees[0].userId] : undefined;
   const isDone = task.status === "DONE";
@@ -111,13 +132,18 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
       {...attributes}
       {...listeners}
       onClick={() => !isMoving && onEdit(task)}
-      className={`group bg-slate-800 border rounded-xl p-4 cursor-grab active:cursor-grabbing
-                  transition-colors duration-200 select-none
+      className={`group relative bg-slate-800 border rounded-xl p-4 cursor-grab active:cursor-grabbing
+                  transition-colors duration-200 select-none overflow-hidden
                   ${isDone
                     ? "border-slate-700/40 opacity-60"
                     : "border-slate-700/60 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5"
                   }`}
     >
+      {/* 마감일 경고 강조선 */}
+      {dueWarning && (
+        <div className={`absolute left-0 top-0 bottom-0 w-1 ${dueWarning.barCls}`} />
+      )}
+
       {/* Top Row */}
       <div className="flex items-start gap-2 mb-3">
 
@@ -165,6 +191,13 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
           <PriorityIcon size={10} />
           {priority.label}
         </span>
+
+        {/* 마감일 경고 배지 */}
+        {dueWarning && (
+          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${dueWarning.badgeCls}`}>
+            {dueWarning.label}
+          </span>
+        )}
       </div>
 
       {/* Description preview */}
