@@ -25,9 +25,11 @@ jobs:
         run: |
           set -e
           echo "::group::Searching backend Java for file_vault mutation"
+          # 주석 줄 제외: 라인 주석(//) + 블록/Javadoc 주석(*, /*) — 불변식을 '설명'하는 주석은 위반 아님
           violations=$(grep -rnE "file_vault" --include="*.java" backend/src/ \
             | grep -iE "update|delete|remove|\bset\b" \
-            | grep -v "//" || true)
+            | grep -v "//" \
+            | grep -vE ':[0-9]+:[[:space:]]*(\*|/\*)' || true)
           if [ -n "$violations" ]; then
             echo "::error::file_vault에 UPDATE/DELETE/SET 시도가 발견되었습니다 (INV-02 위반)"
             echo "$violations"
