@@ -1,6 +1,8 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/lib/store/authStore";
 
+const AUTH_REDIRECT_EXEMPT = ["/login", "/signup"];
+
 const api = axios.create({
   baseURL: "/api",
   withCredentials: true,
@@ -22,13 +24,13 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         useAuthStore.getState().clearTokens();
-        if (window.location.pathname !== "/login") {
+        if (!AUTH_REDIRECT_EXEMPT.includes(window.location.pathname)) {
           window.location.href = "/login";
         }
       }
     } else if (error.response?.status === 401 && original?.url === "/auth/refresh") {
       useAuthStore.getState().clearTokens();
-      if (window.location.pathname !== "/login") {
+      if (!AUTH_REDIRECT_EXEMPT.includes(window.location.pathname)) {
         window.location.href = "/login";
       }
     }
