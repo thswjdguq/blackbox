@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
-import { CalendarRecommendation, MemberCalendarStatus } from "@/types/calendar";
+import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import { Meeting, CreateMeetingPayload } from "@/types/meeting";
 import {
   CalendarClock,
@@ -17,6 +17,7 @@ import {
   ArrowRight,
   UserCircle,
   X,
+  TriangleAlert,
 } from "lucide-react";
 
 const DURATIONS = [
@@ -159,6 +160,7 @@ export default function SchedulePage() {
   const [recommending, setRecommending] = useState(false);
   const [recs,         setRecs]         = useState<CalendarRecommendation[]>([]);
   const [recError,     setRecError]     = useState("");
+  const [recWarning,   setRecWarning]   = useState<string | null>(null);
 
   const [confirmRec,   setConfirmRec]   = useState<CalendarRecommendation | null>(null);
   const [successMsg,   setSuccessMsg]   = useState<string | null>(null);
@@ -185,13 +187,16 @@ export default function SchedulePage() {
     setRecommending(true);
     setRecs([]);
     setRecError("");
+    setRecWarning(null);
     try {
       const connectedIds = members.filter((m) => m.connected).map((m) => m.userId);
-      const { data } = await api.post<{ recommendations: CalendarRecommendation[]; message?: string }>(
+      const actualDurationMin = durationMin === -1 ? (parseInt(customDur) || 150) : durationMin;
+      const { data } = await api.post<CalendarRecommendResponse>(
         `/calendar/recommend`,
-        { projectId, targetDate: dateMode, attendeeIds: connectedIds }
+        { projectId, targetDate: dateMode, attendeeIds: connectedIds, durationMinutes: actualDurationMin }
       );
       setRecs(data.recommendations ?? []);
+      if (data.warning) setRecWarning(data.warning);
       if ((data.recommendations ?? []).length === 0) {
         setRecError(data.message ?? "적합한 시간대를 찾지 못했습니다. 날짜 범위를 변경해 보세요.");
       }
@@ -403,6 +408,12 @@ export default function SchedulePage() {
           </div>
 
           {/* AI 추천 결과 */}
+          {recWarning && (
+            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+              <span className="shrink-0 mt-0.5">⚠️</span>
+              <span>{recWarning}</span>
+            </div>
+          )}
           {(recs.length > 0 || recError) && (
             <div className="space-y-3">
               {recError && (
@@ -442,14 +453,17 @@ export default function SchedulePage() {
                     </span>
                   </div>
 
-                  {/* 종일 일정 경고 or 전원 가능 */}
+                  {/* 종일 일정(SOFT BLOCK) 경고 or 전원 가능 */}
                   <div className="mb-3">
-                    {rec.needsConfirm ? (
-                      <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20
-                                      rounded-lg px-3 py-2">
-                        <span className="text-amber-400 text-xs shrink-0">⚠️</span>
-                        <p className="text-xs text-amber-300">
-                          {rec.softBlockMembers?.join(", ")}님 종일 일정 있음 — 직접 확인 필요
+                    {(rec.softBlockMembers ?? []).length > 0 ? (
+                      <div className={`flex items-start gap-2 rounded-lg px-3 py-2 border ${
+                        rec.needsConfirm
+                          ? "bg-amber-500/20 border-amber-500/50"
+                          : "bg-amber-500/10 border-amber-500/30"
+                      }`}>
+                        <TriangleAlert size={13} className="text-amber-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-300 leading-snug">
+                          {(rec.softBlockMembers ?? []).join("님, ")}님이 종일 일정이 있습니다. 팀원과 일정을 조율해보세요.
                         </p>
                       </div>
                     ) : (

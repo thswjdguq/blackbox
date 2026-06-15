@@ -1,8 +1,6 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/lib/store/authStore";
 
-const AUTH_REDIRECT_EXEMPT = ["/login", "/signup"];
-
 const api = axios.create({
   baseURL: "/api",
   withCredentials: true,
@@ -12,6 +10,8 @@ const api = axios.create({
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
 // 응답 인터셉터: 401 시 refresh 시도
+const PUBLIC_PATHS = ["/login", "/signup"];
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -24,13 +24,13 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         useAuthStore.getState().clearTokens();
-        if (!AUTH_REDIRECT_EXEMPT.includes(window.location.pathname)) {
+        if (!PUBLIC_PATHS.includes(window.location.pathname)) {
           window.location.href = "/login";
         }
       }
     } else if (error.response?.status === 401 && original?.url === "/auth/refresh") {
       useAuthStore.getState().clearTokens();
-      if (!AUTH_REDIRECT_EXEMPT.includes(window.location.pathname)) {
+      if (!PUBLIC_PATHS.includes(window.location.pathname)) {
         window.location.href = "/login";
       }
     }
