@@ -58,6 +58,11 @@ git log -1   # 최신 커밋 확인
 
 > Session Start 프로토콜은 `docs/refactor/CLAUDE.md §3` 참조 (정책 문서 통독).
 
+> **단축:** 아래 1~2번(동기화 + 전방통합)은 `bash scripts/sync.sh` 한 명령으로 수행 가능
+> (발산 없으면 즉시 종료, 있으면 머지+쓰레기 정리까지). 충돌 시 멈추고 안내한다.
+> CI(`refactor-guard`의 `divergence-check` job)도 PR마다 refactor/main이 main보다
+> 뒤졌는지 경고하므로, 놓쳐도 PR에서 다시 잡힌다.
+
 ```bash
 # 1. 환경 활성화
 cd /home/user/project/team-blackbox/blackbox
@@ -67,6 +72,7 @@ git merge --ff-only origin/refactor/main   # 다른 머신에서 작업했다면
 
 # 2. 전방통합 — origin/main 흡수 (DEC-WORKFLOW-011, 발산 누적 방지)
 #    팀원이 main에 새로 푸시했는지 확인하고, 있으면 refactor/main에 merge.
+#    ↓ 1~2번을 한 번에: bash scripts/sync.sh
 git log --oneline origin/refactor/main..origin/main   # 비어있으면 흡수할 것 없음
 git merge origin/main -m "merge: origin/main 전방통합 (refactor/main 최신화)"
 #  - 충돌 시: refactor/main 측에서 해소(작게·자주). main은 건드리지 않음.
