@@ -186,3 +186,33 @@
 - `stash@{0}` 쿠키 인증 md 변경 여전히 미처리(무관, 보존).
 - AI API 키가 다른 PC에 있어 27·28·55 모두 런타임 테스트 불가 → `compileJava`+diff로 동작 보존 검증(작업지시서 §8 허용).
 - `main` 미변경(origin/main = a3418b2). main push는 전체 리팩토링 완료 시에만(DEC-WORKFLOW-002).
+
+---
+
+## 2026-06-15 — AI fast-track 마무리 + Phase 0 완주 + 발산 관리 체계 구축
+
+**진행자:** 사용자(팀장) + Claude Code (Opus 4.8, 계획자) + refactor-executor (Sonnet 4.6)
+
+**한 일 (PR 다수):**
+- **AI fast-track 완결:** Task 27(AiService 폴백 중앙화, #11)·28(Calendar 위임, #12)·55(죽은 extract-lines 제거, #13). AI 폴백 분기 3곳→0곳. DEC-PHASE-003 등재(#14).
+- **거버넌스 동기화(①/①b):** 핵심 정책 4문서 Copilot→실행자 표현 정렬(#15), EXECUTION_PLAYBOOK 서브에이전트 모델로 전면 재작성(#16).
+- **Phase 0 완주:** Task 02(baseline #17)·03(test coverage #18)·04(PR템플릿 #19)·05(SMOKE 작성 #21)·06(SMOKE 베이스라인 실행 #23, S1~S7 전체 통과)·07(REVIEW_CHECKLIST #26). 작업지시서 02·03을 실행자-직접 모델로 개정. **Phase 0 완료조건 8개 전부 [x].**
+- **Task 72 fix(#22):** 회원가입 페이지 인증 인터셉터가 /signup에서 /login으로 튕기는 버그(SMOKE S1 발견) 수정.
+- **발산 관리 체계:** DEC-WORKFLOW-011(전방통합 우선) 등재(#20) + CI 발산 감지 job·`scripts/sync.sh`·플레이북 참조(#27).
+- **CI 가드 부활:** refactor-guard.yml YAML 90행 문법오류 + INV-02 주석 false positive 수정(#25). 여태 미실행이던 refactor-guard가 실제 동작.
+
+**핵심 결정·사건:**
+- **전방통합 2회 실전:** 팀원이 main에 푸시(`bafc8fe`, `060d8f6`/`a40a931`)해 발산 시작 → main→refactor/main merge로 흡수. node_modules/bin 쓰레기 untrack(+.gitignore 보강), GoogleCalendarService 자동머지(빌드검증), api.ts는 팀원 `PUBLIC_PATHS`로 네이밍 정렬(향후 충돌 제거).
+- **회원가입 fix는 main에 안 올림:** 팀원이 동일 fix를 main에 먼저 반영(`PUBLIC_PATHS`) → 중복이라 PR #24 close. **`main`은 우리가 전혀 미변경**, DEC-WORKFLOW-002 유지.
+- **nginx upstream startup race** 발견(SMOKE 셋업 중): frontend 기동 후 nginx 재생성 필요. Task 73 후보.
+- 실행자 셸이 WSL/Git Bash 불확정 → gradle/npm은 계획자가 WSL 내부 재실행으로 검증(Task 03·머지 빌드 등).
+
+**다음 진입점:**
+- (a) **Phase 1**(Drift 스캔 10~15) — 본격 리팩토링 진입. 또는
+- (b) **Task 73**(nginx race fix — resolver 패턴).
+
+**미해결 / 주의:**
+- `stash@{0}` 쿠키 인증 md 변경 여전히 미처리(무관, 보존).
+- task 작업지시서 10~15의 오케스트레이터 표현은 Phase 1 실행 시 실행자-직접으로 개정(02·03 선례).
+- 세션 시작 시 `bash scripts/sync.sh`로 전방통합 먼저(누락 시 CI divergence-check가 경고).
+- `main` 미변경(origin/main = a40a931, 팀원 커밋만). main push는 전체 완료 시(DEC-WORKFLOW-002).

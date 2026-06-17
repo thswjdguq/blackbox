@@ -91,14 +91,14 @@
 
 ### 완료 조건
 
-- [ ] `files/` 폴더 처리 완료, `docs/_archive/`로 이동 (Task 00)
-- [ ] handover_log 경로 정정 (Task 01)
-- [ ] backend·frontend 빌드 통과 + `docs/refactor/baseline.md` 기록 (Task 02)
-- [ ] 테스트 존재 여부 + `TEST_COVERAGE.md` 기록 (Task 03)
-- [ ] PR 템플릿 적용 (Task 04)
-- [ ] `SMOKE_TESTS.md` 7개 시나리오 작성 (Task 05)
-- [ ] SMOKE_TESTS 베이스라인 1회 실행 + 실행 이력 표 첫 행 기록 (Task 06)
-- [ ] REVIEW_CHECKLIST.md 적용 (Task 07)
+- [x] `files/` 폴더 처리 완료, `docs/_archive/`로 이동 (Task 00, PR #3)
+- [x] handover_log 경로 정정 (Task 01, PR #4)
+- [x] backend·frontend 빌드 통과 + `docs/refactor/baseline.md` 기록 (Task 02, PR #17) — 빌드 통과(BE-001 Java25/Gradle 비호환은 Known Issue로 기록)
+- [x] 테스트 존재 여부 + `TEST_COVERAGE.md` 기록 (Task 03, PR #18) — 자동 회귀 커버리지 사실상 0 확인
+- [x] PR 템플릿 적용 (Task 04, PR #19)
+- [x] `SMOKE_TESTS.md` 7개 시나리오 작성 (Task 05, PR #21)
+- [x] SMOKE_TESTS 베이스라인 1회 실행 + 실행 이력 표 첫 행 기록 (Task 06, PR #23) — S1~S7 전체 통과
+- [x] REVIEW_CHECKLIST.md 적용 (Task 07, PR #26)
 
 ### 다음 진입 조건
 
