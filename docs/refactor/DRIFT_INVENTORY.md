@@ -20,8 +20,10 @@
 |---|---|---|---|
 | 2026-06-18 | INV-01~07 | refactor-executor (Sonnet) | 7 |
 | 2026-06-18 | SYNC-01~05 | refactor-executor (Sonnet) | 9 |
+| 2026-06-18 | CODE-01~03 | refactor-executor (Sonnet) | 0 (전항목 clean) |
 
 > 비고: INV-02: 0건(clean) / INV-03: 0건(clean) / INV-05: 0건(clean)
+> CODE 비고: CODE-01-A(file_vault UPDATE/DELETE) → INV-02 중복, Task 10 참조. CODE-01-B(외부 서비스 URL) → INV-05 중복, Task 10 참조. CODE-02(activity_logs 커버리지) → INV-01 중복, Task 10 참조. CODE-01-C/D/E/F + CODE-03 5개 검사 실행 — 모두 0건(clean).
 
 ---
 
@@ -62,6 +64,20 @@
 | D-SYN-05-D | SYNC-05 | 기획서 §9.1: 동의 4단계(플랫폼/GitHub/Drive/AI분석) 온보딩 UI가 프론트엔드에 구현되어야 한다 | `ConsentRequest.java`: 4필드(consentPlatform/Github/Drive/AiAnalysis) 존재, `POST /{projectId}/consent` API 존재 — 백엔드 4단계 구조 일치; 프론트엔드 TSX 29개 파일 전체 검색 결과 consent/onboard 구현 UI 없음 | Spec | D1 | | |
 | D-SYN-05-E | SYNC-05 | 기획서 §4.2 기술 스택: Next.js, Spring Boot, PostgreSQL, Flyway, GitHub App API, Google Drive API, Claude API, Docker Compose, Nginx — Notion은 미기재 | Notion API 통합 구현됨 — `NotionSettingController.java`, `NotionSyncResponse.java` 등 다수 파일 존재; `NOTION_API_KEY`, `NOTION_PARENT_PAGE_ID`, `NOTION_CALENDAR_DB_ID`가 docker-compose.yml·application.yml에 존재; 기획서 기술 스택에 Notion 없음 | State | D2 | | |
 
-## CODE (금지 패턴) — Task 12에서 채움
+## CODE (금지 패턴) — Task 12
 
-(placeholder)
+| ID | 출처 | 문서 진술 | 코드 실제 | 등급 | 결정안 | 사용자 결정 | Task |
+|---|---|---|---|---|---|---|---|
+| — | CODE-01-C | 프론트엔드 TypeScript에서 `: any` 타입 사용 금지 | grep 결과 0건 — frontend/src/**/*.{ts,tsx} 전체(38파일) `: any` 없음 (clean) | Convention | none | | |
+| — | CODE-01-D | Controller에서 JPA Entity 직접 반환 금지(`ResponseEntity<XxxEntity>`) | grep 결과 0건 — controller/*.java 전체 `ResponseEntity<...Entity...>` 패턴 없음; 모두 DTO/Response 타입 사용 (clean) | Convention | none | | |
+| — | CODE-01-E | 하드코딩 시크릿(password/apiKey/secret/token) 금지 — 반드시 환경변수 | grep 결과 0건(genuine) — application.yml 전체 시크릿값이 `${ENV_VAR}` 패턴으로만 존재; 유일 히트(`google_calendar_tokens`) = `@Table(name=...)` 어노테이션, 위반 아님 (clean) | Spec | none | | |
+| — | CODE-01-F | frontend console.log/debug/info + backend System.out/err.print 제거 | grep 결과: frontend 0건, backend 0건 — 전체 clean | Convention | none | | |
+| — | CODE-03 | Flyway 마이그레이션 파일 V1~V17(+) 번호 연속성 유지 | `ls V*.sql \| sort -V` 결과: V1~V18 연속, 끊긴 번호 없음 (V18까지 18개 파일, 연속성 clean) | Spec | none | | |
+
+> **CODE 검사 결과 요약 (Task 12, 2026-06-18):**
+> - CODE-01-C (`: any`): 0건 — clean
+> - CODE-01-D (Entity 노출): 0건 — clean
+> - CODE-01-E (하드코딩 시크릿): 0건 — clean (CRITICAL 없음)
+> - CODE-01-F (debug print): frontend 0건, backend 0건 — clean
+> - CODE-03 (Flyway 연속성): V1~V18 연속, 끊김 없음 — clean
+> - CODE-01-A/B(INV-02·05 중복) + CODE-02(INV-01 중복): skip — 실행 로그 비고 참조
