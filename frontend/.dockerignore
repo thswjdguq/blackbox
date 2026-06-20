@@ -1,0 +1,11 @@
+# Docker 빌드 컨텍스트 제외 — Dockerfile이 `npm ci`로 의존성을 새로 설치하므로
+# 호스트 node_modules/빌드산출물은 이미지에 불필요(전송만 느리게 함 + 깨진 심볼릭 링크 유발).
+node_modules
+.next
+.git
+.gitignore
+*.log
+npm-debug.log*
+Dockerfile
+.dockerignore
+.env.local
