@@ -105,7 +105,7 @@ export default function SmartDateInput({
           if (v.length === 2) dayRef.current?.focus();
           emit(year, v, day, hour, min);
         }}
-        onBlur={() => { if (month.length === 1) setMonth(month.padStart(2, "0")); }}
+        onBlur={() => setMonth((m) => (m.length === 1 ? m.padStart(2, "0") : m))}
         onKeyDown={(e) => {
           if (e.key === "Backspace" && month === "") monthRef.current?.blur();
         }}
@@ -126,7 +126,7 @@ export default function SmartDateInput({
           if (withTime && v.length === 2) hourRef.current?.focus();
           emit(year, month, v, hour, min);
         }}
-        onBlur={() => { if (day.length === 1) setDay(day.padStart(2, "0")); }}
+        onBlur={() => setDay((d) => (d.length === 1 ? d.padStart(2, "0") : d))}
         className={`${base} w-10`}
       />
 
@@ -147,7 +147,7 @@ export default function SmartDateInput({
               if (v.length === 2) minRef.current?.focus();
               emit(year, month, day, v, min);
             }}
-            onBlur={() => { if (hour.length === 1) setHour(hour.padStart(2, "0")); }}
+            onBlur={() => setHour((h) => (h.length === 1 ? h.padStart(2, "0") : h))}
             className={`${base} w-10`}
           />
           <span className="text-bb-text2 select-none">:</span>
@@ -163,7 +163,7 @@ export default function SmartDateInput({
               setMin(v);
               emit(year, month, day, hour, v);
             }}
-            onBlur={() => { if (min.length === 1) setMin(min.padStart(2, "0")); }}
+            onBlur={() => setMin((mn) => (mn.length === 1 ? mn.padStart(2, "0") : mn))}
             className={`${base} w-10`}
           />
         </>
