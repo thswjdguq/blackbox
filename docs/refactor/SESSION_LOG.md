@@ -216,3 +216,36 @@
 - task 작업지시서 10~15의 오케스트레이터 표현은 Phase 1 실행 시 실행자-직접으로 개정(02·03 선례).
 - 세션 시작 시 `bash scripts/sync.sh`로 전방통합 먼저(누락 시 CI divergence-check가 경고).
 - `main` 미변경(origin/main = a40a931, 팀원 커밋만). main push는 전체 완료 시(DEC-WORKFLOW-002).
+
+---
+
+## 2026-06-18 — Phase 1 완주 (Drift 인벤토리) + Phase 2 핸드오프
+
+**진행자:** 사용자(팀장) + Claude Code (Opus 4.8, 계획자) + refactor-executor (Sonnet 4.6)
+
+**한 일 (Phase 1 전체):**
+- **Task 10·11·12 (스캔, PR #29·30·31):** 실행자가 gc.md INV/SYNC/CODE grep 직접 실행 → `DRIFT_INVENTORY.md` 채움. 계획자 spot-check 검증.
+  - INV: clean 3(INV-02/03/05) + 후보 5. SYNC: 10건. **CODE: 전부 clean**(`:any`·debug·시크릿 0).
+- **Task 13 (분류, PR #32):** Claude 등급/결정 1차안 + `DEFERRED.md` 신규 + **DEC-DRIFT-001**.
+- **Task 14 (사용자 확정, PR #33):** 사용자 결정 컬럼. *(주의: Task 14에서 D2·env·TS↔DTO 6행의 결정안↔사용자결정 셀이 collapse되는 버그 발생 → Task 15에서 8칸 복구.)*
+- **Task 15 (매핑, 본 PR):** Task 컬럼 채움 + PLAN Phase 2~4 반영 + Phase 1 완료조건 [x] + Task 14 셀 정정.
+
+**핵심 결정 (사용자):**
+- **"기획서엔 있으나 MVP에 없는 기능 갭" = 리팩토링 범위 밖 → 차후 고도화·팀 전원**(DEC-DRIFT-001). 점수체계 0~150 정규화·consent UI·OBSERVER 강제·consent 가드 → `DEFERRED.md`(DEFER-01~03).
+- **D2 문서 항목:** Phase 6 갱신 시 "기존 문서↔현행 코드 비교 후" 조건.
+- 점수체계 괴리가 INV-06 + SYNC-05-A/B/C로 3중 확인됐으나 **수정 안 함**(고도화 유예).
+
+**Phase 1 최종 매핑 (실제 리팩토링 D1은 3 Task뿐):**
+- D1 → `22-activity-log-coverage`(D-INV-01a/b·최후순위) · `42-types-organize`(D-SYN-02-B) · `29-fix-env-config`(D-SYN-04, 신규 chore)
+- D2 4건 → Phase 6 / 유예 7건 → DEFERRED.md
+- **CRITICAL(하드코딩 시크릿) 0.**
+
+**다음 세션 진입점 — Phase 2 (새 세션 권장):**
+- 시작 시 `bash scripts/sync.sh` 전방통합 먼저. `docs/refactor/CLAUDE.md §3` 통독.
+- **Phase 2A 첫 묶음(1~3개):** `20-exception-handling-unify` · `21-webclient-error-pattern` · `22-activity-log-coverage`(D-INV-01) 중에서. `29-fix-env-config`(소규모)도 끼울 수 있음.
+- 입력: `DRIFT_INVENTORY.md`(Task 컬럼)·`PLAN.md` Phase 2A 후보·`DEFERRED.md`.
+
+**미해결 / 주의:**
+- `stash@{0}` 쿠키 인증 md 변경 미처리(무관, 보존).
+- CODE-03 행 코드실제에 셀 내부 `|`(`ls V*.sql | sort -V`) 잔존 — clean 행이라 무해, 추후 escape 가능.
+- `main` 미변경(origin/main = a40a931). main push는 전체 완료 시(DEC-WORKFLOW-002).
