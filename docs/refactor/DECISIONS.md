@@ -123,6 +123,32 @@
 - **관련:** PLAN.md, SESSION_LOG(2026-06-01·2026-06-08 entry), DEC-WORKFLOW-010(실행자 Sonnet 첫 적용은 Task 26)
 - **재검토 조건:** 추가 fast-track 요청 시 동일 기준(동작 보존 + 소비자 전수조사 가능 여부)으로 개별 판단.
 
+## DEC-PHASE-004 — Task 21(webclient-error-pattern) 일괄 통일 미수행 (변동이 의도적)
+- **일시:** 2026-06-20
+- **결정:** Phase 2A Task 21 "WebClient 호출부 에러 핸들러 일괄 점검·통일"을 **수행하지 않는다.** WebClient 6개 호출부의 에러 처리 변동은 대부분 **의도적(맥락 적합)**이다.
+- **근거(조사):**
+  - Discord 2종(`DiscordNotificationService`/`DiscordNotionNotifier`): 알림은 fire-and-forget — `try-catch` + `log.warn` 후 삼킴(실패해도 본 흐름 진행). 의도적.
+  - `NotionService`: Notion 내보내기는 사용자 액션 — 실패 시 `RuntimeException` 재전파(일부 best-effort 분기 혼재). 의도적.
+  - `Claude`/`OpenAiService`: 예외 전파 → `AiService` 폴백이 처리(Task 26~28에서 이미 정리됨).
+  - `GoogleCalendarService`: 비핵심 busy-slot 조회는 `onErrorReturn(Map.of())`로 graceful degrade. 의도적.
+- **사유:** 단일 패턴으로 "통일"하면 의미 있는 차이(알림=삼킴 vs 사용자액션=전파 vs 비핵심=degrade)를 뭉개 동작이 바뀐다(PRINCIPLES §4 위반). **순수 동작보존형 refactor가 존재하지 않음.**
+- **범위:** 향후 특정 WebClient 호출부의 실제 버그(예: 사용자 액션을 잘못 삼킴)가 발견되면 그때 **좁은 fix Task로 개별 처리.** blanket 통일은 안 함.
+- **관련:** PLAN Phase 2A, SESSION_LOG(2026-06-20), PRINCIPLES §4
+- **(사용자 결정:** "21 의도적기록 → 23 audit")
+
+## DEC-PHASE-005 — Task 23(projectaccesschecker-usage) 감사 완료 + getProject 표준화 Phase 4 유예
+- **일시:** 2026-06-20
+- **감사 결과(read-only):**
+  - `requireMember`/`requireLeader` 우회 **없음**(양호).
+  - **유일한 실 불일치:** `AlertService`(:57)·`ScoreService`(:65,151)·`GoogleCalendarService`(:114,180,283) **6곳**이 `accessChecker.getProject()` 대신 수동 `findById().orElseThrow(IllegalArgumentException/RuntimeException)` → 없는 프로젝트가 **404 아닌 500**.
+  - 수동 role 문자열 비교(`"LEADER".equals` 등, `TaskService`/`ProjectService`)는 last-leader 보호 등 **비즈니스 로직 + 매직스트링** → Phase 3 `51-magic-values-extract` 영역(23 아님).
+  - 누락 멤버체크 신규 추가 = 보안 동작변경(OBSERVER/DEFERRED 인접) → **23 범위 밖.**
+- **결정:** getProject() 표준화(6곳→checker)를 **Phase 4 fix로 유예**한다.
+  - (1) 6곳 전부 비-NotFound 예외라 통일 시 **500→404 동작변경(fix)** — 순수 refactor형 없음.
+  - (2) `GoogleCalendarService`는 외부 API(Google Calendar) 연동 서비스 → 현 PC에 키 부재로 **런타임 검증 불가**(사용자 결정: 외부 API 재설정 부담으로 차후).
+- **Phase 4 후보:** `7x-fix-getproject-404-consistency`. 내부 서비스(`AlertService`/`ScoreService`)는 외부 API 무관이라 **분리해 먼저 진행 가능**, `GoogleCalendarService`는 외부 API 검증 가능한 환경에서.
+- **관련:** `ProjectAccessChecker.java`, PLAN Phase 2A/4, DEC-WORKFLOW-002, SESSION_LOG(2026-06-20)
+
 ---
 
 ## DEC-DRIFT-001 — 기획서↔MVP 기능 갭은 리팩토링 범위 밖, 차후 고도화로 유예

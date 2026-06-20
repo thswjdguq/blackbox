@@ -161,9 +161,9 @@ Cross-cutting을 먼저 하지 않으면, 도메인 Task들이 각자 다른 패
 ### Task 후보 — 2A. Cross-cutting (20~29)
 
 - `20-exception-handling-unify` — `GlobalExceptionHandler` 통일, 미처리 예외가 403으로 변환되는 버그 패턴 차단
-- `21-webclient-error-pattern` — `WebClient` 호출부 에러 핸들러(`onErrorReturn` + try-catch) 일괄 점검·정리
+- `21-webclient-error-pattern` — `WebClient` 호출부 에러 핸들러(`onErrorReturn` + try-catch) 일괄 점검·정리 *(통일 미수행 — 변동이 의도적, **DEC-PHASE-004**. 향후 특정 버그만 좁은 fix)*
 - `22-activity-log-coverage` — INV-01 위반 누락 메서드 추가 (Drift 인벤토리 결과 기반) *(D-INV-01a/b 포함 — ProjectService·AuthService. **Phase 2A 최후순위**)*
-- `23-projectaccesschecker-usage` — 권한 검증 위치·방식 통일
+- `23-projectaccesschecker-usage` — 권한 검증 위치·방식 통일 *(감사 완료 — getProject 우회 6곳(500 vs 404) 발견, 500→404 fix는 **Phase 4 유예**, DEC-PHASE-005)*
 - `24-db-legacy-score-columns` — V18 마이그레이션: 숫자 점수 컬럼 deprecate (코드에서 사용 제거 PR 먼저, 그 다음 DROP)
 - `25-db-oauth-tokens-unify` — `oauth_tokens` ↔ `google_calendar_tokens` 정책 결정 후 통합 또는 명시적 분리
 - `29-fix-env-config` — `FRONTEND_BASE_URL`·`GOOGLE_REDIRECT_URI`·`DISCORD_WEBHOOK_URL`을 docker-compose.yml·.env.example에 보완 (application.yml 참조 대비 누락) *(Drift D-SYN-04 기반, 소규모 chore)*
