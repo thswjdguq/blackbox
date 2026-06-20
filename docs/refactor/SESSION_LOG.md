@@ -249,3 +249,30 @@
 - `stash@{0}` 쿠키 인증 md 변경 미처리(무관, 보존).
 - CODE-03 행 코드실제에 셀 내부 `|`(`ls V*.sql | sort -V`) 잔존 — clean 행이라 무해, 추후 escape 가능.
 - `main` 미변경(origin/main = a40a931). main push는 전체 완료 시(DEC-WORKFLOW-002).
+
+---
+
+## 2026-06-20 — Phase 2A 진입: 첫 묶음 Task 29 + 20 실행·머지
+
+**진행자:** 사용자(팀장) + Claude Code (Opus 4.8, 계획자) + refactor-executor (Sonnet 4.6)
+
+**한 일:**
+- **전방통합(DEC-WORKFLOW-011):** `bash scripts/sync.sh` → `origin/main = a40a931`, **발산 0**(week 브랜치들 origin 존재하나 main 미머지). `refactor/main` 무변경 시작(7ee96a0).
+- **Phase 2A 첫 묶음 작업지시서 2건 신규 작성**(계획자) → 사용자 확정. 핸드오프 추천(20+21)에서 **21은 6파일·동작변경 리스크로 §13 위반** 판단 → 보류, 대신 저위험 **29 + 20**으로 구성.
+- **Task 29 실행·머지(PR #35, `fa40ef0`):** `chore`. `docker-compose.yml`·`.env.example`에 누락 env 3종 보완(D-SYN-04 해소). 순수 추가 8줄. **`GOOGLE_REDIRECT_URI` compose 기본값을 app 기본값과 동일하게** 둬 동작 보존. `docker compose config -q` 무오류.
+- **Task 20 실행·머지(PR #36, `b02057a`):** `refactor`. `GlobalExceptionHandler`에 generic fallback 2개(`Exception`→500, `AccessDeniedException`→403, 모두 ProblemDetail) 추가. 22줄 추가, 기존 7핸들러 0줄 변경. `compileJava` BUILD SUCCESSFUL(계획자 WSL 재검증). CI 5종 green ×2.
+
+**핵심 결정(사용자):**
+- **Task 20 스코프 = 최소·상태보존:** `Exception`→500 + `AccessDeniedException`→403만(상태코드 500→500/403→403 보존, 바디만 ProblemDetail 통일) = 순수 refactor. `IllegalArgumentException→400` 등 세분 매핑은 범위 밖(원하면 Phase 4 fix).
+- **두 핸들러 동반 필수:** AccessDeniedException⊂Exception이라 함께 둬야 403→500 강등 차단.
+- **PLAN "403 변환" 문구 정정:** 본 repo SecurityConfig는 entrypoint=401·accessDeniedHandler 미설정 → 검증된 사실(generic fallback 부재)만 다룸. 작업지시서 §4에 명시.
+
+**다음 진입점 — Phase 2A 이어서:**
+- 시작 시 `bash scripts/sync.sh` 전방통합 먼저.
+- **21-webclient-error-pattern** 재계획: WebClient 6파일(NotionService·Discord 2종·Claude/OpenAi·GoogleCalendar) 패턴 제각각(try-catch / 전파 / onErrorReturn·onStatus 혼재) → **§13 ≤3파일로 분할**(예: 21a Notion, 21b Calendar/Discord; AI 클라는 Task 26~28에서 정리됨) + 에러 삼킴/전파 시맨틱 보존 주의.
+- 그 외 2A 후보: `23-projectaccesschecker-usage`, `24-db-legacy-score-columns`(**DEFERRED 점수체계와 겹침 — 착수 전 사용자와 범위 확정**), `25-db-oauth-tokens-unify`. `22-activity-log-coverage`(D-INV-01)는 **2A 최후순위**.
+
+**미해결 / 주의:**
+- `stash@{0}` 쿠키 인증 md 변경 미처리(무관, 보존).
+- 로컬 `refactor/06-smoke-test-baseline-run` 잔존 브랜치(과거 세션, 머지됨) — 정리 가능.
+- `main` 미변경(origin/main = a40a931). main push는 전체 완료 시(DEC-WORKFLOW-002).
