@@ -128,13 +128,13 @@
 
 ### 완료 조건
 
-- [ ] INV/SYNC/CODE 3배치 모두 스캔 완료 (실행자)
-- [ ] `DRIFT_INVENTORY.md`에 모든 항목 기재
-- [ ] 모든 항목에 등급 + 결정 1차안 (Claude)
-- [ ] 모든 항목에 사용자 확정 결정 기재
-- [ ] D1(코드 수정) 항목들이 Phase 2~4의 Task로 매핑됨
-- [ ] D2(문서 수정) 항목들이 Phase 6 묶음으로 들어감
-- [ ] D3(의도적 차이) 항목들이 `DECISIONS.md`에 기록됨
+- [x] INV/SYNC/CODE 3배치 모두 스캔 완료 (실행자) — Task 10·11·12 (PR #29·30·31)
+- [x] `DRIFT_INVENTORY.md`에 모든 항목 기재 — Task 10~12
+- [x] 모든 항목에 등급 + 결정 1차안 (Claude) — Task 13 (PR #32)
+- [x] 모든 항목에 사용자 확정 결정 기재 — Task 14 (PR #33)
+- [x] D1(코드 수정) 항목들이 Phase 2~4의 Task로 매핑됨 — Task 15: 22(activityLog)·42(TS↔DTO)·29(env)
+- [x] D2(문서 수정) 항목들이 Phase 6 묶음으로 들어감 — Task 15: 4건(현행 비교 조건)
+- [x] D3(의도적 차이) 항목들이 `DECISIONS.md`에 기록됨 — D3 0건; 기능 갭은 **유예→`DEFERRED.md`**(DEC-DRIFT-001, 팀 전원 고도화)
 
 ### 다음 진입 조건
 
@@ -162,10 +162,11 @@ Cross-cutting을 먼저 하지 않으면, 도메인 Task들이 각자 다른 패
 
 - `20-exception-handling-unify` — `GlobalExceptionHandler` 통일, 미처리 예외가 403으로 변환되는 버그 패턴 차단
 - `21-webclient-error-pattern` — `WebClient` 호출부 에러 핸들러(`onErrorReturn` + try-catch) 일괄 점검·정리
-- `22-activity-log-coverage` — INV-01 위반 누락 메서드 추가 (Drift 인벤토리 결과 기반)
+- `22-activity-log-coverage` — INV-01 위반 누락 메서드 추가 (Drift 인벤토리 결과 기반) *(D-INV-01a/b 포함 — ProjectService·AuthService. **Phase 2A 최후순위**)*
 - `23-projectaccesschecker-usage` — 권한 검증 위치·방식 통일
 - `24-db-legacy-score-columns` — V18 마이그레이션: 숫자 점수 컬럼 deprecate (코드에서 사용 제거 PR 먼저, 그 다음 DROP)
 - `25-db-oauth-tokens-unify` — `oauth_tokens` ↔ `google_calendar_tokens` 정책 결정 후 통합 또는 명시적 분리
+- `29-fix-env-config` — `FRONTEND_BASE_URL`·`GOOGLE_REDIRECT_URI`·`DISCORD_WEBHOOK_URL`을 docker-compose.yml·.env.example에 보완 (application.yml 참조 대비 누락) *(Drift D-SYN-04 기반, 소규모 chore)*
 
 ### Task 후보 — 2B. 백엔드 도메인 (30~39)
 
@@ -177,7 +178,7 @@ Cross-cutting을 먼저 하지 않으면, 도메인 Task들이 각자 다른 패
 
 - `40-api-layer-unify` — `lib/api.ts` 사용 일관성, 도메인별 API 모듈(`lib/api/task.ts` 등) 도입 검토
 - `41-store-organize` — Zustand store 위치·단위 정리
-- `42-types-organize` — `src/types/` 정리 (백엔드 DTO와 1:1 매핑 검증)
+- `42-types-organize` — `src/types/` 정리 (백엔드 DTO와 1:1 매핑 검증) *(D-SYN-02-B 포함 — TS 타입 33 vs DTO 45 정합)*
 - `43-page-routing` — App Router 페이지 정리 (project-scoped vs 전역 shim)
 - `44-components-organize` — `components/` 도메인별 그룹핑
 
