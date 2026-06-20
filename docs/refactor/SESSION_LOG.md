@@ -276,3 +276,31 @@
 - `stash@{0}` 쿠키 인증 md 변경 미처리(무관, 보존).
 - 로컬 `refactor/06-smoke-test-baseline-run` 잔존 브랜치(과거 세션, 머지됨) — 정리 가능.
 - `main` 미변경(origin/main = a40a931). main push는 전체 완료 시(DEC-WORKFLOW-002).
+
+---
+
+## 2026-06-20 (이어서) — 21/23 결정 · README · **refactor/main → main 발표용 통합** · 날짜 fix
+
+**진행자:** 사용자(팀장) + Claude Code (Opus 4.8, 계획자) + refactor-executor (Sonnet 4.6)
+
+**한 일 (같은 날 후반, 위 29/20 entry에 이어서):**
+- **21/23 처리 결정(PR #38, DEC-PHASE-004/005):** 21-webclient = 에러처리 변동이 대부분 의도적(알림 삼킴/사용자액션 전파/비핵심 degrade) → **일괄 통일 안 함**(DEC-PHASE-004). 23-projectaccesschecker = read-only 감사: requireMember/Leader 우회 없음(양호), 유일 불일치=getProject 우회 6곳(Alert/Score/Calendar, 없는 프로젝트 500 vs 404) → 500→404 fix + 외부API 검증불가로 **Phase 4 유예**(DEC-PHASE-005). role 문자열비교는 Phase 3.
+- **루트 README 신규(PR #39) + 정정(PR #41):** Phase 6 `90` 조기 작성(Claude 직접, 현행 코드 검증). 사용자 피드백 반영해 **리팩토링 내부 문서 참조(DEFERRED/docs-refactor) 제거 + 기능 설명 중립화**.
+- **<70 동작보존 검증(서브에이전트 2개 병행):** AI 26/27/28·예외 20 = 외부동작 불변 확인, 백엔드 build OK·프론트 type-check OK, 스모크 기동 `/api/health` 200. 사용자가 실 OpenAI 키로 AI 요약 정상 확인(폴백 라이브 검증).
+- **★ refactor/main → main 통합(PR #40, merge commit `da57e10`):** **DEC-WORKFLOW-012** — 발표용 조기 통합(DEC-WORKFLOW-002 1회 완화). rebase 비활성이라 merge commit(개별 SHA 보존→부분 롤백 가능). clean FF, 충돌 0. 팀원 week*/dev/feat/hotfix는 이미 main 머지됨. node_modules/backend/bin 빌드산출물 untrack 동반(124k줄 삭제=쓰레기 정리, 소스 손실 0).
+- **날짜 입력 fix(PR #42 Task 73, #44 Task 73b):** SmartDateInput 한 자리 입력 갇힘 버그. ①emit 패딩값이 부모 value 역류로 입력칸 덮어씀→self-echo 가드(lastEmitted)로 해결. ②월 2자리 입력 시 자동 포커스 이동으로 onBlur가 동기 발화하며 **스테일 클로저** 옛값 패딩→`setX((v)=>...)` 함수형 업데이터로 해결. DatePicker는 무관(버그 없음).
+- **frontend/.dockerignore(PR #43):** Dockerfile이 npm ci로 자체 설치하는데 호스트 node_modules(695MB)+깨진 심볼릭링크(`.bin/acorn`)로 frontend 빌드 실패하던 것 해결 → docker compose 데모 정상화.
+
+**핵심 결정(사용자):**
+- **발표용 main 조기 통합 승인**(DEC-WORKFLOW-012). 머지 방식 rebase 선호했으나 repo 비활성 → merge commit 채택(부분 롤백 동등 지원).
+- 21 통일 안 함 / 23 Phase 4 유예 / README는 내부 리팩토링 문서 미참조.
+
+**다음 진입점:**
+- **go-forward:** main이 이제 refactor/main 포함(`da57e10`로 동기). 리팩토링 미완 → **이후 작업 계속 `refactor/main`**, 전방통합(011) 유지, 필요 시 재통합. Phase 2A 잔여: 21 분할(보류)·23(Phase4 유예)·24(DEFERRED 겹침)·25(DB 결정)·22(최후순위) — 실질 사실상 cross-cutting 일단락, 도메인(30~/40~)·Phase 3 진입 검토.
+- 팀 공유 메시지 + 롤백 가이드(정확 해시) 전달 완료.
+
+**미해결 / 주의:**
+- `stash@{0}` 쿠키 인증 md 변경 미처리(무관, 보존).
+- **`main` = `da57e10`로 변경됨**(발표용 통합, DEC-WORKFLOW-012). 더는 "main 미변경" 아님.
+- frontend Docker 데모 스택 가동 중(`.env`에 사용자 OpenAI 키 — gitignore, 안전).
+- 롤백 좌표: AI=`5edd545`·`3cbb68e`·`5f3887d`·`29737ee`(역순), 예외=`b02057a`, 전체=`git revert -m 1 da57e10`.
