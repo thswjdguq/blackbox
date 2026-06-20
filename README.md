@@ -32,11 +32,9 @@ Team Blackbox의 설계 철학은 한 문장으로 요약된다:
 - **칸반 태스크** — 생성/수정/삭제, 드래그앤드롭 상태 변경, 담당자 지정.
 - **회의** — 생성, 체크인, 회의록, **AI 요약·액션아이템 추출**(Claude 우선, OpenAI 폴백) → 태스크 변환.
 - **Hash Vault** — 파일 업로드 시 SHA-256 해시 고정, DB 트리거로 UPDATE/DELETE 차단(불변), 동일 파일 재업로드 시 변조 감지, 이력 조회.
-- **기여도·경보** — 팀원별 활동을 집계해 기여 현황 산출, 무임승차/이탈/과부하 경보. *(현재는 참여도(FULL/PARTIAL/NONE) 기반 집계. 가중치 0~150 정규화 점수 모델은 향후 고도화 항목.)*
+- **기여도·경보** — 팀원별 활동을 집계해 기여 현황을 산출하고, 무임승차/이탈/과부하 경보를 제공.
 - **무결성 리포트** — 증빙 PDF 다운로드, 증거 패키지 ZIP 다운로드(OpenPDF).
 - **외부 연동(선택적, 키 없으면 자동 비활성)** — GitHub App, Google Calendar, Notion, Discord 알림, Claude / OpenAI AI.
-
-> 일부 기능(consent 온보딩 UI, OBSERVER 권한 강제, 점수 정규화 모델)은 기획서에 정의돼 있으나 현행 MVP에는 백엔드 구조만 있거나 미구현이다. 자세한 갭은 [`docs/refactor/DEFERRED.md`](docs/refactor/DEFERRED.md) 참조.
 
 ---
 
@@ -122,7 +120,7 @@ blackbox/
 │   └── src/main/resources/db/migration/   Flyway V1~V18
 ├── frontend/     Next.js App Router (src/app · components · lib · types)
 ├── nginx/        리버스 프록시 + SSL 설정
-├── docs/         아키텍처·리팩토링 문서 (docs/refactor/)
+├── docs/         아키텍처·운영 문서
 ├── md/           프로젝트 컨텍스트(claude.md) · 기획서 · 핸드오버 로그
 └── docker-compose.yml
 ```
@@ -134,7 +132,6 @@ blackbox/
 - **프로젝트 컨텍스트:** [`md/claude.md`](md/claude.md)
 - **종합 기획서:** [`md/TeamBlackbox_기획서_v3.md`](md/TeamBlackbox_기획서_v3.md)
 - **API 표:** [`md/handover_log.md`](md/handover_log.md)
-- **리팩토링 로드맵·결정:** [`docs/refactor/`](docs/refactor/) (PLAN · DECISIONS · DRIFT_INVENTORY · DEFERRED)
 
 ---
 
