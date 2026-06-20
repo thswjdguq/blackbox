@@ -100,6 +100,16 @@
 - **관련:** CLAUDE_WORKFLOW §6, EXECUTION_PLAYBOOK §1, DEC-WORKFLOW-002, SESSION_LOG(2026-06-08)
 - **재검토 조건:** 전방통합에도 충돌이 과대해지거나, 사용자가 main 통합 시점을 앞당기기로 결정 시.
 
+## DEC-WORKFLOW-012 — refactor/main → main 발표용 조기 통합 (DEC-WORKFLOW-002 1회 완화)
+- **일시:** 2026-06-20
+- **결정:** 발표(시연) 대비로, 검증을 마친 `refactor/main`을 **main에 통합**(PR #40, merge commit `da57e10`). DEC-WORKFLOW-002의 "리팩토링 완료 후 통합" 동결을 **팀장 판단으로 이번에 한해 완화**. (DEC-WORKFLOW-011의 재검토 조건 "사용자가 main 통합 시점을 앞당기기로 결정 시"의 실현.)
+- **검증 근거:** 동작보존(백엔드 8파일 — AI 통합 26/27/28 프롬프트·폴백순서 byte 보존, Task 20 예외핸들러 상태코드 보존) · 백엔드 `clean build` SUCCESSFUL · 스모크 기동(Flyway 18 마이그레이션, `/api/health` 200) · 실 OpenAI 키로 AI 요약 정상(폴백 경로 라이브 검증) · 날짜 입력 fix(73/73b) 브라우저 확인 · **clean fast-forward(충돌 0)**.
+- **머지 방식:** GitHub repo가 rebase 머지 비활성 → **merge commit**(`da57e10`). 개별 태스크 커밋 SHA가 보존돼 **부분 롤백 가능**(스쿼시 회피).
+- **롤백 좌표(main 기준):** AI 통합 = `5edd545`(#13)·`3cbb68e`(#12)·`5f3887d`(#11)·`29737ee`(#9) 역순 revert · 예외처리 = `b02057a`(#36) · 전체 = `git revert -m 1 da57e10`.
+- **go-forward 모델:** main이 이제 refactor/main 내용을 포함. **리팩토링은 미완(Phase 2A 초반)** 이므로 이후 작업은 **계속 `refactor/main`에서** 진행, 전방통합(DEC-WORKFLOW-011) 유지, 필요 시 다시 main 통합. 백머지 동결의 "완료까지 0회 통합" 전제는 본 1회 통합으로 갱신됨.
+- **관련:** DEC-WORKFLOW-002/011, PR #40, SESSION_LOG(2026-06-20), 함께 통합된 부수 작업: README(#39/#41)·날짜 fix(#42/#44)·frontend/.dockerignore(#43).
+- **재검토 조건:** 다음 통합 시점·조건은 팀장이 진행 상황 보고 재결정.
+
 ---
 
 ## DEC-PHASE-001 — Phase 0~6 7단계 로드맵
