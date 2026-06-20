@@ -16,14 +16,15 @@
 - 새 메타 결정 발생 시 본 문서·DECISIONS·SESSION_LOG 갱신
 - **코드를 직접 수정하지 않음** (예외 §4 참조)
 
-### GitHub Copilot (실행자)
-- 작업지시서 받아 실제 코드/문서 변경
-- 작업지시서의 HARD LIMIT·Out of Scope 엄수
-- 베이스 모델은 mini/haiku급일 수 있음 — 작업지시서가 견고해야 함 (PRINCIPLES §13)
+### 실행자 — Claude Sonnet 4.6 서브에이전트 (`.claude/agents/refactor-executor.md`)
+- 작업지시서 1건을 받아 실제 코드/문서 변경 + **빌드를 스스로 검증** (명령 실제 실행)
+- 작업지시서의 HARD LIMIT·Out of Scope 엄수. `main` push/PR/머지 금지 (편집+빌드 검증까지가 범위)
+- 모델 Sonnet 4.6 (PRINCIPLES §13: 코드 변경은 Sonnet+ 권장)
+- **구 GitHub Copilot 실행자는 정책 변경으로 비활성** (DEC-WORKFLOW-010). 작업지시서가 §13 규격으로 견고해야 하는 원칙은 유지.
 
 ### 사용자 (팀장)
 - 모든 결정 최종 확정
-- Copilot 실행을 직접 관여 (Edits 모드 approve 등)
+- 실행자 위임·검토에 관여 (Pre-write 계획 승인 등)
 - 명령 실행 패턴(§5)에서 실제 명령 수행
 - 다른 AI 평가·외부 자료를 Claude Code에 제공
 
@@ -53,29 +54,29 @@
 
 ---
 
-## 4. Claude 예외 실행 (Copilot 비사용)
+## 4. Claude 예외 실행 (실행자 비사용)
 
 다음 **4조건 모두 만족** 시 Claude가 직접 Write:
 1. 정적 문서 생성 (코드 변경 아님)
 2. 콘텐츠가 작업지시서 본문에 완전히 정의
-3. Copilot의 lost-in-the-middle / 약식화 위험이 큼
+3. 실행자의 lost-in-the-middle / 약식화 위험이 큼
 4. 사용자 명시 승인
 
-작업지시서에 "Copilot 비사용 — Claude가 직접 작성" 명시.
+작업지시서에 "실행자 비사용 — Claude가 직접 작성" 명시.
 **남용 금지.** 코드 작업에는 절대 적용 안 함.
 사례: Task 05 (SMOKE_TESTS.md, 250줄+ 복사 작업).
 
 ---
 
-## 5. 명령 실행 + 출력 캡처 패턴 (오케스트레이터)
+## 5. 명령 실행 + 출력 캡처 패턴 (오케스트레이터 — 현재 옵션)
 
-Copilot이 명령을 직접 실행하면 **환각 위험 본질적**.
-대신:
-- Copilot은 "다음 명령 실행 후 결과 부탁드려요" 안내만
+현 실행자(refactor-executor, Sonnet)는 빌드·grep 등 검증 명령을 **직접 실행·검증**할 수 있다(DEC-WORKFLOW-010 — 소형 모델 환각 전제 약화). 따라서 아래 오케스트레이터 패턴은 **기본이 아니라 옵션**이다 — 저수준 모델 실행자이거나 명령 출력 신뢰가 어려운 경우에만 적용:
+- (레거시) 실행자는 "다음 명령 실행 후 결과 부탁드려요" 안내만
 - 실제 실행과 출력 복사는 사용자
-- Copilot은 받은 출력을 문서로 정리
+- 실행자는 받은 출력을 문서로 정리
 
-적용 Task: 02 (build baseline), 03 (test coverage), 06 (smoke run), 10/11/12 (drift scan), 13 일부.
+단 `git push`/`main` 변경은 실행자 범위 밖(편집+빌드 검증까지).
+적용 후보 Task: 02 (build baseline), 03 (test coverage), 06 (smoke run), 10/11/12 (drift scan), 13 일부 — 단 실제 실행 시 Sonnet 실행자가 직접 수행 가능한지 우선 판단.
 PRINCIPLES §13 참조.
 
 ---
@@ -83,10 +84,11 @@ PRINCIPLES §13 참조.
 ## 6. 형상관리 정책
 
 - 작업은 **`refactor/main` 브랜치** 진행
-- **`main`에 절대 push/PR/merge 금지** (팀원 최종 승인 전까지)
+- **`main`에 절대 push/PR/merge 금지** (팀원 최종 승인 전까지) — 백머지 동결(DEC-WORKFLOW-002)
 - Task별 `refactor/<task-id>-<name>` 브랜치 → PR base는 항상 `refactor/main`
 - 한 커밋에 한 종류 변경만 (rename / move / refactor / fix / feat / docs / chore 분리)
 - squash merge로 머지
+- **전방통합(forward-integration, DEC-WORKFLOW-011):** 발산 누적을 막기 위해 **매 세션 시작 시 `origin/main`을 `refactor/main`에 merge**(rebase 금지)해 팀원 작업을 흡수. 충돌은 refactor 측에서 작게·자주 해소. main은 건드리지 않음. 핫파일(동시 편집)은 팀원과 조율.
 
 ---
 

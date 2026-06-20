@@ -8,7 +8,7 @@
 
 ## 0. 대전제
 
-- **실행자는 GitHub Copilot, 계획자는 Claude.** 사용자는 두 에이전트를 지휘하는 팀장.
+- **실행자는 Claude Sonnet 서브에이전트(`.claude/agents/refactor-executor.md`), 계획자는 Claude Code(Opus).** 사용자는 두 에이전트를 지휘하는 팀장. (구 실행자 GitHub Copilot은 정책 변경으로 비활성 — DEC-WORKFLOW-010.)
 - **리팩토링은 "이해하는 코드만" 한다.** 모호한 부분은 유예한다(§7).
 - **`md/gc.md`의 INV-01~07은 절대 위반 불가**한 불변 규칙이다. 본 문서에서 중복 정의하지 않고 참조한다.
 
@@ -56,7 +56,7 @@
 - **D4. 사용자 확인 필요** — 모호. 별도 질문 묶음으로 일괄 확인
 
 ### 워크플로우
-Claude가 등급 분류 + 결정 1차안 제시 → 사용자가 검토·확정 → Copilot 작업지시서에 반영.
+Claude가 등급 분류 + 결정 1차안 제시 → 사용자가 검토·확정 → 실행자용 작업지시서에 반영.
 
 ## 4. 동작 보존 원칙
 
@@ -80,8 +80,8 @@ main                              ← 리팩토링 완료 + 팀원 승인 후에
 ### 작업 흐름
 
 1. Claude가 `docs/refactor/tasks/NN-xxx.md` 작성
-2. Copilot/사용자가 `refactor/main`에서 `refactor/<task-id>` 분기
-3. Copilot 실행 → 커밋
+2. `refactor/main`에서 `refactor/<task-id>` 분기
+3. 실행자(refactor-executor)가 HARD LIMIT 안에서 구현 + 빌드 검증 → 커밋
 4. PR 생성: **base는 항상 `refactor/main`**, 제목에 task ID(예: `[refactor-12] auth 모듈 분리`)
 5. 사용자/Claude 리뷰 → 승인 → squash merge
 6. 작업 브랜치 삭제
@@ -101,9 +101,9 @@ main                              ← 리팩토링 완료 + 팀원 승인 후에
 - 한 커밋에는 한 타입만
 - 본문에 관련 INV ID 또는 Drift ID 기재(있을 경우)
 
-## 6. Copilot 협업 규칙
+## 6. 실행자 협업 규칙
 
-Copilot이 자주 저지르는 실수를 차단하기 위한 규칙. 모든 작업지시서에 자동 포함된다.
+실행자(refactor-executor)가 자주 저지르는 실수를 차단하기 위한 규칙. 모든 작업지시서에 자동 포함된다.
 
 1. **추측 금지** — 모르는 동작은 빈 함수로 두지 말고 작업지시서에 `[CONFIRM]` 태그로 질문 적기
 2. **임포트 자동 정리 신뢰 금지** — IDE의 organize imports 결과를 수동 확인
@@ -152,7 +152,7 @@ Copilot이 자주 저지르는 실수를 차단하기 위한 규칙. 모든 작�
 
 ## 10. 문서화 원칙 (Phase 6용)
 
-Phase 6에서 Copilot에게 문서 작업을 시킬 때 강제하는 규칙.
+Phase 6에서 실행자에게 문서 작업을 시킬 때 강제하는 규칙.
 
 - **실제 코드를 읽고 쓴다.** 옛 구조나 추측 금지
 - **"무엇을 했다"가 아니라 "지금 어떻게 동작한다"**로 서술. 변경 이력은 git/PR 담당
@@ -168,21 +168,21 @@ Phase 6에서 Copilot에게 문서 작업을 시킬 때 강제하는 규칙.
 
 ## 12. 운영 구조 (방어선 3겹)
 
-이 PRINCIPLES.md는 **사람·Claude가 보는 정본**이다. Copilot이 자동으로 읽는다고 가정하지 않는다.
+이 PRINCIPLES.md는 **사람·Claude가 보는 정본**이다. 실행자가 자동으로 읽는다고 가정하지 않는다.
 
 | 겹 | 파일 | 역할 |
 |---|---|---|
-| 1차 | `.github/copilot-instructions.md` | Copilot 자동 로드. 절대 규칙 30~50줄. |
+| 1차 | `.claude/agents/refactor-executor.md` | 실행자(Claude Sonnet) 시스템 프롬프트. 절대 규칙·HARD LIMIT 규율 상시 적용. (구 `.github/copilot-instructions.md`는 DEC-WORKFLOW-010으로 비활성 → DEPRECATED 참조 stub) |
 | 2차 | `docs/refactor/tasks/NN-xxx.md` | 작업지시서. PRINCIPLES 관련 섹션을 **본문 발췌**로 인라인 박음 (anchor 참조 ❌). |
 | 3차 | `.github/workflows/refactor-guard.yml` | CI lint. INV-02·05·Flyway 보존은 fail. `: any`·Entity 노출 등은 warn. |
 
-**작업지시서 작성 규칙:** PRINCIPLES.md를 변경하면 1차(`.github/copilot-instructions.md`)도 함께 점검. 2차 작업지시서는 매번 새로 발췌.
+**작업지시서 작성 규칙:** PRINCIPLES.md를 변경하면 1차(`.claude/agents/refactor-executor.md`)도 함께 점검. 2차 작업지시서는 매번 새로 발췌.
 
-**작업 묶음:** 한 번에 1~3개 Task의 작업지시서를 묶어서 사용자 검토 → 확정 → Copilot 순차 실행.
+**작업 묶음:** 한 번에 1~3개 Task의 작업지시서를 묶어서 사용자 검토 → 확정 → 실행자 순차 실행.
 
-## 13. 저수준 모델 대응 원칙
+## 13. 저수준 모델 대응 원칙 (실행자 모델 무관 견고성)
 
-GitHub Copilot의 베이스 모델은 모드/요금제에 따라 mini/haiku 급(GPT-4o-mini, Claude Haiku 등)이 사용된다. 우리 작업지시서는 이 등급에서도 안전하게 동작해야 한다.
+현 실행자는 Claude Sonnet 4.6 서브에이전트다(§0, DEC-WORKFLOW-010). 그러나 작업지시서는 **실행자 모델 등급에 의존하지 않고** 저수준(mini/haiku 급) 모델에서도 안전하게 동작하도록 설계한다. 이 견고함이 실행자 교체·다운그레이드 시에도 HARD LIMIT 규율을 보장한다(DEC-WORKFLOW-010도 "§13 설계는 이미 견고"하다고 확인).
 
 ### 알려진 5개 실패 패턴
 1. **Lost-in-the-middle** — 200줄 넘는 prompt에서 가운데 내용을 약식 처리
@@ -201,23 +201,23 @@ GitHub Copilot의 베이스 모델은 모드/요금제에 따라 mini/haiku 급(
 - **명령은 복사-실행 가능** — 변수 치환 필요 없는 완성 형태
 - **사용자 환경 단일 명시** — WSL/PowerShell 양쪽 분기 금지 (한 환경 단정. 본 프로젝트는 WSL Ubuntu 기준)
 
-### 명령 실행 + 출력 캡처 Task의 패턴 ("오케스트레이터 + 사용자 실행")
+### 명령 실행 + 출력 캡처 Task의 패턴 ("오케스트레이터" — 현재 옵션)
 
-**환각 위험이 본질적이라 Copilot에게 직접 시키지 않는다.** 다음 구조 강제:
+**현 실행자(Sonnet)는 빌드·grep 등 검증 명령을 직접 실행·검증할 수 있다**(DEC-WORKFLOW-010 — 환각 전제 약화). 따라서 아래 오케스트레이터 패턴은 **기본이 아니라 옵션**이다 — 저수준 모델 실행자이거나 명령 출력 신뢰가 어려운 경우에만 적용:
 
-- Copilot은 "다음 명령 실행 후 결과를 붙여주세요" 안내만
+- (레거시) 실행자는 "다음 명령 실행 후 결과를 붙여주세요" 안내만
 - 실제 실행과 출력 복사는 사용자
-- Copilot은 받은 출력을 문서로 정리
+- 실행자는 받은 출력을 문서로 정리
 
-해당 Task는 작업지시서 §6에서 이 패턴을 명시. 적용 대상: 빌드 로그, 테스트 결과, 마이그레이션 이력 등 실제 출력 캡처.
+단 `git push`/`main` 변경은 실행자 범위 밖이다(편집+빌드 검증까지). 적용 후보: 빌드 로그, 테스트 결과, 마이그레이션 이력 등 — 실제 실행 시 Sonnet 실행자가 직접 수행 가능한지 우선 판단.
 
-### 모드·모델 권장
-- **Copilot Edits 모드 우선** — UI가 파일별 approve로 친절 충동 차단
-- **모델 선택 가능 시** — 코드 변경 Task는 Sonnet 또는 GPT-4o 이상 권장. 단순 문서 Task는 어떤 모델이든 OK
-- **Chat free-text는 단순 질의에만**
+### 모델 권장
+- **실행자 호출** — `subagent_type: refactor-executor` (현 Claude Sonnet 4.6)
+- **코드 변경 Task는 Sonnet 이상 권장** (§0 / DEC-WORKFLOW-010). 단순 문서 Task는 어떤 모델이든 OK
+- **HARD LIMIT 밖 변경은 계획자 검수(diff)에서 차단** — UI approve 의존 대신 PR diff 검수
 
 ### Claude 예외 실행
-정적 문서 일회 생성이고 콘텐츠가 작업지시서 본문에 완전히 정의된 경우 한정으로, Claude가 직접 Write를 수행할 수 있다. 작업지시서에 "Copilot 비사용 — Claude가 직접 작성" 명시. 남용 금지(코드 작업에는 절대 적용 안 함).
+정적 문서 일회 생성이고 콘텐츠가 작업지시서 본문에 완전히 정의된 경우 한정으로, Claude가 직접 Write를 수행할 수 있다. 작업지시서에 "실행자 비사용 — Claude가 직접 작성" 명시. 남용 금지(코드 작업에는 절대 적용 안 함).
 
 ## 14. 참조
 

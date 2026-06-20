@@ -33,10 +33,11 @@ CODE 검사는 **금지 패턴의 잔존 여부**를 본다. Phase 3(품질 개�
 ## 5. 적용해야 할 PRINCIPLES (본문 발췌)
 
 > PRINCIPLES.md §3 (Drift 처리 규칙): SYNC/CODE 검사 실제 실행하여 표를 채운다.
-> PRINCIPLES.md §13: 명령은 사용자 실행. Copilot은 안내·정리만.
+> PRINCIPLES.md §13 (DEC-WORKFLOW-010): 실행자(Sonnet)가 grep을 직접 실행·검증. 실제 출력만 기록.
 
-## 6. 작업 절차 (오케스트레이터 + 사용자 실행 패턴)
+## 6. 작업 절차 (실행자 직접 실행 — DEC-WORKFLOW-010)
 
+> **실행자(refactor-executor)가 아래 각 grep을 WSL에서 직접 실행**하고 실제 출력만 기록. "Copilot 발화/사용자" 표현은 무시하고 명령만 실행. 출력 날조 금지.
 > 환경: **WSL Ubuntu bash**.
 
 ### 6-1. CODE 섹션 placeholder 교체
@@ -154,13 +155,13 @@ Copilot 발화:
 
 ## 7. Pre-write 프로토콜 적용 여부
 
-- [x] **Skip** — 절차 명확.
-- **검색은 Copilot이 직접 실행하지 않음**
+- [x] **Skip** — 절차 명확. 코드 변경 없음.
+- **실행자가 grep을 직접 실행**하고 실제 출력만 기록 (날조 금지 — PRINCIPLES §13).
 
 ## 8. 검수 기준 (Acceptance Criteria)
 
 - [ ] DRIFT_INVENTORY.md CODE 섹션 채워짐
-- [ ] **모든 행 데이터는 사용자 실행 기반** (환각 0)
+- [ ] **모든 행 데이터는 실행자가 실제 실행한 grep 기반** (날조 0)
 - [ ] CODE-01-C/D/E/F + CODE-03 5개 검사 완료
 - [ ] CODE-01-A/B + CODE-02 중복 항목은 실행 로그 비고에 명시 (행 추가 X)
 - [ ] 하드코딩 시크릿(CODE-01-E) 발견 시 CRITICAL 표시

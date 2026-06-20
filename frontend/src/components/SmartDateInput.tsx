@@ -26,9 +26,11 @@ export default function SmartDateInput({
   const dayRef   = useRef<HTMLInputElement>(null);
   const hourRef  = useRef<HTMLInputElement>(null);
   const minRef   = useRef<HTMLInputElement>(null);
+  const lastEmitted = useRef("");
 
   // 외부 value → 내부 state 파싱
   useEffect(() => {
+    if (value === lastEmitted.current) return;   // 내가 보낸 echo면 덮어쓰지 않음
     if (!value) {
       setYear(""); setMonth(""); setDay(""); setHour(""); setMin("");
       return;
@@ -48,13 +50,19 @@ export default function SmartDateInput({
 
   const emit = (y: string, mo: string, d: string, h: string, mn: string) => {
     const dateFull = y.length === 4 && mo.length >= 1 && d.length >= 1;
-    if (!dateFull) { if (!y && !mo && !d) onChange(""); return; }
+    if (!dateFull) {
+      if (!y && !mo && !d) { lastEmitted.current = ""; onChange(""); }
+      return;
+    }
     const dateVal = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
     if (withTime) {
       if (h.length >= 1 && mn.length >= 1) {
-        onChange(`${dateVal}T${h.padStart(2, "0")}:${mn.padStart(2, "0")}`);
+        const out = `${dateVal}T${h.padStart(2, "0")}:${mn.padStart(2, "0")}`;
+        lastEmitted.current = out;
+        onChange(out);
       }
     } else {
+      lastEmitted.current = dateVal;
       onChange(dateVal);
     }
   };
@@ -97,6 +105,7 @@ export default function SmartDateInput({
           if (v.length === 2) dayRef.current?.focus();
           emit(year, v, day, hour, min);
         }}
+        onBlur={() => setMonth((m) => (m.length === 1 ? m.padStart(2, "0") : m))}
         onKeyDown={(e) => {
           if (e.key === "Backspace" && month === "") monthRef.current?.blur();
         }}
@@ -117,6 +126,7 @@ export default function SmartDateInput({
           if (withTime && v.length === 2) hourRef.current?.focus();
           emit(year, month, v, hour, min);
         }}
+        onBlur={() => setDay((d) => (d.length === 1 ? d.padStart(2, "0") : d))}
         className={`${base} w-10`}
       />
 
@@ -137,6 +147,7 @@ export default function SmartDateInput({
               if (v.length === 2) minRef.current?.focus();
               emit(year, month, day, v, min);
             }}
+            onBlur={() => setHour((h) => (h.length === 1 ? h.padStart(2, "0") : h))}
             className={`${base} w-10`}
           />
           <span className="text-bb-text2 select-none">:</span>
@@ -152,6 +163,7 @@ export default function SmartDateInput({
               setMin(v);
               emit(year, month, day, hour, v);
             }}
+            onBlur={() => setMin((mn) => (mn.length === 1 ? mn.padStart(2, "0") : mn))}
             className={`${base} w-10`}
           />
         </>
