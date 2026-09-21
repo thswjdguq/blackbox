@@ -1,0 +1,16 @@
+# 테스트 프로파일 (BlackboxApplicationTests 등 실제 컨텍스트를 띄우는 테스트 전용)
+#
+# - 실제 비밀값을 담지 않는다. 아래 값은 전부 검사용 더미이며 환경변수로 덮어쓸 수 있다.
+# - 기본값은 scripts/verify-db.sh가 띄우는 테스트 DB(docker-compose.test-db.yml, 55432)를 가리킨다.
+# - CI는 SPRING_DATASOURCE_* 환경변수로 자체 postgres service를 주입한다.
+# - 운영/개발 DB(docker-compose.yml의 blackbox_db)와는 컨테이너·볼륨·포트가 모두 다르다.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:55432/bb_fresh}
+    username: ${SPRING_DATASOURCE_USERNAME:blackbox_test}
+    password: ${SPRING_DATASOURCE_PASSWORD:blackbox_test}
+
+app:
+  jwt:
+    # HS256 서명에 32바이트 이상이 필요해서 길이만 맞춘 더미 문자열이다. 운영 비밀값이 아니다.
+    secret: ${JWT_SECRET:test-only-dummy-signing-key-not-a-real-secret-0123456789}
