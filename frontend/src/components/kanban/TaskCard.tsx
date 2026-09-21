@@ -200,6 +200,9 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
         )}
       </div>
 
+      <p className="mb-2 text-xs text-teal-400 truncate" title={task.deliverableTitle ?? "제출물 미연결"}>
+        {task.deliverableTitle ? `제출물: ${task.deliverableTitle}` : "제출물 미연결"}
+      </p>
       {/* Description preview */}
       {task.description && (
         <p className="text-xs text-slate-500 mb-3 line-clamp-2 leading-relaxed">

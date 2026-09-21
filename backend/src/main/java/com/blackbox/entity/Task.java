@@ -31,6 +31,17 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deliverable_id")
+    private Deliverable deliverable;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requirement_id")
+    private DeliverableRequirement requirement;
+
+    @Column(name = "completion_criteria", length = 2000)
+    private String completionCriteria;
+
     // TODO | IN_PROGRESS | DONE
     @Column(nullable = false, length = 20)
     private String status;

@@ -5,7 +5,7 @@ import PageProgress from "@/components/PageProgress";
 
 export const metadata: Metadata = {
   title: "Team Blackbox",
-  description: "팀 프로젝트 기여도 자동 증빙 플랫폼",
+  description: "과제 시작부터 검토와 제출까지 연결하는 대학생 팀 프로젝트 PMS",
   icons: { icon: "/favicon.svg" },
 };
 

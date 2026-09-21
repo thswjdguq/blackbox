@@ -3,6 +3,7 @@ package com.blackbox.service;
 import com.blackbox.dto.*;
 import com.blackbox.entity.*;
 import com.blackbox.exception.ForbiddenException;
+import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,5 +102,57 @@ class TaskAssignmentRegressionTest {
         grant(actor, "OBSERVER");
         assertThrows(ForbiddenException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of()), actor));
         verifyNoInteractions(assignees);
+    }
+    @Test void observerCannotCreateTask() {
+        grant(actor, "OBSERVER");
+        assertThrows(ForbiddenException.class, () -> service.createTask(project.getId(),
+                new CreateTaskRequest("조사", null, null, null, null, List.of(), null, null, null, null), actor));
+        verifyNoInteractions(tasks, assignees, discord);
+    }
+    @Test void outsiderCannotCreateTask() {
+        when(members.findByProjectAndUser(project, actor)).thenReturn(Optional.empty());
+        assertThrows(ForbiddenException.class, () -> service.createTask(project.getId(),
+                new CreateTaskRequest("조사", null, null, null, null, List.of(), null, null, null, null), actor));
+        verifyNoInteractions(tasks, assignees, discord);
+    }
+    @Test void observerCannotEditTask() {
+        grant(actor, "OBSERVER");
+        assertThrows(ForbiddenException.class, () -> service.updateTask(project.getId(), task.getId(), update(delivery.getId(), null, false), actor));
+        verifyNoInteractions(tasks, deliveries);
+    }
+    @Test void observerCannotChangeStatus() {
+        grant(actor, "OBSERVER");
+        assertThrows(ForbiddenException.class, () -> service.updateStatus(project.getId(), task.getId(), new UpdateTaskStatusRequest("DONE"), actor));
+        assertNull(task.getCompletedAt());
+        verifyNoInteractions(tasks, discord);
+    }
+    @Test void missingAssigneeIsRejectedWithoutAssignmentOrNotification() {
+        when(users.findById(candidate.getId())).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of(candidate.getId())), actor));
+        verify(assignees, never()).save(any());
+        verifyNoInteractions(discord);
+        // 실제 DB에서 기존 배정 삭제의 롤백 여부는 통합 테스트로 별도 검증한다.
+    }
+    @Test void memberCannotDeleteAnotherMembersTask() {
+        task.setCreatedBy(candidate);
+        assertThrows(ForbiddenException.class, () -> service.deleteTask(project.getId(), task.getId(), actor));
+        verify(tasks, never()).delete(any());
+        verifyNoInteractions(assignees);
+    }
+    @Test void creatorCanDeleteOwnTask() {
+        service.deleteTask(project.getId(), task.getId(), actor);
+        verify(assignees).deleteByTask(task);
+        verify(tasks).delete(task);
+    }
+    @Test void leaderCanDeleteAnotherMembersTask() {
+        grant(actor, "LEADER"); task.setCreatedBy(candidate);
+        service.deleteTask(project.getId(), task.getId(), actor);
+        verify(assignees).deleteByTask(task);
+        verify(tasks).delete(task);
+    }
+    @Test void observerCannotDeleteEvenOwnTask() {
+        grant(actor, "OBSERVER");
+        assertThrows(ForbiddenException.class, () -> service.deleteTask(project.getId(), task.getId(), actor));
+        verifyNoInteractions(tasks, assignees);
     }
 }

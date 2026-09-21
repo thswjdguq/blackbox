@@ -35,6 +35,15 @@ public class ProjectAccessChecker {
                 .orElseThrow(() -> new ForbiddenException("프로젝트 멤버가 아닙니다"));
     }
 
+    /** 관찰자는 읽기만 허용한다. */
+    public ProjectMember requireContributor(Project project, User user) {
+        ProjectMember member = requireMember(project, user);
+        if (!"LEADER".equals(member.getRole()) && !"MEMBER".equals(member.getRole())) {
+            throw new ForbiddenException("관찰자는 프로젝트를 수정할 수 없습니다");
+        }
+        return member;
+    }
+
     /** LEADER 권한 확인 */
     public ProjectMember requireLeader(Project project, User user) {
         ProjectMember member = requireMember(project, user);

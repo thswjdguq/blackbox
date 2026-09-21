@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Task, TaskPriority, TaskStatus, CreateTaskPayload, KANBAN_COLUMNS } from "@/types/task";
 import { X, Trash2, Save, Plus } from "lucide-react";
 import SmartDateInput from "@/components/SmartDateInput";
+import { Deliverable } from "@/types/deliverable";
+import { apiError } from "@/lib/apiError";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
 interface Member {
@@ -18,6 +20,9 @@ interface TaskModalProps {
   task: Task | null;
   members: Member[];
   defaultStatus?: TaskStatus;
+  deliverables?: Deliverable[];
+  defaultDeliverableId?: string;
+  defaultRequirementId?: string;
   onClose: () => void;
   onCreate: (payload: CreateTaskPayload) => Promise<void>;
   onUpdate: (taskId: string, payload: Partial<CreateTaskPayload>) => Promise<void>;
@@ -44,12 +49,19 @@ export default function TaskModal({
   task,
   members,
   defaultStatus = "TODO",
+  deliverables = [],
+  defaultDeliverableId = "",
+  defaultRequirementId = "",
   onClose,
   onCreate,
   onUpdate,
   onDelete,
 }: TaskModalProps) {
   const [title, setTitle]       = useState(task?.title ?? "");
+  const [deliverableId, setDeliverableId] = useState(task?.deliverableId ?? defaultDeliverableId);
+  const [requirementId, setRequirementId] = useState(task?.requirementId ?? defaultRequirementId);
+  const [completionCriteria, setCompletionCriteria] = useState(task?.completionCriteria ?? "");
+  const selectedDeliverable = deliverables.find(d => d.id === deliverableId);
   const [description, setDescription] = useState(task?.description ?? "");
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "MEDIUM");
   const [tag, setTag]           = useState(task?.tag ?? "");
@@ -66,6 +78,9 @@ export default function TaskModal({
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
+    setDeliverableId(task.deliverableId ?? "");
+    setRequirementId(task.requirementId ?? "");
+    setCompletionCriteria(task.completionCriteria ?? "");
     setDescription(task.description ?? "");
     setPriority(task.priority);
     setStatus(task.status);
@@ -96,14 +111,19 @@ export default function TaskModal({
         dueDate:     dueDate || undefined,
         assigneeIds: selectedAssignees,
         status,
+        deliverableId: deliverableId || undefined,
+        requirementId: requirementId || undefined,
+        clearDeliverable: mode === "edit" && !deliverableId,
+        clearRequirement: mode === "edit" && !!deliverableId && !requirementId,
+        completionCriteria: completionCriteria.trim(),
       };
       if (mode === "create") {
         await onCreate(payload);
       } else if (task) {
         await onUpdate(task.id, payload);
       }
-    } catch {
-      setError("저장에 실패했습니다. 다시 시도해주세요.");
+    } catch (err) {
+      setError(apiError(err));
     } finally {
       setSubmitting(false);
     }
@@ -115,8 +135,8 @@ export default function TaskModal({
     setSubmitting(true);
     try {
       await onDelete(task.id);
-    } catch {
-      setError("삭제에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "삭제에 실패했습니다."));
       setSubmitting(false);
     }
   };
@@ -164,12 +184,34 @@ export default function TaskModal({
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="예: 로그인 API 연동"
+              placeholder="예: 인터뷰 결과 5건을 비교표로 정리"
               className={INPUT_CLS}
               maxLength={255}
             />
           </div>
 
+          <div>
+            <label htmlFor="task-deliverable" className="block text-xs font-medium text-slate-400 mb-1.5">연결할 제출물</label>
+            <select id="task-deliverable" className={INPUT_CLS} value={deliverableId}
+              onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
+              <option value="">제출물 미연결</option>
+              {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 제출물"}</option>}
+              {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
+          </div>
+          {selectedDeliverable && <div>
+            <label htmlFor="task-requirement" className="block text-xs font-medium text-slate-400 mb-1.5">관련 요구사항 (선택)</label>
+            <select id="task-requirement" className={INPUT_CLS} value={requirementId} onChange={e => setRequirementId(e.target.value)}>
+              <option value="">제출물 전체 작업</option>
+              {selectedDeliverable.requirements.map(r => <option key={r.id} value={r.id}>{r.required ? "[필수] " : ""}{r.content}</option>)}
+            </select>
+          </div>}
+          <div>
+            <label htmlFor="completion-criteria" className="block text-xs font-medium text-slate-400 mb-1.5">완료 기준</label>
+            <textarea id="completion-criteria" value={completionCriteria} onChange={e => setCompletionCriteria(e.target.value)}
+              rows={2} maxLength={2000} className={`${INPUT_CLS} resize-none`} placeholder="예: 비교표에 공통 의견과 출처를 모두 포함" />
+          </div>
           {/* 설명 */}
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">설명</label>
