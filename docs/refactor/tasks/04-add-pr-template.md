@@ -90,7 +90,7 @@ GitHub은 `.github/PULL_REQUEST_TEMPLATE.md`가 있으면 새 PR 본문을 자�
 - [ ] 동작 변경 시 SMOKE_TESTS 해당 시나리오 수동 통과 확인
 
 ## CONFIRM 사항 (있으면)
-<!-- Copilot이 남긴 [CONFIRM:?] 주석 또는 결정 보류 항목 -->
+<!-- 실행자가 남긴 [CONFIRM:?] 주석 또는 결정 보류 항목 -->
 - 없음 / <list>
 
 ## Pre-write 프로토콜
@@ -113,7 +113,8 @@ ls -la .github/PULL_REQUEST_TEMPLATE.md
 
 ## 7. Pre-write 프로토콜 적용 여부
 
-- [x] **Skip** — 단일 신규 파일. 내용 명확. 즉시 작성 가능.
+- [x] **Skip** — 단일 신규 파일. 내용 §6-1에 완전히 정의.
+- **실행자 비사용 — Claude(계획자)가 직접 작성** (CLAUDE_WORKFLOW §4 / PRINCIPLES §13 예외 4조건 충족: 정적 문서·콘텐츠 완전 정의). 코드 아님.
 
 ## 8. 검수 기준 (Acceptance Criteria)
 

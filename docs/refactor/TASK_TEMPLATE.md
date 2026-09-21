@@ -12,7 +12,7 @@
 
 ## 2. 변경 범위 (HARD LIMIT)
 
-> Copilot은 이 섹션 밖의 파일·메서드를 절대 건드리지 않는다.
+> 실행자는 이 섹션 밖의 파일·메서드를 절대 건드리지 않는다.
 
 - **파일 (이외 금지):**
   - `backend/src/main/java/com/blackbox/<path>.java`
@@ -51,7 +51,7 @@
 ## 5. 적용해야 할 PRINCIPLES (본문 발췌)
 
 > PRINCIPLES.md의 관련 섹션을 anchor 참조가 아니라 **본문을 발췌**하여 박는다.
-> Copilot이 PRINCIPLES.md를 자동으로 안 읽기 때문.
+> 실행자가 PRINCIPLES.md를 자동으로 안 읽기 때문.
 
 ```
 <PRINCIPLES.md §X.Y의 본문을 그대로 복사>
@@ -66,7 +66,7 @@
 ## 7. Pre-write 프로토콜 적용 여부
 
 - [ ] **Skip** — HARD LIMIT이 명확하고 변경 < 30줄 / 1 파일. 즉시 구현 가능.
-- [ ] **Required** — 복잡도 ↑. Copilot에게 "구현 전 변경 계획을 3~5개 불릿으로 먼저 제시" 요청. 사용자 승인 후 구현.
+- [ ] **Required** — 복잡도 ↑. 실행자에게 "구현 전 변경 계획을 3~5개 불릿으로 먼저 제시" 요청. 사용자 승인 후 구현.
 
 ## 8. 검수 기준 (Acceptance Criteria)
 

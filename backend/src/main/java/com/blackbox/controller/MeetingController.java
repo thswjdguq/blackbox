@@ -3,11 +3,10 @@ package com.blackbox.controller;
 import com.blackbox.dto.*;
 import com.blackbox.entity.User;
 import com.blackbox.entity.Meeting;
-import com.blackbox.service.ClaudeService;
+import com.blackbox.service.AiService;
 import com.blackbox.service.DiscordNotionNotifier;
 import com.blackbox.service.MeetingService;
 import com.blackbox.service.NotionService;
-import com.blackbox.service.OpenAiService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,41 +19,19 @@ import java.util.UUID;
 @RestController
 public class MeetingController {
 
-    private final MeetingService       meetingService;
-    private final ClaudeService        claudeService;
-    private final OpenAiService        openAiService;
-    private final NotionService        notionService;
+    private final MeetingService        meetingService;
+    private final AiService             aiService;
+    private final NotionService         notionService;
     private final DiscordNotionNotifier discordNotionNotifier;
 
     public MeetingController(MeetingService meetingService,
-                             ClaudeService claudeService,
-                             OpenAiService openAiService,
+                             AiService aiService,
                              NotionService notionService,
                              DiscordNotionNotifier discordNotionNotifier) {
         this.meetingService        = meetingService;
-        this.claudeService         = claudeService;
-        this.openAiService         = openAiService;
+        this.aiService             = aiService;
         this.notionService         = notionService;
         this.discordNotionNotifier = discordNotionNotifier;
-    }
-
-    /** Claude → OpenAI 순으로 사용 가능한 AI 서비스 선택 */
-    private String aiSummarize(String title, String purpose, String notes, String decisions) {
-        if (claudeService.isConfigured()) {
-            return claudeService.summarizeMeeting(title, purpose, notes, decisions);
-        } else if (openAiService.isConfigured()) {
-            return openAiService.summarizeMeeting(title, purpose, notes, decisions);
-        }
-        throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
-    }
-
-    private java.util.List<ActionItemDto> aiExtractStructured(String notes, String decisions) {
-        if (claudeService.isConfigured()) {
-            return claudeService.extractStructuredActionItems(notes, decisions);
-        } else if (openAiService.isConfigured()) {
-            return openAiService.extractStructuredActionItems(notes, decisions);
-        }
-        throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
     }
 
     // ── Project-scoped meeting endpoints ─────────────────────────────────
@@ -134,7 +111,7 @@ public class MeetingController {
             @PathVariable UUID meetingId,
             @AuthenticationPrincipal User user) {
         MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
-        String summary = aiSummarize(
+        String summary = aiService.summarizeMeeting(
                 meeting.title(), meeting.purpose(), meeting.notes(), meeting.decisions());
         meetingService.saveAiSummary(projectId, meetingId, summary, user);
         return ResponseEntity.ok(new AiSummaryResponse(summary));
@@ -146,7 +123,7 @@ public class MeetingController {
             @PathVariable UUID meetingId,
             @AuthenticationPrincipal User user) {
         MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
-        List<ActionItemDto> items = aiExtractStructured(meeting.notes(), meeting.decisions());
+        List<ActionItemDto> items = aiService.extractStructuredActionItems(meeting.notes(), meeting.decisions());
         return ResponseEntity.ok(new AiActionItemsResponse(items));
     }
 

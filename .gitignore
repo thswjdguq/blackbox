@@ -6,6 +6,13 @@
 # ===== Docker =====
 docker-compose.override.yml
 
+# ===== Node (any level) =====
+node_modules/
+
+# ===== Python 캐시 =====
+__pycache__/
+*.pyc
+
 # ===== Frontend (Next.js) =====
 frontend/.next/
 frontend/out/
@@ -22,10 +29,12 @@ frontend/tsconfig.tsbuildinfo
 # ===== Backend (Spring Boot / Gradle) =====
 backend/.gradle/
 backend/build/
+backend/bin/
 backend/out/
 backend/*.jar
 backend/*.war
 backend/*.class
+**/*.class
 backend/.env
 backend/.env.*
 !backend/.env.example
@@ -48,7 +57,9 @@ service_account*.json
 *credentials*.json
 
 # ===== Claude Code 내부 =====
-.claude/
+.claude/*
+# 단, 공유 서브에이전트 정의는 추적 (repo canonical — DEC-WORKFLOW-009)
+!.claude/agents/
 
 # ===== OS =====
 .DS_Store

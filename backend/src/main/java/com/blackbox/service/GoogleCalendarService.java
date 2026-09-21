@@ -44,8 +44,7 @@ public class GoogleCalendarService {
     private final UserRepository                userRepo;
     private final ProjectRepository             projectRepo;
     private final ProjectMemberRepository       memberRepo;
-    private final ClaudeService                 claudeService;
-    private final OpenAiService                 openAiService;
+    private final AiService                      aiService;
 
     private final WebClient webClient = WebClient.builder().build();
 
@@ -57,8 +56,7 @@ public class GoogleCalendarService {
             UserRepository userRepo,
             ProjectRepository projectRepo,
             ProjectMemberRepository memberRepo,
-            ClaudeService claudeService,
-            OpenAiService openAiService) {
+            AiService aiService) {
         this.clientId     = clientId;
         this.clientSecret = clientSecret;
         this.redirectUri  = redirectUri;
@@ -66,8 +64,7 @@ public class GoogleCalendarService {
         this.userRepo     = userRepo;
         this.projectRepo  = projectRepo;
         this.memberRepo   = memberRepo;
-        this.claudeService  = claudeService;
-        this.openAiService  = openAiService;
+        this.aiService    = aiService;
     }
 
     public boolean isConfigured() {
@@ -255,14 +252,7 @@ public class GoogleCalendarService {
 
         String[] reasons = new String[0];
         try {
-            String raw = "";
-            if (claudeService.isConfigured()) {
-                raw = claudeService.rawCall(prompt, 500);
-            } else if (openAiService.isConfigured()) {
-                raw = openAiService.rawCall(prompt, 500);
-            } else {
-                throw new IllegalStateException("AI API 키가 설정되지 않았습니다 (CLAUDE_API_KEY 또는 OPENAI_API_KEY 필요)");
-            }
+            String raw = aiService.rawCall(prompt, 500);
             reasons = parseReasonArray(raw);
         } catch (IllegalStateException e) {
             throw e; // AI 미설정은 그대로 전파

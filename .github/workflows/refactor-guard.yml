@@ -25,9 +25,11 @@ jobs:
         run: |
           set -e
           echo "::group::Searching backend Java for file_vault mutation"
+          # 주석 줄 제외: 라인 주석(//) + 블록/Javadoc 주석(*, /*) — 불변식을 '설명'하는 주석은 위반 아님
           violations=$(grep -rnE "file_vault" --include="*.java" backend/src/ \
             | grep -iE "update|delete|remove|\bset\b" \
-            | grep -v "//" || true)
+            | grep -v "//" \
+            | grep -vE ':[0-9]+:[[:space:]]*(\*|/\*)' || true)
           if [ -n "$violations" ]; then
             echo "::error::file_vault에 UPDATE/DELETE/SET 시도가 발견되었습니다 (INV-02 위반)"
             echo "$violations"
@@ -87,7 +89,7 @@ jobs:
           fi
           echo "::endgroup::"
 
-      - name: WARN — TypeScript ': any' 사용
+      - name: "WARN — TypeScript ': any' 사용"
         run: |
           echo "::group::Counting ': any' usage in TypeScript"
           count=$(grep -rnE ":\s*any(\s|;|,|\)|\]|>|$)" \
@@ -191,7 +193,7 @@ jobs:
           # 단일 Task PR 기준: 300라인 또는 5파일 초과 시 warn
           if [ "$total" -gt 300 ] || [ "$files" -gt 5 ]; then
             echo "::warning::PR이 ${total}라인 / ${files}파일 변경 — 단일 Task치고 큽니다."
-            echo "::warning::과도수정 또는 Task 분할 누락 의심. PRINCIPLES §6 (Copilot 협업 규칙) 검토 권장."
+            echo "::warning::과도수정 또는 Task 분할 누락 의심. PRINCIPLES §6 (실행자 협업 규칙) 검토 권장."
           else
             echo "OK: 변경 규모 ${total}라인 / ${files}파일 (단일 Task 범위)"
           fi
@@ -199,3 +201,26 @@ jobs:
           if [ "$total" -gt 700 ] || [ "$files" -gt 10 ]; then
             echo "::warning::[STRONG] 변경 규모가 매우 큼 — Task 분할 또는 PR 분리를 강력히 권장합니다."
           fi
+
+  divergence-check:
+    runs-on: ubuntu-latest
+    name: main 발산 감지 (전방통합 필요 경고)
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: refactor/main이 main보다 뒤졌는지 (DEC-WORKFLOW-011)
+        run: |
+          echo "::group::Forward-integration divergence check"
+          git fetch origin main refactor/main 2>/dev/null || true
+          behind=$(git rev-list --count origin/refactor/main..origin/main 2>/dev/null || echo 0)
+          if [ "$behind" -gt 0 ]; then
+            echo "::warning::refactor/main이 main보다 ${behind}커밋 뒤졌습니다 — 전방통합 필요(DEC-WORKFLOW-011). refactor/main에서 'bash scripts/sync.sh' 또는 'git merge origin/main' 후 충돌 해소·push."
+            echo "흡수 대상 커밋:"
+            git log --oneline origin/refactor/main..origin/main 2>/dev/null | head -20
+          else
+            echo "OK: refactor/main이 main과 동기 (발산 0)"
+          fi
+          echo "::endgroup::"

@@ -50,70 +50,48 @@ backend·frontend의 현재 테스트 자산을 조사하고 도메인별 커버
 - "지금 어떻게 동작한다"로 서술.
 - 예시 코드는 실제 파일에서 가져온다.
 
-> PRINCIPLES.md §6 (Copilot 협업 규칙):
+> PRINCIPLES.md §6 (실행자 협업 규칙):
 
 - 추측 금지. 모르는 동작은 빈 함수로 두지 말고 `// [CONFIRM:?] ...` 주석으로 질문 남기기.
 
-## 6. 작업 절차 (오케스트레이터 + 사용자 실행 패턴)
+## 6. 작업 절차 (실행자 직접 실행 — DEC-WORKFLOW-010)
 
-> **Copilot은 명령을 직접 실행하지 않는다.** 사용자에게 다음 순서로 명령 실행을 요청하고, 받은 출력으로 TEST_COVERAGE.md 작성.
-> 환경: **WSL Ubuntu bash** 기준 (PRINCIPLES §13).
+> **실행자(refactor-executor, Sonnet)가 명령을 직접 실행**하고 받은 실제 출력으로 TEST_COVERAGE.md 작성.
+> 명령을 실제로 실행하므로 출력은 환각이 아니다. **출력을 지어내지 말 것.**
+> 환경: **WSL Ubuntu bash** 기준 (PRINCIPLES §13). 테스트 실패는 기록만, 수정 금지.
 
-### 6-1. 사용자에게 백엔드 테스트 파일 목록 요청
+### 6-1. 백엔드 테스트 파일 목록 + @Test 개수
+```
+find backend/src/test -type f -name '*.java' 2>/dev/null | sort
+find backend/src/test -name '*.java' -print0 2>/dev/null | xargs -0 -I {} sh -c 'echo "{}: $(grep -c @Test {})"'
+```
+→ 파일 목록·@Test 개수 기록. 출력 없으면 "없음".
 
-Copilot 발화 예시:
-> "다음 명령 실행 후 결과 부탁드려요:
-> ```
-> find backend/src/test -type f -name '*.java' 2>/dev/null | sort
-> ```
-> 출력이 없으면 'none'이라고 알려주세요."
+### 6-2. 백엔드 테스트 실행
+```
+cd backend && JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 time ./gradlew test 2>&1 | tail -50; echo "Exit: ${PIPESTATUS[0]}"
+```
+> **JAVA_HOME=Java 17 명시 필수** (baseline.md BE-001: 시스템 기본 Java 25는 Gradle 8.14 비호환).
+→ Pass/Fail/Skip 개수, 종료 코드, 소요 시간 추출. 실패 테스트는 Failing/Skipped 섹션에 기록만.
 
-추가 요청:
-> "각 파일의 @Test 메서드 개수도:
-> ```
-> find backend/src/test -name '*.java' -print0 2>/dev/null | xargs -0 -I {} sh -c 'echo \"{}: $(grep -c @Test {})\"'
-> ```"
+### 6-3. 프론트엔드 테스트 자산 확인
+```
+grep -E '"jest"|"vitest"|"@testing-library"|"playwright"|"cypress"' frontend/package.json
+find frontend -path '*/node_modules' -prune -o -type f \( -name '*.test.*' -o -name '*.spec.*' \) -print 2>/dev/null
+```
+→ grep 비면 "프레임워크 미설정", find 비면 "테스트 파일 없음".
 
-### 6-2. 사용자에게 백엔드 테스트 실행 요청
+### 6-4. 도메인별 커버리지 매트릭스 작성
 
-Copilot 발화 예시:
-> "다음 명령:
-> ```
-> cd backend && time ./gradlew test 2>&1 | tail -50; echo \"Exit: $?\"
-> ```
-> 마지막 50줄과 Exit, time real 값 부탁드려요. 'X tests completed, Y failed' 같은 요약 라인이 있으면 강조해주세요."
-
-받은 출력에서 통과/실패/스킵 개수만 추출. 환각 금지.
-
-### 6-3. 사용자에게 프론트엔드 테스트 자산 확인 요청
-
-Copilot 발화 예시:
-> "두 명령 결과 부탁드려요:
-> ```
-> grep -E '\"jest\"|\"vitest\"|\"@testing-library\"|\"playwright\"|\"cypress\"' frontend/package.json
-> echo \"---\"
-> find frontend -path '*/node_modules' -prune -o -type f \\( -name '*.test.*' -o -name '*.spec.*' \\) -print 2>/dev/null
-> ```
-> grep 결과가 비어있으면 '프레임워크 미설정', find 결과가 비어있으면 '테스트 파일 없음'으로 알려주세요."
-
-### 6-4. 도메인별 커버리지 매트릭스 작성 (Copilot 단독 작업)
-
-받은 데이터로 `md/handover_log.md` §6 도메인 목록(Auth, Project, Task, Meeting, FileVault, Score, Alert, Calendar, Notion, Discord, Report, Risk) 기준 매트릭스 작성. 룰은 **객관적**:
-
+수집 데이터로 `md/handover_log.md` §6 도메인 목록(Auth, Project, Task, Meeting, FileVault, Score, Alert, Calendar, Notion, Discord, Report, Risk) 기준 매트릭스 작성. 룰은 **객관적**:
 - **백엔드 테스트 파일 카운트** (도메인명 매칭, 모호하면 `?`)
 - **프론트엔드 테스트 파일 카운트** (없을 가능성 ↑)
-- **위험도 자동 룰**: 테스트 0개 = HIGH / 1개 이상 = MEDIUM / (LOW는 본 시점 미사용 — 충분 판정은 추후)
+- **위험도 자동 룰**: 테스트 0개 = HIGH / 1개 이상 = MEDIUM / (LOW는 본 시점 미사용)
+- 백엔드 테스트 파일이 어느 도메인을 대상으로 하는지는 파일명·대상 클래스로 매핑(불확실하면 `?` + 사유).
 
-### 6-5. 사용자에게 도메인 매핑 검증 요청
+### 6-5. `docs/refactor/TEST_COVERAGE.md` 최종본 작성
 
-Copilot 발화 예시:
-> "도메인별 매트릭스 1차안입니다:
-> [표 출력]
-> 도메인 매핑이 맞는지 확인 부탁드려요. 잘못 매핑된 항목 있으면 알려주세요."
-
-### 6-6. `docs/refactor/TEST_COVERAGE.md` 최종본 작성
-
-수집·검증한 데이터로만 작성. **사용자 미제공 항목은 `<사용자 미제공>`. 추측·환각 금지.**
+실제 실행 결과로만 작성. **실행 못 한 항목은 `<실행 불가: 사유>`. 출력 날조 금지.** 도메인 매핑이 불확실한 항목은 계획자 검수에서 확인.
 
 ### TEST_COVERAGE.md 골격
 
@@ -203,18 +181,18 @@ Copilot 발화 예시:
 
 ## 7. Pre-write 프로토콜 적용 여부
 
-- [x] **Skip** — 절차가 6-1~6-6으로 명확. 사용자 응답 의존 구조.
-- **명령은 Copilot이 절대 직접 실행하지 않음** (PRINCIPLES §13)
+- [x] **Skip** — 절차가 6-1~6-5로 명확. 코드 변경 없음(문서 1개 생성).
+- **실행자가 명령을 직접 실행**하고 받은 실제 출력만 기록 (날조 금지 — PRINCIPLES §13).
 
 ## 8. 검수 기준 (Acceptance Criteria)
 
 - [ ] `docs/refactor/TEST_COVERAGE.md` 신규 생성
-- [ ] **모든 출력은 사용자가 실제 실행해서 붙인 내용 그대로** (Copilot이 만들어낸 출력 0건)
-- [ ] 사용자 미제공 항목은 `<사용자 미제공>` 표기
+- [ ] **모든 출력은 실행자가 실제 실행한 결과 그대로** (날조한 출력 0건)
+- [ ] 실행 불가 항목은 `<실행 불가: 사유>` 표기
 - [ ] 백엔드 테스트 파일 목록 + @Test 개수 기록
-- [ ] 백엔드 `./gradlew test` 실행 결과 기록 (성공·실패 무관)
+- [ ] 백엔드 `./gradlew test` (JAVA_HOME=17) 실행 결과 기록 (성공·실패 무관)
 - [ ] 프론트엔드 테스트 자산 확인 결과 기록
-- [ ] 12개 도메인 × 매트릭스 채움 + 사용자 도메인 매핑 검증 완료
+- [ ] 12개 도메인 × 매트릭스 채움 (도메인 매핑은 계획자 검수에서 확인)
 - [ ] HIGH(0개)/MEDIUM(1개+) 룰로 위험도 자동 분류
 - [ ] 코드·기존 테스트·빌드 설정 변경 0줄 (HARD LIMIT 준수)
 - [ ] CI(refactor-guard) 통과

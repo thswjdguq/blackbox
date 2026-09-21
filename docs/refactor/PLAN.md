@@ -15,7 +15,7 @@
    ↓
 [검토] 사용자: 작업지시서 검토 → 피드백 → 확정
    ↓
-[실행] Copilot Edits/Workspace: 확정된 작업지시서 받아 실행
+[실행] 실행자(refactor-executor, Sonnet): 확정된 작업지시서 받아 HARD LIMIT 안에서 구현 + 빌드 검증
    ↓
 [PR]   사용자: refactor/<task-id>-<name> 브랜치에서 PR (base: refactor/main)
    ↓
@@ -34,11 +34,11 @@
 | 로드맵 | `docs/refactor/PLAN.md` (이 파일) | Claude (사용자 검토) |
 | Task 템플릿 | `docs/refactor/TASK_TEMPLATE.md` | Claude |
 | 작업지시서 | `docs/refactor/tasks/NN-xxx.md` | Claude → 사용자 검토 |
-| Drift 인벤토리 | `docs/refactor/DRIFT_INVENTORY.md` | Phase 1에서 Copilot 1차 채움 → Claude 결정안 → 사용자 확정 |
+| Drift 인벤토리 | `docs/refactor/DRIFT_INVENTORY.md` | Phase 1에서 실행자 1차 채움 → Claude 결정안 → 사용자 확정 |
 | 의사결정 로그 | `docs/refactor/DECISIONS.md` | Claude (사용자 결정 기록) |
 | 검수 체크리스트 | `docs/refactor/REVIEW_CHECKLIST.md` | Claude |
 | 유예 항목 | `docs/refactor/DEFERRED.md` | 작업 중 발생 시 추가 |
-| Copilot always-on | `.github/copilot-instructions.md` | Claude (PRINCIPLES 변경 시 동기화) |
+| 실행자 always-on | `.claude/agents/refactor-executor.md` | Claude (PRINCIPLES 변경 시 동기화). 구 `.github/copilot-instructions.md`는 DEPRECATED stub |
 | CI 가드 | `.github/workflows/refactor-guard.yml` | Claude |
 
 ### Task ID 체계
@@ -84,21 +84,21 @@
   - 각 시나리오마다 "이전 동작 / 예상 결과" 명시
   - Phase 2~5 마일스톤마다 수동 실행
 - `06-smoke-test-baseline-run` — Task 05의 SMOKE_TESTS 시나리오 7개를 **실제로 1회 실행**하고 결과를 SMOKE_TESTS.md "실행 이력" 표 첫 행에 기록.
-  - **Copilot 오케스트레이터 + 사용자 실행 패턴** (PRINCIPLES §13)
+  - **실행자 직접 실행 가능** (Sonnet) — 오케스트레이터 패턴은 옵션 (PRINCIPLES §13)
   - 의존: Task 02 빌드 통과 + Task 05 머지
 - `07-add-review-checklist` — `docs/refactor/REVIEW_CHECKLIST.md` 신규. PRINCIPLES §11이 명시하는 검수 도구. Task 00 PR부터 사용.
 - `08~09` — **의도적 미사용 (gap)**. Phase 0에 추가 작업 발생 시 채움. lazy 생성 항목(DECISIONS.md, DEFERRED.md)은 Task ID 없이 필요 시점에 생성.
 
 ### 완료 조건
 
-- [ ] `files/` 폴더 처리 완료, `docs/_archive/`로 이동 (Task 00)
-- [ ] handover_log 경로 정정 (Task 01)
-- [ ] backend·frontend 빌드 통과 + `docs/refactor/baseline.md` 기록 (Task 02)
-- [ ] 테스트 존재 여부 + `TEST_COVERAGE.md` 기록 (Task 03)
-- [ ] PR 템플릿 적용 (Task 04)
-- [ ] `SMOKE_TESTS.md` 7개 시나리오 작성 (Task 05)
-- [ ] SMOKE_TESTS 베이스라인 1회 실행 + 실행 이력 표 첫 행 기록 (Task 06)
-- [ ] REVIEW_CHECKLIST.md 적용 (Task 07)
+- [x] `files/` 폴더 처리 완료, `docs/_archive/`로 이동 (Task 00, PR #3)
+- [x] handover_log 경로 정정 (Task 01, PR #4)
+- [x] backend·frontend 빌드 통과 + `docs/refactor/baseline.md` 기록 (Task 02, PR #17) — 빌드 통과(BE-001 Java25/Gradle 비호환은 Known Issue로 기록)
+- [x] 테스트 존재 여부 + `TEST_COVERAGE.md` 기록 (Task 03, PR #18) — 자동 회귀 커버리지 사실상 0 확인
+- [x] PR 템플릿 적용 (Task 04, PR #19)
+- [x] `SMOKE_TESTS.md` 7개 시나리오 작성 (Task 05, PR #21)
+- [x] SMOKE_TESTS 베이스라인 1회 실행 + 실행 이력 표 첫 행 기록 (Task 06, PR #23) — S1~S7 전체 통과
+- [x] REVIEW_CHECKLIST.md 적용 (Task 07, PR #26)
 
 ### 다음 진입 조건
 
@@ -117,7 +117,7 @@
 
 - `10-drift-scan-INV` — `gc.md` INV-01~07 (불변 규칙 위반) 스캔
   - 우선순위: INV-02(file_vault), INV-05(외부서비스), INV-01(activityLog) → INV-03/04/06/07
-  - Copilot이 grep 실행 + 결과를 `DRIFT_INVENTORY.md` (INV 섹션)에 추가
+  - 실행자가 grep 실행 + 결과를 `DRIFT_INVENTORY.md` (INV 섹션)에 추가
 - `11-drift-scan-SYNC` — `gc.md` SYNC-01~05 (크로스파일 일관성) 스캔
   - SYNC-01 (DB↔Entity↔Flyway), SYNC-02 (TS↔Java DTO), SYNC-03 (API↔Controller↔훅), SYNC-04 (env), SYNC-05 (기획서↔구현)
 - `12-drift-scan-CODE` — `gc.md` CODE-01~03 (금지 패턴) 스캔
@@ -128,13 +128,13 @@
 
 ### 완료 조건
 
-- [ ] INV/SYNC/CODE 3배치 모두 스캔 완료 (Copilot)
-- [ ] `DRIFT_INVENTORY.md`에 모든 항목 기재
-- [ ] 모든 항목에 등급 + 결정 1차안 (Claude)
-- [ ] 모든 항목에 사용자 확정 결정 기재
-- [ ] D1(코드 수정) 항목들이 Phase 2~4의 Task로 매핑됨
-- [ ] D2(문서 수정) 항목들이 Phase 6 묶음으로 들어감
-- [ ] D3(의도적 차이) 항목들이 `DECISIONS.md`에 기록됨
+- [x] INV/SYNC/CODE 3배치 모두 스캔 완료 (실행자) — Task 10·11·12 (PR #29·30·31)
+- [x] `DRIFT_INVENTORY.md`에 모든 항목 기재 — Task 10~12
+- [x] 모든 항목에 등급 + 결정 1차안 (Claude) — Task 13 (PR #32)
+- [x] 모든 항목에 사용자 확정 결정 기재 — Task 14 (PR #33)
+- [x] D1(코드 수정) 항목들이 Phase 2~4의 Task로 매핑됨 — Task 15: 22(activityLog)·42(TS↔DTO)·29(env)
+- [x] D2(문서 수정) 항목들이 Phase 6 묶음으로 들어감 — Task 15: 4건(현행 비교 조건)
+- [x] D3(의도적 차이) 항목들이 `DECISIONS.md`에 기록됨 — D3 0건; 기능 갭은 **유예→`DEFERRED.md`**(DEC-DRIFT-001, 팀 전원 고도화)
 
 ### 다음 진입 조건
 
@@ -161,11 +161,12 @@ Cross-cutting을 먼저 하지 않으면, 도메인 Task들이 각자 다른 패
 ### Task 후보 — 2A. Cross-cutting (20~29)
 
 - `20-exception-handling-unify` — `GlobalExceptionHandler` 통일, 미처리 예외가 403으로 변환되는 버그 패턴 차단
-- `21-webclient-error-pattern` — `WebClient` 호출부 에러 핸들러(`onErrorReturn` + try-catch) 일괄 점검·정리
-- `22-activity-log-coverage` — INV-01 위반 누락 메서드 추가 (Drift 인벤토리 결과 기반)
-- `23-projectaccesschecker-usage` — 권한 검증 위치·방식 통일
+- `21-webclient-error-pattern` — `WebClient` 호출부 에러 핸들러(`onErrorReturn` + try-catch) 일괄 점검·정리 *(통일 미수행 — 변동이 의도적, **DEC-PHASE-004**. 향후 특정 버그만 좁은 fix)*
+- `22-activity-log-coverage` — INV-01 위반 누락 메서드 추가 (Drift 인벤토리 결과 기반) *(D-INV-01a/b 포함 — ProjectService·AuthService. **Phase 2A 최후순위**)*
+- `23-projectaccesschecker-usage` — 권한 검증 위치·방식 통일 *(감사 완료 — getProject 우회 6곳(500 vs 404) 발견, 500→404 fix는 **Phase 4 유예**, DEC-PHASE-005)*
 - `24-db-legacy-score-columns` — V18 마이그레이션: 숫자 점수 컬럼 deprecate (코드에서 사용 제거 PR 먼저, 그 다음 DROP)
 - `25-db-oauth-tokens-unify` — `oauth_tokens` ↔ `google_calendar_tokens` 정책 결정 후 통합 또는 명시적 분리
+- `29-fix-env-config` — `FRONTEND_BASE_URL`·`GOOGLE_REDIRECT_URI`·`DISCORD_WEBHOOK_URL`을 docker-compose.yml·.env.example에 보완 (application.yml 참조 대비 누락) *(Drift D-SYN-04 기반, 소규모 chore)*
 
 ### Task 후보 — 2B. 백엔드 도메인 (30~39)
 
@@ -177,7 +178,7 @@ Cross-cutting을 먼저 하지 않으면, 도메인 Task들이 각자 다른 패
 
 - `40-api-layer-unify` — `lib/api.ts` 사용 일관성, 도메인별 API 모듈(`lib/api/task.ts` 등) 도입 검토
 - `41-store-organize` — Zustand store 위치·단위 정리
-- `42-types-organize` — `src/types/` 정리 (백엔드 DTO와 1:1 매핑 검증)
+- `42-types-organize` — `src/types/` 정리 (백엔드 DTO와 1:1 매핑 검증) *(D-SYN-02-B 포함 — TS 타입 33 vs DTO 45 정합)*
 - `43-page-routing` — App Router 페이지 정리 (project-scoped vs 전역 shim)
 - `44-components-organize` — `components/` 도메인별 그룹핑
 
