@@ -59,7 +59,9 @@ public class DeliverableService {
         Deliverable d = find(project, id);
         DeliverableRequirement r = requirementId == null ? new DeliverableRequirement() : findRequirement(d, requirementId);
         r.setDeliverable(d);
-        r.setContent(req.content().trim());
+        String content = req.content().trim();
+        if (!content.equals(r.getContent())) r.clearAssessment();   // 확인했던 문구와 달라지면 확인도 무효
+        r.setContent(content);
         r.setRequired(req.required());
         return RequirementResponse.from(requirements.save(r));
     }
@@ -70,6 +72,35 @@ public class DeliverableService {
         DeliverableRequirement r = findRequirement(find(project, id), requirementId);
         if (tasks.existsByRequirement(r)) throw new ResponseStatusException(HttpStatus.CONFLICT, "이 요구사항에 연결된 업무를 먼저 변경해주세요");
         requirements.delete(r);
+    }
+
+    public RequirementResponse assess(UUID projectId, UUID id, UUID requirementId, User user) {
+        DeliverableRequirement r = requirementToWrite(projectId, id, requirementId, user);
+        r.assess(user);
+        return RequirementResponse.from(requirements.save(r));
+    }
+
+    public RequirementResponse clearAssessment(UUID projectId, UUID id, UUID requirementId, User user) {
+        DeliverableRequirement r = requirementToWrite(projectId, id, requirementId, user);
+        r.clearAssessment();
+        return RequirementResponse.from(requirements.save(r));
+    }
+
+    private DeliverableRequirement requirementToWrite(UUID projectId, UUID id, UUID requirementId, User user) {
+        Project project = access.getProject(projectId);
+        access.requireContributor(project, user);
+        return findRequirement(find(project, id), requirementId);
+    }
+
+    /** 진척 조회(K-13)가 쓰는 읽기 전용 집계. 요구사항 행 전체를 읽지 않고 개수만 센다. */
+    @Transactional(readOnly = true)
+    public long countRequiredRequirements(Deliverable deliverable) {
+        return requirements.countByDeliverableAndRequiredTrue(deliverable);
+    }
+
+    @Transactional(readOnly = true)
+    public long countMetRequiredRequirements(Deliverable deliverable) {
+        return requirements.countByDeliverableAndRequiredTrueAndAssessedAtIsNotNull(deliverable);
     }
 
     public Deliverable find(Project project, UUID id) {
