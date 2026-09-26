@@ -2,8 +2,9 @@
 # A-01 · DB 재현·업그레이드 검증
 #
 # 무엇을 확인하는가
-#   1) 깨끗한 DB에 V1~V19 전체 마이그레이션이 적용되고, JPA(ddl-auto=validate)가 엔티티↔스키마 일치를 인정하는가
-#   2) 기존 V18 데이터가 들어 있는 DB에 V19를 얹어도 데이터가 보존되고 제약이 의도대로 동작하는가
+#   1) 깨끗한 DB에 전체 마이그레이션이 적용되고, 엔티티와 스키마가 일치하는가(JPA ddl-auto=validate)
+#   2) 직전 버전의 데이터가 들어 있는 DB에 최신 마이그레이션을 얹어도 데이터가 보존되는가
+#   3) 제출물 연결 제약이 실제로 잘못된 연결을 거절하는가
 #
 # 사용
 #   bash scripts/verify-db.sh                 # 검사 전용 DB를 띄우고 전체 검증
@@ -34,7 +35,7 @@ MIGRATION_COUNT=$(ls "$MIGRATION_DIR"/V*__*.sql | wc -l | tr -d ' ')
 LATEST_VERSION=$(ls "$MIGRATION_DIR"/V*__*.sql | sed -E 's/.*\/V([0-9]+)__.*/\1/' | sort -n | tail -1)
 PREV_VERSION=$(ls "$MIGRATION_DIR"/V*__*.sql | sed -E 's/.*\/V([0-9]+)__.*/\1/' | sort -n | tail -2 | head -1)
 
-# 고정 UUID — 업그레이드 후 같은 행이 살아 있는지 확인하는 데 쓴다.
+# 고정 UUID — 업그레이드 후 같은 행이 남아 있는지 확인하는 데 쓴다.
 U1=11111111-1111-4111-8111-111111111111
 P1=22222222-2222-4222-8222-222222222222
 P2=22222222-2222-4222-8222-333333333333
@@ -50,12 +51,12 @@ run_log() { printf '   · %s\n' "$*"; }
 ok()    { printf '   ✅ %s\n' "$*"; }
 fail()  { printf '   ❌ %s\n' "$*"; exit 1; }
 
-# psql 실행 경로는 환경에 따라 셋 중 하나를 고른다.
+# psql 실행 방식은 환경에 따라 셋 중 하나를 고른다.
 #  1) 호스트에 psql이 있으면 그것을 쓴다(CI 러너에는 기본 설치돼 있다).
-#  2) 없으면 이미 떠 있는 검사 DB 컨테이너 안에서 docker exec으로 돈다.
+#  2) 없으면 이미 떠 있는 검사 DB 컨테이너 안에서 docker exec으로 실행한다.
 #  3) 둘 다 아니면 psql 이미지를 띄운다(host.docker.internal 경유).
-# 2번을 3번보다 먼저 쓰는 이유는 SQL마다 새 컨테이너를 만들면 Docker Desktop에서 컨테이너가
-# 종료되지 않고 매달리는 일이 반복됐기 때문이다. exec은 새 컨테이너를 만들지 않는다.
+# 2번을 3번보다 먼저 쓴다. SQL마다 새 컨테이너를 만들면 Docker Desktop에서 컨테이너가 멈춘 채 끝나지 않는 일이 반복됐다.
+# exec은 새 컨테이너를 만들지 않는다.
 PSQL_TIMEOUT=${BB_PSQL_TIMEOUT:-120}
 TEST_DB_CONTAINER=${BB_TEST_DB_CONTAINER:-blackbox_test_db}
 if command -v psql >/dev/null 2>&1; then
@@ -121,7 +122,7 @@ if [ "$SKIP_COMPOSE" != "1" ]; then
   step "검사 전용 PostgreSQL 기동 (포트 $DB_PORT · 개발 DB와 분리)"
   docker compose -f docker-compose.test-db.yml -p blackbox-test up -d
 fi
-step "DB 접속 대기 (psql 실행 경로: $PSQL_MODE)"
+step "DB 접속 대기 (psql 실행 방식: $PSQL_MODE)"
 for i in $(seq 1 40); do
   if psql_value "$ADMIN_DB" "SELECT 1" >/dev/null 2>&1; then ok "접속 가능 ($DB_HOST:$DB_PORT)"; break; fi
   [ "$i" = 40 ] && fail "DB에 접속하지 못했다"
@@ -159,8 +160,8 @@ expect_value "$UPGRADE_DB" "SELECT count(*) FROM tasks" 2 "기존 업무 보존"
 expect_value "$UPGRADE_DB" "SELECT count(*) FROM users" 1 "기존 사용자 보존"
 expect_value "$UPGRADE_DB" "SELECT deliverable_id IS NULL AND requirement_id IS NULL AND completion_criteria IS NULL FROM tasks WHERE id='$T1'" t "기존 업무는 제출물 미연결 상태"
 
-# ── 3. V19 제약이 실제로 동작하는가 ─────────────────────────────────────
-step "3. 제출물 연결 제약 동작 확인 (서비스 검증이 뚫려도 DB가 막는가)"
+# ── 3. 제출물 연결 제약이 실제로 동작하는가 ─────────────────────────────
+step "3. 제출물 연결 제약 동작 확인 (서비스 검증을 우회해도 DB가 막는가)"
 psql_run "$UPGRADE_DB" <<SQL
 INSERT INTO deliverables (id, project_id, title, due_date) VALUES ('$D1', '$P1', '중간 보고서', DATE '2026-10-18');
 INSERT INTO deliverable_requirements (id, deliverable_id, content, required) VALUES ('$R1', '$D1', '출처 표기', TRUE);

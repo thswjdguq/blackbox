@@ -35,7 +35,7 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     env:
-      # 실제 DB를 붙여야 BlackboxApplicationTests(Flyway + ddl-auto=validate)가 의미를 갖는다.
+      # 실제 DB를 붙여야 BlackboxApplicationTests가 Flyway 적용과 ddl-auto=validate 검사를 제대로 한다.
       SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/blackbox_test
       SPRING_DATASOURCE_USERNAME: blackbox_test
       SPRING_DATASOURCE_PASSWORD: blackbox_test
