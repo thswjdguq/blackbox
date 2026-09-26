@@ -34,6 +34,64 @@ class DeliverableServiceTest {
         when(deliveries.findByIdAndProject(delivery.getId(), project)).thenReturn(Optional.of(delivery));
     }
 
+    @Test void countsOnlyRequiredRequirements() {
+        when(requirements.countByDeliverableAndRequiredTrue(delivery)).thenReturn(2L);
+        assertEquals(2L, service.countRequiredRequirements(delivery));
+        verify(requirements, never()).findByDeliverableOrderByCreatedAtAsc(any());
+    }
+    @Test void countIsZeroWhenNoRequiredRequirement() {
+        when(requirements.countByDeliverableAndRequiredTrue(delivery)).thenReturn(0L);
+        assertEquals(0L, service.countRequiredRequirements(delivery));
+    }
+
+    DeliverableRequirement requirement(String content) {
+        var r = new DeliverableRequirement(); r.setId(UUID.randomUUID()); r.setDeliverable(delivery);
+        r.setContent(content); r.setRequired(true);
+        when(requirements.findByIdAndDeliverable(r.getId(), delivery)).thenReturn(Optional.of(r));
+        when(requirements.save(r)).thenReturn(r);
+        return r;
+    }
+    @Test void assessRecordsWhoAndWhen() {
+        var r = requirement("출처 표기");
+        var response = service.assess(project.getId(), delivery.getId(), r.getId(), user);
+        assertEquals(user.getId(), response.assessment().assessedBy().userId());
+        assertNotNull(response.assessment().assessedAt());
+    }
+    @Test void reassessUpdatesAssessor() {
+        var other = new User(); other.setId(UUID.randomUUID());
+        var r = requirement("출처 표기"); r.assess(other);
+        var response = service.assess(project.getId(), delivery.getId(), r.getId(), user);
+        assertEquals(user.getId(), response.assessment().assessedBy().userId());
+    }
+    @Test void clearAssessmentReturnsUncheckedRequirement() {
+        var r = requirement("출처 표기"); r.assess(user);
+        assertNull(service.clearAssessment(project.getId(), delivery.getId(), r.getId(), user).assessment());
+    }
+    @Test void observerCannotAssess() {
+        var r = requirement("출처 표기");
+        member.setRole("OBSERVER");
+        assertThrows(ForbiddenException.class, () -> service.assess(project.getId(), delivery.getId(), r.getId(), user));
+        assertNull(r.getAssessedAt());
+        verify(requirements, never()).save(any());
+    }
+    @Test void cannotAssessRequirementOfAnotherDeliverable() {
+        assertThrows(NotFoundException.class, () -> service.assess(project.getId(), delivery.getId(), UUID.randomUUID(), user));
+    }
+    @Test void changingContentClearsAssessment() {
+        var r = requirement("출처 표기"); r.assess(user);
+        var response = service.saveRequirement(project.getId(), delivery.getId(), r.getId(), new RequirementRequest("출처 표기와 인용", true), user);
+        assertNull(response.assessment());
+    }
+    @Test void changingOnlyRequiredKeepsAssessment() {
+        var r = requirement("출처 표기"); r.assess(user);
+        var response = service.saveRequirement(project.getId(), delivery.getId(), r.getId(), new RequirementRequest("출처 표기", false), user);
+        assertNotNull(response.assessment());
+    }
+    @Test void countsOnlyMetRequiredRequirements() {
+        when(requirements.countByDeliverableAndRequiredTrueAndAssessedAtIsNotNull(delivery)).thenReturn(1L);
+        assertEquals(1L, service.countMetRequiredRequirements(delivery));
+    }
+
     @Test void observerCanReadButCannotWrite() {
         member.setRole("OBSERVER");
         assertEquals(List.of(), service.list(project.getId(), user));
