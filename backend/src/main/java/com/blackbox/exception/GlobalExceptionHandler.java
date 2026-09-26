@@ -37,8 +37,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ProblemDetail handleConflict(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation", ex);
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
-                "연결된 데이터가 변경되었습니다. 새로고침 후 연결 관계를 확인해주세요");
+                "요청한 변경이 다른 데이터와 충돌합니다. 새로고침 후 다시 시도해주세요");
     }
 
     @ExceptionHandler(DuplicateEmailException.class)
