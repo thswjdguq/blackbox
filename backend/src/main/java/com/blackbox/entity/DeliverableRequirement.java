@@ -14,4 +14,9 @@ public class DeliverableRequirement {
     @Column(nullable = false, length = 1000) private String content;
     @Column(nullable = false) private boolean required = true;
     @Column(name = "created_at", nullable = false) private OffsetDateTime createdAt = OffsetDateTime.now();
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "assessed_by") private User assessedBy;
+    @Column(name = "assessed_at") private OffsetDateTime assessedAt;
+
+    public void assess(User user) { assessedBy = user; assessedAt = OffsetDateTime.now(); }
+    public void clearAssessment() { assessedBy = null; assessedAt = null; }
 }
