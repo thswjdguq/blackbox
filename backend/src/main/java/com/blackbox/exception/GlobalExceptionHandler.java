@@ -27,6 +27,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public ProblemDetail handleStatus(org.springframework.web.server.ResponseStatusException ex) {
+        if (ex.getStatusCode().is5xxServerError()) {
+            log.error("Server error", ex);
+            return ProblemDetail.forStatusAndDetail(ex.getStatusCode(), "서버 내부 오류가 발생했습니다");
+        }
         return ProblemDetail.forStatusAndDetail(ex.getStatusCode(),
                 ex.getReason() == null ? "요청을 처리할 수 없습니다" : ex.getReason());
     }
