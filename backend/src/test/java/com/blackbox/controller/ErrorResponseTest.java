@@ -13,7 +13,7 @@ import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/** 표준 MVC 오류가 catch-all에 먹혀 500이 되지 않고 제 상태코드로 나가는지 실제 요청으로 확인한다. */
+/** 표준 MVC 오류가 모든 예외를 받는 핸들러에 가로채여 500이 되지 않고 올바른 상태코드로 나가는지 실제 요청으로 확인한다. */
 class ErrorResponseTest {
     static final String PROJECT = "/api/projects/" + UUID.randomUUID();
     final MockMvc mvc = MockMvcBuilders
