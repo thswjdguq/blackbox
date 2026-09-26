@@ -60,7 +60,7 @@ public class DeliverableService {
         DeliverableRequirement r = requirementId == null ? new DeliverableRequirement() : findRequirement(d, requirementId);
         r.setDeliverable(d);
         String content = req.content().trim();
-        if (!content.equals(r.getContent())) r.clearAssessment();   // 확인했던 문구와 달라지면 확인도 무효
+        if (!content.equals(r.getContent())) r.clearAssessment();   // 확인했던 문구와 달라지면 충족 체크를 푼다
         r.setContent(content);
         r.setRequired(req.required());
         return RequirementResponse.from(requirements.save(r));
