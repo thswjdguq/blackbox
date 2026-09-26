@@ -3,6 +3,7 @@ package com.blackbox.dto;
 import com.blackbox.entity.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.*;
 
 public final class DeliverableDtos {
@@ -11,11 +12,15 @@ public final class DeliverableDtos {
             @Size(max = 5000) String description, @NotNull LocalDate dueDate,
             @Size(max = 500) String submissionMethod, UUID ownerId) {}
     public record RequirementRequest(@NotBlank @Size(max = 1000) String content, boolean required) {}
-    public record RequirementResponse(UUID id, String content, boolean required) {
+    public record RequirementResponse(UUID id, String content, boolean required, Assessment assessment) {
         public static RequirementResponse from(DeliverableRequirement r) {
-            return new RequirementResponse(r.getId(), r.getContent(), r.isRequired());
+            Assessment a = r.getAssessedAt() == null ? null : new Assessment(
+                    new Assessor(r.getAssessedBy().getId(), r.getAssessedBy().getName()), r.getAssessedAt());
+            return new RequirementResponse(r.getId(), r.getContent(), r.isRequired(), a);
         }
     }
+    public record Assessment(Assessor assessedBy, OffsetDateTime assessedAt) {}
+    public record Assessor(UUID userId, String name) {}
     public record Response(UUID id, UUID projectId, String title, String description,
             LocalDate dueDate, String submissionMethod, UUID ownerId, String ownerName,
             List<RequirementResponse> requirements) {
