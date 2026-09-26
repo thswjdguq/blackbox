@@ -20,6 +20,11 @@ class GlobalExceptionHandlerTest {
         assertEquals(400, result.getStatus());
         assertNotNull(result.getDetail());
     }
+    @Test void serverErrorHidesReason() {
+        var result = handler.handleStatus(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "internal detail"));
+        assertEquals(500, result.getStatus());
+        assertFalse(result.getDetail().contains("internal detail"));
+    }
     @Test void integrityFailureDoesNotExposeDatabaseMessage() {
         var result = handler.handleConflict(new DataIntegrityViolationException("internal SQL detail"));
         assertEquals(409, result.getStatus());
