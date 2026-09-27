@@ -185,10 +185,10 @@ DELETE FROM projects WHERE id = '$P3';
 SQL
 expect_value "$UPGRADE_DB" "SELECT count(*) FROM deliverables WHERE id='$D2'" 0 "프로젝트 삭제 시 제출물 연쇄 삭제"
 
-# 참고(실패 아님) — V19 이전부터 있던 사실이다. 업무가 있는 프로젝트는 아래 테이블 때문에 삭제가 거절된다.
+# 참고(실패 아님) — V19 이전부터 있던 사실이다. 아래 테이블에 행이 있으면 프로젝트 삭제가 거절된다.
 step "참고 · projects를 참조하면서 연쇄 삭제가 없는 기존 테이블"
 printf '   ⚠️  %s\n' "$(psql_value "$UPGRADE_DB" "SELECT string_agg(c.conrelid::regclass::text, ', ' ORDER BY c.conrelid::regclass::text) FROM pg_constraint c WHERE c.contype='f' AND c.confrelid='projects'::regclass AND c.confdeltype='a'")"
-echo "       업무를 만들면 트리거가 contribution_scores 행을 만들기 때문에, 그 프로젝트는 삭제되지 않는다(V19 무관)."
+echo "       점수 스케줄러가 모든 멤버에게 contribution_scores 행을 만들기 때문에, 첫 점수 계산 뒤 프로젝트는 삭제되지 않는다(V19 무관)."
 
 step "결과"
 echo "   깨끗한 DB 전체 마이그레이션 · 기존 데이터 업그레이드 · 제약 동작 모두 통과"
