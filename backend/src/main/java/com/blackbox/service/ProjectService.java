@@ -9,8 +9,11 @@ import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.ProjectMemberRepository;
 import com.blackbox.repository.ProjectRepository;
 import jakarta.persistence.EntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
@@ -106,7 +109,13 @@ public class ProjectService {
     public void deleteProject(UUID projectId, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireLeader(project, user);
-        projectRepository.delete(project);
+        try {
+            projectRepository.delete(project);
+            projectRepository.flush();   // 점수·활동 기록·파일이 삭제를 막으면 여기서 바로 알 수 있게 즉시 반영
+        } catch (DataIntegrityViolationException e) {
+            // 지금은 삭제를 막고 이유만 응답한다. 보관(종료) 기능을 만들지는 A-03 보고서 7장에서 팀이 정한다
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "기록 보존을 위해 이 프로젝트는 삭제할 수 없습니다");
+        }
     }
 
     // ── 초대 코드 ──────────────────────────────────────────────────────────
