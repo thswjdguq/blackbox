@@ -2,6 +2,7 @@ package com.blackbox.repository;
 
 import com.blackbox.entity.Project;
 import com.blackbox.entity.Task;
+import com.blackbox.entity.Deliverable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -14,4 +15,6 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     List<Task> findByProjectOrderByCreatedAtDesc(Project project);
     List<Task> findByProjectAndStatusOrderByCreatedAtDesc(Project project, String status);
     Optional<Task> findByIdAndProject(UUID id, Project project);
+    long countByProjectAndDeliverable(Project project, Deliverable deliverable);
+    long countByProjectAndDeliverableAndStatus(Project project, Deliverable deliverable, String status);
 }
