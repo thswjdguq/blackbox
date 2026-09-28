@@ -411,11 +411,10 @@ export default function BoardPage() {
             <KanbanBoard
               projectId={projectId}
               initialTasks={tasks}
-              members={members.map((m) => ({
-                userId: m.userId,
-                name: m.name,
-                email: m.email,
-              }))}
+              // 서버는 관찰자를 업무 담당자로 받지 않는다
+              members={members
+                .filter((m) => m.role !== "OBSERVER")
+                .map((m) => ({ userId: m.userId, name: m.name, email: m.email }))}
               scoreMap={scoreMap}
               filter={filter}
               onTasksChange={setTasks}
