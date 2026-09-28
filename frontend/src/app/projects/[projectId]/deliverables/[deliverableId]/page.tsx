@@ -577,8 +577,11 @@ export default function DeliverableDetailPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-sm font-semibold text-bb-text">연결 업무 {linkedTasks.length}개</h2>
                     <div className="flex items-center gap-3">
-                      <Link href={`/projects/${projectId}/board`} className="text-xs text-bb-text2 hover:text-bb-primary">
-                        업무 보드 열기
+                      <Link
+                        href={`/projects/${projectId}/board?deliverable=${deliverableId}`}
+                        className="text-xs text-bb-text2 hover:text-bb-primary"
+                      >
+                        보드에서 이 제출물 업무 보기
                       </Link>
                       {canWrite && (
                         <button
