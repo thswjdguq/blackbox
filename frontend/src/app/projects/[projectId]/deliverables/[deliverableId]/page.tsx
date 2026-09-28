@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import {
-  getDeliverable,
+  getDeliverables,
   getDeliverableProgress,
   createRequirement,
   deleteRequirement,
@@ -136,11 +136,14 @@ export default function DeliverableDetailPage() {
     setProgressError(false);
     try {
       const [delRes, projRes, taskRes] = await Promise.all([
-        getDeliverable(projectId, deliverableId),
+        getDeliverables(projectId),
         api.get<{ myRole: string }>(`/projects/${projectId}`),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
       ]);
-      setDeliverable(delRes.data);
+      // 서버에 단건 조회 엔드포인트가 없어 목록에서 찾는다
+      const found = delRes.data.find((d) => d.id === deliverableId);
+      if (!found) throw new Error("제출물을 찾을 수 없습니다.");
+      setDeliverable(found);
       setMyRole(projRes.data.myRole);
       setLinkedTasks(
         taskRes.data.filter((t) => t.deliverableId === deliverableId)
@@ -180,6 +183,7 @@ export default function DeliverableDetailPage() {
       setReqRequired(false);
       setShowReqForm(false);
       fetchAll();
+      fetchProgress();
     } catch {
       setReqError("요구사항 저장에 실패했습니다.");
     } finally {
@@ -195,6 +199,7 @@ export default function DeliverableDetailPage() {
           ? { ...prev, requirements: prev.requirements.filter((r) => r.id !== req.id) }
           : prev
       );
+      fetchProgress();
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
@@ -234,6 +239,8 @@ export default function DeliverableDetailPage() {
           ),
         };
       });
+      // 충족 확인은 진척률 분자에 영향 — 재조회
+      fetchProgress();
     } catch {
       // 실패 시 원상 복구
       fetchAll();

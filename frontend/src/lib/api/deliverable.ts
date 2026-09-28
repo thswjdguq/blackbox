@@ -1,8 +1,10 @@
 /**
  * 제출물 도메인 API 래퍼
  *
- * 진척 조회(getDeliverableProgress)는 K-13 계약 AGREED + B-10 서버 병합 후
- * USE_MOCK_PROGRESS 를 false 로 바꾼다.
+ * 서버에 GET /deliverables/{id} 단건 조회는 없다.
+ * 상세 화면은 목록(getDeliverables)에서 해당 id 를 찾아 쓴다.
+ *
+ * 진척 조회는 B-10 병합(PR #51)으로 실제 API 를 사용한다.
  */
 
 import api from "@/lib/api";
@@ -16,16 +18,10 @@ import type {
   DeliverableRequirement,
 } from "@/types/deliverable";
 
-// K-13 계약 AGREED + B-10 병합 완료 시 false 로 전환
-const USE_MOCK_PROGRESS = true;
-
 // ── 제출물 CRUD ───────────────────────────────────────────────────────────
 
 export const getDeliverables = (projectId: string) =>
   api.get<Deliverable[]>(`/projects/${projectId}/deliverables`);
-
-export const getDeliverable = (projectId: string, deliverableId: string) =>
-  api.get<Deliverable>(`/projects/${projectId}/deliverables/${deliverableId}`);
 
 export const createDeliverable = (
   projectId: string,
@@ -106,20 +102,12 @@ export const unassessRequirement = (
 // ── 진척 조회 (K-13) ──────────────────────────────────────────────────────
 
 /**
- * USE_MOCK_PROGRESS=true 동안 with-tasks fixture 를 반환한다.
+ * 실패 시 가짜 0% 를 반환하지 않는다. 호출부에서 오류로 표시한다(K-13 §3).
  */
 export const getDeliverableProgress = async (
   projectId: string,
   deliverableId: string
 ): Promise<DeliverableProgress> => {
-  if (USE_MOCK_PROGRESS) {
-    console.warn("[MOCK] K-13 progress — fixture 사용 중. B-10 병합 후 전환 필요.");
-    const fixture = await import(
-      "@/__fixtures__/deliverable-progress/with-tasks.json"
-    );
-    return { ...fixture.default, deliverableId } as DeliverableProgress;
-  }
-
   const res = await api.get<DeliverableProgress>(
     `/projects/${projectId}/deliverables/${deliverableId}/progress`
   );
