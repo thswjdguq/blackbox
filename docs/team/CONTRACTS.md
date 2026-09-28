@@ -10,6 +10,7 @@
 | --- | --- |
 | 기본 경로 | `/api/projects/{projectId}/deliverables` |
 | 제출물 목록·생성 | GET/POST 기본 경로 |
+| 제출물 단건 조회 | GET `/{deliverableId}`. 응답은 목록 항목과 같은 형식, 다른 프로젝트의 id는 404 (09/28 #56 추가) |
 | 수정·삭제 | PUT/DELETE `/{deliverableId}` |
 | 요구사항 생성 | POST `/{deliverableId}/requirements` |
 | 요구사항 수정·삭제 | PUT/DELETE `/{deliverableId}/requirements/{requirementId}` |
