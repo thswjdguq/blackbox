@@ -35,6 +35,7 @@
 | K-11 / B | `/deliverables/{id}/reviews/{reviewId}/comments` 피드백·반영 확인 | A 최종 확인, C 검토 탭 |
 | K-12 / B | `.../comments/{commentId}/task` 피드백→업무 | C 업무 이동 |
 | K-13 / B | `/deliverables/{id}/progress` 읽기 전용 진척 | C 홈·제출물 화면, A 확정 안내 |
+| K-14 / A | `/deliverables/{id}/requirements/{requirementId}/assessment` 요구사항 충족 확인·해제 | B 진척(K-13 `met`), C 제출물 화면 |
 | K-20 / A | `/deliverables/{id}/confirmation`, `/submission` 확정·제출 기록 | B 수정 차단, C 최종 제출 탭 |
 | K-30 / A+B | AI 호출 인터페이스(A) / PM 브리핑 API(B) | C AI 화면 |
 

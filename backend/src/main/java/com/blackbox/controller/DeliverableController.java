@@ -39,6 +39,16 @@ public class DeliverableController {
             @PathVariable UUID requirementId, @Valid @RequestBody RequirementRequest req, @AuthenticationPrincipal User user) {
         return service.saveRequirement(projectId, id, requirementId, req, user);
     }
+    @PutMapping("/{id}/requirements/{requirementId}/assessment")
+    public RequirementResponse assess(@PathVariable UUID projectId, @PathVariable UUID id,
+            @PathVariable UUID requirementId, @AuthenticationPrincipal User user) {
+        return service.assess(projectId, id, requirementId, user);
+    }
+    @DeleteMapping("/{id}/requirements/{requirementId}/assessment")
+    public RequirementResponse clearAssessment(@PathVariable UUID projectId, @PathVariable UUID id,
+            @PathVariable UUID requirementId, @AuthenticationPrincipal User user) {
+        return service.clearAssessment(projectId, id, requirementId, user);
+    }
     @DeleteMapping("/{id}/requirements/{requirementId}") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteRequirement(@PathVariable UUID projectId, @PathVariable UUID id,
             @PathVariable UUID requirementId, @AuthenticationPrincipal User user) {

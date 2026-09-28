@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.*;
 public interface DeliverableRequirementRepository extends JpaRepository<DeliverableRequirement, UUID> {
     List<DeliverableRequirement> findByDeliverableOrderByCreatedAtAsc(Deliverable deliverable);
+    long countByDeliverableAndRequiredTrue(Deliverable deliverable);
+    long countByDeliverableAndRequiredTrueAndAssessedAtIsNotNull(Deliverable deliverable);
     Optional<DeliverableRequirement> findByIdAndDeliverable(UUID id, Deliverable deliverable);
     void deleteByDeliverable(Deliverable deliverable);
 }
