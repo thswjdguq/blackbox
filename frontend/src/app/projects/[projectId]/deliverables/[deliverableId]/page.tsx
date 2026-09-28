@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import {
@@ -11,11 +11,22 @@ import {
   assessRequirement,
   unassessRequirement,
 } from "@/lib/api/deliverable";
+import {
+  getReviewData,
+  requestReview,
+  addComment,
+  resolveComment,
+} from "@/lib/api/review";
 import type {
   Deliverable,
   DeliverableRequirement,
   DeliverableProgress,
 } from "@/types/deliverable";
+import type {
+  DeliverableStatus,
+  ReviewRound,
+  ReviewComment,
+} from "@/types/review";
 import {
   ClipboardList,
   Plus,
@@ -26,6 +37,10 @@ import {
   Circle,
   Loader2,
   CheckSquare,
+  ChevronDown,
+  ChevronUp,
+  Send,
+  TriangleAlert,
 } from "lucide-react";
 import api from "@/lib/api";
 import type { Task } from "@/types/task";
@@ -35,9 +50,213 @@ type Tab = "overview" | "review" | "submit";
 
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "overview", label: "요구사항·업무",  implemented: true  },
-  { id: "review",   label: "검토",           implemented: false },
+  { id: "review",   label: "검토",           implemented: true  },
   { id: "submit",   label: "최종 제출",       implemented: false },
 ];
+
+// ── 제출물 상태 배지 설정 ──────────────────────────────────────────────────
+const DEL_STATUS_CFG: Record<DeliverableStatus, { label: string; cls: string }> = {
+  DRAFT:     { label: "초안",      cls: "bg-slate-700 text-slate-300" },
+  IN_REVIEW: { label: "검토 중",   cls: "bg-indigo-500/20 text-indigo-400" },
+  CONFIRMED: { label: "확정",      cls: "bg-teal-500/15 text-teal-400" },
+  SUBMITTED: { label: "제출 완료", cls: "bg-green-500/15 text-green-400" },
+};
+
+// ── 수정본 안내 배너 ──────────────────────────────────────────────────────
+function RevisionGuide({ unresolvedCount }: { unresolvedCount: number }) {
+  if (unresolvedCount === 0) return null;
+  return (
+    <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4">
+      <TriangleAlert size={16} className="text-amber-400 mt-0.5 shrink-0" />
+      <div className="text-sm">
+        <p className="font-semibold text-amber-300">
+          미해결 피드백 {unresolvedCount}건
+        </p>
+        <p className="text-amber-400/80 mt-0.5 text-xs">
+          피드백을 모두 반영한 수정본을 Hash Vault에 업로드한 뒤 재검토를 요청하세요.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── 검토 회차 카드 ────────────────────────────────────────────────────────
+function ReviewRoundCard({
+  round,
+  canWrite,
+  projectId,
+  deliverableId,
+  onCommentAdded,
+  onCommentResolved,
+}: {
+  round: ReviewRound;
+  canWrite: boolean;
+  projectId: string;
+  deliverableId: string;
+  onCommentAdded: (reviewId: string, comment: ReviewComment) => void;
+  onCommentResolved: (reviewId: string, commentId: string, resolved: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [commentText, setCommentText] = useState("");
+  const [sending, setSending] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const unresolved = round.comments.filter((c) => !c.resolved).length;
+
+  const handleSendComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    setSending(true);
+    try {
+      const newComment = await addComment(projectId, deliverableId, round.id, {
+        content: commentText.trim(),
+      });
+      onCommentAdded(round.id, newComment);
+      setCommentText("");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleToggleResolve = async (comment: ReviewComment) => {
+    const newResolved = !comment.resolved;
+    onCommentResolved(round.id, comment.id, newResolved);
+    try {
+      await resolveComment(projectId, deliverableId, round.id, comment.id, {
+        resolved: newResolved,
+      });
+    } catch {
+      // 실패 시 원상 복구
+      onCommentResolved(round.id, comment.id, comment.resolved);
+    }
+  };
+
+  return (
+    <div className="bg-bb-surface border border-bb-border rounded-xl overflow-hidden">
+      {/* 회차 헤더 */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-bb-surface2 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-bb-text">
+            {round.roundNumber}회차
+          </span>
+          {round.fileVersionLabel && (
+            <span className="text-xs font-mono text-bb-text2 bg-bb-surface2 px-2 py-0.5 rounded">
+              {round.fileVersionLabel}
+            </span>
+          )}
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              round.status === "OPEN"
+                ? "bg-indigo-500/20 text-indigo-400"
+                : "bg-slate-700 text-slate-400"
+            }`}
+          >
+            {round.status === "OPEN" ? "진행 중" : "종료"}
+          </span>
+          {unresolved > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
+              미해결 {unresolved}건
+            </span>
+          )}
+        </div>
+        {expanded ? (
+          <ChevronUp size={14} className="text-bb-text2" />
+        ) : (
+          <ChevronDown size={14} className="text-bb-text2" />
+        )}
+      </button>
+
+      {/* 코멘트 목록 */}
+      {expanded && (
+        <div className="border-t border-bb-border">
+          {round.comments.length === 0 ? (
+            <p className="text-xs text-bb-text2 text-center py-5">
+              피드백이 없습니다.
+            </p>
+          ) : (
+            <ul className="divide-y divide-bb-border">
+              {round.comments.map((comment) => (
+                <li key={comment.id} className="px-4 py-3 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-bb-text">
+                        {comment.authorName}
+                      </span>
+                      <span className="text-[10px] text-bb-text2">
+                        {fmtRelative(comment.createdAt)}
+                      </span>
+                      {comment.resolved && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-teal-500/15 text-teal-400 rounded-full">
+                          해결됨
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm ${comment.resolved ? "text-bb-text2 line-through" : "text-bb-text"}`}>
+                      {comment.content}
+                    </p>
+                  </div>
+                  {/* OPEN 회차 + 쓰기 권한만 토글 가능 */}
+                  {round.status === "OPEN" && canWrite && (
+                    <button
+                      onClick={() => handleToggleResolve(comment)}
+                      className={`shrink-0 p-1 rounded transition-colors ${
+                        comment.resolved
+                          ? "text-teal-400 hover:text-teal-300"
+                          : "text-bb-text2 hover:text-teal-400"
+                      }`}
+                      title={comment.resolved ? "미해결로 변경" : "해결됨으로 표시"}
+                    >
+                      {comment.resolved
+                        ? <CheckSquare size={14} />
+                        : <Circle size={14} />
+                      }
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* 코멘트 작성 폼 — OPEN 회차 + 쓰기 권한만 */}
+          {round.status === "OPEN" && canWrite && (
+            <form
+              onSubmit={handleSendComment}
+              className="border-t border-bb-border px-4 py-3 flex gap-2"
+            >
+              <textarea
+                ref={textareaRef}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="피드백 작성..."
+                rows={1}
+                className="flex-1 bg-bb-bg border border-bb-border rounded-lg px-3 py-2 text-sm text-bb-text placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendComment(e as unknown as React.FormEvent);
+                  }
+                }}
+              />
+              <button
+                type="submit"
+                disabled={sending || !commentText.trim()}
+                className="shrink-0 p-2 bg-bb-primary hover:bg-bb-primary-h disabled:opacity-40 rounded-lg transition-colors"
+              >
+                {sending
+                  ? <Loader2 size={14} className="text-white animate-spin" />
+                  : <Send size={14} className="text-white" />
+                }
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── 날짜 포맷 ─────────────────────────────────────────────────────────────
 function fmtRelative(iso: string): string {
@@ -128,6 +347,13 @@ export default function DeliverableDetailPage() {
   const [reqSaving,    setReqSaving]    = useState(false);
   const [reqError,     setReqError]     = useState("");
 
+  // 검토 탭 상태
+  const [delStatus,     setDelStatus]     = useState<DeliverableStatus>("DRAFT");
+  const [rounds,        setRounds]        = useState<ReviewRound[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError,   setReviewError]   = useState("");
+  const [requesting,    setRequesting]    = useState(false);
+
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
 
   const fetchAll = useCallback(async () => {
@@ -165,6 +391,65 @@ export default function DeliverableDetailPage() {
     fetchAll();
     fetchProgress();
   }, [fetchAll, fetchProgress]);
+
+  // 검토 탭 진입 시 lazy load (rounds가 없을 때만)
+  const fetchReview = useCallback(async () => {
+    setReviewLoading(true);
+    setReviewError("");
+    try {
+      const data = await getReviewData(projectId, deliverableId);
+      setDelStatus(data.deliverableStatus);
+      setRounds(data.rounds);
+    } catch {
+      setReviewError("검토 정보를 불러오지 못했습니다.");
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [projectId, deliverableId]);
+
+  useEffect(() => {
+    if (activeTab === "review" && rounds.length === 0 && !reviewLoading) {
+      fetchReview();
+    }
+  }, [activeTab, rounds.length, reviewLoading, fetchReview]);
+
+  const handleRequestReview = async () => {
+    setRequesting(true);
+    try {
+      const newRound = await requestReview(projectId, deliverableId);
+      setDelStatus("IN_REVIEW");
+      setRounds((prev) => [...prev, newRound]);
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleCommentAdded = (reviewId: string, comment: ReviewComment) => {
+    setRounds((prev) =>
+      prev.map((r) =>
+        r.id === reviewId ? { ...r, comments: [...r.comments, comment] } : r
+      )
+    );
+  };
+
+  const handleCommentResolved = (
+    reviewId: string,
+    commentId: string,
+    resolved: boolean
+  ) => {
+    setRounds((prev) =>
+      prev.map((r) =>
+        r.id === reviewId
+          ? {
+              ...r,
+              comments: r.comments.map((c) =>
+                c.id === commentId ? { ...c, resolved } : c
+              ),
+            }
+          : r
+      )
+    );
+  };
 
   const handleAddRequirement = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,10 +561,16 @@ export default function DeliverableDetailPage() {
           <>
             {/* 헤더 */}
             <div className="mb-6">
-              <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
-                <ClipboardList size={20} className="text-bb-primary" />
-                {deliverable.title}
-              </h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
+                  <ClipboardList size={20} className="text-bb-primary" />
+                  {deliverable.title}
+                </h1>
+                {/* 제출물 상태 배지 */}
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${DEL_STATUS_CFG[delStatus].cls}`}>
+                  {DEL_STATUS_CFG[delStatus].label}
+                </span>
+              </div>
               {deliverable.description && (
                 <p className="mt-1 text-sm text-bb-text2">{deliverable.description}</p>
               )}
@@ -510,6 +801,87 @@ export default function DeliverableDetailPage() {
                     </ul>
                   )}
                 </section>
+              </div>
+            )}
+
+            {/* 검토 탭 */}
+            {activeTab === "review" && (
+              <div>
+                {/* 수정본 안내 배너 */}
+                {(() => {
+                  const unresolvedTotal = rounds
+                    .filter((r) => r.status === "OPEN")
+                    .reduce(
+                      (acc, r) => acc + r.comments.filter((c) => !c.resolved).length,
+                      0
+                    );
+                  return <RevisionGuide unresolvedCount={unresolvedTotal} />;
+                })()}
+
+                {/* 검토 요청 버튼 — DRAFT + 쓰기 권한 */}
+                {delStatus === "DRAFT" && canWrite && (
+                  <div className="mb-4">
+                    <button
+                      onClick={handleRequestReview}
+                      disabled={requesting}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+                    >
+                      {requesting && <Loader2 size={14} className="animate-spin" />}
+                      검토 요청
+                    </button>
+                  </div>
+                )}
+
+                {/* 로딩 */}
+                {reviewLoading && (
+                  <div className="flex items-center justify-center py-12 gap-2 text-bb-text2">
+                    <Loader2 size={18} className="animate-spin" />
+                    <span className="text-sm">검토 정보 불러오는 중...</span>
+                  </div>
+                )}
+
+                {/* 오류 */}
+                {!reviewLoading && reviewError && (
+                  <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <AlertCircle size={28} className="text-red-400" />
+                    <p className="text-sm text-bb-text2">{reviewError}</p>
+                    <button
+                      onClick={fetchReview}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm text-bb-text2 hover:text-bb-text border border-bb-border rounded-lg transition-colors"
+                    >
+                      <RefreshCw size={14} />
+                      다시 시도
+                    </button>
+                  </div>
+                )}
+
+                {/* 빈 상태 */}
+                {!reviewLoading && !reviewError && rounds.length === 0 && (
+                  <div className="flex flex-col items-center gap-2 py-16 text-center">
+                    <CheckCircle2 size={32} className="text-bb-text2 opacity-30" />
+                    <p className="text-sm text-bb-text2">아직 검토 회차가 없습니다.</p>
+                    {delStatus === "DRAFT" && canWrite && (
+                      <p className="text-xs text-bb-text2">위의 "검토 요청" 버튼으로 첫 검토를 시작하세요.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* 검토 회차 목록 (최신순) */}
+                {!reviewLoading && !reviewError && rounds.length > 0 && (
+                  <div className="space-y-3">
+                    {[...rounds].reverse().map((round) => (
+                      <ReviewRoundCard
+                        key={round.id}
+                        round={round}
+                        canWrite={canWrite}
+                        projectId={projectId}
+                        deliverableId={deliverableId}
+                        onCommentAdded={handleCommentAdded}
+                        onCommentResolved={handleCommentResolved}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
