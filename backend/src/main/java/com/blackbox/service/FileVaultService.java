@@ -53,7 +53,7 @@ public class FileVaultService {
     @Transactional
     public FileUploadResponse upload(UUID projectId, MultipartFile file, User uploader) throws IOException {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, uploader);
+        accessChecker.requireContributor(project, uploader);
 
         String originalName = file.getOriginalFilename() != null
                 ? file.getOriginalFilename() : "unknown";
