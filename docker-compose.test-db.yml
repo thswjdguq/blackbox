@@ -1,0 +1,31 @@
+# 검사 전용 PostgreSQL — 개발/데모 DB와 완전히 분리한다.
+#
+# 사용:  docker compose -f docker-compose.test-db.yml -p blackbox-test up -d
+# 정리:  docker compose -f docker-compose.test-db.yml -p blackbox-test down        (볼륨 유지)
+#
+# docker-compose.yml(개발·데모)과 컨테이너 이름·볼륨·포트가 모두 다르므로
+# 이 파일로 무엇을 하든 개발 데이터는 영향을 받지 않는다.
+# 일반 검증에서 `down -v`를 쓰지 않는다(docs/team/WORKFLOW.md §6).
+# 재실행이 필요하면 scripts/verify-db.sh가 검사용 데이터베이스(bb_fresh·bb_upgrade)만 다시 만든다.
+services:
+  test-db:
+    image: postgres:16-alpine
+    container_name: blackbox_test_db
+    restart: unless-stopped
+    ports:
+      - "55432:5432"          # 개발 DB(5432)와 겹치지 않게 별도 포트
+    environment:
+      POSTGRES_DB: blackbox_test
+      POSTGRES_USER: blackbox_test
+      POSTGRES_PASSWORD: blackbox_test   # 검사 전용 더미. 운영 비밀값이 아니다.
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blackbox_test -d blackbox_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata_test:
+    driver: local

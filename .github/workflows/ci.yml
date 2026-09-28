@@ -1,0 +1,126 @@
+# PR 검사 — 모든 PR과 main 푸시에서 실행한다.
+# 이 워크플로의 job 이름이 GitHub 브랜치 보호의 "필수 검사" 이름이 된다(A-01).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (Java 17 · PostgreSQL 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: blackbox_test
+          POSTGRES_USER: blackbox_test
+          POSTGRES_PASSWORD: blackbox_test   # CI 전용 더미. 운영 비밀값이 아니다.
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blackbox_test -d blackbox_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      # 실제 DB를 붙여야 BlackboxApplicationTests가 Flyway 적용과 ddl-auto=validate 검사를 제대로 한다.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/blackbox_test
+      SPRING_DATASOURCE_USERNAME: blackbox_test
+      SPRING_DATASOURCE_PASSWORD: blackbox_test
+      JWT_SECRET: ci-only-dummy-signing-key-not-a-real-secret-0123456789
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 준비
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: 빌드 + 테스트
+        working-directory: backend
+        run: ./gradlew --no-daemon --console=plain build
+
+      - name: 테스트 리포트 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/build/reports/tests/test
+          if-no-files-found: ignore
+          retention-days: 7
+
+  migrations:
+    name: DB 마이그레이션 (깨끗한 DB + 기존 데이터 업그레이드)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: blackbox_test
+          POSTGRES_USER: blackbox_test
+          POSTGRES_PASSWORD: blackbox_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blackbox_test -d blackbox_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      BB_SKIP_COMPOSE: '1'          # CI는 위 service 컨테이너를 그대로 쓴다
+      BB_TEST_DB_PORT: '5432'
+      JWT_SECRET: ci-only-dummy-signing-key-not-a-real-secret-0123456789
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 준비
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: 마이그레이션 검증
+        timeout-minutes: 15
+        run: bash scripts/verify-db.sh
+
+  frontend:
+    name: frontend (Node 20 · 타입체크 + 빌드)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 20 준비
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 의존성 설치
+        working-directory: frontend
+        run: npm ci
+
+      - name: 타입 검사
+        working-directory: frontend
+        run: npm run type-check
+
+      - name: 빌드
+        working-directory: frontend
+        run: npm run build
