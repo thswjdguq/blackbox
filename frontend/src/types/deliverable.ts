@@ -49,13 +49,12 @@ export interface CreateRequirementPayload {
 
 export type UpdateRequirementPayload = Partial<CreateRequirementPayload>;
 
-// ── K-13 진척 응답 (AGREED — B-10 병합 완료, USE_MOCK_PROGRESS=true 동안 fixture 사용) ──
+// ── K-13 진척 응답 (B-10 서버, DeliverableProgressDtos) ──────────────────
 
 /**
  * GET /api/projects/{projectId}/deliverables/{id}/progress
  *
- * - tasks.total=0 이면 "연결 업무 없음" 표시. 100% 로 표시 금지.
- * - requiredRequirements.met=null 이면 "충족 확인 기능 준비 중" 표시.
+ * - total=0 이면 percent 는 0 이지만 "없음"으로 표시한다. 0% 로 표시 금지.
  * - API 호출 자체가 실패하면 가짜 0% 대신 오류 메시지 표시.
  */
 export interface DeliverableProgress {
@@ -67,8 +66,8 @@ export interface DeliverableProgress {
   };
   requiredRequirements: {
     total: number;
-    met: number | null;
-    percent: number | null;
+    met: number;
+    percent: number;
     assessmentAvailable: boolean;
   };
 }

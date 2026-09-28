@@ -39,6 +39,14 @@ const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "submit",   label: "최종 제출",       implemented: false },
 ];
 
+// 서버 ProblemDetail 의 detail 이 있으면 우선 사용
+function errorDetail(err: unknown, fallback: string): string {
+  return (
+    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+    fallback
+  );
+}
+
 // ── 날짜 포맷 ─────────────────────────────────────────────────────────────
 function fmtRelative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -98,8 +106,6 @@ function ProgressSection({
         <span className="text-bb-text">
           {reqs.total === 0
             ? "필수 요구사항 없음"
-            : reqs.met === null
-            ? "충족 확인 기능 준비 중"
             : `${reqs.met}/${reqs.total} (${reqs.percent}%)`}
         </span>
       </div>
@@ -127,13 +133,13 @@ export default function DeliverableDetailPage() {
   const [reqRequired,  setReqRequired]  = useState(false);
   const [reqSaving,    setReqSaving]    = useState(false);
   const [reqError,     setReqError]     = useState("");
+  const [reqActionError, setReqActionError] = useState("");
 
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError("");
-    setProgressError(false);
     try {
       const [delRes, projRes, taskRes] = await Promise.all([
         getDeliverables(projectId),
@@ -159,6 +165,7 @@ export default function DeliverableDetailPage() {
     try {
       const data = await getDeliverableProgress(projectId, deliverableId);
       setProgress(data);
+      setProgressError(false);
     } catch {
       setProgressError(true);
     }
@@ -192,6 +199,7 @@ export default function DeliverableDetailPage() {
   };
 
   const handleDeleteRequirement = async (req: DeliverableRequirement) => {
+    setReqActionError("");
     try {
       await deleteRequirement(projectId, deliverableId, req.id);
       setDeliverable((prev) =>
@@ -202,15 +210,18 @@ export default function DeliverableDetailPage() {
       fetchProgress();
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        alert("이 요구사항에 연결된 업무를 먼저 해제한 뒤 삭제해주세요.");
-      }
+      setReqActionError(
+        status === 409
+          ? "이 요구사항에 연결된 업무를 먼저 해제한 뒤 삭제해주세요."
+          : errorDetail(err, "요구사항 삭제에 실패했습니다. 다시 시도해주세요.")
+      );
     }
   };
 
   // K-14: 충족 확인 토글 (낙관적 업데이트)
   const handleToggleAssessment = async (req: DeliverableRequirement) => {
     const isAssessed = req.assessment !== null;
+    setReqActionError("");
 
     // 낙관적 업데이트
     setDeliverable((prev) => {
@@ -241,9 +252,21 @@ export default function DeliverableDetailPage() {
       });
       // 충족 확인은 진척률 분자에 영향 — 재조회
       fetchProgress();
-    } catch {
-      // 실패 시 원상 복구
-      fetchAll();
+    } catch (err) {
+      // 전체 재조회 대신 해당 요구사항만 원래 값으로 되돌린다
+      setDeliverable((prev) =>
+        prev
+          ? { ...prev, requirements: prev.requirements.map((r) => (r.id === req.id ? req : r)) }
+          : prev
+      );
+      setReqActionError(
+        errorDetail(
+          err,
+          isAssessed
+            ? "충족 확인 해제에 실패했습니다. 다시 시도해주세요."
+            : "충족 확인에 실패했습니다. 다시 시도해주세요."
+        )
+      );
     }
   };
 
@@ -343,6 +366,20 @@ export default function DeliverableDetailPage() {
                       </button>
                     )}
                   </div>
+
+                  {reqActionError && (
+                    <div className="mb-3 flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
+                      <AlertCircle size={14} className="shrink-0" />
+                      {reqActionError}
+                      <button
+                        onClick={() => setReqActionError("")}
+                        className="ml-auto text-red-400 hover:text-red-300"
+                        aria-label="안내 닫기"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
 
                   {showReqForm && (
                     <form
