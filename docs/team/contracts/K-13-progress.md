@@ -1,9 +1,9 @@
 # K-13 · 제출물 진척 조회
 
-- 버전: 0.1 / 상태: DRAFT (리뷰 전, API 미구현)
+- 버전: 0.2 / 상태: REVIEWED_BY_A (B 구현 완료, C 화면 검토 대기)
 - 작성: 손정협(B) / 서버 검토: 송승준(A) / 화면 검토: 손정효(C)
-- 작성일: 2026-09-21
-- 근거: 로컬 `a40a931d8fe5ba3a73e878b0f60862dda6f9df36` + 기존 미커밋 1단계 코드. 공통 출발 SHA는 아직 확인되지 않았다.
+- 작성일: 2026-09-21 / 갱신일: 2026-09-27
+- 근거: 공통 기준 `fbbb3cb`, A 검토 문서 `A-K13-review-20260921.md`, K-14 구현 브랜치 `feat/A-04-requirement-assessment`
 
 ## 1. 요청과 범위
 
@@ -23,9 +23,9 @@
   "tasks": { "total": 3, "completed": 1, "percent": 33.33 },
   "requiredRequirements": {
     "total": 2,
-    "met": null,
-    "percent": null,
-    "assessmentAvailable": false
+    "met": 1,
+    "percent": 50.00,
+    "assessmentAvailable": true
   }
 }
 ```
@@ -37,17 +37,17 @@
 | tasks.completed | 정수 0~total | 그중 상태가 DONE인 업무 수 |
 | tasks.percent | 숫자 0~100 | completed / total ×100, 소수 둘째 자리 HALF_UP |
 | requiredRequirements.total | 정수 ≥0 | 해당 제출물에서 required=true인 요구사항 수 |
-| requiredRequirements.met | 정수 또는 null | 사람이 충족 확인한 필수 요구사항 수. 아직 확인 기능이 없어 알 수 없으면 null |
-| requiredRequirements.percent | 숫자 또는 null | 충족률. met가 null이면 null |
+| requiredRequirements.met | 정수 | 사람이 충족 확인한 필수 요구사항 수 |
+| requiredRequirements.percent | 숫자 | met / total ×100, 소수 둘째 자리 HALF_UP. total=0이면 0 |
 | assessmentAvailable | boolean | 요구사항 충족 확인 데이터 계약이 지원되는지 여부 |
 
-응답 필드는 생략하지 않는다. null과 0을 구분한다. 프론트가 null을 0으로 강제 변환하면 ‘미지원’이 ‘모두 미충족’으로 잘못 표시된다.
+응답 필드는 생략하지 않는다. 화면은 `percent`를 다시 계산하지 않고 서버 값을 그대로 사용한다.
 
-### 1차 구현: 현재 데이터만 사용
+### 현재 구현: K-14 충족 확인 데이터 사용
 
-- 업무 수·완료 수·완료율과 필수 요구사항 전체 수는 실제 데이터로 계산한다.
-- 필수 요구사항이 1개 이상이면 `assessmentAvailable=false`, `met=null`, `percent=null`. 화면은 ‘충족 확인 기능 준비 중’으로 표시한다.
-- 필수 요구사항이 0개면 `assessmentAvailable=false`, `met=0`, `percent=0`. 이는 존재하지 않는 항목의 개수이며 승인 완료를 뜻하지 않는다. 화면은 ‘필수 요구사항 없음’이다.
+- 업무 수·완료 수·완료율과 필수 요구사항 전체·충족 수를 실제 데이터로 계산한다.
+- K-14가 제공하는 사람이 확인한 충족 상태를 사용하므로 `assessmentAvailable=true`다.
+- 필수 요구사항이 0개면 `met=0`, `percent=0`. 이는 승인 완료를 뜻하지 않는다.
 - 연결 업무가 0개면 `completed=0`, `percent=0`이고 ‘연결 업무 없음’으로 표시한다.
 - 미연결 업무, 다른 제출물 업무, 다른 프로젝트 업무는 분모·분자에서 제외한다. 여러 담당자가 붙은 업무도 1개로 센다.
 
@@ -58,14 +58,12 @@
   "deliverableId": "11111111-1111-4111-8111-111111111111",
   "tasks": { "total": 0, "completed": 0, "percent": 0 },
   "requiredRequirements": {
-    "total": 0, "met": 0, "percent": 0, "assessmentAvailable": false
+    "total": 0, "met": 0, "percent": 0, "assessmentAvailable": true
   }
 }
 ```
 
-### 2차 확장: A의 충족 확인 기능 이후
-
-아직 구현하지 않는다. 아래는 미래 예시다.
+업무 완료율과 요구사항 충족률은 서로 다른 값이다. 예를 들면 다음과 같다.
 
 ```json
 {
@@ -107,25 +105,25 @@
 - B 신규 파일: `controller/DeliverableProgressController.java`, `service/DeliverableProgressService.java`, `dto/DeliverableProgressDtos.java`와 대응 테스트.
 - B의 `TaskRepository.java`에 프로젝트·제출물로 제한한 전체/DONE 수 집계 메서드를 추가할 계획. 가능하면 단일 조건부 집계로 두 수를 같은 조회에서 얻는다. 담당자 테이블 join으로 수가 늘지 않게 한다.
 - 프로젝트 조회·권한은 기존 `ProjectAccessChecker.getProject/requireMember`, 제출물 범위 조회는 기존 `DeliverableService.find(project,id)` 사용 가능.
-- 필수 요구사항 목록은 현재 `DeliverableRequirementRepository.findByDeliverableOrderByCreatedAtAsc`를 읽어 필터할 수 있다. A 파일 변경 없이 기존 메서드를 호출한다. 범위를 벗어난 메서드 추가는 별도 요청한다.
+- 필수 요구사항 전체·충족 수는 A가 `DeliverableService.countRequiredRequirements`와 `countMetRequiredRequirements`로 제공한다. B는 A 저장소를 직접 호출하지 않는다.
 - 읽기 전용 서비스 트랜잭션. 진척 조회는 참고용이며 확정의 잠금 근거가 아니다. 여러 조회를 단일 스냅샷으로 보장해야 한다면 별도 합의한다. 조회 중 다른 사용자의 변경으로 응답 시점 이후 수치는 바뀔 수 있다.
 - 1차에는 DB 변경·migration·A DTO 수정·프론트 수정이 필요 없다.
 
-## 5. 검토 요청 — 아직 보내거나 승인받지 않음
+## 5. 검토 상태
 
-### 송승준에게
+### 송승준(A) 검토 결과
 
-1. 기존 조회 메서드를 읽기 전용으로 재사용하는 방향 확인.
-2. 이후 충족 확인에 `met` 의미·확인자·확인 시각·내용 변경 시 확인 초기화 정책을 별도 계약으로 제공 요청. B가 엔티티/SQL을 먼저 만들지 않음.
-3. 초기 응답의 `assessmentAvailable=false`와 null 정책 확인.
+1. 기존 조회 메서드를 읽기 전용으로 재사용하는 방향을 확인했다.
+2. K-14와 A-04에서 충족 확인 데이터와 집계 메서드를 제공했다.
+3. 화면은 서버의 `percent` 값을 그대로 사용하기로 했다.
 
-### 손정효에게
+### 손정효(C) 검토 대기
 
 1. 업무 진척과 요구사항 충족을 별도로 표시할 수 있는지 확인.
-2. 위 세 예시(현행/빈 상태/미래)를 개발 fixture로 사용할 수 있는지 확인. 미래 예시를 실제 기능처럼 노출하지 않음.
+2. 실제 응답 예시와 빈 상태 예시를 개발 fixture로 사용할 수 있는지 확인.
 3. 응답 조회 실패와 0건을 다른 UI로 표시하는지 확인.
 
-승인자·날짜·계약 PR: 미정. A/B/C 확인 후 AGREED로 바꾸고 B-10을 시작한다. 문서 검토가 완료되었다고 추정하지 않는다.
+A 검토: 2026-09-21 `A-K13-review-20260921.md`. C 검토 후 AGREED로 변경한다.
 
 ## 6. 수용 테스트
 
@@ -137,12 +135,12 @@
 | 다른 제출물·미연결 DONE 추가 | 현재 제출물 진척 변화 없음 |
 | 한 업무에 담당자 2명 | 업무 수 1 |
 | DONE을 IN_PROGRESS로 변경 | 완료 수 감소 |
-| 필수 2개·선택 1개, 확인 기능 없음 | total=2, met/percent=null |
-| 필수 0개·선택 2개 | total/met/percent=0, assessmentAvailable=false |
+| 필수 2개·선택 1개, 1개 충족 확인 | total=2, met=1, percent=50.00 |
+| 필수 0개·선택 2개 | total/met/percent=0, assessmentAvailable=true |
 | 관찰자 | 조회 허용 |
 | 비회원 / 다른 프로젝트 제출물 | 각각 403 / 404 |
 | DB 예외 | 정상 0값 응답으로 숨기지 않음 |
 
 ## 7. 병합 순서
 
-A-00 공통 기준선 → K-13 계약 리뷰·병합 → B-10 서버/테스트 → C 실제 API 연결. C의 fixture 기반 설계는 계약 DRAFT 표시와 함께 먼저 가능하다. 2차 확장은 A 확인 데이터 계약 및 기능 병합 후 별도 B Task로 수행한다.
+A-04(K-14) → B-10 서버/테스트 → C 실제 API 연결 순서다. B-10 브랜치는 A-04 위에서 작성했으므로 A-04를 `main`에 먼저 병합해야 한다.
