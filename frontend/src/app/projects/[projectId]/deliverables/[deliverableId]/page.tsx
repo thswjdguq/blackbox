@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import {
   getDeliverables,
@@ -26,6 +27,8 @@ import {
   Circle,
   Loader2,
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import api from "@/lib/api";
 import type { Task } from "@/types/task";
@@ -62,15 +65,24 @@ function fmtRelative(iso: string): string {
 function ProgressSection({
   progress,
   progressError,
+  onRetry,
 }: {
   progress: DeliverableProgress | null;
   progressError: boolean;
+  onRetry: () => void;
 }) {
   if (progressError) {
     return (
       <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
         <AlertCircle size={14} className="shrink-0" />
         진척 정보를 불러올 수 없습니다.
+        <button
+          onClick={onRetry}
+          className="ml-auto flex items-center gap-1 text-xs text-red-300 hover:text-red-200"
+        >
+          <RefreshCw size={12} />
+          다시 시도
+        </button>
       </div>
     );
   }
@@ -304,6 +316,14 @@ export default function DeliverableDetailPage() {
 
         {!loading && !error && deliverable && (
           <>
+            <Link
+              href={`/projects/${projectId}/deliverables`}
+              className="inline-flex items-center gap-1 mb-3 text-xs text-bb-text2 hover:text-bb-text transition-colors"
+            >
+              <ChevronLeft size={14} />
+              제출물 목록
+            </Link>
+
             {/* 헤더 */}
             <div className="mb-6">
               <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
@@ -350,6 +370,7 @@ export default function DeliverableDetailPage() {
                 <ProgressSection
                   progress={progress}
                   progressError={progressError}
+                  onRetry={fetchProgress}
                 />
 
                 {/* 요구사항 */}
@@ -525,7 +546,16 @@ export default function DeliverableDetailPage() {
 
                 {/* 연결된 업무 */}
                 <section>
-                  <h2 className="text-sm font-semibold text-bb-text mb-3">연결된 업무</h2>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-bb-text">연결된 업무</h2>
+                    <Link
+                      href={`/projects/${projectId}/board`}
+                      className="flex items-center gap-1 text-xs text-bb-text2 hover:text-bb-primary transition-colors"
+                    >
+                      업무 보드에서 연결·관리
+                      <ChevronRight size={13} />
+                    </Link>
+                  </div>
                   {linkedTasks.length === 0 ? (
                     <p className="text-sm text-bb-text2 py-4 text-center">
                       연결된 업무가 없습니다. 업무 보드에서 업무를 이 제출물에 연결해주세요.
