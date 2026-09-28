@@ -10,10 +10,8 @@
 import api from "@/lib/api";
 import type {
   Deliverable,
-  CreateDeliverablePayload,
-  UpdateDeliverablePayload,
-  CreateRequirementPayload,
-  UpdateRequirementPayload,
+  SaveDeliverablePayload,
+  SaveRequirementPayload,
   DeliverableProgress,
   DeliverableRequirement,
 } from "@/types/deliverable";
@@ -25,13 +23,13 @@ export const getDeliverables = (projectId: string) =>
 
 export const createDeliverable = (
   projectId: string,
-  payload: CreateDeliverablePayload
+  payload: SaveDeliverablePayload
 ) => api.post<Deliverable>(`/projects/${projectId}/deliverables`, payload);
 
 export const updateDeliverable = (
   projectId: string,
   deliverableId: string,
-  payload: UpdateDeliverablePayload
+  payload: SaveDeliverablePayload
 ) =>
   api.put<Deliverable>(
     `/projects/${projectId}/deliverables/${deliverableId}`,
@@ -49,7 +47,7 @@ export const deleteDeliverable = (projectId: string, deliverableId: string) =>
 export const createRequirement = (
   projectId: string,
   deliverableId: string,
-  payload: CreateRequirementPayload
+  payload: SaveRequirementPayload
 ) =>
   api.post<DeliverableRequirement>(
     `/projects/${projectId}/deliverables/${deliverableId}/requirements`,
@@ -60,7 +58,7 @@ export const updateRequirement = (
   projectId: string,
   deliverableId: string,
   requirementId: string,
-  payload: UpdateRequirementPayload
+  payload: SaveRequirementPayload
 ) =>
   api.put<DeliverableRequirement>(
     `/projects/${projectId}/deliverables/${deliverableId}/requirements/${requirementId}`,

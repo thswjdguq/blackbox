@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
-import {
-  getDeliverables,
-  createDeliverable,
-  deleteDeliverable,
-} from "@/lib/api/deliverable";
-import type { Deliverable, CreateDeliverablePayload } from "@/types/deliverable";
+import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
+import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
+import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
+import { getDeliverables, createDeliverable, deleteDeliverable } from "@/lib/api/deliverable";
+import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
+import type { Task } from "@/types/task";
 import {
   ClipboardList,
   Plus,
@@ -19,16 +20,12 @@ import {
   RefreshCw,
   CalendarDays,
   User,
-  Loader2,
 } from "lucide-react";
 
-function fmtDate(iso: string | null) {
-  if (!iso) return "-";
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+interface Member {
+  userId: string;
+  name: string;
+  role: string;
 }
 
 function SkeletonCard() {
@@ -40,164 +37,89 @@ function SkeletonCard() {
   );
 }
 
-function AddDeliverableForm({
-  onSave,
-  onCancel,
-}: {
-  onSave: (payload: CreateDeliverablePayload) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [title, setTitle]     = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [desc, setDesc]       = useState("");
-  const [saving, setSaving]   = useState(false);
-  const [error, setError]     = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !dueDate) return;
-    setSaving(true);
-    setError("");
-    try {
-      await onSave({ title: title.trim(), dueDate, description: desc || undefined });
-    } catch (err) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail ?? "저장에 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-bb-surface border border-bb-border rounded-xl p-5 space-y-3"
-    >
-      <p className="text-sm font-semibold text-bb-text">새 제출물 추가</p>
-
-      {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
-          <AlertCircle size={14} className="shrink-0" />
-          {error}
-        </div>
-      )}
-
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="제출물 제목 (필수)"
-        required
-        className="w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2 text-sm text-bb-text placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-      />
-      <input
-        type="date"
-        value={dueDate}
-        onChange={(e) => setDueDate(e.target.value)}
-        required
-        className="w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2 text-sm text-bb-text focus:outline-none focus:border-indigo-500"
-      />
-      <textarea
-        value={desc}
-        onChange={(e) => setDesc(e.target.value)}
-        placeholder="설명 (선택)"
-        rows={2}
-        className="w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2 text-sm text-bb-text placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none"
-      />
-
-      <div className="flex gap-2 justify-end">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-sm text-bb-text2 hover:text-bb-text transition-colors"
-        >
-          취소
-        </button>
-        <button
-          type="submit"
-          disabled={saving || !title.trim() || !dueDate}
-          className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
-        >
-          {saving && <Loader2 size={14} className="animate-spin" />}
-          저장
-        </button>
-      </div>
-    </form>
-  );
-}
-
 export default function DeliverablesPage() {
-  const params    = useParams();
+  const params = useParams();
   const projectId = params?.projectId as string;
 
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
-  const [myRole,       setMyRole]       = useState<string | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState("");
-  const [showForm,     setShowForm]     = useState(false);
-  const [deleteError,  setDeleteError]  = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [projectName, setProjectName] = useState("");
+  const [myRole, setMyRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
 
+  // 팀장·팀원만 쓰기 가능. 관찰자(OBSERVER)는 읽기 전용
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
 
-  const fetchDeliverables = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [delRes, projRes] = await Promise.all([
+      const [delRes, taskRes, memRes, projRes] = await Promise.all([
         getDeliverables(projectId),
-        import("@/lib/api").then(({ default: api }) =>
-          api.get<{ myRole: string }>(`/projects/${projectId}`)
-        ),
+        api.get<Task[]>(`/projects/${projectId}/tasks`),
+        api.get<Member[]>(`/projects/${projectId}/members`),
+        api.get<{ name: string; myRole: string }>(`/projects/${projectId}`),
       ]);
       setDeliverables(delRes.data);
+      setTasks(taskRes.data);
+      setMembers(memRes.data);
+      setProjectName(projRes.data.name);
       setMyRole(projRes.data.myRole);
-    } catch {
-      setError("제출물 목록을 불러오지 못했습니다.");
+    } catch (err) {
+      setError(apiError(err, "제출물 목록을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
   }, [projectId]);
 
   useEffect(() => {
-    fetchDeliverables();
-  }, [fetchDeliverables]);
+    fetchAll();
+  }, [fetchAll]);
 
-  const handleCreate = async (payload: CreateDeliverablePayload) => {
+  const handleCreate = async (payload: SaveDeliverablePayload) => {
     await createDeliverable(projectId, payload);
     setShowForm(false);
-    fetchDeliverables();
+    setNotice("제출물을 추가했습니다. 제출물을 열어 요구사항을 적으세요.");
+    fetchAll();
   };
 
-  const handleDelete = async (deliverableId: string) => {
-    setDeleteError("");
-    try {
-      await deleteDeliverable(projectId, deliverableId);
-      setDeliverables((prev) => prev.filter((d) => d.id !== deliverableId));
-    } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        setDeleteError("연결된 업무를 먼저 해제한 뒤 삭제해주세요.");
-      } else {
-        setDeleteError("삭제에 실패했습니다. 다시 시도해주세요.");
-      }
-    }
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteDeliverable(projectId, deleteTarget.id);
+    setDeliverables((prev) => prev.filter((d) => d.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setNotice("제출물을 삭제했습니다.");
   };
+
+  const owners = members.filter((m) => m.role !== "OBSERVER");
+  const unlinkedCount = tasks.filter((t) => !t.deliverableId).length;
 
   return (
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
       <main className="flex-1 ml-64 overflow-y-auto p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
-            <ClipboardList size={20} className="text-bb-primary" />
-            제출물
-          </h1>
-          {canWrite && !showForm && (
+        <Link href={`/projects/${projectId}`} className="text-xs text-bb-text2 hover:text-bb-text">
+          {projectName || "프로젝트"} / 프로젝트 홈
+        </Link>
+
+        <div className="flex items-start justify-between gap-4 mt-3 mb-6">
+          <div>
+            <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
+              <ClipboardList size={20} className="text-bb-primary" />
+              제출물
+            </h1>
+            <p className="mt-1 text-sm text-bb-text2">무엇을 제출할지 정하고, 필요한 작업을 팀원에게 나누세요.</p>
+          </div>
+          {canWrite && (
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
             >
               <Plus size={15} />
               제출물 추가
@@ -205,25 +127,12 @@ export default function DeliverablesPage() {
           )}
         </div>
 
-        {deleteError && (
-          <div className="mb-4 flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
-            <AlertCircle size={14} className="shrink-0" />
-            {deleteError}
-            <button
-              onClick={() => setDeleteError("")}
-              className="ml-auto text-red-400 hover:text-red-300"
-            >
+        {notice && (
+          <div role="status" className="mb-4 flex items-center gap-2 p-3 bg-teal-500/10 border border-teal-500/20 rounded-lg text-sm text-bb-text">
+            {notice}
+            <button onClick={() => setNotice("")} className="ml-auto text-bb-text2 hover:text-bb-text" aria-label="안내 닫기">
               ✕
             </button>
-          </div>
-        )}
-
-        {showForm && (
-          <div className="mb-4">
-            <AddDeliverableForm
-              onSave={handleCreate}
-              onCancel={() => setShowForm(false)}
-            />
           </div>
         )}
 
@@ -240,7 +149,7 @@ export default function DeliverablesPage() {
             <AlertCircle size={32} className="text-red-400" />
             <p className="text-sm text-bb-text2">{error}</p>
             <button
-              onClick={fetchDeliverables}
+              onClick={fetchAll}
               className="flex items-center gap-1.5 px-4 py-2 text-sm text-bb-text2 hover:text-bb-text border border-bb-border rounded-lg transition-colors"
             >
               <RefreshCw size={14} />
@@ -252,77 +161,94 @@ export default function DeliverablesPage() {
         {!loading && !error && deliverables.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <ClipboardList size={32} className="text-bb-text2 opacity-40" />
-            <p className="text-sm text-bb-text2">등록된 제출물이 없습니다.</p>
-            {canWrite && (
+            <p className="text-sm font-medium text-bb-text">첫 제출물을 등록하세요</p>
+            <p className="text-xs text-bb-text2">예: 중간발표 자료, 조사 보고서, 최종 작품 설명서</p>
+            {canWrite ? (
               <button
                 onClick={() => setShowForm(true)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
               >
                 <Plus size={14} />
-                첫 제출물 추가
+                제출물 등록하기
               </button>
+            ) : (
+              <p className="text-xs text-bb-text2">팀원이 제출물을 등록하면 여기서 확인할 수 있습니다.</p>
             )}
           </div>
         )}
 
         {!loading && !error && deliverables.length > 0 && (
           <div className="space-y-3">
-            {deliverables.map((d) => (
-              <div
-                key={d.id}
-                className="group bg-bb-surface border border-bb-border rounded-xl p-5 hover:border-indigo-500/40 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <Link
-                    href={`/projects/${projectId}/deliverables/${d.id}`}
-                    className="flex-1 min-w-0"
-                  >
-                    <p className="text-sm font-semibold text-bb-text group-hover:text-bb-primary transition-colors truncate">
-                      {d.title}
-                    </p>
-                    <div className="flex items-center gap-4 mt-1.5 text-xs text-bb-text2">
-                      <span className="flex items-center gap-1">
-                        <CalendarDays size={12} />
-                        {fmtDate(d.dueDate)}
-                      </span>
-                      {d.ownerName && (
+            {deliverables.map((d) => {
+              const requiredCount = d.requirements.filter((r) => r.required).length;
+              const taskCount = tasks.filter((t) => t.deliverableId === d.id).length;
+              return (
+                <div
+                  key={d.id}
+                  className="group bg-bb-surface border border-bb-border rounded-xl p-5 hover:border-indigo-500/40 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <Link href={`/projects/${projectId}/deliverables/${d.id}`} className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-bb-text group-hover:text-bb-primary transition-colors truncate">
+                        {d.title}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-bb-text2">
+                        <span className="flex items-center gap-1">
+                          <CalendarDays size={12} />
+                          제출일 {d.dueDate}
+                        </span>
                         <span className="flex items-center gap-1">
                           <User size={12} />
-                          {d.ownerName}
+                          {d.ownerName || "담당자 미지정"}
                         </span>
+                        <span>
+                          요구사항 {d.requirements.length}개{requiredCount > 0 && ` (필수 ${requiredCount})`} · 연결 업무 {taskCount}개
+                        </span>
+                      </div>
+                      {d.description && (
+                        <p className="mt-2 text-xs text-bb-text2 line-clamp-2">{d.description}</p>
                       )}
-                      <span>
-                        요구사항 {d.requirements.length}개
-                        {d.requirements.filter((r) => r.required).length > 0 &&
-                          ` (필수 ${d.requirements.filter((r) => r.required).length}개)`}
-                      </span>
-                    </div>
-                  </Link>
+                    </Link>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    {canWrite && (
-                      <button
-                        onClick={() => handleDelete(d.id)}
-                        className="p-1.5 rounded-lg text-bb-text2 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                        aria-label="제출물 삭제"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                    <ChevronRight size={16} className="text-bb-text2" />
+                    <div className="flex items-center gap-1 shrink-0">
+                      {canWrite && (
+                        <button
+                          onClick={() => setDeleteTarget(d)}
+                          className="p-1.5 rounded-lg text-bb-text2 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+                          aria-label={`${d.title} 삭제`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                      <ChevronRight size={16} className="text-bb-text2" />
+                    </div>
                   </div>
                 </div>
-
-                {d.description && (
-                  <p className="mt-2 text-xs text-bb-text2 line-clamp-2">
-                    {d.description}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+
+        {!loading && !error && unlinkedCount > 0 && (
+          <p className="mt-6 text-sm text-bb-text2">
+            제출물에 연결되지 않은 업무가 {unlinkedCount}개 있습니다.{" "}
+            <Link href={`/projects/${projectId}/board`} className="text-bb-primary underline">
+              업무 보드에서 확인
+            </Link>
+          </p>
+        )}
       </main>
+
+      {showForm && (
+        <DeliverableFormModal initial={null} owners={owners} onSave={handleCreate} onClose={() => setShowForm(false)} />
+      )}
+      {deleteTarget && (
+        <ConfirmDeleteDialog
+          title={`제출물 "${deleteTarget.title}"`}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }

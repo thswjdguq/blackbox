@@ -32,22 +32,19 @@ export interface Deliverable {
 
 // ── 요청 페이로드 ─────────────────────────────────────────────────────────
 
-export interface CreateDeliverablePayload {
+// 서버 PUT 은 전체 교체라 생성·수정 모두 모든 필드를 보낸다 (누락 시 null 로 저장됨)
+export interface SaveDeliverablePayload {
   title: string;
   dueDate: string;
-  description?: string;
-  submissionMethod?: string;
-  ownerId?: string;
+  description: string;
+  submissionMethod: string;
+  ownerId: string | null;
 }
 
-export type UpdateDeliverablePayload = Partial<CreateDeliverablePayload>;
-
-export interface CreateRequirementPayload {
+export interface SaveRequirementPayload {
   content: string;
   required: boolean;
 }
-
-export type UpdateRequirementPayload = Partial<CreateRequirementPayload>;
 
 // ── K-13 진척 응답 (B-10 서버, DeliverableProgressDtos) ──────────────────
 

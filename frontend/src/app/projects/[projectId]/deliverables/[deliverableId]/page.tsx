@@ -1,13 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import TaskModal from "@/components/kanban/TaskModal";
+import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
+import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
+import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import {
   getDeliverables,
   getDeliverableProgress,
+  updateDeliverable,
+  deleteDeliverable,
   createRequirement,
+  updateRequirement,
   deleteRequirement,
   assessRequirement,
   unassessRequirement,
@@ -16,52 +24,58 @@ import type {
   Deliverable,
   DeliverableRequirement,
   DeliverableProgress,
+  SaveDeliverablePayload,
 } from "@/types/deliverable";
+import type { CreateTaskPayload, Task } from "@/types/task";
 import {
-  ClipboardList,
-  Plus,
-  Trash2,
   AlertCircle,
-  RefreshCw,
-  CheckCircle2,
-  Circle,
-  Loader2,
+  ArrowRight,
   CheckSquare,
   ChevronLeft,
-  ChevronRight,
+  Circle,
+  ClipboardList,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
-import api from "@/lib/api";
-import type { Task } from "@/types/task";
 
-// ── 탭 정의 ──────────────────────────────────────────────────────────────
+interface Member {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 type Tab = "overview" | "review" | "submit";
 
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
-  { id: "overview", label: "요구사항·업무",  implemented: true  },
-  { id: "review",   label: "검토",           implemented: false },
-  { id: "submit",   label: "최종 제출",       implemented: false },
+  { id: "overview", label: "요구사항·업무", implemented: true },
+  { id: "review", label: "검토", implemented: false },
+  { id: "submit", label: "최종 제출", implemented: false },
 ];
 
-// 서버 ProblemDetail 의 detail 이 있으면 우선 사용
-function errorDetail(err: unknown, fallback: string): string {
-  return (
-    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-    fallback
-  );
-}
+const TASK_STATUS_LABEL: Record<Task["status"], string> = {
+  TODO: "할 일",
+  IN_PROGRESS: "진행 중",
+  DONE: "업무 완료",
+};
 
-// ── 날짜 포맷 ─────────────────────────────────────────────────────────────
+const FIELD =
+  "w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2 text-sm text-bb-text " +
+  "placeholder-slate-400 focus:outline-none focus:border-indigo-500";
+
 function fmtRelative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1)  return "방금";
+  if (mins < 1) return "방금";
   if (mins < 60) return `${mins}분 전`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}시간 전`;
+  if (hrs < 24) return `${hrs}시간 전`;
   return `${Math.floor(hrs / 24)}일 전`;
 }
 
-// ── 진척 섹션 ─────────────────────────────────────────────────────────────
 function ProgressSection({
   progress,
   progressError,
@@ -76,10 +90,7 @@ function ProgressSection({
       <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
         <AlertCircle size={14} className="shrink-0" />
         진척 정보를 불러올 수 없습니다.
-        <button
-          onClick={onRetry}
-          className="ml-auto flex items-center gap-1 text-xs text-red-300 hover:text-red-200"
-        >
+        <button onClick={onRetry} className="ml-auto flex items-center gap-1 text-xs text-red-300 hover:text-red-200">
           <RefreshCw size={12} />
           다시 시도
         </button>
@@ -93,81 +104,86 @@ function ProgressSection({
   return (
     <div className="bg-bb-surface2 rounded-xl p-4 space-y-3">
       <p className="text-xs font-semibold text-bb-text2 uppercase tracking-wide">진척 현황</p>
-
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-bb-text2">
           <span>업무 완료율</span>
           <span className="text-bb-text">
-            {tasks.total === 0
-              ? "연결 업무 없음"
-              : `${tasks.completed}/${tasks.total} (${tasks.percent}%)`}
+            {tasks.total === 0 ? "연결 업무 없음" : `${tasks.completed}/${tasks.total} (${tasks.percent}%)`}
           </span>
         </div>
         {tasks.total > 0 && (
           <div className="h-1.5 bg-bb-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-500 rounded-full transition-all"
-              style={{ width: `${tasks.percent}%` }}
-            />
+            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${tasks.percent}%` }} />
           </div>
         )}
       </div>
-
       <div className="flex justify-between text-xs text-bb-text2">
         <span>필수 요구사항 충족</span>
         <span className="text-bb-text">
-          {reqs.total === 0
-            ? "필수 요구사항 없음"
-            : `${reqs.met}/${reqs.total} (${reqs.percent}%)`}
+          {reqs.total === 0 ? "필수 요구사항 없음" : `${reqs.met}/${reqs.total} (${reqs.percent}%)`}
         </span>
       </div>
+      <p className="text-[11px] text-bb-text2">업무 완료와 요구사항 충족은 제출 준비 완료를 뜻하지 않습니다.</p>
     </div>
   );
 }
 
-// ── 메인 ─────────────────────────────────────────────────────────────────
 export default function DeliverableDetailPage() {
-  const params        = useParams();
-  const projectId     = params?.projectId as string;
+  const params = useParams();
+  const router = useRouter();
+  const projectId = params?.projectId as string;
   const deliverableId = params?.deliverableId as string;
 
-  const [deliverable,   setDeliverable]   = useState<Deliverable | null>(null);
-  const [progress,      setProgress]      = useState<DeliverableProgress | null>(null);
-  const [linkedTasks,   setLinkedTasks]   = useState<Task[]>([]);
-  const [myRole,        setMyRole]        = useState<string | null>(null);
-  const [activeTab,     setActiveTab]     = useState<Tab>("overview");
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState("");
+  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [myRole, setMyRole] = useState<string | null>(null);
+  const [progress, setProgress] = useState<DeliverableProgress | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [progressError, setProgressError] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [actionError, setActionError] = useState("");
 
-  const [showReqForm,  setShowReqForm]  = useState(false);
-  const [reqContent,   setReqContent]   = useState("");
-  const [reqRequired,  setReqRequired]  = useState(false);
-  const [reqSaving,    setReqSaving]    = useState(false);
-  const [reqError,     setReqError]     = useState("");
-  const [reqActionError, setReqActionError] = useState("");
+  // 요구사항 추가·수정 폼 (editingReqId 가 있으면 수정)
+  const [reqContent, setReqContent] = useState("");
+  const [reqRequired, setReqRequired] = useState(true);
+  const [editingReqId, setEditingReqId] = useState<string | null>(null);
+  const [reqSaving, setReqSaving] = useState(false);
+  const [reqError, setReqError] = useState("");
+
+  const [showEdit, setShowEdit] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: "deliverable" } | { kind: "requirement"; req: DeliverableRequirement } | null>(null);
+  const [taskDraft, setTaskDraft] = useState<{ requirementId: string } | null>(null);
+  const [linkTaskId, setLinkTaskId] = useState("");
+  const [linking, setLinking] = useState(false);
 
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
+  const deliverable = deliverables.find((d) => d.id === deliverableId) ?? null;
+  const linkedTasks = tasks.filter((t) => t.deliverableId === deliverableId);
+  const unlinkedTasks = tasks.filter((t) => !t.deliverableId);
+  const contributors = members.filter((m) => m.role !== "OBSERVER");
 
   const fetchAll = useCallback(async () => {
-    setLoading(true);
     setError("");
     try {
-      const [delRes, projRes, taskRes] = await Promise.all([
+      const [delRes, taskRes, memRes, projRes] = await Promise.all([
         getDeliverables(projectId),
-        api.get<{ myRole: string }>(`/projects/${projectId}`),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
+        api.get<Member[]>(`/projects/${projectId}/members`),
+        api.get<{ myRole: string }>(`/projects/${projectId}`),
       ]);
       // 서버에 단건 조회 엔드포인트가 없어 목록에서 찾는다
-      const found = delRes.data.find((d) => d.id === deliverableId);
-      if (!found) throw new Error("제출물을 찾을 수 없습니다.");
-      setDeliverable(found);
+      if (!delRes.data.some((d) => d.id === deliverableId)) {
+        setError("제출물을 찾을 수 없습니다. 삭제되었거나 다른 프로젝트의 제출물입니다.");
+      }
+      setDeliverables(delRes.data);
+      setTasks(taskRes.data);
+      setMembers(memRes.data);
       setMyRole(projRes.data.myRole);
-      setLinkedTasks(
-        taskRes.data.filter((t) => t.deliverableId === deliverableId)
-      );
-    } catch {
-      setError("제출물 정보를 불러오지 못했습니다.");
+    } catch (err) {
+      setError(apiError(err, "제출물 정보를 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -183,116 +199,144 @@ export default function DeliverableDetailPage() {
     }
   }, [projectId, deliverableId]);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     fetchAll();
     fetchProgress();
   }, [fetchAll, fetchProgress]);
 
-  const handleAddRequirement = async (e: React.FormEvent) => {
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const replaceRequirement = (updated: DeliverableRequirement) =>
+    setDeliverables((prev) =>
+      prev.map((d) =>
+        d.id === deliverableId
+          ? { ...d, requirements: d.requirements.map((r) => (r.id === updated.id ? updated : r)) }
+          : d
+      )
+    );
+
+  // ── 제출물 수정·삭제 ──────────────────────────────────────────────────
+  const handleSaveDeliverable = async (payload: SaveDeliverablePayload) => {
+    await updateDeliverable(projectId, deliverableId, payload);
+    setShowEdit(false);
+    setNotice("제출물을 수정했습니다.");
+    fetchAll();
+  };
+
+  const handleDeleteDeliverable = async () => {
+    await deleteDeliverable(projectId, deliverableId);
+    router.replace(`/projects/${projectId}/deliverables`);
+  };
+
+  // ── 요구사항 ──────────────────────────────────────────────────────────
+  const resetReqForm = () => {
+    setReqContent("");
+    setReqRequired(true);
+    setEditingReqId(null);
+    setReqError("");
+  };
+
+  const startEditRequirement = (req: DeliverableRequirement) => {
+    setEditingReqId(req.id);
+    setReqContent(req.content);
+    setReqRequired(req.required);
+    setReqError("");
+  };
+
+  const handleSaveRequirement = async (e: FormEvent) => {
     e.preventDefault();
     if (!reqContent.trim()) return;
     setReqSaving(true);
     setReqError("");
     try {
-      await createRequirement(projectId, deliverableId, {
-        content: reqContent.trim(),
-        required: reqRequired,
-      });
-      setReqContent("");
-      setReqRequired(false);
-      setShowReqForm(false);
-      fetchAll();
-      fetchProgress();
-    } catch {
-      setReqError("요구사항 저장에 실패했습니다.");
+      const payload = { content: reqContent.trim(), required: reqRequired };
+      if (editingReqId) {
+        await updateRequirement(projectId, deliverableId, editingReqId, payload);
+        // 문구가 바뀌면 서버가 충족 확인을 초기화한다 (K-14 §2)
+        setNotice("요구사항을 수정했습니다. 내용이 바뀌었다면 충족 확인이 초기화됩니다.");
+      } else {
+        await createRequirement(projectId, deliverableId, payload);
+        setNotice("요구사항을 추가했습니다.");
+      }
+      resetReqForm();
+      refresh();
+    } catch (err) {
+      setReqError(apiError(err, "요구사항 저장에 실패했습니다. 다시 시도해주세요."));
     } finally {
       setReqSaving(false);
     }
   };
 
   const handleDeleteRequirement = async (req: DeliverableRequirement) => {
-    setReqActionError("");
-    try {
-      await deleteRequirement(projectId, deliverableId, req.id);
-      setDeliverable((prev) =>
-        prev
-          ? { ...prev, requirements: prev.requirements.filter((r) => r.id !== req.id) }
-          : prev
-      );
-      fetchProgress();
-    } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      setReqActionError(
-        status === 409
-          ? "이 요구사항에 연결된 업무를 먼저 해제한 뒤 삭제해주세요."
-          : errorDetail(err, "요구사항 삭제에 실패했습니다. 다시 시도해주세요.")
-      );
-    }
+    await deleteRequirement(projectId, deliverableId, req.id);
+    setDeleteTarget(null);
+    if (editingReqId === req.id) resetReqForm();
+    setNotice("요구사항을 삭제했습니다.");
+    refresh();
   };
 
-  // K-14: 충족 확인 토글 (낙관적 업데이트)
+  // K-14: 충족 확인 토글 (낙관적 업데이트, 실패 시 해당 항목만 원복)
   const handleToggleAssessment = async (req: DeliverableRequirement) => {
     const isAssessed = req.assessment !== null;
-    setReqActionError("");
-
-    // 낙관적 업데이트
-    setDeliverable((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        requirements: prev.requirements.map((r) =>
-          r.id === req.id
-            ? { ...r, assessment: isAssessed ? null : { assessedBy: { userId: "", name: "나" }, assessedAt: new Date().toISOString() } }
-            : r
-        ),
-      };
+    setActionError("");
+    replaceRequirement({
+      ...req,
+      assessment: isAssessed ? null : { assessedBy: { userId: "", name: "나" }, assessedAt: new Date().toISOString() },
     });
-
     try {
       const res = isAssessed
         ? await unassessRequirement(projectId, deliverableId, req.id)
         : await assessRequirement(projectId, deliverableId, req.id);
-      // 서버 응답으로 정확한 값 반영
-      setDeliverable((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          requirements: prev.requirements.map((r) =>
-            r.id === req.id ? (res.data as DeliverableRequirement) : r
-          ),
-        };
-      });
-      // 충족 확인은 진척률 분자에 영향 — 재조회
+      replaceRequirement(res.data);
       fetchProgress();
     } catch (err) {
-      // 전체 재조회 대신 해당 요구사항만 원래 값으로 되돌린다
-      setDeliverable((prev) =>
-        prev
-          ? { ...prev, requirements: prev.requirements.map((r) => (r.id === req.id ? req : r)) }
-          : prev
-      );
-      setReqActionError(
-        errorDetail(
-          err,
-          isAssessed
-            ? "충족 확인 해제에 실패했습니다. 다시 시도해주세요."
-            : "충족 확인에 실패했습니다. 다시 시도해주세요."
-        )
+      replaceRequirement(req);
+      setActionError(
+        apiError(err, isAssessed ? "충족 확인 해제에 실패했습니다. 다시 시도해주세요." : "충족 확인에 실패했습니다. 다시 시도해주세요.")
       );
     }
   };
 
-  const STATUS_CFG = {
-    TODO:        { label: "할 일",   cls: "bg-slate-700 text-slate-400" },
-    IN_PROGRESS: { label: "진행 중", cls: "bg-indigo-500/20 text-indigo-400" },
-    DONE:        { label: "완료",    cls: "bg-teal-500/15 text-teal-400" },
-  } as const;
+  // ── 업무 ─────────────────────────────────────────────────────────────
+  const handleCreateTask = async (payload: CreateTaskPayload) => {
+    await api.post(`/projects/${projectId}/tasks`, payload);
+    setTaskDraft(null);
+    setNotice("업무를 추가했습니다. 담당자는 업무 보드에서 진행 상태를 바꿀 수 있습니다.");
+    refresh();
+  };
+
+  const handleLinkTask = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!linkTaskId) return;
+    setLinking(true);
+    setActionError("");
+    try {
+      await api.patch(`/projects/${projectId}/tasks/${linkTaskId}`, { deliverableId });
+      setLinkTaskId("");
+      setNotice("업무를 이 제출물에 연결했습니다.");
+      refresh();
+    } catch (err) {
+      setActionError(apiError(err, "업무를 연결하지 못했습니다. 다시 시도해주세요."));
+    } finally {
+      setLinking(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
       <main className="flex-1 ml-64 overflow-y-auto p-8">
+        <Link
+          href={`/projects/${projectId}/deliverables`}
+          className="inline-flex items-center gap-1 mb-3 text-xs text-bb-text2 hover:text-bb-text transition-colors"
+        >
+          <ChevronLeft size={14} />
+          제출물 목록
+        </Link>
+
         {loading && (
           <div className="flex items-center justify-center h-40 gap-2 text-bb-text2">
             <Loader2 size={20} className="animate-spin" />
@@ -305,7 +349,10 @@ export default function DeliverableDetailPage() {
             <AlertCircle size={32} className="text-red-400" />
             <p className="text-sm text-bb-text2">{error}</p>
             <button
-              onClick={fetchAll}
+              onClick={() => {
+                setLoading(true);
+                refresh();
+              }}
               className="flex items-center gap-1.5 px-4 py-2 text-sm text-bb-text2 hover:text-bb-text border border-bb-border rounded-lg transition-colors"
             >
               <RefreshCw size={14} />
@@ -316,28 +363,50 @@ export default function DeliverableDetailPage() {
 
         {!loading && !error && deliverable && (
           <>
-            <Link
-              href={`/projects/${projectId}/deliverables`}
-              className="inline-flex items-center gap-1 mb-3 text-xs text-bb-text2 hover:text-bb-text transition-colors"
-            >
-              <ChevronLeft size={14} />
-              제출물 목록
-            </Link>
-
             {/* 헤더 */}
-            <div className="mb-6">
-              <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
-                <ClipboardList size={20} className="text-bb-primary" />
-                {deliverable.title}
-              </h1>
+            <section className="mb-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h1 className="text-xl font-bold text-bb-text flex items-center gap-2 min-w-0 break-words">
+                  <ClipboardList size={20} className="text-bb-primary shrink-0" />
+                  {deliverable.title}
+                </h1>
+                {canWrite && (
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => setShowEdit(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-bb-text border border-bb-border hover:bg-bb-surface2 rounded-lg"
+                    >
+                      <Pencil size={13} />
+                      수정
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget({ kind: "deliverable" })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 rounded-lg"
+                    >
+                      <Trash2 size={13} />
+                      삭제
+                    </button>
+                  </div>
+                )}
+              </div>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+                <div>
+                  <dt className="text-xs text-bb-text2">제출 기한</dt>
+                  <dd className="mt-0.5 text-bb-text">{deliverable.dueDate}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-bb-text2">제출 담당자</dt>
+                  <dd className="mt-0.5 text-bb-text">{deliverable.ownerName || "미지정"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-bb-text2">제출 경로</dt>
+                  <dd className="mt-0.5 text-bb-text break-words">{deliverable.submissionMethod || "미설정"}</dd>
+                </div>
+              </dl>
               {deliverable.description && (
-                <p className="mt-1 text-sm text-bb-text2">{deliverable.description}</p>
+                <p className="mt-4 text-sm text-bb-text2 whitespace-pre-wrap break-words">{deliverable.description}</p>
               )}
-              <p className="mt-1 text-xs text-bb-text2">
-                기한: {deliverable.dueDate ?? "-"}
-                {deliverable.ownerName && ` · 담당: ${deliverable.ownerName}`}
-              </p>
-            </div>
+            </section>
 
             {/* 탭 */}
             <div className="flex gap-1 mb-6 border-b border-bb-border">
@@ -345,243 +414,239 @@ export default function DeliverableDetailPage() {
                 <button
                   key={tab.id}
                   onClick={() => tab.implemented && setActiveTab(tab.id)}
-                  className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors
-                    ${!tab.implemented
+                  className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                    !tab.implemented
                       ? "opacity-40 cursor-not-allowed text-bb-text2"
                       : activeTab === tab.id
                       ? "text-bb-primary border-b-2 border-bb-primary"
                       : "text-bb-text2 hover:text-bb-text"
-                    }`}
+                  }`}
                   title={!tab.implemented ? `${tab.label} 기능 준비 중입니다` : undefined}
                 >
                   {tab.label}
                   {!tab.implemented && (
-                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-bb-surface2 rounded-full">
-                      준비 중
-                    </span>
+                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-bb-surface2 rounded-full">준비 중</span>
                   )}
                 </button>
               ))}
             </div>
 
-            {/* 요구사항·업무 탭 */}
             {activeTab === "overview" && (
               <div className="space-y-6">
-                <ProgressSection
-                  progress={progress}
-                  progressError={progressError}
-                  onRetry={fetchProgress}
-                />
+                {notice && (
+                  <div role="status" className="flex items-center gap-2 p-3 bg-teal-500/10 border border-teal-500/20 rounded-lg text-sm text-bb-text">
+                    {notice}
+                    <button onClick={() => setNotice("")} className="ml-auto text-bb-text2 hover:text-bb-text" aria-label="안내 닫기">
+                      ✕
+                    </button>
+                  </div>
+                )}
+                {actionError && (
+                  <div role="alert" className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
+                    <AlertCircle size={14} className="shrink-0" />
+                    {actionError}
+                    <button onClick={() => setActionError("")} className="ml-auto text-red-400 hover:text-red-300" aria-label="안내 닫기">
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                <ProgressSection progress={progress} progressError={progressError} onRetry={fetchProgress} />
 
                 {/* 요구사항 */}
-                <section>
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-semibold text-bb-text">요구사항</h2>
-                    {canWrite && (
-                      <button
-                        onClick={() => setShowReqForm((v) => !v)}
-                        className="flex items-center gap-1 text-xs text-bb-text2 hover:text-bb-primary transition-colors"
-                      >
-                        <Plus size={13} />
-                        추가
-                      </button>
-                    )}
-                  </div>
+                <section className="bg-bb-surface border border-bb-border rounded-xl p-5">
+                  <h2 className="text-sm font-semibold text-bb-text">
+                    요구사항 <span className="text-bb-text2">{deliverable.requirements.length}</span>
+                  </h2>
+                  <p className="mt-1 text-xs text-bb-text2">
+                    과제 안내의 필수 내용과 형식을 적으세요. 업무 완료와 요구사항 충족은 따로 확인합니다.
+                  </p>
 
-                  {reqActionError && (
-                    <div className="mb-3 flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
-                      <AlertCircle size={14} className="shrink-0" />
-                      {reqActionError}
-                      <button
-                        onClick={() => setReqActionError("")}
-                        className="ml-auto text-red-400 hover:text-red-300"
-                        aria-label="안내 닫기"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                  {deliverable.requirements.length === 0 ? (
+                    <p className="my-4 text-sm text-bb-text2">예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부</p>
+                  ) : (
+                    <ul className="my-4 divide-y divide-bb-border">
+                      {deliverable.requirements.map((req) => {
+                        const assessed = req.assessment !== null;
+                        const reqTasks = linkedTasks.filter((t) => t.requirementId === req.id);
+                        const reqDone = reqTasks.filter((t) => t.status === "DONE").length;
+                        const allDone = reqTasks.length > 0 && reqDone === reqTasks.length;
+
+                        return (
+                          <li key={req.id} className="py-3">
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => canWrite && handleToggleAssessment(req)}
+                                disabled={!canWrite}
+                                className={`shrink-0 mt-0.5 p-0.5 rounded transition-colors ${
+                                  canWrite
+                                    ? assessed
+                                      ? "text-teal-400 hover:text-teal-300"
+                                      : "text-bb-text2 hover:text-teal-400"
+                                    : "text-bb-border cursor-not-allowed"
+                                }`}
+                                title={!canWrite ? "관찰자는 확인할 수 없습니다." : assessed ? "충족 확인 해제" : "충족 확인"}
+                                aria-label={assessed ? "충족 확인 해제" : "충족 확인"}
+                              >
+                                {assessed ? <CheckSquare size={16} /> : <Circle size={16} />}
+                              </button>
+                              <span className={`shrink-0 mt-0.5 text-xs ${req.required ? "text-teal-400" : "text-bb-text2"}`}>
+                                {req.required ? "필수" : "선택"}
+                              </span>
+                              <p className="flex-1 min-w-0 text-sm text-bb-text whitespace-pre-wrap break-words">{req.content}</p>
+                            </div>
+
+                            <div className="mt-2 ml-[52px] flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                              <span className="text-bb-text2">
+                                연결 업무 {reqTasks.length}개{reqTasks.length > 0 && ` · ${reqDone}개 완료`}
+                              </span>
+                              {assessed && req.assessment && (
+                                <span className="text-teal-400">
+                                  충족 확인: {req.assessment.assessedBy.name} · {fmtRelative(req.assessment.assessedAt)}
+                                </span>
+                              )}
+                              {allDone && !assessed && (
+                                <span className="text-amber-400">업무가 모두 끝났습니다. 충족 여부를 확인하세요.</span>
+                              )}
+                              {canWrite && (
+                                <>
+                                  <button onClick={() => setTaskDraft({ requirementId: req.id })} className="text-bb-primary hover:underline">
+                                    이 요구사항의 업무 만들기
+                                  </button>
+                                  <button onClick={() => startEditRequirement(req)} className="text-bb-text2 hover:underline">
+                                    수정
+                                  </button>
+                                  <button onClick={() => setDeleteTarget({ kind: "requirement", req })} className="text-bb-text2 hover:underline">
+                                    삭제
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   )}
 
-                  {showReqForm && (
-                    <form
-                      onSubmit={handleAddRequirement}
-                      className="mb-3 p-4 bg-bb-surface border border-bb-border rounded-lg space-y-2"
-                    >
-                      {reqError && (
-                        <p className="text-xs text-red-400">{reqError}</p>
+                  {canWrite && (
+                    <form onSubmit={handleSaveRequirement} className="space-y-2 border-t border-bb-border pt-4">
+                      <label htmlFor="requirement-content" className="block text-sm text-bb-text">
+                        {editingReqId ? "요구사항 수정" : "요구사항 추가"}
+                      </label>
+                      {editingReqId && (
+                        <p className="text-xs text-amber-400">내용을 바꾸면 이 요구사항의 충족 확인이 초기화됩니다.</p>
                       )}
-                      <input
-                        type="text"
+                      {reqError && <p role="alert" className="text-xs text-red-400">{reqError}</p>}
+                      <textarea
+                        id="requirement-content"
+                        rows={2}
+                        maxLength={1000}
+                        required
                         value={reqContent}
                         onChange={(e) => setReqContent(e.target.value)}
-                        placeholder="요구사항 내용"
-                        required
-                        className="w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2 text-sm text-bb-text placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                        placeholder="예: 조사한 자료의 출처를 모두 표기"
+                        className={`${FIELD} resize-none`}
                       />
-                      <label className="flex items-center gap-2 text-xs text-bb-text2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={reqRequired}
-                          onChange={(e) => setReqRequired(e.target.checked)}
-                          className="rounded"
-                        />
-                        필수 요구사항
-                      </label>
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setShowReqForm(false)}
-                          className="text-xs text-bb-text2 hover:text-bb-text px-3 py-1.5"
-                        >
-                          취소
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={reqSaving || !reqContent.trim()}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-bb-primary hover:bg-bb-primary-h disabled:opacity-50 text-white text-xs rounded-lg"
-                        >
-                          {reqSaving && <Loader2 size={12} className="animate-spin" />}
-                          저장
-                        </button>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="flex items-center gap-2 text-xs text-bb-text2 cursor-pointer">
+                          <input type="checkbox" checked={reqRequired} onChange={(e) => setReqRequired(e.target.checked)} />
+                          필수 조건
+                        </label>
+                        <div className="ml-auto flex gap-2">
+                          {editingReqId && (
+                            <button type="button" onClick={resetReqForm} className="px-3 py-1.5 text-xs text-bb-text2 hover:text-bb-text">
+                              취소
+                            </button>
+                          )}
+                          <button
+                            type="submit"
+                            disabled={reqSaving || !reqContent.trim()}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-bb-primary hover:bg-bb-primary-h disabled:opacity-50 text-white text-xs rounded-lg"
+                          >
+                            {reqSaving && <Loader2 size={12} className="animate-spin" />}
+                            {editingReqId ? "수정 저장" : "요구사항 추가"}
+                          </button>
+                        </div>
                       </div>
                     </form>
                   )}
-
-                  {deliverable.requirements.length === 0 ? (
-                    <p className="text-sm text-bb-text2 py-4 text-center">
-                      등록된 요구사항이 없습니다.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {deliverable.requirements.map((req) => {
-                        const assessed = req.assessment !== null;
-                        // 이 요구사항에 연결된 업무 수
-                        const reqTasks = linkedTasks.filter(
-                          (t) => t.requirementId === req.id
-                        );
-                        const reqDone = reqTasks.filter(
-                          (t) => t.status === "DONE"
-                        ).length;
-                        const allDone =
-                          reqTasks.length > 0 && reqDone === reqTasks.length;
-
-                        return (
-                          <li
-                            key={req.id}
-                            className="group flex items-start gap-2 p-3 bg-bb-surface border border-bb-border rounded-lg"
-                          >
-                            {/* 필수/선택 아이콘 */}
-                            {req.required
-                              ? <CheckCircle2 size={15} className="text-indigo-400 mt-0.5 shrink-0" />
-                              : <Circle       size={15} className="text-bb-text2 mt-0.5 shrink-0" />
-                            }
-
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-bb-text">{req.content}</p>
-                              <div className="flex items-center gap-3 mt-1">
-                                <p className="text-xs text-bb-text2">
-                                  {req.required ? "필수" : "선택"}
-                                </p>
-                                {/* 연결 업무 진행 상황 (K-14 §6-3) */}
-                                {reqTasks.length > 0 && (
-                                  <p className="text-xs text-bb-text2">
-                                    연결 업무 {reqDone}/{reqTasks.length} 완료
-                                  </p>
-                                )}
-                                {/* 충족 확인 정보 (K-14 §6-2) */}
-                                {assessed && req.assessment && (
-                                  <p className="text-xs text-teal-400">
-                                    {req.assessment.assessedBy.name} · {fmtRelative(req.assessment.assessedAt)}
-                                  </p>
-                                )}
-                                {/* 업무 모두 완료인데 미확인 안내 (K-14 §6-4) */}
-                                {allDone && !assessed && (
-                                  <p className="text-xs text-amber-400">
-                                    업무가 모두 끝났습니다. 충족 여부를 확인하세요.
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* 충족 확인 체크박스 (K-14 §6-5: 관찰자는 비활성) */}
-                            <button
-                              onClick={() => canWrite && handleToggleAssessment(req)}
-                              className={`shrink-0 p-1 rounded transition-colors ${
-                                canWrite
-                                  ? assessed
-                                    ? "text-teal-400 hover:text-teal-300"
-                                    : "text-bb-text2 hover:text-teal-400"
-                                  : "text-bb-border cursor-not-allowed"
-                              }`}
-                              title={
-                                !canWrite
-                                  ? "관찰자는 확인할 수 없습니다."
-                                  : assessed
-                                  ? "확인 해제"
-                                  : "충족 확인"
-                              }
-                              aria-label={assessed ? "충족 확인 해제" : "충족 확인"}
-                            >
-                              {assessed
-                                ? <CheckSquare size={15} />
-                                : <Circle size={15} />
-                              }
-                            </button>
-
-                            {canWrite && (
-                              <button
-                                onClick={() => handleDeleteRequirement(req)}
-                                className="p-1 rounded text-bb-text2 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                                aria-label="요구사항 삭제"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
                 </section>
 
-                {/* 연결된 업무 */}
-                <section>
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-semibold text-bb-text">연결된 업무</h2>
-                    <Link
-                      href={`/projects/${projectId}/board`}
-                      className="flex items-center gap-1 text-xs text-bb-text2 hover:text-bb-primary transition-colors"
-                    >
-                      업무 보드에서 연결·관리
-                      <ChevronRight size={13} />
-                    </Link>
+                {/* 연결 업무 */}
+                <section className="bg-bb-surface border border-bb-border rounded-xl p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-sm font-semibold text-bb-text">연결 업무 {linkedTasks.length}개</h2>
+                    <div className="flex items-center gap-3">
+                      <Link href={`/projects/${projectId}/board`} className="text-xs text-bb-text2 hover:text-bb-primary">
+                        업무 보드 열기
+                      </Link>
+                      {canWrite && (
+                        <button
+                          onClick={() => setTaskDraft({ requirementId: "" })}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-bb-primary hover:bg-bb-primary-h text-white text-xs rounded-lg"
+                        >
+                          <Plus size={13} />
+                          업무 추가
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  <p className="mt-1 text-xs text-bb-text2">
+                    업무 완료 {linkedTasks.filter((t) => t.status === "DONE").length}개 · 제출 준비 완료를 뜻하지 않습니다.
+                  </p>
+
                   {linkedTasks.length === 0 ? (
-                    <p className="text-sm text-bb-text2 py-4 text-center">
-                      연결된 업무가 없습니다. 업무 보드에서 업무를 이 제출물에 연결해주세요.
-                    </p>
+                    <p className="my-4 text-sm text-bb-text2">필요한 업무를 추가하거나 기존 업무를 연결하세요.</p>
                   ) : (
-                    <ul className="space-y-2">
-                      {linkedTasks.map((task) => {
-                        const cfg = STATUS_CFG[task.status];
-                        return (
-                          <li
-                            key={task.id}
-                            className="flex items-center gap-3 p-3 bg-bb-surface border border-bb-border rounded-lg"
+                    <ul className="mt-3 divide-y divide-bb-border">
+                      {linkedTasks.map((t) => (
+                        <li key={t.id} className="py-3">
+                          <Link
+                            href={`/projects/${projectId}/board?task=${t.id}`}
+                            className="flex items-center gap-2 text-sm font-medium text-bb-text hover:text-bb-primary"
                           >
-                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${cfg.cls}`}>
-                              {cfg.label}
-                            </span>
-                            <span className="text-sm text-bb-text truncate">{task.title}</span>
-                            {task.completionCriteria && (
-                              <span className="ml-auto text-xs text-bb-text2 shrink-0 truncate max-w-[160px]">
-                                {task.completionCriteria}
-                              </span>
-                            )}
-                          </li>
-                        );
-                      })}
+                            {t.title}
+                            <ArrowRight size={14} />
+                          </Link>
+                          <p className="mt-1 text-xs text-bb-text2">
+                            {TASK_STATUS_LABEL[t.status]} · {t.assignees.map((a) => a.name).join(", ") || "담당자 미지정"} ·{" "}
+                            {t.dueDate || "마감 미설정"}
+                            {t.requirementContent && ` · 요구사항: ${t.requirementContent}`}
+                          </p>
+                          <p className="mt-1 text-xs text-bb-text2 whitespace-pre-wrap break-words">
+                            완료 기준: {t.completionCriteria || "미설정 — 업무를 열어 작성하세요"}
+                          </p>
+                        </li>
+                      ))}
                     </ul>
+                  )}
+
+                  {canWrite && unlinkedTasks.length > 0 && (
+                    <form onSubmit={handleLinkTask} className="mt-4 flex flex-wrap items-end gap-3 border-t border-bb-border pt-4">
+                      <label className="flex-1 min-w-[200px] text-xs text-bb-text2">
+                        기존 미연결 업무
+                        <select
+                          value={linkTaskId}
+                          onChange={(e) => setLinkTaskId(e.target.value)}
+                          required
+                          className={`${FIELD} mt-1.5`}
+                        >
+                          <option value="">연결할 업무 선택</option>
+                          {unlinkedTasks.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        disabled={linking || !linkTaskId}
+                        className="flex items-center gap-1 px-3 py-2 text-xs text-bb-text border border-bb-border hover:bg-bb-surface2 disabled:opacity-50 rounded-lg"
+                      >
+                        {linking && <Loader2 size={12} className="animate-spin" />}
+                        이 제출물에 연결
+                      </button>
+                    </form>
                   )}
                 </section>
               </div>
@@ -589,6 +654,38 @@ export default function DeliverableDetailPage() {
           </>
         )}
       </main>
+
+      {showEdit && deliverable && (
+        <DeliverableFormModal
+          initial={deliverable}
+          owners={contributors}
+          onSave={handleSaveDeliverable}
+          onClose={() => setShowEdit(false)}
+        />
+      )}
+      {deleteTarget && deliverable && (
+        <ConfirmDeleteDialog
+          title={deleteTarget.kind === "deliverable" ? `제출물 "${deliverable.title}"` : "요구사항"}
+          onConfirm={() =>
+            deleteTarget.kind === "deliverable" ? handleDeleteDeliverable() : handleDeleteRequirement(deleteTarget.req)
+          }
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
+      {taskDraft && (
+        <TaskModal
+          mode="create"
+          task={null}
+          members={contributors}
+          deliverables={deliverables}
+          defaultDeliverableId={deliverableId}
+          defaultRequirementId={taskDraft.requirementId}
+          onClose={() => setTaskDraft(null)}
+          onCreate={handleCreateTask}
+          onUpdate={async () => {}}
+          onDelete={async () => {}}
+        />
+      )}
     </div>
   );
 }
