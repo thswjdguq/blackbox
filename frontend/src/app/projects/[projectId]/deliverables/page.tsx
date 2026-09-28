@@ -1,3 +1,14 @@
+// ──────────────────────────────────────────────────────────────────────────
+// 제출물 목록 페이지 (C-10)
+//   경로: /projects/[projectId]/deliverables
+//
+// 주요 기능
+//   - 제출물 목록 조회 + 추가·삭제 (팀장·팀원만)
+//   - 관찰자는 읽기 전용 (canWrite=false, 버튼 숨김)
+//   - 연결 업무 있는 제출물 삭제 시 서버 409 → "연결 업무 먼저 해제" 안내
+//   - 로딩·0건·네트워크 오류 상태 구분 표시
+// ──────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -129,6 +140,7 @@ function AddDeliverableForm({
 
 export default function DeliverablesPage() {
   const params    = useParams();
+  // [projectId] 폴더 기준 — params.projectId 사용 (blackbox1 워킹 코드와 동일)
   const projectId = params?.projectId as string;
 
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
@@ -138,8 +150,10 @@ export default function DeliverablesPage() {
   const [showForm,     setShowForm]     = useState(false);
   const [deleteError,  setDeleteError]  = useState("");
 
+  // 팀장·팀원만 쓰기 가능. 관찰자(OBSERVER)는 읽기 전용(CONTRACTS §1 권한)
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
 
+  // 제출물 목록 + 내 역할을 병렬 조회 — 역할을 알아야 버튼 표시 여부 결정
   const fetchDeliverables = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -163,6 +177,7 @@ export default function DeliverablesPage() {
     fetchDeliverables();
   }, [fetchDeliverables]);
 
+  // 저장 성공 후 낙관적 업데이트 대신 서버 재조회 — 서버 생성 필드(id 등) 반영
   const handleCreate = async (payload: CreateDeliverablePayload) => {
     await createDeliverable(projectId, payload);
     setShowForm(false);
@@ -173,9 +188,11 @@ export default function DeliverablesPage() {
     setDeleteError("");
     try {
       await deleteDeliverable(projectId, deliverableId);
+      // 삭제 성공: 낙관적으로 목록에서 즉시 제거
       setDeliverables((prev) => prev.filter((d) => d.id !== deliverableId));
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
+      // 409: 업무가 연결된 제출물 삭제 시도 (CONTRACTS §1 삭제 충돌)
       if (status === 409) {
         setDeleteError("연결된 업무를 먼저 해제한 뒤 삭제해주세요.");
       } else {

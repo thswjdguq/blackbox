@@ -1,3 +1,25 @@
+// ──────────────────────────────────────────────────────────────────────────
+// 제출물 상세 페이지 (C-10 + C-20)
+//   경로: /projects/[projectId]/deliverables/[deliverableId]
+//
+// 탭 구성
+//   overview  — 요구사항·업무 (C-10, 구현 완료)
+//   review    — 검토 탭       (C-20, 구현 완료)
+//   submit    — 최종 제출     (C-30, 준비 중)
+//
+// C-10 주요 변경
+//   - 요구사항 추가·삭제, 연결 업무 목록
+//   - K-13 진척 현황 바 (USE_MOCK_PROGRESS=true)
+//   - K-14 충족 확인 체크박스 — 낙관적 업데이트, 관찰자 비활성
+//
+// C-20 추가
+//   - 제출물 상태 배지 (DRAFT / IN_REVIEW / CONFIRMED / SUBMITTED)
+//   - 검토 회차 카드(ReviewRoundCard): 피드백 목록, 해결 토글, 코멘트 폼
+//   - 수정본 안내 배너(RevisionGuide): 미해결 수 + Hash Vault 안내
+//   - 검토 요청 버튼 (DRAFT + 팀장·팀원만)
+//   - USE_MOCK_REVIEW=true (K-10/K-11 AGREED + A-10 병합 후 전환)
+// ──────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -378,11 +400,13 @@ export default function DeliverableDetailPage() {
     }
   }, [projectId, deliverableId]);
 
+  // 진척은 별도 조회 — 실패해도 나머지 화면(요구사항·업무)은 정상 표시
   const fetchProgress = useCallback(async () => {
     try {
       const data = await getDeliverableProgress(projectId, deliverableId);
       setProgress(data);
     } catch {
+      // 진척 API 실패 시 가짜 0% 대신 오류 표시 (K-13 §3-500)
       setProgressError(true);
     }
   }, [projectId, deliverableId]);
@@ -392,7 +416,8 @@ export default function DeliverableDetailPage() {
     fetchProgress();
   }, [fetchAll, fetchProgress]);
 
-  // 검토 탭 진입 시 lazy load (rounds가 없을 때만)
+  // 검토 탭 진입 시 lazy load — overview 탭에서 불필요한 K-10 호출 방지
+  // rounds.length===0 조건: 이미 로드된 회차가 있으면 재요청하지 않는다
   const fetchReview = useCallback(async () => {
     setReviewLoading(true);
     setReviewError("");
@@ -413,6 +438,7 @@ export default function DeliverableDetailPage() {
     }
   }, [activeTab, rounds.length, reviewLoading, fetchReview]);
 
+  // 검토 요청: 서버 성공 후 상태를 IN_REVIEW 로 전환하고 새 회차를 목록에 추가
   const handleRequestReview = async () => {
     setRequesting(true);
     try {
@@ -424,6 +450,7 @@ export default function DeliverableDetailPage() {
     }
   };
 
+  // 낙관적 업데이트 — 서버 응답 전에 UI 에 즉시 반영
   const handleCommentAdded = (reviewId: string, comment: ReviewComment) => {
     setRounds((prev) =>
       prev.map((r) =>
@@ -432,6 +459,7 @@ export default function DeliverableDetailPage() {
     );
   };
 
+  // 낙관적 업데이트 — ReviewRoundCard 에서 서버 실패 시 원래 resolved 로 복구
   const handleCommentResolved = (
     reviewId: string,
     commentId: string,
