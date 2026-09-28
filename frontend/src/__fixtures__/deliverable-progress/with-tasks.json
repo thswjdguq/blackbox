@@ -1,0 +1,15 @@
+{
+  "_comment": "K-13 현행 예시 — 연결 업무 3개 중 1개 완료, 필수 요구사항 2개 (충족 확인 미지원)",
+  "deliverableId": "11111111-1111-4111-8111-111111111111",
+  "tasks": {
+    "total": 3,
+    "completed": 1,
+    "percent": 33.33
+  },
+  "requiredRequirements": {
+    "total": 2,
+    "met": null,
+    "percent": null,
+    "assessmentAvailable": false
+  }
+}
