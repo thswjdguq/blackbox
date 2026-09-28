@@ -45,14 +45,13 @@ export const getReviewData = async (
   if (USE_MOCK_REVIEW) {
     console.warn("[MOCK] K-10 review — fixture 사용 중. 계약 AGREED 후 전환 필요.");
     const fixture = await import("@/__fixtures__/review/with-comments.json");
+    // JSON import 는 status 를 string 으로 추론하므로 unknown 경유 캐스팅
+    const data = fixture.default as unknown as ReviewData;
     return {
-      ...fixture.default,
+      ...data,
       // fixture 의 deliverableId 를 실제 값으로 덮어써서 URL 불일치 방지
-      rounds: fixture.default.rounds.map((r: ReviewRound) => ({
-        ...r,
-        deliverableId,
-      })),
-    } as ReviewData;
+      rounds: data.rounds.map((r) => ({ ...r, deliverableId })),
+    };
   }
 
   const res = await api.get<ReviewData>(
