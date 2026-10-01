@@ -95,6 +95,7 @@ class DeliverableServiceTest {
     @Test void observerCanReadButCannotWrite() {
         member.setRole("OBSERVER");
         assertEquals(List.of(), service.list(project.getId(), user));
+        assertEquals(delivery.getId(), service.get(project.getId(), delivery.getId(), user).id());
         assertThrows(ForbiddenException.class, () -> service.save(project.getId(), null,
                 new SaveRequest("보고서", null, LocalDate.now(), null, null), user));
         verify(deliveries, never()).save(any());
@@ -102,9 +103,11 @@ class DeliverableServiceTest {
     @Test void outsiderCannotRead() {
         when(members.findByProjectAndUser(project, user)).thenReturn(Optional.empty());
         assertThrows(ForbiddenException.class, () -> service.list(project.getId(), user));
+        assertThrows(ForbiddenException.class, () -> service.get(project.getId(), delivery.getId(), user));
     }
     @Test void cannotAccessOtherProjectsDeliverable() {
         UUID other = UUID.randomUUID();
+        assertThrows(NotFoundException.class, () -> service.get(project.getId(), other, user));
         assertThrows(NotFoundException.class, () -> service.delete(project.getId(), other, user));
         verify(deliveries, never()).delete(any());
     }
