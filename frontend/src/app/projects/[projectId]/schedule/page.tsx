@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import { Meeting, CreateMeetingPayload } from "@/types/meeting";
 import {
@@ -77,8 +78,8 @@ function ConfirmMeetingModal({ rec, projectId, members, durationMin, customDurat
         }).catch(() => {});
       }
       onCreated();
-    } catch {
-      setError("회의 생성에 실패했습니다. 리더 권한이 필요합니다.");
+    } catch (err) {
+      setError(apiError(err, "회의 생성에 실패했습니다. 다시 시도해주세요."));
     } finally {
       setSubmitting(false);
     }

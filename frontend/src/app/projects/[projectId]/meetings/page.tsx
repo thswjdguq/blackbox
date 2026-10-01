@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import { Meeting, CreateMeetingPayload } from "@/types/meeting";
 import {
   FileText,
@@ -156,7 +157,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
         setMembers(data);
         setSelectedIds(new Set());
       })
-      .catch(() => {})
+      .catch((err) => setError(apiError(err, "참석자 후보(팀원 목록)를 불러오지 못했습니다.")))
       .finally(() => setLoadingMembers(false));
   }, [projectId]);
 
@@ -180,8 +181,8 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
       );
       setRecommendations(data.recommendations ?? []);
       if (data.warning) showToast(data.warning);
-    } catch {
-      setError("AI 일정 추천을 가져오지 못했습니다.");
+    } catch (err) {
+      setError(apiError(err, "AI 일정 추천을 가져오지 못했습니다."));
     } finally {
       setRecommending(false);
     }
