@@ -1,11 +1,4 @@
-/**
- * 제출물 도메인 API 래퍼
- *
- * 서버에 GET /deliverables/{id} 단건 조회는 없다.
- * 상세 화면은 목록(getDeliverables)에서 해당 id 를 찾아 쓴다.
- *
- * 진척 조회는 B-10 병합(PR #51)으로 실제 API 를 사용한다.
- */
+/** 제출물 도메인 API 래퍼 */
 
 import api from "@/lib/api";
 import type {
@@ -20,6 +13,10 @@ import type {
 
 export const getDeliverables = (projectId: string) =>
   api.get<Deliverable[]>(`/projects/${projectId}/deliverables`);
+
+/** 다른 프로젝트의 제출물 id 도 404 로 응답한다 (존재 여부를 드러내지 않음) */
+export const getDeliverable = (projectId: string, deliverableId: string) =>
+  api.get<Deliverable>(`/projects/${projectId}/deliverables/${deliverableId}`);
 
 export const createDeliverable = (
   projectId: string,

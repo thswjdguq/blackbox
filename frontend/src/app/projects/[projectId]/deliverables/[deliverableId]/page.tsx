@@ -10,7 +10,7 @@ import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
 import {
-  getDeliverables,
+  getDeliverable,
   getDeliverableProgress,
   updateDeliverable,
   deleteDeliverable,
@@ -134,7 +134,7 @@ export default function DeliverableDetailPage() {
   const projectId = params?.projectId as string;
   const deliverableId = params?.deliverableId as string;
 
-  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [myRole, setMyRole] = useState<string | null>(null);
@@ -158,9 +158,14 @@ export default function DeliverableDetailPage() {
   const [taskDraft, setTaskDraft] = useState<{ requirementId: string } | null>(null);
   const [linkTaskId, setLinkTaskId] = useState("");
   const [linking, setLinking] = useState(false);
+  // 충족 확인 요청 중인 요구사항 — 빠른 연타로 PUT·DELETE 가 엇갈려 도착하지 않게 한다
+  const [assessingIds, setAssessingIds] = useState<Set<string>>(new Set());
 
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
-  const deliverable = deliverables.find((d) => d.id === deliverableId) ?? null;
+  // K-14 §2: 문구(content)가 바뀌면 서버가 충족 확인을 푼다. 필수 여부만 바꾸면 유지된다
+  const editingReq = deliverable?.requirements.find((r) => r.id === editingReqId) ?? null;
+  const assessmentWillReset =
+    editingReq?.assessment != null && reqContent.trim() !== editingReq.content.trim();
   const linkedTasks = tasks.filter((t) => t.deliverableId === deliverableId);
   const unlinkedTasks = tasks.filter((t) => !t.deliverableId);
   const contributors = members.filter((m) => m.role !== "OBSERVER");
@@ -169,16 +174,12 @@ export default function DeliverableDetailPage() {
     setError("");
     try {
       const [delRes, taskRes, memRes, projRes] = await Promise.all([
-        getDeliverables(projectId),
+        getDeliverable(projectId, deliverableId),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Member[]>(`/projects/${projectId}/members`),
         api.get<{ myRole: string }>(`/projects/${projectId}`),
       ]);
-      // 서버에 단건 조회 엔드포인트가 없어 목록에서 찾는다
-      if (!delRes.data.some((d) => d.id === deliverableId)) {
-        setError("제출물을 찾을 수 없습니다. 삭제되었거나 다른 프로젝트의 제출물입니다.");
-      }
-      setDeliverables(delRes.data);
+      setDeliverable(delRes.data);
       setTasks(taskRes.data);
       setMembers(memRes.data);
       setMyRole(projRes.data.myRole);
@@ -209,12 +210,8 @@ export default function DeliverableDetailPage() {
   }, [refresh]);
 
   const replaceRequirement = (updated: DeliverableRequirement) =>
-    setDeliverables((prev) =>
-      prev.map((d) =>
-        d.id === deliverableId
-          ? { ...d, requirements: d.requirements.map((r) => (r.id === updated.id ? updated : r)) }
-          : d
-      )
+    setDeliverable((prev) =>
+      prev ? { ...prev, requirements: prev.requirements.map((r) => (r.id === updated.id ? updated : r)) } : prev
     );
 
   // ── 제출물 수정·삭제 ──────────────────────────────────────────────────
@@ -254,8 +251,7 @@ export default function DeliverableDetailPage() {
       const payload = { content: reqContent.trim(), required: reqRequired };
       if (editingReqId) {
         await updateRequirement(projectId, deliverableId, editingReqId, payload);
-        // 문구가 바뀌면 서버가 충족 확인을 초기화한다 (K-14 §2)
-        setNotice("요구사항을 수정했습니다. 내용이 바뀌었다면 충족 확인이 초기화됩니다.");
+        setNotice("요구사항을 수정했습니다.");
       } else {
         await createRequirement(projectId, deliverableId, payload);
         setNotice("요구사항을 추가했습니다.");
@@ -279,8 +275,10 @@ export default function DeliverableDetailPage() {
 
   // K-14: 충족 확인 토글 (낙관적 업데이트, 실패 시 해당 항목만 원복)
   const handleToggleAssessment = async (req: DeliverableRequirement) => {
+    if (assessingIds.has(req.id)) return;
     const isAssessed = req.assessment !== null;
     setActionError("");
+    setAssessingIds((prev) => new Set(prev).add(req.id));
     replaceRequirement({
       ...req,
       assessment: isAssessed ? null : { assessedBy: { userId: "", name: "나" }, assessedAt: new Date().toISOString() },
@@ -296,6 +294,12 @@ export default function DeliverableDetailPage() {
       setActionError(
         apiError(err, isAssessed ? "충족 확인 해제에 실패했습니다. 다시 시도해주세요." : "충족 확인에 실패했습니다. 다시 시도해주세요.")
       );
+    } finally {
+      setAssessingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(req.id);
+        return next;
+      });
     }
   };
 
@@ -461,6 +465,9 @@ export default function DeliverableDetailPage() {
                   <p className="mt-1 text-xs text-bb-text2">
                     과제 안내의 필수 내용과 형식을 적으세요. 업무 완료와 요구사항 충족은 따로 확인합니다.
                   </p>
+                  {!canWrite && (
+                    <p className="mt-1 text-xs text-bb-text2">관찰자는 충족 여부를 확인할 수 없습니다.</p>
+                  )}
 
                   {deliverable.requirements.length === 0 ? (
                     <p className="my-4 text-sm text-bb-text2">예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부</p>
@@ -471,13 +478,14 @@ export default function DeliverableDetailPage() {
                         const reqTasks = linkedTasks.filter((t) => t.requirementId === req.id);
                         const reqDone = reqTasks.filter((t) => t.status === "DONE").length;
                         const allDone = reqTasks.length > 0 && reqDone === reqTasks.length;
+                        const openTasks = reqTasks.filter((t) => t.status !== "DONE");
 
                         return (
                           <li key={req.id} className="py-3">
                             <div className="flex items-start gap-3">
                               <button
                                 onClick={() => canWrite && handleToggleAssessment(req)}
-                                disabled={!canWrite}
+                                disabled={!canWrite || assessingIds.has(req.id)}
                                 className={`shrink-0 mt-0.5 p-0.5 rounded transition-colors ${
                                   canWrite
                                     ? assessed
@@ -499,6 +507,12 @@ export default function DeliverableDetailPage() {
                             <div className="mt-2 ml-[52px] flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                               <span className="text-bb-text2">
                                 연결 업무 {reqTasks.length}개{reqTasks.length > 0 && ` · ${reqDone}개 완료`}
+                                {/* K-14 §6-3: 확인 전이면 아직 안 끝난 업무를 보여 "안 봤다"와 "부족하다"를 구분한다 */}
+                                {!assessed && openTasks.length > 0 &&
+                                  ` · ${openTasks
+                                    .slice(0, 2)
+                                    .map((t) => `${t.title}(${TASK_STATUS_LABEL[t.status]})`)
+                                    .join(", ")}${openTasks.length > 2 ? ` 외 ${openTasks.length - 2}개` : ""}`}
                               </span>
                               {assessed && req.assessment && (
                                 <span className="text-teal-400">
@@ -533,8 +547,10 @@ export default function DeliverableDetailPage() {
                       <label htmlFor="requirement-content" className="block text-sm text-bb-text">
                         {editingReqId ? "요구사항 수정" : "요구사항 추가"}
                       </label>
-                      {editingReqId && (
-                        <p className="text-xs text-amber-400">내용을 바꾸면 이 요구사항의 충족 확인이 초기화됩니다.</p>
+                      {assessmentWillReset && editingReq?.assessment && (
+                        <p role="alert" className="text-xs text-amber-400">
+                          저장하면 {editingReq.assessment.assessedBy.name}님의 충족 확인이 풀립니다.
+                        </p>
                       )}
                       {reqError && <p role="alert" className="text-xs text-red-400">{reqError}</p>}
                       <textarea
@@ -680,7 +696,7 @@ export default function DeliverableDetailPage() {
           mode="create"
           task={null}
           members={contributors}
-          deliverables={deliverables}
+          deliverables={deliverable ? [deliverable] : []}
           defaultDeliverableId={deliverableId}
           defaultRequirementId={taskDraft.requirementId}
           onClose={() => setTaskDraft(null)}
