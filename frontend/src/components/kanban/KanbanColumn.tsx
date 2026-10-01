@@ -13,6 +13,7 @@ interface KanbanColumnProps {
   onAddTask: (status: TaskStatus) => void;
   onEditTask: (task: Task) => void;
   onMoveTask: (taskId: string, newStatus: TaskStatus) => void;
+  readOnly?: boolean;
 }
 
 export default function KanbanColumn({
@@ -22,9 +23,11 @@ export default function KanbanColumn({
   onAddTask,
   onEditTask,
   onMoveTask,
+  readOnly = false,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const { setNodeRef, isOver } = useDroppable({ id: column.id, disabled: readOnly });
   const isTodo = column.id === "TODO";
+  const canAdd = isTodo && !readOnly;
 
   return (
     <div className="flex flex-col min-h-0">
@@ -41,7 +44,7 @@ export default function KanbanColumn({
         </div>
 
         {/* 추가 버튼 — To Do 컬럼에만 표시 */}
-        {isTodo && (
+        {canAdd && (
           <button
             onClick={() => onAddTask(column.id)}
             className="text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10
@@ -71,13 +74,16 @@ export default function KanbanColumn({
               scoreMap={scoreMap}
               onEdit={onEditTask}
               onMove={onMoveTask}
+              readOnly={readOnly}
             />
           ))}
         </SortableContext>
 
         {/* 빈 상태 */}
         {tasks.length === 0 && (
-          isTodo ? (
+          readOnly ? (
+            <div className="flex-1 flex items-center justify-center py-8 text-xs text-slate-600">업무 없음</div>
+          ) : isTodo ? (
             /* To Do만 클릭으로 추가 가능 */
             <div
               onClick={() => onAddTask(column.id)}

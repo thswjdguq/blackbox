@@ -22,6 +22,7 @@ interface TaskCardProps {
   scoreMap: ScoreMap;
   onEdit: (task: Task) => void;
   onMove?: (taskId: string, newStatus: TaskStatus) => void;
+  readOnly?: boolean;
 }
 
 const PRIORITY_CONFIG = {
@@ -91,11 +92,11 @@ function ScoreChip({ score }: { score: number }) {
   );
 }
 
-export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardProps) {
+export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false }: TaskCardProps) {
   const [isMoving, setIsMoving] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id });
+    useSortable({ id: task.id, disabled: readOnly });
 
   // 카드 전체에 drag listeners 적용 — 어디서든 드래그 가능
   const style: React.CSSProperties = {
@@ -132,7 +133,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
       {...attributes}
       {...listeners}
       onClick={() => !isMoving && onEdit(task)}
-      className={`group relative bg-slate-800 border rounded-xl p-4 cursor-grab active:cursor-grabbing
+      className={`group relative bg-slate-800 border rounded-xl p-4 ${readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}
                   transition-colors duration-200 select-none overflow-hidden
                   ${isDone
                     ? "border-slate-700/40 opacity-60"
@@ -148,7 +149,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
       <div className="flex items-start gap-2 mb-3">
 
         {/* TODO 체크박스 — 클릭 시 In Progress 이동 */}
-        {task.status === "TODO" && (
+        {task.status === "TODO" && !readOnly && (
           <button
             onPointerDown={stopPointer}   // drag 시작 방지
             onClick={(e) => triggerMove(e, "IN_PROGRESS")}
@@ -173,10 +174,12 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
         )}
 
         {/* 드래그 핸들 (시각 힌트) */}
-        <GripVertical
-          size={14}
-          className="mt-0.5 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0"
-        />
+        {!readOnly && (
+          <GripVertical
+            size={14}
+            className="mt-0.5 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0"
+          />
+        )}
 
         {/* Title */}
         <p className={`flex-1 text-sm font-medium leading-snug line-clamp-2 transition-colors
@@ -250,7 +253,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
             </span>
           )}
 
-          {task.status === "IN_PROGRESS" && (
+          {task.status === "IN_PROGRESS" && !readOnly && (
             <button
               onPointerDown={stopPointer}   // drag 시작 방지
               onClick={(e) => triggerMove(e, "DONE")}

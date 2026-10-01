@@ -27,6 +27,8 @@ interface TaskModalProps {
   onCreate: (payload: CreateTaskPayload) => Promise<void>;
   onUpdate: (taskId: string, payload: Partial<CreateTaskPayload>) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
+  /** 관찰자: 내용만 보여주고 저장·삭제를 숨긴다 */
+  readOnly?: boolean;
 }
 
 // ── 우선순위 선택지 ───────────────────────────────────────────────────
@@ -56,6 +58,7 @@ export default function TaskModal({
   onCreate,
   onUpdate,
   onDelete,
+  readOnly = false,
 }: TaskModalProps) {
   const [title, setTitle]       = useState(task?.title ?? "");
   const [deliverableId, setDeliverableId] = useState(task?.deliverableId ?? defaultDeliverableId);
@@ -155,7 +158,7 @@ export default function TaskModal({
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <h2 className="text-base font-semibold text-slate-100">
-            {mode === "create" ? "새 태스크" : "태스크 수정"}
+            {readOnly ? "업무 보기" : mode === "create" ? "새 태스크" : "태스크 수정"}
           </h2>
           <button
             onClick={onClose}
@@ -176,6 +179,11 @@ export default function TaskModal({
             </div>
           )}
 
+          {readOnly && (
+            <p className="text-xs text-slate-400">관찰자는 업무를 볼 수만 있습니다.</p>
+          )}
+
+          <fieldset disabled={readOnly} className="space-y-4 min-w-0 border-0 p-0 m-0">
           {/* 제목 */}
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">
@@ -329,7 +337,20 @@ export default function TaskModal({
             </div>
           </div>
 
+          </fieldset>
+
           {/* 하단 액션 버튼 */}
+          {readOnly ? (
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-slate-300 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          ) : (
           <div className="flex items-center justify-between pt-2">
             {/* 삭제 버튼 (편집 모드만) */}
             {mode === "edit" ? (
@@ -392,6 +413,7 @@ export default function TaskModal({
               </button>
             </div>
           </div>
+          )}
         </form>
       </div>
     </div>

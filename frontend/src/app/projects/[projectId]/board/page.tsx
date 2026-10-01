@@ -32,6 +32,7 @@ interface ProjectInfo {
   name: string;
   courseName: string | null;
   semester: string | null;
+  myRole?: string;
 }
 
 interface ScoreEntry {
@@ -66,6 +67,9 @@ export default function BoardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [notionUrl, setNotionUrl] = useState<string | null>(null);
+  // 동기화 실패는 보드 전체 오류(error)와 분리한다. 실패해도 보드는 그대로 보여야 한다
+  const [syncError, setSyncError] = useState("");
+  const readOnly = project?.myRole === "OBSERVER";
 
   // ── 필터 ──────────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<KanbanFilter>({ assigneeId: null, priority: null, tag: "" });
@@ -130,13 +134,14 @@ export default function BoardPage() {
   async function handleNotionSync() {
     setSyncing(true);
     setNotionUrl(null);
+    setSyncError("");
     try {
       const res = await api.post<{ pageUrl: string; taskCount: number; message: string }>(
         `/projects/${projectId}/tasks/notion/sync`
       );
       setNotionUrl(res.data.pageUrl);
     } catch {
-      setError("Notion 동기화 실패 — Notion 페이지에 Integration 연결이 되어있는지 확인해주세요 (페이지 → ... → Connections).");
+      setSyncError("Notion 동기화 실패 — Notion 페이지에 Integration 연결이 되어있는지 확인해주세요 (페이지 → ... → Connections).");
     } finally {
       setSyncing(false);
     }
@@ -325,6 +330,20 @@ export default function BoardPage() {
           </div>
         </div>
 
+        {syncError && (
+          <div role="alert" className="mx-8 mt-4 flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
+            <AlertCircle size={14} className="shrink-0" />
+            {syncError}
+            <button onClick={() => setSyncError("")} className="ml-auto hover:text-red-300" aria-label="안내 닫기">
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
+        {readOnly && (
+          <p className="mx-8 mt-4 text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다. 업무를 클릭하면 내용을 확인할 수 있습니다.</p>
+        )}
+
         {/* Notion sync result banner */}
         {notionUrl && (
           <div className="mx-8 mt-4 flex items-center gap-3 px-4 py-3 bg-[#191919] border border-[#333] rounded-xl text-sm text-white">
@@ -418,6 +437,7 @@ export default function BoardPage() {
               scoreMap={scoreMap}
               filter={filter}
               onTasksChange={setTasks}
+              readOnly={readOnly}
             />
           </div>
 
