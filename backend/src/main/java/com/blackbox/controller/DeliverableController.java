@@ -17,6 +17,9 @@ public class DeliverableController {
     @GetMapping public List<Response> list(@PathVariable UUID projectId, @AuthenticationPrincipal User user) {
         return service.list(projectId, user);
     }
+    @GetMapping("/{id}") public Response get(@PathVariable UUID projectId, @PathVariable UUID id, @AuthenticationPrincipal User user) {
+        return service.get(projectId, id, user);
+    }
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public Response create(@PathVariable UUID projectId, @Valid @RequestBody SaveRequest req, @AuthenticationPrincipal User user) {
         return service.save(projectId, null, req, user);

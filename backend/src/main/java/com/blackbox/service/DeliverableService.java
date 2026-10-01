@@ -26,6 +26,13 @@ public class DeliverableService {
         return deliverables.findByProjectOrderByDueDateAscCreatedAtAsc(project).stream().map(this::response).toList();
     }
 
+    @Transactional(readOnly = true)
+    public Response get(UUID projectId, UUID id, User user) {
+        Project project = access.getProject(projectId);
+        access.requireMember(project, user);
+        return response(find(project, id));
+    }
+
     public Response save(UUID projectId, UUID id, SaveRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
