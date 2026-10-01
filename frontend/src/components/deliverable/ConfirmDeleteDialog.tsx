@@ -22,11 +22,15 @@ export default function ConfirmDeleteDialog({
     try {
       await onConfirm();
     } catch (err) {
+      // 409 안내는 서버 detail 을 쓴다 (제출물·요구사항별로 문구가 다르다)
       const status = (err as { response?: { status?: number } })?.response?.status;
       setError(
-        status === 409
-          ? "연결된 업무가 있어 삭제할 수 없습니다. 업무 연결을 먼저 해제하세요."
-          : apiError(err, "삭제에 실패했습니다. 다시 시도해주세요.")
+        apiError(
+          err,
+          status === 409
+            ? "연결된 업무가 있어 삭제할 수 없습니다. 업무 연결을 먼저 해제하세요."
+            : "삭제에 실패했습니다. 다시 시도해주세요."
+        )
       );
       setBusy(false);
     }
