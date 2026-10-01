@@ -41,8 +41,8 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 
 // ── 공용 입력 스타일 ──────────────────────────────────────────────────
 const INPUT_CLS =
-  "w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm " +
-  "text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 " +
+  "w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2.5 text-sm " +
+  "text-bb-text placeholder-slate-500 focus:outline-none focus:border-indigo-500 " +
   "focus:ring-1 focus:ring-indigo-500/30 transition-all";
 
 // ── 태스크 생성/수정 모달 컴포넌트 ───────────────────────────────────
@@ -76,6 +76,18 @@ export default function TaskModal({
   const [submitting, setSubmitting]   = useState(false);
   const [error, setError]             = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  // 배경을 잘못 눌러 작성 중인 내용을 잃지 않도록, 처음 값과 달라졌는지 비교한다
+  const initialForm = JSON.stringify([
+    task?.title ?? "", task?.deliverableId ?? defaultDeliverableId, task?.requirementId ?? defaultRequirementId,
+    task?.completionCriteria ?? "", task?.description ?? "", task?.priority ?? "MEDIUM", task?.tag ?? "",
+    task?.dueDate ?? "", task?.assignees.map((a) => a.userId) ?? [], task?.status ?? defaultStatus,
+  ]);
+  const currentForm = JSON.stringify([
+    title, deliverableId, requirementId, completionCriteria, description, priority, tag, dueDate, selectedAssignees, status,
+  ]);
+  const dirty = !readOnly && initialForm !== currentForm;
 
   // task prop 변경 시 폼 필드 동기화
   useEffect(() => {
@@ -149,20 +161,32 @@ export default function TaskModal({
       {/* 배경 딤 레이어 */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => (dirty ? setConfirmClose(true) : onClose())}
       />
 
       {/* 모달 패널 */}
-      <div className="relative w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
+      <div className="relative w-full max-w-lg bg-bb-surface border border-bb-border rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
+
+        {confirmClose && (
+          <div role="alert" className="flex items-center gap-2 px-6 py-3 bg-amber-500/10 border-b border-amber-500/30 text-xs text-amber-400">
+            작성 중인 내용이 저장되지 않았습니다. 닫을까요?
+            <button type="button" onClick={() => setConfirmClose(false)} className="ml-auto px-2 py-1 text-bb-text2 hover:text-bb-text">
+              계속 작성
+            </button>
+            <button type="button" onClick={onClose} className="px-2 py-1 text-amber-300 border border-amber-500/40 rounded-md hover:bg-amber-500/10">
+              닫기
+            </button>
+          </div>
+        )}
 
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-          <h2 className="text-base font-semibold text-slate-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-bb-border">
+          <h2 className="text-base font-semibold text-bb-text">
             {readOnly ? "업무 보기" : mode === "create" ? "새 태스크" : "태스크 수정"}
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-700 transition-all"
+            className="text-bb-text2 hover:text-bb-text p-1.5 rounded-lg hover:bg-bb-surface2 transition-all"
             aria-label="닫기"
           >
             <X size={16} />
@@ -180,13 +204,13 @@ export default function TaskModal({
           )}
 
           {readOnly && (
-            <p className="text-xs text-slate-400">관찰자는 업무를 볼 수만 있습니다.</p>
+            <p className="text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다.</p>
           )}
 
           <fieldset disabled={readOnly} className="space-y-4 min-w-0 border-0 p-0 m-0">
           {/* 제목 */}
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+            <label className="block text-xs font-medium text-bb-text2 mb-1.5">
               제목 <span className="text-rose-400">*</span>
             </label>
             <input
@@ -199,30 +223,30 @@ export default function TaskModal({
           </div>
 
           <div>
-            <label htmlFor="task-deliverable" className="block text-xs font-medium text-slate-400 mb-1.5">연결할 제출물</label>
+            <label htmlFor="task-deliverable" className="block text-xs font-medium text-bb-text2 mb-1.5">연결할 제출물</label>
             <select id="task-deliverable" className={INPUT_CLS} value={deliverableId}
               onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
               <option value="">제출물 미연결</option>
               {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 제출물"}</option>}
               {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
-            <p className="text-xs text-slate-400 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
+            <p className="text-xs text-bb-text2 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
           </div>
           {selectedDeliverable && <div>
-            <label htmlFor="task-requirement" className="block text-xs font-medium text-slate-400 mb-1.5">관련 요구사항 (선택)</label>
+            <label htmlFor="task-requirement" className="block text-xs font-medium text-bb-text2 mb-1.5">관련 요구사항 (선택)</label>
             <select id="task-requirement" className={INPUT_CLS} value={requirementId} onChange={e => setRequirementId(e.target.value)}>
               <option value="">제출물 전체 작업</option>
               {selectedDeliverable.requirements.map(r => <option key={r.id} value={r.id}>{r.required ? "[필수] " : ""}{r.content}</option>)}
             </select>
           </div>}
           <div>
-            <label htmlFor="completion-criteria" className="block text-xs font-medium text-slate-400 mb-1.5">완료 기준</label>
+            <label htmlFor="completion-criteria" className="block text-xs font-medium text-bb-text2 mb-1.5">완료 기준</label>
             <textarea id="completion-criteria" value={completionCriteria} onChange={e => setCompletionCriteria(e.target.value)}
               rows={2} maxLength={2000} className={`${INPUT_CLS} resize-none`} placeholder="예: 비교표에 공통 의견과 출처를 모두 포함" />
           </div>
           {/* 설명 */}
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">설명</label>
+            <label className="block text-xs font-medium text-bb-text2 mb-1.5">설명</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -235,14 +259,14 @@ export default function TaskModal({
           {/* 상태 선택 (편집 모드) */}
           {mode === "edit" && (
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">상태</label>
+              <label className="block text-xs font-medium text-bb-text2 mb-1.5">상태</label>
               <div className="flex gap-2">
                 {KANBAN_COLUMNS.map((col) => {
                   const isActive = status === col.id;
                   const colorMap: Record<string, string> = {
-                    TODO:        isActive ? "border-slate-400 bg-slate-700 text-slate-100" : "border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-400",
-                    IN_PROGRESS: isActive ? "border-indigo-500 bg-indigo-500/20 text-indigo-300" : "border-slate-700 text-slate-500 hover:border-indigo-500/40 hover:text-indigo-400",
-                    DONE:        isActive ? "border-teal-500 bg-teal-500/20 text-teal-300" : "border-slate-700 text-slate-500 hover:border-teal-500/40 hover:text-teal-400",
+                    TODO:        isActive ? "border-slate-400 bg-bb-surface2 text-bb-text" : "border-bb-border text-bb-text2 hover:border-bb-text2/50 hover:text-bb-text",
+                    IN_PROGRESS: isActive ? "border-indigo-500 bg-indigo-500/20 text-indigo-300" : "border-bb-border text-bb-text2 hover:border-indigo-500/40 hover:text-indigo-400",
+                    DONE:        isActive ? "border-teal-500 bg-teal-500/20 text-teal-300" : "border-bb-border text-bb-text2 hover:border-teal-500/40 hover:text-teal-400",
                   };
                   return (
                     <button
@@ -262,7 +286,7 @@ export default function TaskModal({
           {/* 우선순위 + 태그 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">우선순위</label>
+              <label className="block text-xs font-medium text-bb-text2 mb-1.5">우선순위</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
@@ -274,8 +298,8 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                태그 <span className="text-slate-600">(최대 30자)</span>
+              <label className="block text-xs font-medium text-bb-text2 mb-1.5">
+                태그 <span className="text-bb-text2/70">(최대 30자)</span>
               </label>
               <input
                 value={tag}
@@ -289,7 +313,7 @@ export default function TaskModal({
 
           {/* 마감일 */}
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">마감일</label>
+            <label className="block text-xs font-medium text-bb-text2 mb-1.5">마감일</label>
             <SmartDateInput
               value={dueDate}
               onChange={setDueDate}
@@ -299,7 +323,7 @@ export default function TaskModal({
 
           {/* 담당자 선택 */}
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-2">담당자</label>
+            <label className="block text-xs font-medium text-bb-text2 mb-2">담당자</label>
             <div className="flex flex-wrap gap-2">
               {members.map((m) => {
                 const selected = selectedAssignees.includes(m.userId);
@@ -313,7 +337,7 @@ export default function TaskModal({
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                       selected
                         ? "border-indigo-500 bg-indigo-500/15 text-indigo-300"
-                        : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600"
+                        : "border-bb-border bg-bb-bg text-bb-text2 hover:border-bb-text2/50"
                     }`}
                   >
                     <div
@@ -332,7 +356,7 @@ export default function TaskModal({
                 );
               })}
               {members.length === 0 && (
-                <span className="text-xs text-slate-600">멤버가 없습니다</span>
+                <span className="text-xs text-bb-text2/70">멤버가 없습니다</span>
               )}
             </div>
           </div>
@@ -345,7 +369,7 @@ export default function TaskModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-slate-300 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors"
+                className="px-4 py-2 text-sm text-bb-text border border-bb-border rounded-lg hover:bg-bb-surface2 transition-colors"
               >
                 닫기
               </button>
@@ -368,7 +392,7 @@ export default function TaskModal({
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(false)}
-                    className="text-xs px-3 py-1.5 text-slate-400 hover:text-slate-200 transition-all"
+                    className="text-xs px-3 py-1.5 text-bb-text2 hover:text-bb-text transition-all"
                   >
                     취소
                   </button>
@@ -377,7 +401,7 @@ export default function TaskModal({
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-rose-400 transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-bb-text2 hover:text-rose-400 transition-colors"
                 >
                   <Trash2 size={13} />
                   삭제
@@ -392,7 +416,7 @@ export default function TaskModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                className="px-4 py-2 text-sm text-bb-text2 hover:text-bb-text transition-colors"
               >
                 취소
               </button>

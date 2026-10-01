@@ -29,7 +29,7 @@ const PRIORITY_CONFIG = {
   URGENT: { icon: ChevronsUp,  label: "긴급", cls: "text-rose-400 bg-rose-400/10" },
   HIGH:   { icon: ChevronUp,   label: "높음", cls: "text-orange-400 bg-orange-400/10" },
   MEDIUM: { icon: Minus,       label: "중간", cls: "text-indigo-400 bg-indigo-400/10" },
-  LOW:    { icon: ChevronDown, label: "낮음", cls: "text-slate-400 bg-slate-700" },
+  LOW:    { icon: ChevronDown, label: "낮음", cls: "text-bb-text2 bg-bb-surface2" },
 };
 
 function formatDue(dueDate: string | null): { label: string; cls: string } | null {
@@ -41,7 +41,7 @@ function formatDue(dueDate: string | null): { label: string; cls: string } | nul
   const label = due.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
   if (diff < 0)  return { label, cls: "text-rose-400" };
   if (diff <= 2) return { label, cls: "text-orange-400" };
-  return { label, cls: "text-slate-400" };
+  return { label, cls: "text-bb-text2" };
 }
 
 // 마감일 경고 배지 + 카드 좌측 강조선 (오늘 날짜 기준 클라이언트 계산)
@@ -71,7 +71,7 @@ function Avatar({ name }: { name: string }) {
     <div
       title={name}
       style={{ background: `hsl(${hue} 55% 45%)` }}
-      className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-slate-800 -ml-1 first:ml-0"
+      className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-bb-surface -ml-1 first:ml-0"
     >
       {initials}
     </div>
@@ -82,7 +82,7 @@ function ScoreChip({ score }: { score: number }) {
   const color =
     score >= 120 ? "text-teal-300 bg-teal-400/10" :
     score >= 80  ? "text-indigo-300 bg-indigo-400/10" :
-    score >= 50  ? "text-slate-300 bg-slate-700" :
+    score >= 50  ? "text-bb-text bg-bb-surface2" :
                    "text-rose-400 bg-rose-400/10";
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${color}`}>
@@ -133,11 +133,11 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
       {...attributes}
       {...listeners}
       onClick={() => !isMoving && onEdit(task)}
-      className={`group relative bg-slate-800 border rounded-xl p-4 ${readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}
+      className={`group relative bg-bb-surface border rounded-xl p-4 ${readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}
                   transition-colors duration-200 select-none overflow-hidden
                   ${isDone
-                    ? "border-slate-700/40 opacity-60"
-                    : "border-slate-700/60 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5"
+                    ? "border-bb-border/40 opacity-60"
+                    : "border-bb-border/60 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5"
                   }`}
     >
       {/* 마감일 경고 강조선 */}
@@ -177,15 +177,15 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
         {!readOnly && (
           <GripVertical
             size={14}
-            className="mt-0.5 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0"
+            className="mt-0.5 text-bb-text2/70 group-hover:text-bb-text2 transition-colors shrink-0"
           />
         )}
 
         {/* Title */}
         <p className={`flex-1 text-sm font-medium leading-snug line-clamp-2 transition-colors
                        ${isDone
-                         ? "line-through text-slate-500"
-                         : "text-slate-200 group-hover:text-white"}`}>
+                         ? "line-through text-bb-text2"
+                         : "text-bb-text"}`}>
           {task.title}
         </p>
 
@@ -208,7 +208,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
       </p>
       {/* Description preview */}
       {task.description && (
-        <p className="text-xs text-slate-500 mb-3 line-clamp-2 leading-relaxed">
+        <p className="text-xs text-bb-text2 mb-3 line-clamp-2 leading-relaxed">
           {task.description}
         </p>
       )}
@@ -224,18 +224,18 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
       )}
 
       {/* Bottom Row */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/60">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-bb-border/60">
         {/* Assignee avatars */}
         <div className="flex items-center">
           {task.assignees.length === 0 ? (
-            <span className="text-[10px] text-slate-600">미배정</span>
+            <span className="text-[10px] text-bb-text2/70">미배정</span>
           ) : (
             task.assignees.slice(0, 4).map((a) => (
               <Avatar key={a.userId} name={a.name} />
             ))
           )}
           {task.assignees.length > 4 && (
-            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[9px] text-slate-400 -ml-1">
+            <div className="w-6 h-6 rounded-full bg-bb-surface2 flex items-center justify-center text-[9px] text-bb-text2 -ml-1">
               +{task.assignees.length - 4}
             </div>
           )}

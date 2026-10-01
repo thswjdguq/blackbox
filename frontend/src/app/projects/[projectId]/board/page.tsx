@@ -202,7 +202,7 @@ export default function BoardPage() {
 
       <main className="ml-64 min-h-screen flex flex-col">
         {/* Top bar with gradient accent */}
-        <div className="relative px-8 pt-8 pb-6 border-b border-slate-800 overflow-hidden">
+        <div className="relative px-8 pt-8 pb-6 border-b border-bb-border overflow-hidden">
           {/* Decorative gradient */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 via-transparent to-teal-400/5 pointer-events-none" />
 
@@ -293,7 +293,7 @@ export default function BoardPage() {
                 <span className="text-xs text-bb-text2">
                   완료율 <span className="text-teal-400 font-bold">{completionPct}%</span>
                 </span>
-                <div className="w-24 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                <div className="w-24 h-1.5 bg-bb-surface2 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
                     style={{ width: `${completionPct}%` }}
@@ -361,7 +361,7 @@ export default function BoardPage() {
         )}
 
         {/* ── 필터 바 ──────────────────────────────────────────────────────── */}
-        <div className="px-8 py-3 border-b border-slate-800 flex items-center gap-3 flex-wrap">
+        <div className="px-8 py-3 border-b border-bb-border flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-bb-text2 shrink-0">
             <SlidersHorizontal size={13} />
             <span>필터</span>
@@ -384,7 +384,7 @@ export default function BoardPage() {
           {(["LOW", "MEDIUM", "HIGH", "URGENT"] as TaskPriority[]).map((p) => {
             const labels: Record<TaskPriority, string> = { LOW: "낮음", MEDIUM: "보통", HIGH: "높음", URGENT: "긴급" };
             const colors: Record<TaskPriority, string> = {
-              LOW: "border-slate-600 text-slate-400 data-[active=true]:bg-slate-600/30 data-[active=true]:text-slate-200",
+              LOW: "border-bb-border text-bb-text2 data-[active=true]:bg-bb-surface2/30 data-[active=true]:text-bb-text",
               MEDIUM: "border-blue-500/50 text-blue-400 data-[active=true]:bg-blue-500/20 data-[active=true]:text-blue-300",
               HIGH: "border-orange-500/50 text-orange-400 data-[active=true]:bg-orange-500/20 data-[active=true]:text-orange-300",
               URGENT: "border-red-500/50 text-red-400 data-[active=true]:bg-red-500/20 data-[active=true]:text-red-300",
@@ -475,7 +475,7 @@ export default function BoardPage() {
 
                       {/* Pill badges */}
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-bb-surface text-bb-text2 border border-bb-border">
                           할 일 {myTodo}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
@@ -488,7 +488,7 @@ export default function BoardPage() {
 
                       {/* Progress bar */}
                       <div className="flex-1 flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="flex-1 h-1.5 bg-bb-surface rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
                             style={{ width: `${pct}%` }}
