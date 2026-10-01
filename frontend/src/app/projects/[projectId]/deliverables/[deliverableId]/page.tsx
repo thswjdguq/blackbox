@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import TaskModal from "@/components/kanban/TaskModal";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
+import ReviewPanel from "@/components/deliverable/ReviewPanel";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
 import {
@@ -52,7 +53,7 @@ type Tab = "overview" | "review" | "submit";
 
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "overview", label: "요구사항·업무", implemented: true },
-  { id: "review", label: "검토", implemented: false },
+  { id: "review", label: "검토", implemented: true },
   { id: "submit", label: "최종 제출", implemented: false },
 ];
 
@@ -138,6 +139,8 @@ export default function DeliverableDetailPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [myRole, setMyRole] = useState<string | null>(null);
+  // 검토 탭: 파일을 올린 사람은 그 회차를 승인할 수 없다
+  const [myUserId, setMyUserId] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeliverableProgress | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
@@ -173,16 +176,18 @@ export default function DeliverableDetailPage() {
   const fetchAll = useCallback(async () => {
     setError("");
     try {
-      const [delRes, taskRes, memRes, projRes] = await Promise.all([
+      const [delRes, taskRes, memRes, projRes, profileRes] = await Promise.all([
         getDeliverable(projectId, deliverableId),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Member[]>(`/projects/${projectId}/members`),
         api.get<{ myRole: string }>(`/projects/${projectId}`),
+        api.get<{ id: string }>("/auth/profile"),
       ]);
       setDeliverable(delRes.data);
       setTasks(taskRes.data);
       setMembers(memRes.data);
       setMyRole(projRes.data.myRole);
+      setMyUserId(profileRes.data.id);
     } catch (err) {
       setError(apiError(err, "제출물 정보를 불러오지 못했습니다."));
     } finally {
@@ -669,6 +674,17 @@ export default function DeliverableDetailPage() {
                   )}
                 </section>
               </div>
+            )}
+
+            {activeTab === "review" && (
+              <ReviewPanel
+                projectId={projectId}
+                deliverableId={deliverableId}
+                canWrite={canWrite}
+                myUserId={myUserId}
+                tasks={tasks}
+                onTasksChanged={refresh}
+              />
             )}
           </>
         )}
