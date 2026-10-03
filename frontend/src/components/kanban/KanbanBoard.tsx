@@ -71,6 +71,12 @@ export default function KanbanBoard({
   const [boardError, setBoardError] = useState("");
   const openedTask = useRef<string | null>(null);
 
+  // 제출물 상세의 "보드에서 이 제출물 업무 보기"가 ?deliverable=<id> 로 연다
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("deliverable");
+    if (id) setDeliveryFilter(id);
+  }, []);
+
   useEffect(() => {
     api.get<Deliverable[]>(`/projects/${projectId}/deliverables`)
       .then(({ data }) => setDeliverables(data))
