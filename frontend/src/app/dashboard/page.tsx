@@ -14,6 +14,8 @@ import {
   CheckSquare,
   Clock,
   ChevronRight,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
@@ -43,9 +45,9 @@ interface Project {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   // 프로젝트 생성 모달
   const [showCreate, setShowCreate] = useState(false);
@@ -77,12 +79,14 @@ export default function DashboardPage() {
   }, []);
 
   const fetchProjects = async () => {
+    setLoadError("");
     try {
       const { data } = await api.get<Project[]>("/projects");
       setProjects(data);
       localStorage.setItem("projectCount", data.length.toString());
-    } catch {
-      router.replace("/login");
+    } catch (err) {
+      // 인증 만료(401)는 api 인터셉터가 로그인으로 보낸다. 그 밖의 실패를 로그아웃처럼 보이게 하지 않는다
+      setLoadError(apiError(err, "프로젝트 목록을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -219,11 +223,26 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="bg-bb-surface border border-bb-border rounded-xl p-6 animate-pulse">
-                <div className="h-4 bg-slate-700 rounded w-2/3 mb-3" />
-                <div className="h-3 bg-slate-700 rounded w-1/2 mb-6" />
-                <div className="h-3 bg-slate-700 rounded w-full" />
+                <div className="h-4 bg-bb-surface2 rounded w-2/3 mb-3" />
+                <div className="h-3 bg-bb-surface2 rounded w-1/2 mb-6" />
+                <div className="h-3 bg-bb-surface2 rounded w-full" />
               </div>
             ))}
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <AlertCircle size={28} className="text-red-400 mb-3" />
+            <p className="text-sm text-bb-text2 mb-4">{loadError}</p>
+            <button
+              onClick={() => {
+                setLoading(true);
+                fetchProjects();
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm text-bb-text2 hover:text-bb-text border border-bb-border rounded-lg transition-colors"
+            >
+              <RefreshCw size={14} />
+              다시 시도
+            </button>
           </div>
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">

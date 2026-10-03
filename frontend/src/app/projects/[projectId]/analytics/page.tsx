@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
@@ -151,8 +152,8 @@ export default function AnalyticsPage() {
       a.download = `blackbox-report-${new Date().toISOString().slice(0, 10)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      setError("리포트 생성에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "리포트 생성에 실패했습니다."));
     } finally {
       setDownloading(false);
     }
@@ -163,8 +164,8 @@ export default function AnalyticsPage() {
     try {
       const { data } = await api.post<ScoreEntry[]>(`/projects/${projectId}/scores/recalculate`);
       setScores(data);
-    } catch {
-      setError("재계산에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "재계산에 실패했습니다."));
     } finally {
       setRecalculating(false);
     }
