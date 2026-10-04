@@ -180,8 +180,16 @@ docker compose up -d --build
 #   https://localhost
 ```
 
-- Windows 편의 스크립트: `start-local.ps1` / `start-local.bat` (`.env.local` 사용).
-- DB만 띄우려면: `docker compose -f docker-compose.db-only.yml up -d`.
+- 컨테이너를 다시 빌드하지 않고 개발하려면(코드 수정이 바로 반영된다) 터미널 세 개에서:
+
+  ```bash
+  docker compose -f docker-compose.db-only.yml up -d                  # DB만
+  cd backend && ./gradlew bootRun                                     # SPRING_DATASOURCE_USERNAME·PASSWORD, JWT_SECRET을 환경 변수로 준다
+  cd frontend && NEXT_DEV_BACKEND=http://localhost:8080 npm run dev   # 이 값이 없으면 화면의 /api 호출이 실패한다
+  ```
+
+  PowerShell에서는 `$env:NEXT_DEV_BACKEND='http://localhost:8080'; npm run dev`처럼 준다.
+  파일 업로드까지 쓰려면 백엔드에 `FILE_UPLOAD_DIR`도 준다. 기본값 `/data/uploads`는 컨테이너 안의 경로라 로컬에서는 업로드가 500으로 실패한다. 저장소 밖의 폴더를 지정한다.
 - 헬스 체크: `GET /api/health`.
 
 ---
@@ -196,7 +204,7 @@ docker compose up -d --build
 | `JWT_SECRET` | JWT 서명 키 (최소 32자) |
 | `JWT_EXPIRATION_MS` / `JWT_REFRESH_EXPIRATION_MS` | 토큰 만료 |
 | `APP_CORS_ORIGINS` | CORS 허용 origin (로컬은 `*`) |
-| `NEXT_PUBLIC_API_URL` | 프론트가 호출할 API base |
+| `NEXT_PUBLIC_API_URL` | Docker 빌드에 넘기는 값. 현재 화면 코드는 읽지 않는다(화면은 `/api`로 요청) |
 
 **선택 연동(비우면 비활성):** `GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`·`GITHUB_WEBHOOK_SECRET`, `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_REDIRECT_URI`, `CLAUDE_API_KEY`·`OPENAI_API_KEY`, `NOTION_API_KEY`·`NOTION_PARENT_PAGE_ID`·`NOTION_CALENDAR_DB_ID`, `DISCORD_WEBHOOK_URL`, `FRONTEND_BASE_URL`.
 
