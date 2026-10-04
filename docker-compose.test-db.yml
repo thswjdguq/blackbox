@@ -13,7 +13,8 @@ services:
     container_name: blackbox_test_db
     restart: unless-stopped
     ports:
-      - "55432:5432"          # 개발 DB(5432)와 겹치지 않게 별도 포트
+      # 개발 DB(5432)와 겹치지 않고, Windows가 부팅마다 바꿔 잡는 예약 구간(49152~65535)도 피한 포트
+      - "${BB_TEST_DB_PORT:-25432}:5432"
     environment:
       POSTGRES_DB: blackbox_test
       POSTGRES_USER: blackbox_test
