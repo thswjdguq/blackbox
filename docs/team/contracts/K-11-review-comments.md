@@ -79,7 +79,7 @@ K-10 승인과 K-20 확정은 같은 트랜잭션에서 이 읽기 전용 조회
 
 ## 5. DB 제안과 병합 순서
 
-테이블 이름 `review_comments` 제안: id, project_id, deliverable_id, review_id, author_id, content, created_at, resolved_by, resolved_at, resolution_reason. status 열은 만들지 않는다. 업무 연결은 K-12 연결 테이블로 분리한다.
+테이블 이름 `review_comments` 제안: id, project_id, deliverable_id, review_id, author_id, content, created_at, resolved_by, resolved_at, resolution_reason, linked_task_id. status 열은 만들지 않는다. #60 A 리뷰에 따라 업무 연결은 별도 테이블 대신 nullable UNIQUE linked_task_id로 두며 소속 제약·삭제 정책은 K-12 v0.3을 따른다. 연결 업무 삭제는 해결 기록을 초기화하지 않는다.
 회차·제출물·프로젝트 소속을 복합 외래키로 보장한다. 해결자·해결 시각은 함께 존재하거나 함께 null이며, 미해결이면 사유도 null인 CHECK 제약을 제안한다. 해결 사유만 null인 해결 상태는 허용한다. 사용자 외래키는 연쇄 삭제 없이 유지한다.
 K-10 #69에서 A가 V22를 K-11·K-12용으로 예약했다. 계약 합의 후 A가 작성하며 B가 migration을 생성하거나 기존 파일을 변경하지 않는다.
 
