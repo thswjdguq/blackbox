@@ -1,6 +1,6 @@
 # K-12 피드백의 업무 전환 계약
 
-- 버전 0.1 / 상태 DRAFT (A·C 확인 전)
+- 버전 0.2 / 상태 DRAFT (C 리뷰 반영, A·C 재확인 대기)
 - 생산자 손정협(B) / 소비자 손정효(C), 송승준(A, DB·검토 잠금)
 - 작성 2026-09-30 / 기준 main `9ab0069` / Task B-21
 - 의존 K-10·K-11 합의 및 B-20. 실제 API·DB는 미구현.
@@ -8,14 +8,14 @@
 ## 요청과 응답
 
 POST `/api/projects/{projectId}/deliverables/{deliverableId}/reviews/{reviewId}/comments/{commentId}/task`
-기존 JWT 인증. 팀장·팀원만 허용하며 관찰자는 403. ID는 UUID.
+기존 인증 필터를 사용한다. K-10과 같은 인증 경로를 사용하며 팀장·팀원만 허용하고 관찰자는 403. ID는 UUID.
 
 ```json
 { "title": "보고서 출처 보완", "completionCriteria": "인용한 문장마다 출처 기재" }
 ```
 
-title trim 후 1~200자 필수. completionCriteria는 선택, null·생략·trim 후 빈 문자열은 미설정(null)으로 제안한다. 상세 설명은 코멘트 원문을 복사한다. 담당자·기한은 기존 업무 수정 API에서 지정하며 이 API는 임의로 팀원을 배정하지 않는다.
-업무는 TODO, 해당 프로젝트·제출물에 연결, requirementId는 null. 업무 DONE은 K-11에서 REFLECTION_PENDING만 만들고 자동 해결하지 않는다.
+title trim 후 1~255자 필수. 기존 CreateTaskRequest와 업무 화면의 기준에 맞췄다. completionCriteria는 trim 후 최대 2000자 선택, null·생략·빈 문자열은 미설정(null)으로 제안한다. 상세 설명은 코멘트 원문을 복사한다. 담당자·기한은 기존 업무 수정 API에서 지정하며 이 API는 임의로 팀원을 배정하지 않는다.
+업무는 TODO, 해당 프로젝트·제출물에 연결, requirementId는 null. 업무 DONE은 K-11 조회에서 REFLECTION_PENDING으로 표시될 뿐 자동 해결하지 않는다. 코멘트 status 열이나 업무 변경 시 코멘트 갱신은 만들지 않는다.
 
 성공 예(제안): `{ "commentId": "33333333-3333-4333-8333-333333333333", "taskId": "66666666-6666-4666-8666-666666666666", "created": true }`.
 최초 201, 같은 피드백 재시도는 기존 업무를 200·created=false로 반환한다. 다른 title로 재시도해도 기존 업무를 수정하지 않는다. 이미 연결된 경우에는 업무 편집 화면으로 안내한다.
@@ -30,10 +30,10 @@ DB는 `review_comment_tasks` 제안, comment_id UNIQUE·task_id UNIQUE. comment�
 ## 오류와 DB
 
 기존 ProblemDetail: 400 입력/UUID, 401 미인증, 403 비회원/관찰자, 404 소속 불일치/없음, 409 상태·연결 변경 충돌, 500 내부 오류. 서버 실패를 생성 성공으로 표시하지 않는다.
-시각은 이 응답에 없고 목록·정렬·페이지 처리도 없다. DB 변경은 A가 번호를 예약해 작성한다. V22에 함께 넣을지는 미확정.
+시각은 이 응답에 없고 목록·정렬·페이지 처리도 없다. K-10 #69에서 A가 V22를 K-11·K-12용으로 예약했다. 합의 후 A가 작성한다. 회차 검사와 단일 제출물 잠금은 K-10의 ReviewRoundReader.lockForWrite를 같은 트랜잭션에서 사용한다.
 K-11·K-12 합의 → A 스키마 → B-20 → B-21 → C 실제 연결 순서. C fixture와 타입은 합의 후 갱신한다.
 
 ## 검증 및 미확정
 
 검증 예정: 최초 1건 생성·재시도 동일 taskId, 동시 요청에서도 1건, 생성 실패 시 업무·연결·활동 모두 롤백, 역할·타 프로젝트 ID, 승인 후 생성 차단, 업무 DONE·복구 상태 반영, 연결 업무 삭제·이동 차단.
-검증 미수행. A·C 합의, 테이블/잠금 인터페이스, 입력 길이, 업무 삭제 정책이 미확정이다.
+검증 미수행. C 리뷰의 제목 길이를 기존 DTO 선언과 대조하여 반영했다. A·C 재확인, K-10 합의 및 A-11/V22 실제 제공, 업무 삭제 정책 최종 합의가 필요하다.
