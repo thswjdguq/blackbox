@@ -138,8 +138,6 @@ export default function DeliverableDetailPage() {
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [myRole, setMyRole] = useState<string | null>(null);
-  // 검토 탭: 파일을 올린 사람은 그 회차를 승인할 수 없다
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeliverableProgress | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -164,6 +162,8 @@ export default function DeliverableDetailPage() {
   // 충족 확인 요청 중인 요구사항 — 빠른 연타로 PUT·DELETE 가 엇갈려 도착하지 않게 한다
   const [assessingIds, setAssessingIds] = useState<Set<string>>(new Set());
 
+  // 역할은 멤버 목록에서 내 항목으로 판단한다. GET /projects/{id} 응답의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
+  const myRole = members.find((m) => m.userId === myUserId)?.role ?? null;
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
   // K-14 §2: 문구(content)가 바뀌면 서버가 충족 확인을 푼다. 필수 여부만 바꾸면 유지된다
   const editingReq = deliverable?.requirements.find((r) => r.id === editingReqId) ?? null;
@@ -176,17 +176,15 @@ export default function DeliverableDetailPage() {
   const fetchAll = useCallback(async () => {
     setError("");
     try {
-      const [delRes, taskRes, memRes, projRes, profileRes] = await Promise.all([
+      const [delRes, taskRes, memRes, profileRes] = await Promise.all([
         getDeliverable(projectId, deliverableId),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Member[]>(`/projects/${projectId}/members`),
-        api.get<{ myRole: string }>(`/projects/${projectId}`),
         api.get<{ id: string }>("/auth/profile"),
       ]);
       setDeliverable(delRes.data);
       setTasks(taskRes.data);
       setMembers(memRes.data);
-      setMyRole(projRes.data.myRole);
       setMyUserId(profileRes.data.id);
     } catch (err) {
       setError(apiError(err, "제출물 정보를 불러오지 못했습니다."));

@@ -45,31 +45,34 @@ export default function DeliverablesPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [projectName, setProjectName] = useState("");
-  const [myRole, setMyRole] = useState<string | null>(null);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
 
-  // 팀장·팀원만 쓰기 가능. 관찰자(OBSERVER)는 읽기 전용
+  // 팀장·팀원만 쓰기 가능. 관찰자(OBSERVER)는 읽기 전용.
+  // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
+  const myRole = members.find((m) => m.userId === myUserId)?.role ?? null;
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [delRes, taskRes, memRes, projRes] = await Promise.all([
+      const [delRes, taskRes, memRes, projRes, profileRes] = await Promise.all([
         getDeliverables(projectId),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Member[]>(`/projects/${projectId}/members`),
-        api.get<{ name: string; myRole: string }>(`/projects/${projectId}`),
+        api.get<{ name: string }>(`/projects/${projectId}`),
+        api.get<{ id: string }>("/auth/profile"),
       ]);
       setDeliverables(delRes.data);
       setTasks(taskRes.data);
       setMembers(memRes.data);
       setProjectName(projRes.data.name);
-      setMyRole(projRes.data.myRole);
+      setMyUserId(profileRes.data.id);
     } catch (err) {
       setError(apiError(err, "제출물 목록을 불러오지 못했습니다."));
     } finally {
