@@ -189,6 +189,7 @@ docker compose up -d --build
   ```
 
   PowerShell에서는 `$env:NEXT_DEV_BACKEND='http://localhost:8080'; npm run dev`처럼 준다.
+  백엔드는 CI와 같은 JDK 17로 실행한다. 기본 Java가 다른 버전이면 `JAVA_HOME`을 JDK 17로 지정한다. DB 사용자와 비밀번호는 `docker-compose.db-only.yml`에 적힌 값을 그대로 준다.
   파일 업로드까지 쓰려면 백엔드에 `FILE_UPLOAD_DIR`도 준다. 기본값 `/data/uploads`는 컨테이너 안의 경로라 로컬에서는 업로드가 500으로 실패한다. 저장소 밖의 폴더를 지정한다.
 - 헬스 체크: `GET /api/health`.
 
