@@ -55,12 +55,18 @@ function NotificationBell({ projectId }: { projectId: string }) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [open,   setOpen]   = useState(false);
+  // 30초마다 다시 부르므로 실패를 팝업으로 알리지는 않는다. 다만 실패를 "알림 없음"으로 보이게 하지 않도록
+  // 마지막 조회가 실패했는지 기억하고, 이전에 받은 알림은 그대로 둔다
+  const [failed, setFailed] = useState(false);
 
   const fetchAlerts = useCallback(async () => {
     try {
       const res = await api.get<Alert[]>(`/projects/${projectId}/alerts`);
       setAlerts(res.data);
-    } catch { /* 벨은 비핵심 — 실패해도 무시 */ }
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
   }, [projectId]);
 
   useEffect(() => {
@@ -125,9 +131,14 @@ function NotificationBell({ projectId }: { projectId: string }) {
 
           {/* 목록 */}
           <div className="max-h-80 overflow-y-auto">
+            {failed && (
+              <div className="px-4 py-2 text-xs text-amber-400 border-b border-bb-border">
+                알림을 새로 불러오지 못했습니다.{displayed.length > 0 && " 이전에 받은 알림을 보여 줍니다."}
+              </div>
+            )}
             {displayed.length === 0 ? (
               <div className="py-10 text-center text-sm text-bb-text2">
-                새로운 알림이 없습니다
+                {failed ? "알림을 확인할 수 없습니다" : "새로운 알림이 없습니다"}
               </div>
             ) : (
               displayed.map((alert) => {
