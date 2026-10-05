@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
-import { apiError } from "@/lib/apiError";
+import { apiError, blobApiError } from "@/lib/apiError";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
@@ -153,7 +153,7 @@ export default function AnalyticsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(apiError(err, "리포트 생성에 실패했습니다."));
+      setError(await blobApiError(err, "리포트 생성에 실패했습니다."));
     } finally {
       setDownloading(false);
     }

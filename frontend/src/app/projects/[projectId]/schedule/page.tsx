@@ -201,8 +201,8 @@ export default function SchedulePage() {
       if ((data.recommendations ?? []).length === 0) {
         setRecError(data.message ?? "적합한 시간대를 찾지 못했습니다. 날짜 범위를 변경해 보세요.");
       }
-    } catch {
-      setRecError("AI 추천 중 오류가 발생했습니다.");
+    } catch (err) {
+      setRecError(apiError(err, "AI 추천 중 오류가 발생했습니다."));
     } finally {
       setRecommending(false);
     }
