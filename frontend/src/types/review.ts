@@ -1,8 +1,7 @@
 // 검토 회차(K-10)·피드백(K-11)·피드백 업무 전환(K-12) 타입
 //
-// K-11·K-12 는 v0.1 DRAFT(#59·#60) 응답 형식을 따른다.
-// K-10 계약 파일은 아직 없다. 회차 필드는 A-10 결정안(#58)과 CONTRACTS 3장, C 가 #58 에 요청한 필드 기준이며
-// K-10 초안이 나오면 이 파일과 lib/api/review.ts 만 맞추면 되도록 화면은 이 타입만 쓴다.
+// K-10 v0.2(#69), K-11 v0.3(#59), K-12 v0.1(#60) DRAFT 응답 형식을 따른다.
+// 계약이 바뀌면 이 파일과 lib/api/review.ts 를 먼저 맞추고 화면이 따라간다.
 
 export interface UserRef {
   userId: string;
@@ -11,55 +10,58 @@ export interface UserRef {
 
 // ── K-10 검토 회차 ────────────────────────────────────────────────────────
 
-/** 회차 결정. null 이면 아직 결정 전 (CONTRACTS 3장 3항) */
-export type ReviewDecision = "APPROVED" | "CHANGES_REQUESTED";
+export type ReviewDecisionResult = "APPROVED" | "CHANGES_REQUESTED";
 
-/** 회차가 가리키는 파일 버전 요약 (A-10 결정 (다): 회차가 파일 버전을 직접 가리킨다) */
+/** 회차가 가리키는 파일 버전 (K-10 3장). 이 파일을 올린 사람은 이 회차를 결정할 수 없다 */
 export interface ReviewFile {
   fileId: string;
   fileName: string;
   version: number;
-  fileHash: string;
-  /** 이 사람은 이 회차를 승인할 수 없다 (CONTRACTS 3장 3항) */
+  /** SHA-256 앞 7자. 화면 표시용 */
+  shortHash: string;
   uploaderId: string;
   uploaderName: string;
+}
+
+/** 회차마다 한 번. 바꾸려면 새 회차를 연다 */
+export interface ReviewDecision {
+  result: ReviewDecisionResult;
+  decidedBy: UserRef;
+  decidedAt: string;
 }
 
 export interface ReviewRound {
   id: string;
   roundNo: number;
+  /** 가장 최근 회차. 새 코멘트와 결정은 최신 회차에만 된다 */
+  latest: boolean;
   /** null 이면 파일 없는 중간 검토 */
   file: ReviewFile | null;
-  decision: ReviewDecision | null;
-  decidedBy: UserRef | null;
-  decidedAt: string | null;
   openedBy: UserRef;
   openedAt: string;
+  /** null 이면 결정 전 */
+  decision: ReviewDecision | null;
   /**
-   * 이 회차의 승인이 지금 확정 근거인가. 같은 이름의 더 높은 버전이 올라왔거나
-   * 더 늦은 회차가 열리면 false (CONTRACTS 3장 3항, K-20 과 같은 기준을 서버가 계산)
+   * 이 회차의 승인이 지금 확정 근거인가 (K-10 3장). 서버가 계산한다.
+   * 승인 + 최신 회차 + 파일 있음 + 같은 이름의 최신 버전과 내용(해시)이 같음
    */
-  isCurrentBasis: boolean;
+  currentBasis: boolean;
 }
 
+/** CONFIRMED·SUBMITTED 는 K-20 이 추가한다 */
 export type DeliverableStatus = "DRAFT" | "IN_REVIEW" | "CONFIRMED" | "SUBMITTED";
 
 export interface ReviewSummary {
   deliverableStatus: DeliverableStatus;
-  /** 제출물 전체 회차의 OPEN + REFLECTION_PENDING 합계. 0 일 때만 승인할 수 있다 */
-  unresolvedCount: number;
-  /** roundNo 오름차순 */
+  /** 제출물 전체의 OPEN + REFLECTION_PENDING 수. 0 일 때만 승인할 수 있다 */
+  unresolvedCommentCount: number;
+  /** roundNo 내림차순 (최신이 먼저) */
   rounds: ReviewRound[];
-}
-
-export interface OpenRoundPayload {
-  /** 생략하면 파일 없는 중간 검토 */
-  fileId?: string;
 }
 
 // ── K-11 피드백 ───────────────────────────────────────────────────────────
 
-/** OPEN → (연결 업무 DONE) REFLECTION_PENDING → RESOLVED. 해결은 반영 판정이 아니다 (CONTRACTS 3장 6항) */
+/** 서버가 조회 시 계산한다. 해결은 반영 판정이 아니다 (CONTRACTS 3장 6항) */
 export type CommentStatus = "OPEN" | "REFLECTION_PENDING" | "RESOLVED";
 
 export interface ReviewComment {
@@ -73,7 +75,8 @@ export interface ReviewComment {
   resolution: {
     resolvedBy: UserRef;
     resolvedAt: string;
-    reason: string;
+    /** 선택 입력. 비우면 null */
+    reason: string | null;
   } | null;
 }
 

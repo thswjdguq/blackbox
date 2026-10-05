@@ -1,16 +1,11 @@
-// 검토 API 래퍼
-//
-// K-11(#59)·K-12(#60) 경로는 v0.1 DRAFT 그대로다.
-// K-10 경로(회차 목록·열기·결정)는 계약 파일이 아직 없어 CONTRACTS 3장과 A-10 결정안(#58)을 바탕으로 한 가정이다.
-// K-10 초안이 나오면 아래 "K-10 가정" 세 함수와 types/review.ts 의 회차 타입만 맞춘다.
-// 서버 구현 전에는 404 가 오며, 화면은 이를 "서버 준비 중"으로 보여준다 (가짜 데이터는 쓰지 않는다).
+// 검토 API 래퍼 — K-10 v0.2(#69), K-11 v0.3(#59), K-12 v0.1(#60) DRAFT 경로.
+// 서버 구현(A-11·B-20·B-21) 전에는 404 가 오며, 화면은 이를 "서버 준비 중"으로 보여준다 (가짜 데이터는 쓰지 않는다).
 
 import api from "@/lib/api";
 import type {
   CommentTaskResult,
-  OpenRoundPayload,
   ReviewComment,
-  ReviewDecision,
+  ReviewDecisionResult,
   ReviewRound,
   ReviewSummary,
 } from "@/types/review";
@@ -18,17 +13,17 @@ import type {
 const reviews = (projectId: string, deliverableId: string) =>
   `/projects/${projectId}/deliverables/${deliverableId}/reviews`;
 
-// ── K-10 가정 ─────────────────────────────────────────────────────────────
+// ── K-10 검토 회차 ────────────────────────────────────────────────────────
 
 export const getReviewSummary = (projectId: string, deliverableId: string) =>
   api.get<ReviewSummary>(reviews(projectId, deliverableId));
 
-/** 새 회차를 열면 이전 승인은 확정 근거에서 빠진다 (CONTRACTS 3장 3항) */
-export const openReviewRound = (projectId: string, deliverableId: string, payload: OpenRoundPayload) =>
-  api.post<ReviewRound>(reviews(projectId, deliverableId), payload);
+/** fileId 가 null 이면 파일 없는 중간 검토. 새 회차가 열리면 이전 승인은 확정 근거에서 빠진다 */
+export const openReviewRound = (projectId: string, deliverableId: string, fileId: string | null) =>
+  api.post<ReviewRound>(reviews(projectId, deliverableId), { fileId });
 
-/** 파일을 올린 사람의 승인, 미해결 피드백이 남은 승인은 서버가 거절한다 */
-export const decideReviewRound = (projectId: string, deliverableId: string, reviewId: string, decision: ReviewDecision) =>
+/** 최신 회차에만, 회차마다 한 번. 파일 올린 사람(403), 미해결 피드백이 남은 승인(409)은 서버가 거절한다 */
+export const decideReviewRound = (projectId: string, deliverableId: string, reviewId: string, decision: ReviewDecisionResult) =>
   api.put<ReviewRound>(`${reviews(projectId, deliverableId)}/${reviewId}/decision`, { decision });
 
 // ── K-11 피드백 ───────────────────────────────────────────────────────────
@@ -42,9 +37,15 @@ export const getComments = (projectId: string, deliverableId: string, reviewId: 
 export const addComment = (projectId: string, deliverableId: string, reviewId: string, content: string) =>
   api.post<ReviewComment>(comments(projectId, deliverableId, reviewId), { content });
 
-/** 이미 해결된 항목에 다시 보내도 현재 상태를 돌려준다 (멱등) */
+/**
+ * 사유는 선택이다. 본문은 JSON 객체여야 하므로 사유가 없으면 {} 를 보낸다 (K-11 2장).
+ * 연결 업무가 끝나지 않았어도 해결할 수 있다. 이미 해결된 항목에 다시 보내면 현재 상태를 돌려준다 (멱등)
+ */
 export const resolveComment = (projectId: string, deliverableId: string, reviewId: string, commentId: string, reason: string) =>
-  api.put<ReviewComment>(`${comments(projectId, deliverableId, reviewId)}/${commentId}/resolution`, { reason });
+  api.put<ReviewComment>(
+    `${comments(projectId, deliverableId, reviewId)}/${commentId}/resolution`,
+    reason.trim() ? { reason: reason.trim() } : {}
+  );
 
 export const reopenComment = (projectId: string, deliverableId: string, reviewId: string, commentId: string) =>
   api.delete<ReviewComment>(`${comments(projectId, deliverableId, reviewId)}/${commentId}/resolution`);
