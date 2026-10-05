@@ -32,7 +32,6 @@ interface ProjectInfo {
   name: string;
   courseName: string | null;
   semester: string | null;
-  myRole?: string;
 }
 
 interface ScoreEntry {
@@ -69,7 +68,9 @@ export default function BoardPage() {
   const [notionUrl, setNotionUrl] = useState<string | null>(null);
   // 동기화 실패는 보드 전체 오류(error)와 분리한다. 실패해도 보드는 그대로 보여야 한다
   const [syncError, setSyncError] = useState("");
-  const readOnly = project?.myRole === "OBSERVER";
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
+  const readOnly = members.find((m) => m.userId === myUserId)?.role === "OBSERVER";
 
   // ── 필터 ──────────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<KanbanFilter>({ assigneeId: null, priority: null, tag: "" });
@@ -90,14 +91,16 @@ export default function BoardPage() {
     setLoading(true);
     setError("");
     try {
-      const [projRes, taskRes, memberRes] = await Promise.all([
+      const [projRes, taskRes, memberRes, profileRes] = await Promise.all([
         api.get<ProjectInfo>(`/projects/${projectId}`),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Member[]>(`/projects/${projectId}/members`),
+        api.get<{ id: string }>("/auth/profile"),
       ]);
       setProject(projRes.data);
       setTasks(taskRes.data);
       setMembers(memberRes.data);
+      setMyUserId(profileRes.data.id);
 
       // Scores (may not exist yet — gracefully ignore 404)
       try {
