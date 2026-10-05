@@ -106,7 +106,7 @@ export default function DeliverablesPage() {
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="flex-1 ml-64 overflow-y-auto p-8">
+      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto p-4 md:p-8">
         <Link href={`/projects/${projectId}`} className="text-xs text-bb-text2 hover:text-bb-text">
           {projectName || "프로젝트"} / 프로젝트 홈
         </Link>

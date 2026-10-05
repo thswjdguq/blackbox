@@ -277,7 +277,7 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-4 max-w-5xl">
             <div className="h-8 bg-bb-surface rounded w-64 mb-2" />
             <div className="h-4 bg-bb-surface rounded w-40 mb-8" />
@@ -298,7 +298,7 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
           <div className="text-center">
             <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
             <p className="text-sm text-red-400">{error || "프로젝트를 찾을 수 없습니다"}</p>
@@ -340,7 +340,7 @@ export default function ProjectHomePage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         <div className="max-w-5xl">
 
           {/* ── 프로젝트 헤더 ───────────────────────────────────────────── */}

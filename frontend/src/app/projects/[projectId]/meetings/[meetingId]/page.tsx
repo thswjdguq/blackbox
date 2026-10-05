@@ -447,7 +447,7 @@ export default function MeetingDetailPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-4 max-w-3xl">
             <div className="h-6 bg-bb-surface rounded w-24" />
             <div className="h-8 bg-bb-surface rounded w-64" />
@@ -480,7 +480,7 @@ export default function MeetingDetailPage() {
         </div>
       )}
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         <div className="max-w-3xl">
           {/* 뒤로 가기 */}
           <button

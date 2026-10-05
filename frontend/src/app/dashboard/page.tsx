@@ -189,7 +189,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar hasProjects={projects.length > 0} />
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>

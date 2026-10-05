@@ -184,7 +184,7 @@ export default function AnalyticsPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-bb-surface2 rounded w-48" />
             <div className="grid grid-cols-4 gap-4">
@@ -201,7 +201,7 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         {/* ── 헤더 ──────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between mb-8">
           <div>

@@ -155,7 +155,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-6">
             <div className="h-7 bg-bb-surface rounded-lg w-48" />
             <div className="grid grid-cols-3 gap-6">
@@ -174,7 +174,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
           <div className="text-center">
             <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
             <p className="text-bb-text text-sm mb-4">{error}</p>
@@ -195,7 +195,7 @@ export default function BoardPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen flex flex-col">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen flex flex-col">
         {/* Top bar with gradient accent */}
         <div className="relative px-8 pt-8 pb-6 border-b border-slate-800 overflow-hidden">
           {/* Decorative gradient */}

@@ -241,7 +241,7 @@ export default function SchedulePage() {
         </div>
       )}
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         <div className="max-w-2xl">
 
           {/* 헤더 */}

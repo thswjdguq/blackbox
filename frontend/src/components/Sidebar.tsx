@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Menu,
+  X,
   Shield,
   FolderKanban,
   Kanban,
@@ -190,7 +192,13 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const router   = useRouter();
   const [isDark, setIsDark] = useState(true);
   const [toast,  setToast]  = useState(false);
+  // 768px 미만에서는 사이드바를 숨기고 상단 바의 메뉴 버튼으로 연다
+  const [mobileOpen, setMobileOpen] = useState(false);
   const clearTokens = useAuthStore((s) => s.clearTokens);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   // URL에서 현재 프로젝트 ID 추출 (/projects/[id]/xxx)
   const projectIdMatch = pathname.match(/\/projects\/([^/]+)/);
@@ -261,7 +269,32 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
 
   return (
     <>
-      <aside className="w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-30">
+      {/* 작은 화면 상단 바 */}
+      <header className="md:hidden fixed top-0 inset-x-0 h-14 z-30 flex items-center gap-3 px-4 bg-bb-sidebar border-b border-bb-border">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-1.5 -ml-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+          aria-label="메뉴 열기"
+          aria-expanded={mobileOpen}
+          aria-controls="app-sidebar"
+        >
+          <Menu size={20} />
+        </button>
+        <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2">
+          <Shield size={16} className="text-bb-primary" />
+          <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
+        </button>
+      </header>
+
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+      )}
+
+      <aside
+        id="app-sidebar"
+        className={`w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-50 md:z-30
+                    transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
         {/* 로고 + 알림 벨 */}
         <div className="px-6 py-5 border-b border-bb-border flex items-center justify-between">
           <div
@@ -273,7 +306,16 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             </div>
             <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
           </div>
-          {currentProjectId && <NotificationBell projectId={currentProjectId} />}
+          <div className="flex items-center gap-1">
+            {currentProjectId && <NotificationBell projectId={currentProjectId} />}
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="md:hidden p-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+              aria-label="메뉴 닫기"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* 네비게이션 */}
