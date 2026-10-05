@@ -197,6 +197,7 @@ export default function ReviewPanel({
           deliverableId={deliverableId}
           previousFileName={latest?.file?.fileName ?? null}
           hasCurrentApproval={summary.rounds.some((r) => r.decision?.result === "APPROVED" && r.currentBasis)}
+          undecidedLatestNo={latest && latest.decision == null ? latest.roundNo : null}
           onClose={() => setShowOpen(false)}
           onOpened={() => {
             setShowOpen(false);
@@ -213,6 +214,7 @@ function OpenRoundDialog({
   deliverableId,
   previousFileName,
   hasCurrentApproval,
+  undecidedLatestNo,
   onClose,
   onOpened,
 }: {
@@ -220,6 +222,8 @@ function OpenRoundDialog({
   deliverableId: string;
   previousFileName: string | null;
   hasCurrentApproval: boolean;
+  /** 결정 전인 최신 회차 번호. 새 회차를 열면 그 회차는 '결정 없음'으로 남는다 (K-10 2장) */
+  undecidedLatestNo: number | null;
   onClose: () => void;
   onOpened: () => void;
 }) {
@@ -339,6 +343,9 @@ function OpenRoundDialog({
               </p>
             )}
             {!fileId && <p className="text-xs text-bb-text2">파일 없는 회차의 승인은 최종 확정 근거가 되지 않습니다.</p>}
+            {undecidedLatestNo != null && (
+              <p className="text-xs text-amber-500">진행 중인 {undecidedLatestNo}회차는 결정 없이 남습니다.</p>
+            )}
             {hasCurrentApproval && (
               <p className="text-xs text-amber-400">새 회차를 열면 지금 승인은 확정 근거에서 빠집니다.</p>
             )}
