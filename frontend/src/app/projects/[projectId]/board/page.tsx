@@ -221,7 +221,7 @@ export default function BoardPage() {
                   대시보드
                 </span>
                 <ChevronDown size={10} className="-rotate-90" />
-                <span className="text-bb-text2">칸반 보드</span>
+                <span className="text-bb-text2">업무 보드</span>
               </div>
 
               {/* 프로젝트 선택 드롭다운 */}
@@ -308,7 +308,7 @@ export default function BoardPage() {
               <button
                 onClick={handleNotionSync}
                 disabled={syncing}
-                title="칸반 보드를 Notion으로 내보내기"
+                title="업무 보드를 Notion으로 내보내기"
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-bb-surface border border-bb-border
                            text-xs text-bb-text2 hover:text-white hover:bg-[#191919] hover:border-[#191919]
                            transition-all disabled:opacity-50 font-medium"

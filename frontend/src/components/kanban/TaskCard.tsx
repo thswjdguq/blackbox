@@ -129,9 +129,22 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
     <div
       ref={setNodeRef}
       style={style}
-      // 카드 전체에 drag listeners 부착 (grip 아이콘 외에도 드래그 가능)
-      {...attributes}
-      {...listeners}
+      // 카드 전체에 drag listeners 부착 (grip 아이콘 외에도 드래그 가능).
+      // 읽기 전용이면 끌기 속성(aria-disabled 포함)을 붙이지 않는다. 붙이면 '업무 보기'로 여는 카드가
+      // 보조기기에 비활성으로 읽히고 키보드로 열 수 없다
+      {...(readOnly
+        ? {
+            role: "button",
+            tabIndex: 0,
+            "aria-label": `${task.title} 보기`,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onEdit(task);
+              }
+            },
+          }
+        : { ...attributes, ...listeners })}
       onClick={() => !isMoving && onEdit(task)}
       className={`group relative bg-bb-surface border rounded-xl p-4 ${readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}
                   transition-colors duration-200 select-none overflow-hidden
