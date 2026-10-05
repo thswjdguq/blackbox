@@ -6,6 +6,7 @@ import {
   Shield,
   FolderKanban,
   Kanban,
+  ClipboardList,
   FileText,
   Files,
   BarChart2,
@@ -201,7 +202,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const NAV_ITEMS = [
     { href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
     { href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
-    { href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: Files,           label: "제출물·요구사항", needsProject: true, exactActive: false },
+    { href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: ClipboardList,   label: "제출물",        needsProject: true, exactActive: false },
     { href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "업무 보드",    needsProject: true, exactActive: false },
     { href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
     { href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
