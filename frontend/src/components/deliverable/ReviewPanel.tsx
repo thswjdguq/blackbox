@@ -118,7 +118,7 @@ export default function ReviewPanel({
   }
 
   const locked = summary.deliverableStatus === "CONFIRMED" || summary.deliverableStatus === "SUBMITTED";
-  const latest = summary.rounds[summary.rounds.length - 1] ?? null;
+  const latest = summary.rounds.find((r) => r.latest) ?? null;
   const badge = STATUS_BADGE[summary.deliverableStatus];
 
   return (
@@ -126,9 +126,9 @@ export default function ReviewPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className={`text-xs px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
-          {summary.unresolvedCount > 0 && (
+          {summary.unresolvedCommentCount > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
-              미해결 피드백 {summary.unresolvedCount}건
+              미해결 피드백 {summary.unresolvedCommentCount}건
             </span>
           )}
         </div>
@@ -144,13 +144,13 @@ export default function ReviewPanel({
       </div>
 
       {/* 수정본 안내: 수정 요청을 받은 뒤 다음에 할 일 */}
-      {latest?.decision === "CHANGES_REQUESTED" && !locked && (
+      {latest?.decision?.result === "CHANGES_REQUESTED" && !locked && (
         <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
           <TriangleAlert size={16} className="text-amber-400 mt-0.5 shrink-0" />
           <div className="text-sm">
             <p className="font-semibold text-amber-300">{latest.roundNo}회차에서 수정 요청을 받았습니다</p>
             <p className="mt-1 text-xs text-amber-400/90">
-              {summary.unresolvedCount > 0 && `미해결 피드백 ${summary.unresolvedCount}건을 반영하고 해결 처리한 뒤, `}
+              {summary.unresolvedCommentCount > 0 && `미해결 피드백 ${summary.unresolvedCommentCount}건을 반영하고 해결 처리한 뒤, `}
               수정본을{latest.file ? ` 같은 이름(${latest.file.fileName})으로` : ""}{" "}
               <Link href={`/projects/${projectId}/vault`} className="underline">
                 파일 금고
@@ -173,17 +173,16 @@ export default function ReviewPanel({
           </p>
         </div>
       ) : (
-        // 최신 회차를 위에 둔다
-        [...summary.rounds].reverse().map((r) => (
+        // 서버가 최신 회차부터 준다 (roundNo 내림차순)
+        summary.rounds.map((r) => (
           <ReviewRoundCard
             key={r.id}
             projectId={projectId}
             deliverableId={deliverableId}
             round={r}
             comments={comments[r.id] ?? []}
-            isLatest={r.id === latest?.id}
             locked={locked}
-            unresolvedCount={summary.unresolvedCount}
+            unresolvedCount={summary.unresolvedCommentCount}
             canWrite={canWrite}
             myUserId={myUserId}
             tasks={tasks}
@@ -197,7 +196,7 @@ export default function ReviewPanel({
           projectId={projectId}
           deliverableId={deliverableId}
           previousFileName={latest?.file?.fileName ?? null}
-          hasCurrentApproval={summary.rounds.some((r) => r.decision === "APPROVED" && r.isCurrentBasis)}
+          hasCurrentApproval={summary.rounds.some((r) => r.decision?.result === "APPROVED" && r.currentBasis)}
           onClose={() => setShowOpen(false)}
           onOpened={() => {
             setShowOpen(false);
@@ -262,7 +261,7 @@ function OpenRoundDialog({
     setSaving(true);
     setError("");
     try {
-      await openReviewRound(projectId, deliverableId, fileId ? { fileId } : {});
+      await openReviewRound(projectId, deliverableId, fileId || null);
       onOpened();
     } catch (err) {
       setError(apiError(err, "검토 회차를 열지 못했습니다. 다시 시도해주세요."));

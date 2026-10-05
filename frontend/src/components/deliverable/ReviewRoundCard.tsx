@@ -11,7 +11,7 @@ import {
   reopenComment,
   resolveComment,
 } from "@/lib/api/review";
-import type { CommentStatus, ReviewComment, ReviewDecision, ReviewRound } from "@/types/review";
+import type { CommentStatus, ReviewComment, ReviewDecisionResult, ReviewRound } from "@/types/review";
 import type { Task } from "@/types/task";
 
 const COMMENT_STATUS: Record<CommentStatus, { label: string; cls: string }> = {
@@ -34,12 +34,18 @@ export function fmtRelative(iso: string): string {
   return `${Math.floor(hrs / 24)}일 전`;
 }
 
+/** 확정 근거가 아닌 승인의 사유. 응답만으로 정해진다 (K-10 7장) */
+function notBasisReason(round: ReviewRound): string {
+  if (!round.latest) return "이후 새 회차가 열려";
+  if (round.file == null) return "파일 없는 회차라";
+  return "같은 이름의 최신 버전과 내용이 달라";
+}
+
 export default function ReviewRoundCard({
   projectId,
   deliverableId,
   round,
   comments,
-  isLatest,
   locked,
   unresolvedCount,
   canWrite,
@@ -51,7 +57,6 @@ export default function ReviewRoundCard({
   deliverableId: string;
   round: ReviewRound;
   comments: ReviewComment[];
-  isLatest: boolean;
   /** CONFIRMED·SUBMITTED 제출물은 검토 기록을 바꾸지 않는다 */
   locked: boolean;
   unresolvedCount: number;
@@ -70,11 +75,13 @@ export default function ReviewRoundCard({
   const [taskTitle, setTaskTitle] = useState("");
   const [taskCriteria, setTaskCriteria] = useState("");
 
-  const approved = round.decision === "APPROVED";
-  // 승인된 회차는 코멘트 작성·해결·다시 열기를 막는다 (CONTRACTS 3장 3항)
+  const result = round.decision?.result ?? null;
+  const approved = result === "APPROVED";
+  // 승인된 회차는 코멘트 작성·해결·다시 열기를 막는다. 승인 안 된 지난 회차는 해결·다시 열기만 된다 (K-11 1장)
   const writable = canWrite && !approved && !locked;
+  // 파일을 올린 사람은 승인도 수정 요청도 할 수 없다 (K-10 2장, 403)
   const isUploader = round.file != null && round.file.uploaderId === myUserId;
-  const canDecide = canWrite && isLatest && round.decision == null && !locked;
+  const canDecide = canWrite && round.latest && round.decision == null && !locked;
 
   const run = async (key: string, action: () => Promise<unknown>) => {
     setBusy(key);
@@ -91,7 +98,7 @@ export default function ReviewRoundCard({
     }
   };
 
-  const decide = (decision: ReviewDecision) =>
+  const decide = (decision: ReviewDecisionResult) =>
     run(`decide-${decision}`, () => decideReviewRound(projectId, deliverableId, round.id, decision));
 
   const submitComment = async (e: FormEvent) => {
@@ -102,15 +109,14 @@ export default function ReviewRoundCard({
 
   const submitResolve = async (e: FormEvent, c: ReviewComment) => {
     e.preventDefault();
-    if (!reason.trim()) return;
-    if (await run(`resolve-${c.id}`, () => resolveComment(projectId, deliverableId, round.id, c.id, reason.trim()))) {
+    if (await run(`resolve-${c.id}`, () => resolveComment(projectId, deliverableId, round.id, c.id, reason))) {
       setResolvingId(null);
     }
   };
 
   const startTaskForm = (c: ReviewComment) => {
     setTaskFormId(c.id);
-    setTaskTitle(c.content.split("\n")[0].slice(0, 200));
+    setTaskTitle(c.content.split("\n")[0].slice(0, 255));
     setTaskCriteria("");
   };
 
@@ -127,41 +133,47 @@ export default function ReviewRoundCard({
   };
 
   return (
-    <section className={`bg-bb-surface border rounded-xl p-5 ${isLatest ? "border-bb-border" : "border-bb-border/60"}`}>
+    <section
+      data-testid={`round-${round.roundNo}`}
+      className={`bg-bb-surface border rounded-xl p-5 ${round.latest ? "border-bb-border" : "border-bb-border/60"}`}
+    >
       {/* 회차 머리 */}
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold text-bb-text">{round.roundNo}회차</h3>
         {round.file ? (
           <span className="flex items-center gap-1 text-xs text-bb-text2">
             <FileText size={12} />
-            {round.file.fileName} · v{round.file.version} ·{" "}
-            <span className="font-mono">{round.file.fileHash.slice(0, 7)}</span> · {round.file.uploaderName}
+            {round.file.fileName} · v{round.file.version} · <span className="font-mono">{round.file.shortHash}</span> ·{" "}
+            {round.file.uploaderName}
           </span>
         ) : (
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">파일 없음 · 중간 검토</span>
         )}
-        {round.decision === "APPROVED" && (
+        {result === "APPROVED" && (
           <span
             className={`text-[11px] px-2 py-0.5 rounded-full ${
-              round.isCurrentBasis ? "bg-teal-500/15 text-teal-400" : "bg-bb-surface2 text-bb-text2 line-through"
+              round.currentBasis ? "bg-teal-500/15 text-teal-400" : "bg-bb-surface2 text-bb-text2 line-through"
             }`}
           >
             승인
           </span>
         )}
-        {round.decision === "CHANGES_REQUESTED" && (
+        {result === "CHANGES_REQUESTED" && (
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">수정 요청</span>
         )}
-        {round.decision == null && (
+        {result == null && round.latest && (
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400">검토 중</span>
+        )}
+        {result == null && !round.latest && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">결정 없음</span>
         )}
       </div>
       <p className="mt-1 text-xs text-bb-text2">
         {round.openedBy.name}님이 {fmtRelative(round.openedAt)} 열었습니다
-        {round.decidedBy && round.decidedAt && ` · ${round.decidedBy.name}님이 ${fmtRelative(round.decidedAt)} 결정`}
+        {round.decision && ` · ${round.decision.decidedBy.name}님이 ${fmtRelative(round.decision.decidedAt)} 결정`}
       </p>
-      {approved && !round.isCurrentBasis && (
-        <p className="mt-1 text-xs text-bb-text2">이후 새 버전이나 새 회차가 있어 이 승인은 확정 근거가 아닙니다.</p>
+      {approved && !round.currentBasis && (
+        <p className="mt-1 text-xs text-bb-text2">{notBasisReason(round)} 이 승인은 확정 근거가 아닙니다.</p>
       )}
 
       {error && (
@@ -174,7 +186,7 @@ export default function ReviewRoundCard({
       {canDecide && (
         <div className="mt-4 p-3 bg-bb-surface2 rounded-lg space-y-2">
           {isUploader ? (
-            <p className="text-xs text-bb-text2">직접 올린 파일은 다른 팀원이 검토합니다.</p>
+            <p className="text-xs text-bb-text2">직접 올린 파일은 다른 팀원이 승인하거나 수정을 요청합니다.</p>
           ) : (
             <>
               <div className="flex flex-wrap gap-2">
@@ -189,7 +201,7 @@ export default function ReviewRoundCard({
                 <button
                   onClick={() => decide("CHANGES_REQUESTED")}
                   disabled={busy != null}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-300 border border-amber-500/40 hover:bg-amber-500/10 disabled:opacity-40 rounded-lg"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-500 border border-amber-500/40 hover:bg-amber-500/10 disabled:opacity-40 rounded-lg"
                 >
                   {busy === "decide-CHANGES_REQUESTED" ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
                   수정 요청
@@ -199,8 +211,9 @@ export default function ReviewRoundCard({
                 <p className="text-xs text-bb-text2">미해결 피드백 {unresolvedCount}건을 먼저 해결해야 승인할 수 있습니다.</p>
               )}
               {round.file == null && (
-                <p className="text-xs text-bb-text2">파일 없는 회차의 승인은 최종 확정 근거가 되지 않습니다.</p>
+                <p className="text-xs text-bb-text2">파일 없는 회차도 승인할 수 있지만 최종 확정 근거가 되지는 않습니다.</p>
               )}
+              <p className="text-xs text-bb-text2">결정은 회차마다 한 번입니다. 바꾸려면 새 회차를 엽니다.</p>
             </>
           )}
         </div>
@@ -217,8 +230,6 @@ export default function ReviewRoundCard({
           {comments.map((c) => {
             const cfg = COMMENT_STATUS[c.status];
             const linkedTask = c.linkedTaskId ? tasks.find((t) => t.id === c.linkedTaskId) : undefined;
-            // K-11 3장(제안): 연결 업무가 끝나기 전에는 해결할 수 없다
-            const blockedByTask = c.linkedTaskId != null && linkedTask?.status !== "DONE";
             return (
               <li key={c.id} className="py-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -238,8 +249,9 @@ export default function ReviewRoundCard({
                 )}
 
                 {c.resolution && (
-                  <p className="mt-1.5 text-xs text-teal-400">
-                    해결: {c.resolution.resolvedBy.name} · {fmtRelative(c.resolution.resolvedAt)} · {c.resolution.reason}
+                  <p className="mt-1.5 text-xs text-teal-500">
+                    해결: {c.resolution.resolvedBy.name} · {fmtRelative(c.resolution.resolvedAt)}
+                    {c.resolution.reason && ` · ${c.resolution.reason}`}
                     <span className="block text-bb-text2">해결은 반영 판정이 아닙니다. 다음 회차 승인으로 판정합니다.</span>
                   </p>
                 )}
@@ -250,11 +262,10 @@ export default function ReviewRoundCard({
                       <button
                         onClick={() => {
                           setResolvingId(c.id);
-                          setReason("반영했습니다.");
+                          setReason("");
                         }}
-                        disabled={busy != null || blockedByTask}
-                        title={blockedByTask ? "연결 업무가 끝나야 해결할 수 있습니다." : undefined}
-                        className="text-teal-400 hover:underline disabled:opacity-40 disabled:no-underline"
+                        disabled={busy != null}
+                        className="text-teal-500 hover:underline disabled:opacity-40 disabled:no-underline"
                       >
                         해결
                       </button>
@@ -274,9 +285,6 @@ export default function ReviewRoundCard({
                         업무로 만들기
                       </button>
                     )}
-                    {blockedByTask && c.status !== "RESOLVED" && (
-                      <span className="text-bb-text2">연결 업무가 끝나야 해결할 수 있습니다.</span>
-                    )}
                   </div>
                 )}
 
@@ -287,14 +295,15 @@ export default function ReviewRoundCard({
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       maxLength={1000}
-                      placeholder="어떻게 반영했는지"
+                      placeholder="어떻게 반영했는지 (선택)"
+                      aria-label="해결 사유"
                       className={`${FIELD} flex-1 min-w-[200px]`}
                     />
                     <button type="button" onClick={() => setResolvingId(null)} className="px-2 text-xs text-bb-text2">
                       취소
                     </button>
                     <button
-                      disabled={busy != null || !reason.trim()}
+                      disabled={busy != null}
                       className="px-3 py-1.5 text-xs text-white bg-teal-600 hover:bg-teal-500 disabled:opacity-40 rounded-lg"
                     >
                       해결 저장
@@ -308,8 +317,9 @@ export default function ReviewRoundCard({
                       autoFocus
                       value={taskTitle}
                       onChange={(e) => setTaskTitle(e.target.value)}
-                      maxLength={200}
+                      maxLength={255}
                       placeholder="업무 제목"
+                      aria-label="업무 제목"
                       className={FIELD}
                     />
                     <input
@@ -338,8 +348,8 @@ export default function ReviewRoundCard({
           })}
         </ul>
 
-        {/* 새 피드백은 진행 중인 최신 회차에만 쓴다 (과거 회차는 해결·다시 열기만) */}
-        {writable && isLatest && (
+        {/* 새 피드백은 최신 회차에만 쓴다 (K-11 1장). 지난 회차는 해결·다시 열기만 */}
+        {writable && round.latest && (
           <form onSubmit={submitComment} className="mt-3 flex gap-2">
             <textarea
               value={newComment}
@@ -347,11 +357,12 @@ export default function ReviewRoundCard({
               rows={2}
               maxLength={2000}
               placeholder="피드백을 남기세요"
+              aria-label="새 피드백"
               className={`${FIELD} resize-none`}
             />
             <button
               disabled={busy != null || !newComment.trim()}
-              className="self-end px-3 py-2 text-xs text-white bg-bb-primary hover:bg-bb-primary-h disabled:opacity-40 rounded-lg"
+              className="self-end shrink-0 whitespace-nowrap px-3 py-2 text-xs text-white bg-bb-primary hover:bg-bb-primary-h disabled:opacity-40 rounded-lg"
             >
               {busy === "comment" ? <Loader2 size={13} className="animate-spin" /> : "남기기"}
             </button>
