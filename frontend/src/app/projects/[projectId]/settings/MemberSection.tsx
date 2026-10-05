@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import { getMembers, updateMemberRole, removeMember, leaveProject } from "@/lib/api/member";
 import { ROLE_LABEL, type MemberRole, type ProjectMember } from "@/types/member";
 import { AlertCircle, Loader2, LogOut, RefreshCw, UserMinus, Users } from "lucide-react";
@@ -12,14 +13,8 @@ const ROLES: MemberRole[] = ["LEADER", "MEMBER", "OBSERVER"];
 const ROLE_BADGE: Record<MemberRole, string> = {
   LEADER: "bg-indigo-500/20 text-indigo-400",
   MEMBER: "bg-teal-500/15 text-teal-400",
-  OBSERVER: "bg-slate-700 text-slate-300",
+  OBSERVER: "bg-bb-surface2 text-bb-text2",
 };
-
-function errorDetail(err: unknown, fallback: string): string {
-  return (
-    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback
-  );
-}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric" });
@@ -38,6 +33,8 @@ export default function MemberSection({ projectId }: { projectId: string }) {
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // 팀장이 자기 역할을 내리면 그 즉시 권한을 잃어 스스로 되돌릴 수 없으므로 한 번 확인한다
+  const [pendingSelfRole, setPendingSelfRole] = useState<MemberRole | null>(null);
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -50,7 +47,7 @@ export default function MemberSection({ projectId }: { projectId: string }) {
       setMembers(memRes.data);
       setMyUserId(profileRes.data.id);
     } catch (err) {
-      setLoadError(errorDetail(err, "멤버 목록을 불러오지 못했습니다."));
+      setLoadError(apiError(err, "멤버 목록을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -66,15 +63,20 @@ export default function MemberSection({ projectId }: { projectId: string }) {
   // 서버도 막지만, 막힐 동작은 미리 비활성화하고 이유를 보여준다
   const soleLeader = (m: ProjectMember) => m.role === "LEADER" && leaderCount <= 1;
 
-  const handleRoleChange = async (member: ProjectMember, role: MemberRole) => {
+  const handleRoleChange = async (member: ProjectMember, role: MemberRole, confirmed = false) => {
     if (role === member.role) return;
+    if (!confirmed && member.userId === myUserId && member.role === "LEADER") {
+      setPendingSelfRole(role);
+      return;
+    }
+    setPendingSelfRole(null);
     setActionError("");
     setBusyId(member.memberId);
     try {
       const { data } = await updateMemberRole(projectId, member.memberId, role);
       setMembers((prev) => prev.map((m) => (m.memberId === data.memberId ? data : m)));
     } catch (err) {
-      setActionError(errorDetail(err, "역할 변경에 실패했습니다. 다시 시도해주세요."));
+      setActionError(apiError(err, "역할 변경에 실패했습니다. 다시 시도해주세요."));
     } finally {
       setBusyId(null);
     }
@@ -88,7 +90,7 @@ export default function MemberSection({ projectId }: { projectId: string }) {
       setMembers((prev) => prev.filter((m) => m.memberId !== member.memberId));
       setConfirmRemoveId(null);
     } catch (err) {
-      setActionError(errorDetail(err, "멤버를 내보내지 못했습니다. 다시 시도해주세요."));
+      setActionError(apiError(err, "멤버를 내보내지 못했습니다. 다시 시도해주세요."));
     } finally {
       setBusyId(null);
     }
@@ -101,7 +103,7 @@ export default function MemberSection({ projectId }: { projectId: string }) {
       await leaveProject(projectId);
       router.replace("/dashboard");
     } catch (err) {
-      setActionError(errorDetail(err, "프로젝트에서 나가지 못했습니다. 다시 시도해주세요."));
+      setActionError(apiError(err, "프로젝트에서 나가지 못했습니다. 다시 시도해주세요."));
       setLeaving(false);
       setConfirmLeave(false);
     }
@@ -213,6 +215,24 @@ export default function MemberSection({ projectId }: { projectId: string }) {
                       </button>
                     )}
                   </div>
+
+                  {isMe && pendingSelfRole && (
+                    <div role="alert" className="mt-2 flex flex-wrap items-center gap-2 p-2.5 bg-amber-500/5 border border-amber-500/30 rounded-lg text-xs">
+                      <span className="text-bb-text">
+                        내 역할을 {ROLE_LABEL[pendingSelfRole]}(으)로 바꾸면 팀장 권한이 바로 사라져 스스로 되돌릴 수 없습니다. 바꿀까요?
+                      </span>
+                      <button onClick={() => setPendingSelfRole(null)} className="ml-auto px-2.5 py-1 text-bb-text2 hover:text-bb-text">
+                        취소
+                      </button>
+                      <button
+                        onClick={() => handleRoleChange(m, pendingSelfRole, true)}
+                        disabled={busy}
+                        className="px-2.5 py-1 bg-amber-500/80 hover:bg-amber-500 text-white rounded-md disabled:opacity-50"
+                      >
+                        역할 바꾸기
+                      </button>
+                    </div>
+                  )}
 
                   {confirmRemoveId === m.memberId && (
                     <div className="mt-2 flex items-center gap-2 p-2.5 bg-red-500/5 border border-red-500/20 rounded-lg text-xs">
