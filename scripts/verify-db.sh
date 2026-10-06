@@ -9,6 +9,7 @@
 # 사용
 #   bash scripts/verify-db.sh                 # 검사 전용 DB를 띄우고 전체 검증
 #   BB_SKIP_COMPOSE=1 bash scripts/verify-db.sh   # 이미 떠 있는 DB(예: CI service) 사용
+#   BB_TEST_DB_PORT=25433 bash scripts/verify-db.sh   # 기본 포트(25432)가 막혔을 때. 컨테이너와 테스트 설정도 이 값을 따른다
 #
 # 안전
 #   - 개발·데모 DB(docker-compose.yml, blackbox_db)는 건드리지 않는다. 컨테이너·볼륨·포트가 모두 다르다.
@@ -19,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DB_HOST=${BB_TEST_DB_HOST:-localhost}
-DB_PORT=${BB_TEST_DB_PORT:-55432}
+DB_PORT=${BB_TEST_DB_PORT:-25432}
 DB_USER=${BB_TEST_DB_USER:-blackbox_test}
 DB_PASSWORD=${BB_TEST_DB_PASSWORD:-blackbox_test}
 ADMIN_DB=${BB_TEST_ADMIN_DB:-blackbox_test}
