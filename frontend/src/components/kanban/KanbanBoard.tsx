@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Deliverable } from "@/types/deliverable";
 import { apiError, PartialSaveError } from "@/lib/apiError";
@@ -30,6 +30,8 @@ import {
 import KanbanColumn from "./KanbanColumn";
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
+import TaskListView from "./TaskListView";
+import { Columns3, List } from "lucide-react";
 import api from "@/lib/api";
 
 export interface KanbanFilter {
@@ -72,6 +74,15 @@ export default function KanbanBoard({
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [boardError, setBoardError] = useState("");
+  // 보드 / 목록 보기. 보는 사람의 브라우저에만 기억한다
+  const [view, setView] = useState<"board" | "list">("board");
+  useEffect(() => {
+    try { if (localStorage.getItem("task-view") === "list") setView("list"); } catch { /* 저장소를 못 쓰면 보드 */ }
+  }, []);
+  const changeView = (v: "board" | "list") => {
+    setView(v);
+    try { localStorage.setItem("task-view", v); } catch { /* 무시 */ }
+  };
   const openedTask = useRef<string | null>(null);
 
   // 제출물 상세의 "보드에서 이 제출물 업무 보기"가 ?deliverable=<id> 로 연다
@@ -121,28 +132,20 @@ export default function KanbanBoard({
 
   // ── Column grouping (filter 적용) ────────────────────────────────────
 
+  // 보드와 목록이 같은 필터를 쓴다
+  const visibleTasks = useMemo(() => {
+    const q = filter?.tag?.toLowerCase();
+    return tasks.filter((t) =>
+      (!deliveryFilter || (deliveryFilter === "unlinked" ? !t.deliverableId : t.deliverableId === deliveryFilter)) &&
+      (!filter?.assigneeId || t.assignees.some((a) => a.userId === filter.assigneeId)) &&
+      (!filter?.priority || t.priority === filter.priority) &&
+      (!q || !!t.tag?.toLowerCase().includes(q))
+    );
+  }, [tasks, filter, deliveryFilter]);
+
   const tasksByStatus = useCallback(
-    (status: TaskStatus) => {
-      let filtered = tasks.filter((t) => t.status === status);
-      if (deliveryFilter) {
-        filtered = filtered.filter((t) => deliveryFilter === "unlinked"
-          ? !t.deliverableId : t.deliverableId === deliveryFilter);
-      }
-      if (filter?.assigneeId) {
-        filtered = filtered.filter((t) =>
-          t.assignees.some((a) => a.userId === filter.assigneeId)
-        );
-      }
-      if (filter?.priority) {
-        filtered = filtered.filter((t) => t.priority === filter.priority);
-      }
-      if (filter?.tag) {
-        const q = filter.tag.toLowerCase();
-        filtered = filtered.filter((t) => t.tag?.toLowerCase().includes(q));
-      }
-      return filtered;
-    },
-    [tasks, filter, deliveryFilter]
+    (status: TaskStatus) => visibleTasks.filter((t) => t.status === status),
+    [visibleTasks]
   );
 
   // ── Drag handlers ──────────────────────────────────────────────────────
@@ -336,6 +339,19 @@ export default function KanbanBoard({
           {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
         <Link href={`/projects/${projectId}/deliverables`} className="text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
+        <div role="group" aria-label="업무 보기 방식" className="ml-auto flex rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
+          {([["board", "보드", Columns3], ["list", "목록", List]] as const).map(([v, label, Icon]) => (
+            <button
+              key={v}
+              onClick={() => changeView(v)}
+              aria-pressed={view === v}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${view === v ? "bg-bb-surface2 text-bb-text font-medium" : "text-bb-text2 hover:text-bb-text"}`}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {deliverablesError && (
         <p role="alert" className="mb-4 text-sm text-red-500">
@@ -344,6 +360,18 @@ export default function KanbanBoard({
         </p>
       )}
       {boardError && <p role="alert" className="mb-4 text-sm text-red-500">{boardError}</p>}
+      {view === "list" && tasks.length > 0 ? (
+        <>
+          {!readOnly && (
+            <div className="mb-3 flex justify-end">
+              <button onClick={() => openCreate("TODO")} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
+                + 업무 추가
+              </button>
+            </div>
+          )}
+          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} />
+        </>
+      ) : (
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
@@ -399,6 +427,7 @@ export default function KanbanBoard({
           )}
         </DragOverlay>
       </DndContext>
+      )}
 
       {/* Task create / edit modal */}
       {modalMode && (
