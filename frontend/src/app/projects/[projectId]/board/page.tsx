@@ -319,16 +319,19 @@ export default function BoardPage() {
                 Notion
               </button>
 
-              {/* Score refresh */}
-              <button
-                onClick={handleRefreshScores}
-                disabled={refreshing}
-                title="기여도 점수 재계산"
-                className="p-2 rounded-lg bg-bb-surface border border-bb-border text-bb-text2
-                           hover:text-teal-400 hover:border-teal-400/40 transition-all disabled:opacity-50"
-              >
-                <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-              </button>
+              {/* Score refresh — 수동 재계산은 팀장·팀원만(관찰자 403) */}
+              {!readOnly && (
+                <button
+                  onClick={handleRefreshScores}
+                  disabled={refreshing}
+                  title="기여도 점수 재계산"
+                  aria-label="기여도 점수 재계산"
+                  className="p-2 rounded-lg bg-bb-surface border border-bb-border text-bb-text2
+                             hover:text-teal-400 hover:border-teal-400/40 transition-all disabled:opacity-50"
+                >
+                  <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
+import { useMyRole } from "@/hooks/useMyRole";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
@@ -114,6 +116,9 @@ export default function AnalyticsPage() {
   const [recalculating, setRecalculating] = useState(false);
   const [error,         setError]         = useState("");
   const [downloading,   setDownloading]   = useState(false);
+  // 수동 재계산은 팀장·팀원만(관찰자 403). 역할을 아직 모르면 버튼을 두고 서버 판단을 따른다
+  const role      = useMyRole(projectId);
+  const canRecalc = role !== "OBSERVER";
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError("");
@@ -163,8 +168,8 @@ export default function AnalyticsPage() {
     try {
       const { data } = await api.post<ScoreEntry[]>(`/projects/${projectId}/scores/recalculate`);
       setScores(data);
-    } catch {
-      setError("재계산에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "재계산에 실패했습니다."));
     } finally {
       setRecalculating(false);
     }
@@ -220,15 +225,17 @@ export default function AnalyticsPage() {
               {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               PDF 리포트
             </button>
-            <button
-              onClick={handleRecalculate}
-              disabled={recalculating}
-              className="flex items-center gap-2 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white
-                         text-sm rounded-lg transition-all disabled:opacity-50 font-medium"
-            >
-              {recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              재계산
-            </button>
+            {canRecalc && (
+              <button
+                onClick={handleRecalculate}
+                disabled={recalculating}
+                className="flex items-center gap-2 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white
+                           text-sm rounded-lg transition-all disabled:opacity-50 font-medium"
+              >
+                {recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                재계산
+              </button>
+            )}
           </div>
         </div>
 
@@ -273,15 +280,19 @@ export default function AnalyticsPage() {
             <p className="text-xs text-bb-text2 mb-6">
               태스크 완료, 회의 체크인, 파일 업로드 후 분석이 시작됩니다
             </p>
-            <button
-              onClick={handleRecalculate}
-              disabled={recalculating}
-              className="flex items-center gap-2 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h
-                         text-white text-sm rounded-lg transition-all disabled:opacity-50"
-            >
-              {recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              지금 계산하기
-            </button>
+            {canRecalc ? (
+              <button
+                onClick={handleRecalculate}
+                disabled={recalculating}
+                className="flex items-center gap-2 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h
+                           text-white text-sm rounded-lg transition-all disabled:opacity-50"
+              >
+                {recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                지금 계산하기
+              </button>
+            ) : (
+              <p className="text-xs text-bb-text2">팀장·팀원이 계산하면 여기에 표시됩니다.</p>
+            )}
           </div>
         ) : (
           <>
