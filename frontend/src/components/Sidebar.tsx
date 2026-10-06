@@ -292,14 +292,17 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject, exactActive, badgeCount }) => {
             // exactActive=true → exact pathname match only (프로젝트 홈 등)
             const segment = href.split("/").pop()!;
-            const active = exactActive
+            const active = needsProject && !currentProjectId
+              ? false
+              : exactActive
               ? pathname === href
               : (pathname === href
                 || pathname.endsWith(`/${segment}`)
                 || pathname.includes(`/${segment}/`));
             return (
               <Link
-                key={href}
+                // 프로젝트 선택 전에는 여러 메뉴의 href 가 /dashboard 로 같아진다
+                key={label}
                 href={href}
                 prefetch={!needsProject || !!currentProjectId}
                 onClick={(e) => handleNavClick(e, href, needsProject)}
