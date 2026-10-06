@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { daysLeft, shortDate } from "@/lib/due";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
@@ -541,8 +542,9 @@ export default function AnalyticsPage() {
                         ) : (
                           <div className="space-y-1.5">
                             {myTasks.map((task) => {
+                              // 마감일이 지난 뒤부터 지연. 마감 당일은 지연이 아니다
                               const overdue = task.dueDate && task.status !== "DONE"
-                                && new Date(task.dueDate) < new Date();
+                                && daysLeft(task.dueDate) < 0;
                               return (
                                 <div key={task.id} className="flex items-center gap-2.5">
                                   <span className="shrink-0 text-sm">
@@ -556,7 +558,7 @@ export default function AnalyticsPage() {
                                   {task.dueDate && (
                                     <span className={`text-[10px] shrink-0 ${overdue ? "text-red-400 font-medium" : "text-bb-text2"}`}>
                                       {overdue ? "⚠️ " : ""}
-                                      {new Date(task.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                                      {shortDate(task.dueDate)}
                                     </span>
                                   )}
                                 </div>
