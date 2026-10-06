@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import MyTasks from "@/components/dashboard/MyTasks";
 import DatePicker from "@/components/DatePicker";
 import api from "@/lib/api";
 import { roleLabel } from "@/lib/roleLabel";
@@ -214,6 +215,9 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* 모든 프로젝트에서 나에게 배정된 업무 (C-50) */}
+        {!loading && <MyTasks projects={projects} />}
 
         {/* Project Grid */}
         {loading ? (
