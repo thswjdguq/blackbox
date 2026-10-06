@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { roleLabel } from "@/lib/roleLabel";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Task } from "@/types/task";
 import { Meeting } from "@/types/meeting";
@@ -365,7 +366,7 @@ export default function ProjectHomePage() {
                   )}
                   {project.myRole && (
                     <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-medium">
-                      {project.myRole}
+                      {roleLabel(project.myRole)}
                     </span>
                   )}
                 </div>

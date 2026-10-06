@@ -19,6 +19,7 @@ import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import DatePicker from "@/components/DatePicker";
 import api from "@/lib/api";
+import { roleLabel } from "@/lib/roleLabel";
 import { apiError } from "@/lib/apiError";
 
 interface CheckinRecord {
@@ -501,7 +502,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
         ) : null}
         {project.myRole && (
           <span className="ml-auto text-xs font-medium text-indigo-500 dark:text-indigo-400">
-            {project.myRole === "LEADER" ? "팀장" : "팀원"}
+            {roleLabel(project.myRole)}
           </span>
         )}
       </div>
