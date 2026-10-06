@@ -85,7 +85,8 @@ function fmtRec(iso: string) {
 function StepBar({ step }: { step: 1 | 2 | 3 }) {
   const steps = ["기본 정보", "일정 선택", "확인 및 생성"];
   return (
-    <div className="flex items-center gap-0 px-6 py-3 border-b border-bb-border">
+    // 작은 화면에서는 지금 단계 이름만 보이고 나머지는 화면 읽기 프로그램에만 읽힌다
+    <div className="flex items-center gap-0 px-4 sm:px-6 py-3 border-b border-bb-border">
       {steps.map((label, i) => {
         const n = i + 1;
         const active  = n === step;
@@ -100,11 +101,11 @@ function StepBar({ step }: { step: 1 | 2 | 3 }) {
               }`}>
                 {done ? <CheckCircle2 size={11} /> : n}
               </div>
-              <span className={`text-[11px] font-medium ${active ? "text-slate-200" : "text-slate-500"}`}>
+              <span className={`whitespace-nowrap text-[11px] font-medium ${active ? "text-slate-200" : "sr-only sm:not-sr-only text-slate-500"}`}>
                 {label}
               </span>
             </div>
-            {i < 2 && <div className="w-8 h-px bg-slate-700 mx-2" />}
+            {i < 2 && <div className="w-4 sm:w-8 h-px bg-slate-700 mx-1.5 sm:mx-2" />}
           </div>
         );
       })}
@@ -365,13 +366,13 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
               <label className="text-xs font-medium text-bb-text2 mb-2 flex items-center gap-1.5">
                 <Clock size={12} /> 예상 소요 시간
               </label>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d.value}
                     type="button"
                     onClick={() => setDurationMin(d.value)}
-                    className={`py-2 rounded-lg text-xs font-medium border transition-all ${
+                    className={`py-2 whitespace-nowrap rounded-lg text-xs font-medium border transition-all ${
                       durationMin === d.value
                         ? "border-indigo-500 bg-indigo-500/15 text-indigo-300"
                         : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600"
