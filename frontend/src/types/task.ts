@@ -69,3 +69,17 @@ export const KANBAN_COLUMNS: KanbanColumn[] = [
   { id: "IN_PROGRESS", label: "In Progress", accent: "bg-indigo-500", countColor: "text-indigo-400" },
   { id: "DONE",        label: "Done",        accent: "bg-teal-400",   countColor: "text-teal-400" },
 ];
+
+/** 화면 표시 이름. 업무 카드·업무 창·보드 필터·목록이 같은 말을 쓴다 */
+export const TASK_STATUS_TEXT: Record<TaskStatus, string> = {
+  TODO: "할 일",
+  IN_PROGRESS: "진행 중",
+  DONE: "완료",
+};
+
+export const PRIORITY_TEXT: Record<TaskPriority, string> = {
+  LOW: "낮음",
+  MEDIUM: "보통",
+  HIGH: "높음",
+  URGENT: "긴급",
+};

@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { KanbanFilter } from "@/components/kanban/KanbanBoard";
-import { TaskPriority } from "@/types/task";
+import { TaskPriority, PRIORITY_TEXT } from "@/types/task";
 
 interface Member {
   userId: string;
@@ -385,7 +385,7 @@ export default function BoardPage() {
 
           {/* 우선순위 */}
           {(["LOW", "MEDIUM", "HIGH", "URGENT"] as TaskPriority[]).map((p) => {
-            const labels: Record<TaskPriority, string> = { LOW: "낮음", MEDIUM: "보통", HIGH: "높음", URGENT: "긴급" };
+            const labels = PRIORITY_TEXT;
             const colors: Record<TaskPriority, string> = {
               LOW: "border-bb-border text-bb-text2 data-[active=true]:bg-bb-surface2/30 data-[active=true]:text-bb-text",
               MEDIUM: "border-blue-500/50 text-blue-400 data-[active=true]:bg-blue-500/20 data-[active=true]:text-blue-300",
