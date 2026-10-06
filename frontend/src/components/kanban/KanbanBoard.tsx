@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Deliverable } from "@/types/deliverable";
-import { apiError } from "@/lib/apiError";
+import { apiError, PartialSaveError } from "@/lib/apiError";
 import {
   DndContext,
   DragEndEvent,
@@ -45,6 +45,8 @@ interface KanbanBoardProps {
   scoreMap: ScoreMap;
   filter?: KanbanFilter;
   onTasksChange?: (tasks: Task[]) => void;
+  /** 관찰자: 서버가 업무 쓰기를 거절하므로 추가·이동·드래그·수정을 숨긴다 */
+  readOnly?: boolean;
 }
 
 export default function KanbanBoard({
@@ -54,6 +56,7 @@ export default function KanbanBoard({
   scoreMap,
   filter,
   onTasksChange,
+  readOnly = false,
 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -77,11 +80,18 @@ export default function KanbanBoard({
     if (id) setDeliveryFilter(id);
   }, []);
 
-  useEffect(() => {
+  const [deliverablesError, setDeliverablesError] = useState("");
+
+  const loadDeliverables = useCallback(() => {
+    setDeliverablesError("");
     api.get<Deliverable[]>(`/projects/${projectId}/deliverables`)
       .then(({ data }) => setDeliverables(data))
-      .catch((err) => setBoardError(apiError(err, "제출물 목록을 불러오지 못했습니다. 새로고침해 주세요.")));
+      .catch((err) => setDeliverablesError(apiError(err, "제출물 목록을 불러오지 못했습니다.")));
   }, [projectId]);
+
+  useEffect(() => {
+    loadDeliverables();
+  }, [loadDeliverables]);
 
   useEffect(() => {
     setTasks(initialTasks);
@@ -248,23 +258,36 @@ export default function KanbanBoard({
     let finalTask = data;
     reflectSavedTask(data);
 
+    // 2·3은 1이 이미 저장된 뒤라, 실패하면 어디까지 저장됐는지 알려준다
     // 2) 담당자 변경 — 별도 PUT 엔드포인트 사용 (UpdateTaskRequest에 assigneeIds 없음)
     if (payload.assigneeIds !== undefined) {
-      const { data: assigneeData } = await api.put<Task>(
-        `/projects/${projectId}/tasks/${taskId}/assignees`,
-        { assigneeIds: payload.assigneeIds }
-      );
-      finalTask = assigneeData;
-      reflectSavedTask(assigneeData);
+      try {
+        const { data: assigneeData } = await api.put<Task>(
+          `/projects/${projectId}/tasks/${taskId}/assignees`,
+          { assigneeIds: payload.assigneeIds }
+        );
+        finalTask = assigneeData;
+        reflectSavedTask(assigneeData);
+      } catch (err) {
+        throw new PartialSaveError(
+          `업무 내용은 저장했지만 담당자 변경에 실패했습니다. ${apiError(err, "다시 시도해주세요.")}`
+        );
+      }
     }
 
     // 3) 상태 변경 — 별도 PATCH 엔드포인트 사용 (UpdateTaskRequest에 status 없음)
     if (payload.status && original?.status !== payload.status) {
-      const { data: statusData } = await api.patch<Task>(
-        `/projects/${projectId}/tasks/${taskId}/status`,
-        { status: payload.status }
-      );
-      finalTask = statusData;
+      try {
+        const { data: statusData } = await api.patch<Task>(
+          `/projects/${projectId}/tasks/${taskId}/status`,
+          { status: payload.status }
+        );
+        finalTask = statusData;
+      } catch (err) {
+        throw new PartialSaveError(
+          `${payload.assigneeIds !== undefined ? "업무 내용과 담당자는" : "업무 내용은"} 저장했지만 상태 변경에 실패했습니다. ${apiError(err, "다시 시도해주세요.")}`
+        );
+      }
     }
 
     setTasks((prev) => prev.map((t) => (t.id === taskId ? finalTask : t)));
@@ -314,6 +337,12 @@ export default function KanbanBoard({
         </select>
         <Link href={`/projects/${projectId}/deliverables`} className="text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
       </div>
+      {deliverablesError && (
+        <p role="alert" className="mb-4 text-sm text-red-500">
+          {deliverablesError}{" "}
+          <button onClick={loadDeliverables} className="underline hover:text-red-400">다시 시도</button>
+        </p>
+      )}
       {boardError && <p role="alert" className="mb-4 text-sm text-red-500">{boardError}</p>}
       <DndContext
         sensors={sensors}
@@ -329,14 +358,20 @@ export default function KanbanBoard({
           <div className="flex flex-col items-center justify-center text-center py-28">
             <span className="text-5xl mb-4">📋</span>
             <p className="text-base font-semibold text-bb-text mb-1.5">아직 태스크가 없어요</p>
-            <p className="text-sm text-bb-text2 mb-6">첫 태스크를 만들어 팀원에게 배정해보세요</p>
-            <button
-              onClick={() => openCreate("TODO")}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500
-                         text-white text-sm font-medium rounded-lg transition-all"
-            >
-              + 태스크 추가
-            </button>
+            {readOnly ? (
+              <p className="text-sm text-bb-text2">팀원이 업무를 만들면 여기서 확인할 수 있습니다</p>
+            ) : (
+              <>
+                <p className="text-sm text-bb-text2 mb-6">첫 태스크를 만들어 팀원에게 배정해보세요</p>
+                <button
+                  onClick={() => openCreate("TODO")}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500
+                             text-white text-sm font-medium rounded-lg transition-all"
+                >
+                  + 태스크 추가
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-6 h-full">
@@ -349,6 +384,7 @@ export default function KanbanBoard({
                 onAddTask={openCreate}
                 onEditTask={openEdit}
                 onMoveTask={handleMoveTask}
+                readOnly={readOnly}
               />
             ))}
           </div>
@@ -376,6 +412,7 @@ export default function KanbanBoard({
           onCreate={handleCreate}
           onUpdate={handleUpdate}
           onDelete={handleDelete}
+          readOnly={readOnly}
         />
       )}
     </>
