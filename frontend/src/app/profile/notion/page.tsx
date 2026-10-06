@@ -84,7 +84,7 @@ export default function NotionConnectPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
           <Loader2 size={24} className="animate-spin text-bb-text2" />
         </main>
       </div>
@@ -94,7 +94,7 @@ export default function NotionConnectPage() {
   return (
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         <div className="max-w-xl">
           <h1 className="text-2xl font-bold text-bb-text mb-1">Notion 연동 설정</h1>
           <p className="text-sm text-bb-text2 mb-8">

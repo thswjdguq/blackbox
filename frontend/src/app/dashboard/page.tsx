@@ -190,24 +190,24 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar hasProjects={projects.length > 0} />
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-bb-text">내 프로젝트</h1>
             <p className="text-sm text-bb-text2 mt-1">참여 중인 프로젝트 {projects.length}개</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex shrink-0 gap-3">
             <button
               onClick={() => setShowJoin(true)}
-              className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
             >
               <Hash size={15} />
               코드 참여
             </button>
             <button
               onClick={() => setShowCreate(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
             >
               <Plus size={15} />
               새 프로젝트

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Menu,
+  X,
   Shield,
   FolderKanban,
   Kanban,
@@ -190,7 +192,29 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const router   = useRouter();
   const [isDark, setIsDark] = useState(true);
   const [toast,  setToast]  = useState(false);
+  // 768px 미만에서는 사이드바를 숨기고 상단 바의 메뉴 버튼으로 연다
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const menuButtonRef  = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const clearTokens = useAuthStore((s) => s.clearTokens);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // 닫기 버튼·배경·Escape로 닫으면 초점을 메뉴 버튼으로 돌려준다
+  const closeMenu = useCallback(() => {
+    setMobileOpen(false);
+    menuButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    closeButtonRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeMenu(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen, closeMenu]);
 
   // URL에서 현재 프로젝트 ID 추출 (/projects/[id]/xxx)
   const projectIdMatch = pathname.match(/\/projects\/([^/]+)/);
@@ -230,7 +254,8 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   };
 
   const handleNavClick = (e: React.MouseEvent, href: string, needsProject?: boolean) => {
-    if (!needsProject) return;
+    // 지금 화면의 메뉴를 누르면 pathname이 바뀌지 않으므로 허용된 선택이면 여기서 닫는다
+    if (!needsProject) { setMobileOpen(false); return; }
     // 현재 URL에 projectId가 없으면 무조건 차단 (폴백 URL은 존재하지 않는 경로)
     if (!currentProjectId) {
       e.preventDefault();
@@ -244,7 +269,9 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
     if (count === 0) {
       e.preventDefault();
       showNoProjectToast();
+      return;
     }
+    setMobileOpen(false);
   };
 
   const handleLogout = async () => {
@@ -261,7 +288,36 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
 
   return (
     <>
-      <aside className="w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-30">
+      {/* 작은 화면 상단 바 */}
+      <header className="md:hidden fixed top-0 inset-x-0 h-14 z-30 flex items-center gap-3 px-4 bg-bb-sidebar border-b border-bb-border">
+        <button
+          ref={menuButtonRef}
+          onClick={() => setMobileOpen(true)}
+          className="p-1.5 -ml-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+          aria-label="메뉴 열기"
+          aria-expanded={mobileOpen}
+          aria-controls="app-sidebar"
+        >
+          <Menu size={20} />
+        </button>
+        <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2">
+          <Shield size={16} className="text-bb-primary" />
+          <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
+        </button>
+      </header>
+
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={closeMenu} aria-hidden="true" />
+      )}
+
+      {/* 닫혀 있을 때는 invisible로 숨겨 화면 밖 메뉴에 Tab 초점이 가지 않게 한다.
+          열 때는 바로 보이게 해야 닫기 버튼에 초점을 줄 수 있고, 닫을 때만 밀려나는 동안 보이게 둔다 */}
+      <aside
+        id="app-sidebar"
+        className={`w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-50 md:z-30
+                    duration-200 md:translate-x-0 md:visible
+                    ${mobileOpen ? "translate-x-0 visible transition-transform" : "-translate-x-full invisible transition-[transform,visibility]"}`}
+      >
         {/* 로고 + 알림 벨 */}
         <div className="px-6 py-5 border-b border-bb-border flex items-center justify-between">
           <div
@@ -273,7 +329,17 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             </div>
             <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
           </div>
-          {currentProjectId && <NotificationBell projectId={currentProjectId} />}
+          <div className="flex items-center gap-1">
+            {currentProjectId && <NotificationBell projectId={currentProjectId} />}
+            <button
+              ref={closeButtonRef}
+              onClick={closeMenu}
+              className="md:hidden p-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+              aria-label="메뉴 닫기"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* 네비게이션 */}
@@ -326,6 +392,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           </button>
           <Link
             href="/profile/settings"
+            onClick={() => setMobileOpen(false)}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               pathname === "/profile/settings"
                 ? "bg-bb-primary/10 text-bb-primary font-medium"
@@ -337,6 +404,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           </Link>
           <Link
             href="/profile/notion"
+            onClick={() => setMobileOpen(false)}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               pathname === "/profile/notion"
                 ? "bg-bb-primary/10 text-bb-primary font-medium"

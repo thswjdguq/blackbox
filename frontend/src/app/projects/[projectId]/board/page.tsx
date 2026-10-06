@@ -42,7 +42,7 @@ interface ScoreEntry {
 // ── Small stats banner ──────────────────────────────────────────────────────
 function StatPill({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bb-surface border border-bb-border`}>
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bb-surface border border-bb-border whitespace-nowrap">
       <div className={`w-2 h-2 rounded-full ${accent}`} />
       <span className="text-xs text-bb-text2">{label}</span>
       <span className="text-sm font-bold text-bb-text">{value}</span>
@@ -163,7 +163,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-6">
             <div className="h-7 bg-bb-surface rounded-lg w-48" />
             <div className="grid grid-cols-3 gap-6">
@@ -182,7 +182,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
           <div className="text-center">
             <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
             <p className="text-bb-text text-sm mb-4">{error}</p>
@@ -203,13 +203,13 @@ export default function BoardPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen flex flex-col">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen flex flex-col">
         {/* Top bar with gradient accent */}
-        <div className="relative px-8 pt-8 pb-6 border-b border-bb-border overflow-hidden">
+        <div className="relative px-4 md:px-8 pt-6 md:pt-8 pb-6 border-b border-bb-border overflow-hidden">
           {/* Decorative gradient */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 via-transparent to-teal-400/5 pointer-events-none" />
 
-          <div className="relative flex items-start justify-between">
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div>
               {/* Breadcrumb */}
               <div className="flex items-center gap-2 text-xs text-bb-text2 mb-2">
@@ -286,7 +286,7 @@ export default function BoardPage() {
             </div>
 
             {/* Stats + refresh */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <StatPill label="할 일" value={todoCount} accent="bg-slate-500" />
               <StatPill label="진행 중" value={inProgressCount} accent="bg-indigo-500" />
               <StatPill label="완료" value={doneCount} accent="bg-teal-400" />
@@ -428,8 +428,8 @@ export default function BoardPage() {
         </div>
 
         {/* Board area */}
-        <div className="flex-1 p-8 overflow-x-auto">
-          <div className="min-w-[900px]">
+        <div className="flex-1 p-4 md:p-8 md:overflow-x-auto">
+          <div className="md:min-w-[900px]">
             <KanbanBoard
               projectId={projectId}
               initialTasks={tasks}
@@ -446,7 +446,7 @@ export default function BoardPage() {
 
           {/* 팀원별 진행 현황 */}
           {members.length > 0 && (
-            <div className="min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-5">
+            <div className="md:min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-5">
               <h2 className="text-sm font-semibold text-bb-text mb-4 flex items-center gap-2">
                 <FolderKanban size={14} className="text-indigo-400" />
                 팀원별 태스크 현황
@@ -464,7 +464,7 @@ export default function BoardPage() {
                   const hue = m.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
 
                   return (
-                    <div key={m.userId} className="flex items-center gap-4">
+                    <div key={m.userId} className="flex flex-wrap md:flex-nowrap items-center gap-x-4 gap-y-2">
                       {/* Avatar */}
                       <div
                         style={{ background: `hsl(${hue} 55% 45%)` }}
@@ -490,7 +490,7 @@ export default function BoardPage() {
                       </div>
 
                       {/* Progress bar */}
-                      <div className="flex-1 flex items-center gap-2">
+                      <div className="flex-1 min-w-[8rem] flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-bb-surface rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
