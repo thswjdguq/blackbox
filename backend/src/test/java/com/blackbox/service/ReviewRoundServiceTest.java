@@ -167,15 +167,17 @@ class ReviewRoundServiceTest {
     @Test void serviceStartsOnlyWithExactlyOneUnresolvedCommentCounter() {
         assertEquals(NoSuchBeanDefinitionException.class, startupFailure().getMostSpecificCause().getClass());
         assertEquals(NoUniqueBeanDefinitionException.class,
-                startupFailure(NoCommentsYet.class, AnotherCounter.class).getMostSpecificCause().getClass());
-        try (var context = context(NoCommentsYet.class)) {
+                startupFailure(OneCounter.class, AnotherCounter.class).getMostSpecificCause().getClass());
+        try (var context = context(OneCounter.class)) {
             assertNotNull(context.getBean(ReviewRoundService.class));
         }
     }
 
-    static class AnotherCounter implements UnresolvedCommentCounter {
-        @Override public long countUnresolvedComments(UUID projectId, UUID deliverableId) { return 1; }
+    // 기본 구현(NoCommentsYet)을 직접 가리키지 않는다. 피드백 구현이 그 파일을 지워도 이 테스트는 그대로 돈다
+    static class OneCounter implements UnresolvedCommentCounter {
+        @Override public long countUnresolvedComments(UUID projectId, UUID deliverableId) { return 0; }
     }
+    static class AnotherCounter extends OneCounter {}
 
     private UnsatisfiedDependencyException startupFailure(Class<?>... counters) {
         return assertThrows(UnsatisfiedDependencyException.class, () -> context(counters).close());
