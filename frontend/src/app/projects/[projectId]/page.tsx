@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { getDeliverables } from "@/lib/api/deliverable";
+import type { Deliverable } from "@/types/deliverable";
+import NextStepCard from "@/components/project/NextStepCard";
 import { roleLabel } from "@/lib/roleLabel";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Task } from "@/types/task";
@@ -200,6 +203,9 @@ export default function ProjectHomePage() {
   const [scores,   setScores]   = useState<ScoreEntry[]>([]);
   const [alerts,   setAlerts]   = useState<Alert[]>([]);
   const [members,  setMembers]  = useState<Member[]>([]);
+  // null: 제출물 목록을 못 불러옴 → 다음 할 일 카드를 숨긴다 (잘못된 안내보다 낫다)
+  const [deliverables, setDeliverables] = useState<Deliverable[] | null>(null);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState("");
 
@@ -213,7 +219,7 @@ export default function ProjectHomePage() {
     setLoading(true);
     setError("");
     try {
-      const [projRes, taskRes, meetRes, fileRes, scoreRes, alertRes, memberRes] = await Promise.all([
+      const [projRes, taskRes, meetRes, fileRes, scoreRes, alertRes, memberRes, delRes, profileRes] = await Promise.all([
         api.get<ProjectDetail>(`/projects/${projectId}`),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Meeting[]>(`/projects/${projectId}/meetings`),
@@ -221,7 +227,12 @@ export default function ProjectHomePage() {
         api.get<ScoreEntry[]>(`/projects/${projectId}/scores`).catch(() => ({ data: [] as ScoreEntry[] })),
         api.get<Alert[]>(`/projects/${projectId}/alerts`).catch(() => ({ data: [] as Alert[] })),
         api.get<Member[]>(`/projects/${projectId}/members`).catch(() => ({ data: [] as Member[] })),
+        // 다음 할 일 안내용. 실패하면 안내 카드만 빠진다
+        getDeliverables(projectId).then((r) => r.data).catch(() => null),
+        api.get<{ id: string }>("/auth/profile").then((r) => r.data.id).catch(() => null),
       ]);
+      setDeliverables(delRes);
+      setMyUserId(profileRes);
       setProject(projRes.data);
       setTasks(taskRes.data);
       setMeetings(meetRes.data);
@@ -420,11 +431,14 @@ export default function ProjectHomePage() {
             )}
           </div>
 
-          <Link href={`/projects/${projectId}/deliverables`} className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15">
-            <h2 className="font-semibold text-bb-text">제출물부터 계획하기</h2>
-            <p className="mt-2 text-sm text-bb-text2">제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요.</p>
-            <span className="mt-3 inline-block text-sm font-medium text-teal-500">제출물·요구사항 열기 →</span>
-          </Link>
+          {deliverables && (
+            <NextStepCard
+              projectId={projectId}
+              deliverables={deliverables}
+              tasks={tasks}
+              canWrite={["LEADER", "MEMBER"].includes(members.find((m) => m.userId === myUserId)?.role ?? "")}
+            />
+          )}
           {/* ── 연동 온보딩 배너 ─────────────────────────────────────────── */}
           <OnboardingBanner projectId={projectId} />
 
