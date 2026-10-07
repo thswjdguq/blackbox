@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
+import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Alert } from "@/types/vault";
@@ -234,16 +235,17 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   // 미연동 항목 개수 (Discord / Notion / Google Calendar)
   const { missingCount } = useIntegrationStatus(currentProjectId);
 
+  // 메뉴는 용도별로 묶는다 (C-50 2번): 과제를 진행하는 곳 / 함께 정하는 곳 / 남는 기록
   const NAV_ITEMS = [
-    { href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
-    { href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: ClipboardList,   label: "제출물",        needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "업무 보드",    needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "Hash Vault",   needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/analytics`  : "/analytics",           icon: BarChart2,       label: "기여도",       needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false, badgeCount: currentProjectId ? missingCount : 0 },
+    { group: null,   href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
+    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
+    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: ClipboardList,   label: "제출물",        needsProject: true, exactActive: false },
+    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "업무 보드",    needsProject: true, exactActive: false },
+    { group: "함께", href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
+    { group: "함께", href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
+    { group: "기록", href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "파일 금고",     needsProject: true, exactActive: false },
+    { group: "기록", href: currentProjectId ? `/projects/${currentProjectId}/analytics`  : "/analytics",           icon: BarChart2,       label: "기여도",       needsProject: true, exactActive: false },
+    { group: "",     href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false, badgeCount: currentProjectId ? missingCount : 0 },
   ];
 
   useEffect(() => {
@@ -353,9 +355,18 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           </div>
         </div>
 
-        {/* 네비게이션 */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject, exactActive, badgeCount }) => {
+        <ProjectSwitcher currentProjectId={currentProjectId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+
+        {/* 네비게이션 — 짧은 화면에서는 메뉴만 스크롤 */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          {NAV_ITEMS.map(({ group, href, icon: Icon, label, needsProject, exactActive, badgeCount }, i) => {
+            // 묶음이 바뀌는 자리에 이름(빈 이름이면 구분선만)
+            const groupStart = i > 0 && group !== NAV_ITEMS[i - 1].group;
+            const heading = groupStart && (
+              group
+                ? <p key={`g-${group}`} className="px-3 pt-4 pb-1 text-[11px] font-semibold text-bb-text2/70">{group}</p>
+                : <div key={`g-${i}`} className="mx-3 my-3 border-t border-bb-border" />
+            );
             // exactActive=true → exact pathname match only (프로젝트 홈 등)
             const segment = href.split("/").pop()!;
             const active = needsProject && !currentProjectId
@@ -365,7 +376,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
               : (pathname === href
                 || pathname.endsWith(`/${segment}`)
                 || pathname.includes(`/${segment}/`));
-            return (
+            return [heading, (
               <Link
                 // 프로젝트 선택 전에는 여러 메뉴의 href 가 /dashboard 로 같아진다
                 key={label}
@@ -387,7 +398,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
                   </span>
                 )}
               </Link>
-            );
+            )];
           })}
         </nav>
 

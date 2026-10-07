@@ -631,7 +631,7 @@ export default function ProjectHomePage() {
           {/* ── Hash Vault ───────────────────────────────────────────────── */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
             <SectionHeader
-              title="Hash Vault"
+              title="파일 금고"
               icon={Files}
               href={`/projects/${projectId}/vault`}
             />
@@ -675,7 +675,7 @@ export default function ProjectHomePage() {
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-bb-text mb-1">팀플 종료 — 증거 패키지 발급</h2>
                 <p className="text-xs text-bb-text2 leading-relaxed">
-                  회의록 전체 · 기여도 PDF · Hash Vault 이력을 하나의 ZIP으로 묶어 교수님께 제출하세요.
+                  회의록 전체 · 기여도 PDF · 파일 금고 이력을 하나의 ZIP으로 묶어 교수님께 제출하세요.
                   PDF에는 SHA-256 무결성 해시가 포함되어 데이터 위변조를 방지합니다.
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">

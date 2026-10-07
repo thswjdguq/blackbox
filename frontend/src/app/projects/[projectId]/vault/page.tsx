@@ -418,7 +418,7 @@ export default function VaultPage() {
           <div>
             <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2">
               <Files size={22} className="text-indigo-400" />
-              Hash Vault
+              파일 금고
             </h1>
             <p className="text-sm text-bb-text2 mt-1">
               파일 변경 내역을 SHA-256 해시로 추적합니다
