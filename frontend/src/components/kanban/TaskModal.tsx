@@ -89,6 +89,14 @@ export default function TaskModal({
   ]);
   const dirty = !readOnly && initialForm !== currentForm;
 
+  // 닫기는 한 곳으로: 배경·닫기(X)·취소·Escape 모두 작성 중이면 먼저 묻는다
+  const requestClose = () => (dirty ? setConfirmClose(true) : onClose());
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); requestClose(); } };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
   // task prop 변경 시 폼 필드 동기화
   useEffect(() => {
     if (!task) return;
@@ -157,15 +165,21 @@ export default function TaskModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* 배경 딤 레이어 */}
+    // 넓은 화면에서는 오른쪽 패널로 열어 보드·제출물이 옆에 보이게 하고(C-50 5번), 작은 화면에서는 전체 화면
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* 배경 — 패널 옆 화면이 보이도록 옅게 */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={() => (dirty ? setConfirmClose(true) : onClose())}
+        className="absolute inset-0 bg-black/60 md:bg-black/30"
+        onClick={requestClose}
       />
 
-      {/* 모달 패널 */}
-      <div className="relative w-full max-w-lg bg-bb-surface border border-bb-border rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
+      {/* 패널 */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-panel-title"
+        className="relative flex h-full w-full flex-col bg-bb-surface shadow-2xl shadow-black/50 md:w-[480px] md:max-w-[90vw] md:border-l md:border-bb-border"
+      >
 
         {confirmClose && (
           <div role="alert" className="flex items-center gap-2 px-6 py-3 bg-amber-500/10 border-b border-amber-500/30 text-xs text-amber-400">
@@ -181,11 +195,11 @@ export default function TaskModal({
 
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-bb-border">
-          <h2 className="text-base font-semibold text-bb-text">
+          <h2 id="task-panel-title" className="text-base font-semibold text-bb-text">
             {readOnly ? "업무 보기" : mode === "create" ? "새 태스크" : "태스크 수정"}
           </h2>
           <button
-            onClick={onClose}
+            onClick={requestClose}
             className="text-bb-text2 hover:text-bb-text p-1.5 rounded-lg hover:bg-bb-surface2 transition-all"
             aria-label="닫기"
           >
@@ -194,7 +208,7 @@ export default function TaskModal({
         </div>
 
         {/* 폼 */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 pt-5 space-y-4">
 
           {/* 에러 메시지 */}
           {error && (
@@ -365,7 +379,7 @@ export default function TaskModal({
 
           {/* 하단 액션 버튼 */}
           {readOnly ? (
-            <div className="flex justify-end pt-2">
+            <div className="sticky bottom-0 -mx-6 flex justify-end border-t border-bb-border bg-bb-surface px-6 py-3">
               <button
                 type="button"
                 onClick={onClose}
@@ -375,7 +389,7 @@ export default function TaskModal({
               </button>
             </div>
           ) : (
-          <div className="flex items-center justify-between pt-2">
+          <div className="sticky bottom-0 -mx-6 flex items-center justify-between border-t border-bb-border bg-bb-surface px-6 py-3">
             {/* 삭제 버튼 (편집 모드만) */}
             {mode === "edit" ? (
               confirmDelete ? (
@@ -415,7 +429,7 @@ export default function TaskModal({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={requestClose}
                 className="px-4 py-2 text-sm text-bb-text2 hover:text-bb-text transition-colors"
               >
                 취소
