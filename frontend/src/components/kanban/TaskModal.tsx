@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Task, TaskPriority, TaskStatus, CreateTaskPayload, KANBAN_COLUMNS } from "@/types/task";
 import { X, Trash2, Save, Plus } from "lucide-react";
 import SmartDateInput from "@/components/SmartDateInput";
@@ -91,8 +91,17 @@ export default function TaskModal({
 
   // 닫기는 한 곳으로: 배경·닫기(X)·취소·Escape 모두 작성 중이면 먼저 묻는다
   const requestClose = () => (dirty ? setConfirmClose(true) : onClose());
+
+  // 열리면 초점을 패널로 옮기고(그려지기 전에), 닫히면 열기 전 자리(업무 카드 등)로 돌려준다
+  const panelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    return () => { before?.focus?.(); };
+  }, []);
+  // 초점이 패널 밖(누른 버튼이 사라진 뒤 등)이어도 Escape가 듣도록. 패널 안에서는 패널이 먼저 처리한다
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); requestClose(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") requestClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   });
@@ -175,10 +184,13 @@ export default function TaskModal({
 
       {/* 패널 */}
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-panel-title"
-        className="relative flex h-full w-full flex-col bg-bb-surface shadow-2xl shadow-black/50 md:w-[480px] md:max-w-[90vw] md:border-l md:border-bb-border"
+        tabIndex={-1}
+        onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); requestClose(); } }}
+        className="relative flex h-full w-full flex-col bg-bb-surface shadow-2xl shadow-black/50 outline-none md:w-[480px] md:max-w-[90vw] md:border-l md:border-bb-border"
       >
 
         {confirmClose && (
