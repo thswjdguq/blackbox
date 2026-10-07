@@ -242,7 +242,7 @@ export default function SchedulePage() {
         </div>
       )}
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         <div className="max-w-2xl">
 
           {/* 헤더 */}
@@ -356,12 +356,12 @@ export default function SchedulePage() {
               <label className="text-xs font-medium text-bb-text2 mb-2 flex items-center gap-1">
                 <Clock size={11} /> 예상 소요 시간
               </label>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d.value}
                     onClick={() => setDurationMin(d.value)}
-                    className={`py-2 rounded-lg text-xs font-medium border transition-all ${
+                    className={`py-2 whitespace-nowrap rounded-lg text-xs font-medium border transition-all ${
                       durationMin === d.value
                         ? "border-indigo-500 bg-indigo-500/15 text-indigo-300"
                         : "border-bb-border bg-bb-surface2/50 text-bb-text2 hover:border-bb-text2"

@@ -792,7 +792,7 @@ export default function MeetingsPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-36 mb-6" />
             {[...Array(4)].map((_, i) => (
@@ -808,7 +808,7 @@ export default function MeetingsPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div>

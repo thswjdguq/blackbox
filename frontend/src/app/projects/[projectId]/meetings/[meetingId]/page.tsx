@@ -448,7 +448,7 @@ export default function MeetingDetailPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-4 max-w-3xl">
             <div className="h-6 bg-bb-surface rounded w-24" />
             <div className="h-8 bg-bb-surface rounded w-64" />
@@ -481,7 +481,7 @@ export default function MeetingDetailPage() {
         </div>
       )}
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         <div className="max-w-3xl">
           {/* 뒤로 가기 */}
           <button
@@ -701,13 +701,13 @@ export default function MeetingDetailPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                 {/* 왼쪽: AI 요약 + Notion 버튼 */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={handleAiSummarize}
                     disabled={summarizing}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-bb-primary
+                    className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm text-bb-primary
                                border border-bb-primary/30 hover:bg-bb-primary/5 rounded-lg
                                transition-all disabled:opacity-50"
                   >
@@ -718,7 +718,7 @@ export default function MeetingDetailPage() {
                   <button
                     onClick={handleNotionExport}
                     disabled={exporting}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-bb-text2
+                    className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm text-slate-600 dark:text-bb-text2
                                border border-bb-border hover:bg-bb-surface2 rounded-lg
                                transition-all disabled:opacity-50"
                   >
@@ -731,7 +731,7 @@ export default function MeetingDetailPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
                     saveSuccess
                       ? "bg-green-600 text-white"
                       : "bg-bb-primary hover:bg-bb-primary-h text-white disabled:opacity-50"
@@ -752,7 +752,7 @@ export default function MeetingDetailPage() {
 
           {/* 액션 아이템 */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-lg font-semibold text-bb-text flex items-center gap-2">
                 <ClipboardList size={16} className="text-bb-accent" />
                 액션 아이템
@@ -763,7 +763,7 @@ export default function MeetingDetailPage() {
                   <button
                     onClick={handleAiExtract}
                     disabled={extracting || (!editNotes.trim() && !editDecisions.trim())}
-                    className="flex items-center gap-1.5 text-xs text-bb-primary hover:text-bb-primary-h
+                    className="flex items-center gap-1.5 whitespace-nowrap text-xs text-bb-primary hover:text-bb-primary-h
                                px-3 py-1.5 rounded-lg border border-bb-primary/30 hover:border-bb-primary/50
                                bg-bb-primary/5 hover:bg-bb-primary/10 transition-all disabled:opacity-50"
                   >
@@ -783,7 +783,7 @@ export default function MeetingDetailPage() {
                 {/* 수동 추가 버튼 */}
                 <button
                   onClick={() => setShowActionForm((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs text-bb-text2 hover:text-bb-text
+                  className="flex items-center gap-1.5 whitespace-nowrap text-xs text-bb-text2 hover:text-bb-text
                              px-3 py-1.5 rounded-lg border border-bb-border hover:border-bb-border
                              bg-bb-surface2/50 hover:bg-bb-surface2 transition-all"
                 >
