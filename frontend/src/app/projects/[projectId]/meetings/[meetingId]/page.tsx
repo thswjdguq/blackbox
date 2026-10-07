@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import { Meeting, Attendee, UpdateMeetingPayload } from "@/types/meeting";
 import { CreateTaskPayload, TaskPriority } from "@/types/task";
 
@@ -259,8 +260,8 @@ export default function MeetingDetailPage() {
         `/projects/${projectId}/meetings/${meetingId}/checkin-code/regenerate`,
       );
       setMeeting(data);
-    } catch {
-      setError("코드 재생성에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "코드 재생성에 실패했습니다."));
     } finally {
       setRegenerating(false);
     }
@@ -301,8 +302,8 @@ export default function MeetingDetailPage() {
       setActionTitle("");
       setActionAssignee("");
       setShowActionForm(false);
-    } catch {
-      setError("액션 아이템 생성에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "액션 아이템 생성에 실패했습니다."));
     } finally {
       setAddingAction(false);
     }
@@ -427,8 +428,8 @@ export default function MeetingDetailPage() {
       setAiItems(null);
       setCheckedAiItems(new Set());
       setAiItemAssignees({});
-    } catch {
-      setError("일부 액션아이템 추가에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "일부 액션아이템 추가에 실패했습니다."));
     } finally {
       setAddingAiItems(false);
     }

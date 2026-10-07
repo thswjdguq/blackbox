@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { blobApiError } from "@/lib/apiError";
 import { getDeliverables } from "@/lib/api/deliverable";
 import type { Deliverable } from "@/types/deliverable";
 import NextStepCard from "@/components/project/NextStepCard";
@@ -266,8 +267,8 @@ export default function ProjectHomePage() {
       a.download = `blackbox-evidence-${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      alert("증거 패키지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } catch (err) {
+      alert(await blobApiError(err, "증거 패키지 생성에 실패했습니다. 잠시 후 다시 시도해주세요."));
     } finally {
       setDownloading(false);
     }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import { FileRecord, FileUploadResult } from "@/types/vault";
 import {
   Files,
@@ -246,8 +247,9 @@ function UploadZone({ projectId, onUploaded }: UploadZoneProps) {
       );
       if (data.notionPageUrl) setNotionUrl(data.notionPageUrl);
       onUploaded(data);
-    } catch {
-      setUploadError("업로드에 실패했습니다. 파일 크기나 권한을 확인해주세요.");
+    } catch (err) {
+      // 관찰자 업로드 거절(403)·용량 초과 등 서버가 사유를 준다
+      setUploadError(apiError(err, "업로드에 실패했습니다. 파일 크기나 권한을 확인해주세요."));
     } finally {
       setUploading(false);
     }

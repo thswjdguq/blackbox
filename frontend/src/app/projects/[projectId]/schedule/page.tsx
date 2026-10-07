@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError } from "@/lib/apiError";
 import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import { Meeting, CreateMeetingPayload } from "@/types/meeting";
 import {
@@ -77,8 +78,8 @@ function ConfirmMeetingModal({ rec, projectId, members, durationMin, customDurat
         }).catch(() => {});
       }
       onCreated();
-    } catch {
-      setError("회의 생성에 실패했습니다. 리더 권한이 필요합니다.");
+    } catch (err) {
+      setError(apiError(err, "회의 생성에 실패했습니다. 다시 시도해주세요."));
     } finally {
       setSubmitting(false);
     }
@@ -200,8 +201,8 @@ export default function SchedulePage() {
       if ((data.recommendations ?? []).length === 0) {
         setRecError(data.message ?? "적합한 시간대를 찾지 못했습니다. 날짜 범위를 변경해 보세요.");
       }
-    } catch {
-      setRecError("AI 추천 중 오류가 발생했습니다.");
+    } catch (err) {
+      setRecError(apiError(err, "AI 추천 중 오류가 발생했습니다."));
     } finally {
       setRecommending(false);
     }
