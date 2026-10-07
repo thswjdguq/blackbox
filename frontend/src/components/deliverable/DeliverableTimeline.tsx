@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { daysLeft, dueLabel, parseLocalDate, shortDate, DUE_TEXT, dueTone } from "@/lib/due";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
 
 const DAY = 28;          // 하루 폭(px)
-const LABEL_W = 200;     // 왼쪽 이름 칸
+const LABEL_W = 200;     // 왼쪽 이름 칸 (작은 화면은 120)
 const PAD_DAYS = 3;      // 처음·끝 여유
 
 function addDays(d: Date, n: number): Date {
@@ -46,6 +46,15 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
   tasks: Task[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // 작은 화면에서는 이름 칸을 줄여 날짜를 더 보여 준다
+  const [labelW, setLabelW] = useState(LABEL_W);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setLabelW(mq.matches ? 120 : LABEL_W);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const rows: Row[] = [...deliverables]
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
@@ -75,8 +84,8 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
   // 처음 열면 오늘이 보이도록
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = Math.max(0, todayX - (el.clientWidth - LABEL_W) / 3);
-  }, [todayX]);
+    if (el) el.scrollLeft = Math.max(0, todayX - (el.clientWidth - labelW) / 3);
+  }, [todayX, labelW]);
 
   return (
     <div className="rounded-xl border border-bb-border bg-bb-surface">
@@ -91,10 +100,10 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
 
       <div ref={scrollRef} className="overflow-x-auto" data-testid="timeline-scroll">
         {/* 기간이 짧아도 줄이 화면 끝까지 이어지게 */}
-        <div className="relative" style={{ width: LABEL_W + totalDays * DAY, minWidth: "100%" }}>
+        <div className="relative" style={{ width: labelW + totalDays * DAY, minWidth: "100%" }}>
           {/* 날짜 머리줄 */}
           <div className="sticky top-0 z-10 flex border-b border-bb-border bg-bb-surface text-[10px] text-bb-text2">
-            <div className="sticky left-0 z-20 flex shrink-0 items-end border-r border-bb-border bg-bb-surface px-3 py-1" style={{ width: LABEL_W }}>제출물</div>
+            <div className="sticky left-0 z-20 flex shrink-0 items-end border-r border-bb-border bg-bb-surface px-3 py-1" style={{ width: labelW }}>제출물</div>
             {days.map((d) => {
               const first = d.getDate() === 1 || d.getTime() === start.getTime();
               const weekend = d.getDay() === 0 || d.getDay() === 6;
@@ -108,11 +117,11 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
           </div>
 
           {/* 오늘 세로선 */}
-          <div className="pointer-events-none absolute bottom-0 top-0 w-px bg-red-400/70" style={{ left: LABEL_W + todayX }} aria-hidden="true" />
+          <div className="pointer-events-none absolute bottom-0 top-0 w-px bg-red-400/70" style={{ left: labelW + todayX }} aria-hidden="true" />
 
           {rows.map((r) => (
             <div key={r.key} className="relative flex border-b border-bb-border/60 last:border-0" data-testid={`timeline-row-${r.key}`} style={{ height: 52 }}>
-              <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-center border-r border-bb-border bg-bb-surface px-3" style={{ width: LABEL_W }}>
+              <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-center border-r border-bb-border bg-bb-surface px-3" style={{ width: labelW }}>
                 {r.href ? (
                   <Link href={r.href} className="truncate text-sm font-medium text-bb-text hover:text-bb-primary">{r.title}</Link>
                 ) : (
