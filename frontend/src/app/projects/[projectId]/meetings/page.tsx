@@ -86,7 +86,8 @@ function fmtRec(iso: string) {
 function StepBar({ step }: { step: 1 | 2 | 3 }) {
   const steps = ["기본 정보", "일정 선택", "확인 및 생성"];
   return (
-    <div className="flex items-center gap-0 px-6 py-3 border-b border-bb-border">
+    // 작은 화면에서는 지금 단계 이름만 보이고 나머지는 화면 읽기 프로그램에만 읽힌다
+    <div className="flex items-center gap-0 px-4 sm:px-6 py-3 border-b border-bb-border">
       {steps.map((label, i) => {
         const n = i + 1;
         const active  = n === step;
@@ -101,11 +102,11 @@ function StepBar({ step }: { step: 1 | 2 | 3 }) {
               }`}>
                 {done ? <CheckCircle2 size={11} /> : n}
               </div>
-              <span className={`text-[11px] font-medium ${active ? "text-slate-200" : "text-slate-500"}`}>
+              <span className={`whitespace-nowrap text-[11px] font-medium ${active ? "text-slate-200" : "sr-only sm:not-sr-only text-slate-500"}`}>
                 {label}
               </span>
             </div>
-            {i < 2 && <div className="w-8 h-px bg-slate-700 mx-2" />}
+            {i < 2 && <div className="w-4 sm:w-8 h-px bg-slate-700 mx-1.5 sm:mx-2" />}
           </div>
         );
       })}
@@ -148,6 +149,8 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
 
   // ── 3단계 상태 ──────────────────────────────────────────────────────
   const [calStatus, setCalStatus]             = useState<MemberCalendarStatus[]>([]);
+  // 연동 상태를 못 불러오면 빈 목록과 구분해야 "모두 연동됨"으로 잘못 안내하지 않는다
+  const [calStatusFailed, setCalStatusFailed] = useState(false);
   const [submitting, setSubmitting]           = useState(false);
 
   // 멤버 목록 로드 (전원 미선택으로 시작)
@@ -203,8 +206,10 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
         `/projects/${projectId}/calendar/status`
       );
       setCalStatus(data.members ?? []);
+      setCalStatusFailed(false);
     } catch {
       setCalStatus([]);
+      setCalStatusFailed(true);
     }
     setStep(3);
   };
@@ -247,8 +252,9 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
   };
 
   const selectedMembers = members.filter((m) => selectedIds.has(m.userId));
-  const unconnected     = selectedMembers.filter(
-    (m) => calStatus.find((c) => c.userId === m.userId && !c.connected)
+  // 연동 상태에 없는 참석자도 연동됐다고 볼 수 없으므로 미연동으로 센다
+  const unconnected     = calStatusFailed ? [] : selectedMembers.filter(
+    (m) => !calStatus.find((c) => c.userId === m.userId)?.connected
   );
 
   return (
@@ -366,13 +372,13 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
               <label className="text-xs font-medium text-bb-text2 mb-2 flex items-center gap-1.5">
                 <Clock size={12} /> 예상 소요 시간
               </label>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d.value}
                     type="button"
                     onClick={() => setDurationMin(d.value)}
-                    className={`py-2 rounded-lg text-xs font-medium border transition-all ${
+                    className={`py-2 whitespace-nowrap rounded-lg text-xs font-medium border transition-all ${
                       durationMin === d.value
                         ? "border-indigo-500 bg-indigo-500/15 text-indigo-300"
                         : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600"
@@ -583,6 +589,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                 <Users size={13} className="text-slate-400 mt-0.5 shrink-0" />
                 <span className="text-xs text-slate-500 w-16 shrink-0">참석자</span>
                 <div className="flex flex-wrap gap-1.5">
+                  {selectedMembers.length === 0 && <span className="text-xs text-slate-500">없음</span>}
                   {selectedMembers.map((m) => (
                     <span key={m.userId}
                       className="text-[11px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
@@ -607,8 +614,14 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
               </div>
             )}
 
-            {/* 연동된 참석자 안내 */}
-            {unconnected.length === 0 && calStatus.length > 0 && (
+            {calStatusFailed && selectedMembers.length > 0 && (
+              <p className="text-[11px] text-bb-text2 bg-bb-surface2 rounded-xl px-4 py-3">
+                참석자의 캘린더 연동 상태를 확인하지 못했습니다. 회의는 만들 수 있지만 캘린더 자동 등록 여부는 알 수 없습니다.
+              </p>
+            )}
+
+            {/* 연동된 참석자 안내 — 참석자가 있고 모두 연동됐을 때만 */}
+            {!calStatusFailed && selectedMembers.length > 0 && unconnected.length === 0 && (
               <div className="flex items-center gap-2 bg-green-500/8 border border-green-500/25 rounded-xl px-4 py-3">
                 <CheckCircle2 size={14} className="text-green-400 shrink-0" />
                 <p className="text-[11px] text-green-400">
