@@ -17,10 +17,11 @@ class TaskDeliverableTest {
     final TaskAssigneeRepository assignees = mock(TaskAssigneeRepository.class);
     final ProjectAccessChecker access = mock(ProjectAccessChecker.class);
     final DeliverableService deliveries = mock(DeliverableService.class);
+    final ReviewCommentRepository comments = mock(ReviewCommentRepository.class);
     final TaskService service = new TaskService(tasks, assignees, mock(ProjectMemberRepository.class),
             mock(UserRepository.class), access, mock(ActivityLogService.class), mock(NotionService.class),
             mock(AlertService.class), mock(DiscordNotificationService.class), mock(ScoreService.class),
-            mock(EntityManager.class), deliveries);
+            mock(EntityManager.class), deliveries, comments);
     final Project project = new Project();
     final User user = new User();
     final Task task = new Task();
@@ -38,6 +39,15 @@ class TaskDeliverableTest {
     }
     void update(UUID d, UUID r, boolean clearD, boolean clearR) {
         service.updateTask(project.getId(), task.getId(), new UpdateTaskRequest(null, null, null, null, null, d, r, clearD, clearR, " 출처 3개 포함 "), user);
+    }
+    @Test void feedbackTaskCannotMoveOrUnlinkButCanKeepScope() {
+        when(comments.existsByLinkedTaskId(task.getId())).thenReturn(true);
+        assertEquals(409, assertThrows(ResponseStatusException.class, () -> update(null,null,true,false)).getStatusCode().value());
+        assertEquals(409, assertThrows(ResponseStatusException.class, () -> update(UUID.randomUUID(),null,false,false)).getStatusCode().value());
+        assertSame(delivery,task.getDeliverable());
+        when(deliveries.find(project,delivery.getId())).thenReturn(delivery);
+        update(delivery.getId(),null,false,false);
+        assertSame(delivery,task.getDeliverable());
     }
     @Test void unrelatedEditPreservesLinksAndSavesCriteria() {
         update(null, null, false, false);
