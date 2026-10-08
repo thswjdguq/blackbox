@@ -37,4 +37,35 @@ $null=Request PUT "$root/$($latest.id)/decision" $leader @{decision='APPROVED'} 
 $null=Request POST $convertPath $member @{title='승인 뒤 재요청'} 200
 $null=Request DELETE "/projects/$($p.id)/tasks/$newTaskId" $member $null 204
 $null=Request POST $convertPath $member @{title='승인 뒤 새 생성'} 409
-[pscustomobject]@{taskHttpChecks=($checks.Count-$before+8);concurrentConversions=8;passed=$true}|ConvertTo-Json -Compress
+$deleteRaces=0
+for($i=0;$i -lt 4;$i++) {
+    $deleteD=Request POST "/projects/$($p.id)/deliverables" $leader @{title="삭제경쟁$i";dueDate='2026-10-18'} 201
+    $deleteRoot="/projects/$($p.id)/deliverables/$($deleteD.id)/reviews"
+    $deleteR=Request POST $deleteRoot $leader @{} 201
+    $deleteComments="$deleteRoot/$($deleteR.id)/comments"
+    $deleteC=Request POST $deleteComments $member @{content='삭제와 재생성'} 201
+    $deleteConvert="$deleteComments/$($deleteC.id)/task"
+    $oldTask=Request POST $deleteConvert $member @{title='삭제 대상 업무'} 201
+    $requests=@(
+        @{kind='delete';method='DELETE';path="/projects/$($p.id)/tasks/$($oldTask.taskId)"},
+        @{kind='convert';method='POST';path=$deleteConvert}
+    )
+    $responses=$requests|ForEach-Object -Parallel {
+        $args=@{Uri="$using:BaseUrl$($_.path)";Method=$_.method;WebSession=$using:member;SkipHttpErrorCheck=$true}
+        if($_.kind -eq 'convert'){$args.ContentType='application/json';$args.Body='{"title":"재생성 업무"}'}
+        $response=Invoke-WebRequest @args
+        $dto=if($response.Content){$response.Content|ConvertFrom-Json}else{$null}
+        [pscustomobject]@{kind=$_.kind;status=[int]$response.StatusCode;taskId=$dto.taskId}
+    } -ThrottleLimit 2
+    $deleted=$responses|Where-Object kind -eq 'delete';$converted=$responses|Where-Object kind -eq 'convert'
+    if($deleted.status -ne 204 -or $converted.status -notin @(200,201)){throw 'delete/convert race unexpected status'}
+    $list=Request GET $deleteComments $member $null 200
+    if($converted.status -eq 200) {
+        if($converted.taskId -ne $oldTask.taskId -or $list[0].linkedTaskId){throw 'existing task deletion policy mismatch'}
+    } elseif($converted.taskId -eq $oldTask.taskId -or $list[0].linkedTaskId -ne $converted.taskId) {
+        throw 'delete-first regeneration policy mismatch'
+    }
+    $null=Request GET "/projects/$($p.id)/tasks/$($oldTask.taskId)" $member $null 404
+    $deleteRaces++
+}
+[pscustomobject]@{taskHttpChecks=($checks.Count-$before+8+$deleteRaces*2);concurrentConversions=8;deleteRacePairs=$deleteRaces;passed=$true}|ConvertTo-Json -Compress
