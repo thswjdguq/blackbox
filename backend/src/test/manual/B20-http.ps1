@@ -50,6 +50,19 @@ $null=Request POST $root $leader @{} 201
 $null=Request POST $path $member @{content='과거 회차'} 409
 $count=Request GET $root $leader $null 200
 if($count.unresolvedCommentCount -ne 0){throw 'resolved count failed'}
+# 팀장은 두 프로젝트의 멤버이므로 권한이 아니라 데이터 소속 경계가 거절하는지 확인한다.
+$otherP=Request POST '/projects' $leader @{name="경계검사-$stamp"} 201
+$otherD=Request POST "/projects/$($otherP.id)/deliverables" $leader @{title='다른 프로젝트';dueDate='2026-10-18'} 201
+$otherRoot="/projects/$($otherP.id)/deliverables/$($otherD.id)/reviews"
+$otherR=Request POST $otherRoot $leader @{} 201
+$otherC=Request POST "$otherRoot/$($otherR.id)/comments" $leader @{content='경계 밖 피드백'} 201
+$null=Request GET "/projects/$($p.id)/deliverables/$($otherD.id)/reviews/$($otherR.id)/comments" $leader $null 404
+$null=Request GET "$root/$($otherR.id)/comments" $leader $null 404
+$latest=(Request GET $root $leader $null 200).rounds[0]
+$null=Request PUT "$root/$($latest.id)/comments/$($otherC.id)/resolution" $leader @{} 404
+$null=Request DELETE "$root/$($latest.id)/comments/$($otherC.id)/resolution" $leader $null 404
+$otherList=Request GET "$otherRoot/$($otherR.id)/comments" $leader $null 200
+if($otherList[0].status -ne 'OPEN' -or $otherList[0].resolution){throw 'foreign comment was changed'}
 $races=0
 for($i=0;$i -lt 4;$i++) {
     $raceD=Request POST "/projects/$($p.id)/deliverables" $leader @{title="경쟁검사$i";dueDate='2026-10-18'} 201
