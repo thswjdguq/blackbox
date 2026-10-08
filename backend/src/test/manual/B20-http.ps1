@@ -50,4 +50,23 @@ $null=Request POST $root $leader @{} 201
 $null=Request POST $path $member @{content='과거 회차'} 409
 $count=Request GET $root $leader $null 200
 if($count.unresolvedCommentCount -ne 0){throw 'resolved count failed'}
-[pscustomobject]@{httpChecks=$checks.Count;passed=$true;projectId=$p.id;deliverableId=$d.id}|ConvertTo-Json -Compress
+$races=0
+for($i=0;$i -lt 4;$i++) {
+    $raceD=Request POST "/projects/$($p.id)/deliverables" $leader @{title="경쟁검사$i";dueDate='2026-10-18'} 201
+    $raceRoot="/projects/$($p.id)/deliverables/$($raceD.id)/reviews"
+    $raceR=Request POST $raceRoot $leader @{} 201
+    $requests=@(
+        @{path="$raceRoot/$($raceR.id)/comments";method='POST';body='{"content":"경쟁 피드백"}';kind='create'},
+        @{path="$raceRoot/$($raceR.id)/decision";method='PUT';body='{"decision":"APPROVED"}';kind='approve'}
+    )
+    $raceResults=$requests|ForEach-Object -Parallel {
+        $session=if($_.kind -eq 'create'){$using:member}else{$using:leader}
+        $response=Invoke-WebRequest -Uri "$using:BaseUrl$($_.path)" -Method $_.method -WebSession $session -ContentType 'application/json' -Body ([System.Text.Encoding]::UTF8.GetBytes($_.body)) -SkipHttpErrorCheck
+        [pscustomobject]@{kind=$_.kind;status=[int]$response.StatusCode}
+    } -ThrottleLimit 2
+    $create=($raceResults|Where-Object kind -eq 'create').status
+    $approve=($raceResults|Where-Object kind -eq 'approve').status
+    if(!(($create -eq 201 -and $approve -eq 409) -or ($create -eq 409 -and $approve -eq 200))){throw "race violated create=$create approve=$approve"}
+    $races++
+}
+[pscustomobject]@{httpChecks=($checks.Count+$races*2);racePairs=$races;passed=$true;projectId=$p.id;deliverableId=$d.id}|ConvertTo-Json -Compress
