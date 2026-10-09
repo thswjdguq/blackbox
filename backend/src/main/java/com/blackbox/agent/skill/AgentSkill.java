@@ -22,6 +22,9 @@ public interface AgentSkill {
     /** 기록을 만들 수 있는 사람(팀장·팀원)만 실행할 수 있는가. false면 관찰자도 실행한다 */
     default boolean contributorsOnly() { return true; }
 
+    /** contributor(팀장·팀원)인지에 따라 이 사람이 실행할 수 있는가 */
+    default boolean allows(boolean contributor) { return contributor || !contributorsOnly(); }
+
     /** 모델이 부를 수 있는 도구의 이름 */
     List<String> tools();
 
