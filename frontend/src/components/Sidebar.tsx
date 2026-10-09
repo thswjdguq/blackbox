@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Menu,
+  X,
   Shield,
   FolderKanban,
   Kanban,
@@ -27,6 +29,7 @@ import {
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useMyRole } from "@/hooks/useMyRole";
+import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Alert } from "@/types/vault";
@@ -56,12 +59,18 @@ function NotificationBell({ projectId }: { projectId: string }) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [open,   setOpen]   = useState(false);
+  // 30초마다 다시 부르므로 실패를 팝업으로 알리지는 않는다. 다만 실패를 "알림 없음"으로 보이게 하지 않도록
+  // 마지막 조회가 실패했는지 기억하고, 이전에 받은 알림은 그대로 둔다
+  const [failed, setFailed] = useState(false);
 
   const fetchAlerts = useCallback(async () => {
     try {
       const res = await api.get<Alert[]>(`/projects/${projectId}/alerts`);
       setAlerts(res.data);
-    } catch { /* 벨은 비핵심 — 실패해도 무시 */ }
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
   }, [projectId]);
 
   useEffect(() => {
@@ -138,9 +147,14 @@ function NotificationBell({ projectId }: { projectId: string }) {
 
           {/* 목록 */}
           <div className="max-h-80 overflow-y-auto">
+            {failed && (
+              <div className="px-4 py-2 text-xs text-amber-400 border-b border-bb-border">
+                알림을 새로 불러오지 못했습니다.{displayed.length > 0 && " 이전에 받은 알림을 보여 줍니다."}
+              </div>
+            )}
             {displayed.length === 0 ? (
               <div className="py-10 text-center text-sm text-bb-text2">
-                새로운 알림이 없습니다
+                {failed ? "알림을 확인할 수 없습니다" : "새로운 알림이 없습니다"}
               </div>
             ) : (
               displayed.map((alert) => {
@@ -203,7 +217,29 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const router   = useRouter();
   const [isDark, setIsDark] = useState(true);
   const [toast,  setToast]  = useState(false);
+  // 768px 미만에서는 사이드바를 숨기고 상단 바의 메뉴 버튼으로 연다
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const menuButtonRef  = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const clearTokens = useAuthStore((s) => s.clearTokens);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // 닫기 버튼·배경·Escape로 닫으면 초점을 메뉴 버튼으로 돌려준다
+  const closeMenu = useCallback(() => {
+    setMobileOpen(false);
+    menuButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    closeButtonRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeMenu(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen, closeMenu]);
 
   // URL에서 현재 프로젝트 ID 추출 (/projects/[id]/xxx)
   const projectIdMatch = pathname.match(/\/projects\/([^/]+)/);
@@ -212,16 +248,17 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   // 미연동 항목 개수 (Discord / Notion / Google Calendar)
   const { missingCount } = useIntegrationStatus(currentProjectId);
 
+  // 메뉴는 용도별로 묶는다 (C-50 2번): 과제를 진행하는 곳 / 함께 정하는 곳 / 남는 기록
   const NAV_ITEMS = [
-    { href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
-    { href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: ClipboardList,   label: "제출물",        needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "업무 보드",    needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "Hash Vault",   needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/analytics`  : "/analytics",           icon: BarChart2,       label: "기여도",       needsProject: true, exactActive: false },
-    { href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false, badgeCount: currentProjectId ? missingCount : 0 },
+    { group: null,   href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
+    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
+    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: ClipboardList,   label: "제출물",        needsProject: true, exactActive: false },
+    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "업무 보드",    needsProject: true, exactActive: false },
+    { group: "함께", href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
+    { group: "함께", href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
+    { group: "기록", href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "파일 금고",     needsProject: true, exactActive: false },
+    { group: "기록", href: currentProjectId ? `/projects/${currentProjectId}/analytics`  : "/analytics",           icon: BarChart2,       label: "기여도",       needsProject: true, exactActive: false },
+    { group: "",     href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false, badgeCount: currentProjectId ? missingCount : 0 },
   ];
 
   useEffect(() => {
@@ -243,7 +280,8 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   };
 
   const handleNavClick = (e: React.MouseEvent, href: string, needsProject?: boolean) => {
-    if (!needsProject) return;
+    // 지금 화면의 메뉴를 누르면 pathname이 바뀌지 않으므로 허용된 선택이면 여기서 닫는다
+    if (!needsProject) { setMobileOpen(false); return; }
     // 현재 URL에 projectId가 없으면 무조건 차단 (폴백 URL은 존재하지 않는 경로)
     if (!currentProjectId) {
       e.preventDefault();
@@ -257,7 +295,9 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
     if (count === 0) {
       e.preventDefault();
       showNoProjectToast();
+      return;
     }
+    setMobileOpen(false);
   };
 
   const handleLogout = async () => {
@@ -274,7 +314,36 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
 
   return (
     <>
-      <aside className="w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-30">
+      {/* 작은 화면 상단 바 */}
+      <header className="md:hidden fixed top-0 inset-x-0 h-14 z-30 flex items-center gap-3 px-4 bg-bb-sidebar border-b border-bb-border">
+        <button
+          ref={menuButtonRef}
+          onClick={() => setMobileOpen(true)}
+          className="p-1.5 -ml-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+          aria-label="메뉴 열기"
+          aria-expanded={mobileOpen}
+          aria-controls="app-sidebar"
+        >
+          <Menu size={20} />
+        </button>
+        <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2">
+          <Shield size={16} className="text-bb-primary" />
+          <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
+        </button>
+      </header>
+
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={closeMenu} aria-hidden="true" />
+      )}
+
+      {/* 닫혀 있을 때는 invisible로 숨겨 화면 밖 메뉴에 Tab 초점이 가지 않게 한다.
+          열 때는 바로 보이게 해야 닫기 버튼에 초점을 줄 수 있고, 닫을 때만 밀려나는 동안 보이게 둔다 */}
+      <aside
+        id="app-sidebar"
+        className={`w-64 bg-bb-sidebar border-r border-bb-border h-screen fixed left-0 top-0 flex flex-col z-50 md:z-30
+                    duration-200 md:translate-x-0 md:visible
+                    ${mobileOpen ? "translate-x-0 visible transition-transform" : "-translate-x-full invisible transition-[transform,visibility]"}`}
+      >
         {/* 로고 + 알림 벨 */}
         <div className="px-6 py-5 border-b border-bb-border flex items-center justify-between">
           <div
@@ -286,12 +355,31 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             </div>
             <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
           </div>
-          {currentProjectId && <NotificationBell projectId={currentProjectId} />}
+          <div className="flex items-center gap-1">
+            {currentProjectId && <NotificationBell projectId={currentProjectId} />}
+            <button
+              ref={closeButtonRef}
+              onClick={closeMenu}
+              className="md:hidden p-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
+              aria-label="메뉴 닫기"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* 네비게이션 */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ href, icon: Icon, label, needsProject, exactActive, badgeCount }) => {
+        <ProjectSwitcher currentProjectId={currentProjectId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+
+        {/* 네비게이션 — 짧은 화면에서는 메뉴만 스크롤 */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          {NAV_ITEMS.map(({ group, href, icon: Icon, label, needsProject, exactActive, badgeCount }, i) => {
+            // 묶음이 바뀌는 자리에 이름(빈 이름이면 구분선만)
+            const groupStart = i > 0 && group !== NAV_ITEMS[i - 1].group;
+            const heading = groupStart && (
+              group
+                ? <p key={`g-${group}`} className="px-3 pt-4 pb-1 text-[11px] font-semibold text-bb-text2/70">{group}</p>
+                : <div key={`g-${i}`} className="mx-3 my-3 border-t border-bb-border" />
+            );
             // exactActive=true → exact pathname match only (프로젝트 홈 등)
             const segment = href.split("/").pop()!;
             const active = needsProject && !currentProjectId
@@ -301,7 +389,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
               : (pathname === href
                 || pathname.endsWith(`/${segment}`)
                 || pathname.includes(`/${segment}/`));
-            return (
+            return [heading, (
               <Link
                 // 프로젝트 선택 전에는 여러 메뉴의 href 가 /dashboard 로 같아진다
                 key={label}
@@ -323,7 +411,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
                   </span>
                 )}
               </Link>
-            );
+            )];
           })}
         </nav>
 
@@ -339,6 +427,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           </button>
           <Link
             href="/profile/settings"
+            onClick={() => setMobileOpen(false)}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               pathname === "/profile/settings"
                 ? "bg-bb-primary/10 text-bb-primary font-medium"
@@ -350,6 +439,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           </Link>
           <Link
             href="/profile/notion"
+            onClick={() => setMobileOpen(false)}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               pathname === "/profile/notion"
                 ? "bg-bb-primary/10 text-bb-primary font-medium"

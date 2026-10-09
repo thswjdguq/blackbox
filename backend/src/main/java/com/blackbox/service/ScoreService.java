@@ -25,6 +25,7 @@ public class ScoreService {
     private final TaskAssigneeRepository     taskAssigneeRepository;
     private final FileVaultRepository        fileVaultRepository;
     private final AlertService               alertService;
+    private final ProjectAccessChecker      accessChecker;
 
     public ScoreService(ProjectRepository projectRepository,
                         ProjectMemberRepository projectMemberRepository,
@@ -33,7 +34,8 @@ public class ScoreService {
                         MeetingAttendeeRepository attendeeRepository,
                         TaskAssigneeRepository taskAssigneeRepository,
                         FileVaultRepository fileVaultRepository,
-                        AlertService alertService) {
+                        AlertService alertService,
+                        ProjectAccessChecker accessChecker) {
         this.projectRepository       = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.scoreRepository         = scoreRepository;
@@ -42,6 +44,7 @@ public class ScoreService {
         this.taskAssigneeRepository  = taskAssigneeRepository;
         this.fileVaultRepository     = fileVaultRepository;
         this.alertService            = alertService;
+        this.accessChecker           = accessChecker;
     }
 
     // ── 전체 프로젝트 일괄 재계산 (스케줄러 호출) ────────────────────────
@@ -60,6 +63,15 @@ public class ScoreService {
 
     // ── 단일 프로젝트 재계산 (수동 트리거 / 스케줄러) ────────────────────
 
+    @Transactional
+    public List<ScoreResponse> recalculate(UUID projectId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        // HTTP 요청은 참여·쓰기 권한을 먼저 확인한다. 내부 스케줄러 경로와 구별한다.
+        accessChecker.requireContributor(project, user);
+        return recalculate(project);
+    }
+
+    /** 내부 스케줄러·업무 이벤트 전용. HTTP 요청은 사용자 인자를 받는 메서드를 사용한다. */
     @Transactional
     public List<ScoreResponse> recalculate(UUID projectId) {
         Project project = projectRepository.findById(projectId)
@@ -148,8 +160,8 @@ public class ScoreService {
 
     @Transactional(readOnly = true)
     public List<ScoreResponse> getScores(UUID projectId, User user) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("프로젝트 없음: " + projectId));
+        Project project = accessChecker.getProject(projectId);
+        accessChecker.requireMember(project, user);
         return scoreRepository.findByProjectOrderByTotalScoreDesc(project).stream()
                 .map(ScoreResponse::from)
                 .toList();
