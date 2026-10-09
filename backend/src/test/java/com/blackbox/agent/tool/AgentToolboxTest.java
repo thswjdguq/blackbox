@@ -83,6 +83,7 @@ class AgentToolboxTest {
         JsonNode d = deliverables.path("items").get(0);
         assertEquals(report.getId().toString(), d.path("id").asText());
         assertEquals(today.plusDays(7).toString(), d.path("dueDate").asText());
+        assertEquals("TASKS_IN_PROGRESS", d.path("stage").asText(), "필수 요구사항은 확인됐고 연결 업무 하나가 안 끝났다");
         assertEquals(Map.of("문제 정의를 적는다", true, "분량은 10쪽 안팎", false), stream(d.path("requirements"))
                 .collect(Collectors.toMap(r -> r.path("content").asText(), r -> r.path("met").asBoolean())));
 
