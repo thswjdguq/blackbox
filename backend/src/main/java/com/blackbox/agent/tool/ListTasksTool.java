@@ -1,6 +1,7 @@
 package com.blackbox.agent.tool;
 
 import com.blackbox.agent.AgentProperties;
+import com.blackbox.agent.TaskStatus;
 import com.blackbox.dto.TaskResponse;
 import com.blackbox.entity.User;
 import com.blackbox.service.TaskService;
@@ -17,7 +18,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ListTasksTool implements ProjectTool {
     public static final String NAME = "list_tasks";
-    private static final String DONE = "DONE";
 
     private final TaskService tasks;
     private final AgentProperties properties;
@@ -38,7 +38,7 @@ public class ListTasksTool implements ProjectTool {
                 UUID deliverableId, String deliverableTitle, UUID requirementId, String requirementContent,
                 String completionCriteria, boolean overdue) {
         static Item from(TaskResponse t, LocalDate today) {
-            boolean overdue = !DONE.equals(t.status()) && t.dueDate() != null && t.dueDate().isBefore(today);
+            boolean overdue = !TaskStatus.isDone(t) && t.dueDate() != null && t.dueDate().isBefore(today);
             return new Item(t.id(), t.title(), t.status(), t.dueDate(), t.completedAt(),
                     t.assignees().stream().map(TaskResponse.AssigneeSummary::name).toList(),
                     t.deliverableId(), t.deliverableTitle(), t.requirementId(), t.requirementContent(),
