@@ -45,6 +45,7 @@ class ScoreAsyncTransactionTest {
             user.setEmail("score-test-" + UUID.randomUUID() + "@example.invalid");
             user.setName("검사 계정");
             user.setPasswordHash("test-only-not-a-password");
+            user.setRole("STUDENT");
             users.save(user);
             Project project = new Project();
             project.setName("비동기 기여도 검사");
