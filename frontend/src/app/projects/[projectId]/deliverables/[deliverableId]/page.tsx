@@ -335,7 +335,7 @@ export default function DeliverableDetailPage() {
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="flex-1 ml-64 overflow-y-auto p-8">
+      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto p-4 md:p-8">
         <Link
           href={`/projects/${projectId}/deliverables`}
           className="inline-flex items-center gap-1 mb-3 text-xs text-bb-text2 hover:text-bb-text transition-colors"
@@ -416,12 +416,12 @@ export default function DeliverableDetailPage() {
             </section>
 
             {/* 탭 */}
-            <div className="flex gap-1 mb-6 border-b border-bb-border">
+            <div className="flex gap-1 mb-6 border-b border-bb-border overflow-x-auto">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => tab.implemented && setActiveTab(tab.id)}
-                  className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
                     !tab.implemented
                       ? "opacity-40 cursor-not-allowed text-bb-text2"
                       : activeTab === tab.id

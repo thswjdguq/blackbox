@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import BeginnerGuide from "@/components/BeginnerGuide";
+import MemberSection from "./MemberSection";
 import api from "@/lib/api";
 import {
   UserCircle,
@@ -136,11 +137,13 @@ export default function ProjectSettingsPage() {
   return (
     <div className="flex min-h-screen bg-bb-bg">
       <Sidebar />
-      <main className="ml-64 flex-1 p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 flex-1 p-4 md:p-8">
         <div className="max-w-2xl">
 
           <h1 className="text-2xl font-bold text-bb-text mb-1">프로젝트 설정</h1>
           <p className="text-sm text-bb-text2 mb-8">프로젝트 관련 설정을 관리합니다</p>
+
+          <MemberSection projectId={projectId} />
 
           {/* Google 캘린더 안내 */}
           <Section title="Google 캘린더 연동">

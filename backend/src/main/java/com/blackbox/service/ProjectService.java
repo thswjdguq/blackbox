@@ -47,11 +47,7 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public List<ProjectResponse> listMyProjects(User user) {
         return projectMemberRepository.findByUser(user).stream()
-                .map(m -> {
-                    Project p = m.getProject();
-                    long count = projectMemberRepository.countByProject(p);
-                    return ProjectResponse.from(p, count, m.getRole());
-                })
+                .map(m -> response(m.getProject(), m))
                 .collect(Collectors.toList());
     }
 
@@ -78,20 +74,19 @@ public class ProjectService {
         leaderMember.setRole("LEADER");
         projectMemberRepository.save(leaderMember);
 
-        return ProjectResponse.from(project);
+        return response(project, leaderMember);
     }
 
     @Transactional(readOnly = true)
     public ProjectResponse getProject(UUID projectId, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
-        return ProjectResponse.from(project);
+        return response(project, accessChecker.requireMember(project, user));
     }
 
     @Transactional
     public ProjectResponse updateProject(UUID projectId, UpdateProjectRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireLeader(project, user);
+        ProjectMember leader = accessChecker.requireLeader(project, user);
 
         if (req.name() != null)        project.setName(req.name());
         if (req.description() != null) project.setDescription(req.description());
@@ -102,7 +97,7 @@ public class ProjectService {
         projectRepository.save(project);
         entityManager.flush();
         entityManager.refresh(project);
-        return ProjectResponse.from(project);
+        return response(project, leader);
     }
 
     @Transactional
@@ -123,12 +118,12 @@ public class ProjectService {
     @Transactional
     public ProjectResponse regenerateInviteCode(UUID projectId, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireLeader(project, user);
+        ProjectMember leader = accessChecker.requireLeader(project, user);
         project.setInviteCode(generateUniqueInviteCode());
         projectRepository.save(project);
         entityManager.flush();
         entityManager.refresh(project);
-        return ProjectResponse.from(project);
+        return response(project, leader);
     }
 
     @Transactional
@@ -229,6 +224,13 @@ public class ProjectService {
         member.setConsentedAt(OffsetDateTime.now());
         projectMemberRepository.save(member);
         return MemberResponse.from(member);
+    }
+
+    // ── 응답 변환 ──────────────────────────────────────────────────────────
+
+    // 프로젝트 응답에는 요청한 사람의 역할과 인원수가 항상 들어간다. 화면이 이 값으로 쓰기 권한을 판단한다
+    private ProjectResponse response(Project project, ProjectMember me) {
+        return ProjectResponse.from(project, projectMemberRepository.countByProject(project), me.getRole());
     }
 
     // ── 초대 코드 생성 ─────────────────────────────────────────────────────

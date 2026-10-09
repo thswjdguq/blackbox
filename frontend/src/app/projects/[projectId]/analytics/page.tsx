@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { apiError, blobApiError } from "@/lib/apiError";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
@@ -151,8 +152,8 @@ export default function AnalyticsPage() {
       a.download = `blackbox-report-${new Date().toISOString().slice(0, 10)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      setError("리포트 생성에 실패했습니다.");
+    } catch (err) {
+      setError(await blobApiError(err, "리포트 생성에 실패했습니다."));
     } finally {
       setDownloading(false);
     }
@@ -163,8 +164,8 @@ export default function AnalyticsPage() {
     try {
       const { data } = await api.post<ScoreEntry[]>(`/projects/${projectId}/scores/recalculate`);
       setScores(data);
-    } catch {
-      setError("재계산에 실패했습니다.");
+    } catch (err) {
+      setError(apiError(err, "재계산에 실패했습니다."));
     } finally {
       setRecalculating(false);
     }
@@ -184,7 +185,7 @@ export default function AnalyticsPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-bb-surface2 rounded w-48" />
             <div className="grid grid-cols-4 gap-4">
@@ -201,20 +202,20 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         {/* ── 헤더 ──────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-bb-text">기여도 분석</h1>
             <p className="text-sm text-bb-text2 mt-1">
               팀원별 역할 수행 여부 (참여 / 미참여) 기반 분석
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <button
               onClick={handleDownloadReport}
               disabled={downloading}
-              className="flex items-center gap-2 px-4 py-2 border border-bb-border bg-bb-surface
+              className="flex items-center gap-2 whitespace-nowrap px-4 py-2 border border-bb-border bg-bb-surface
                          hover:bg-bb-bg text-sm rounded-lg transition-all disabled:opacity-50 text-bb-text2 font-medium"
             >
               {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
@@ -223,7 +224,7 @@ export default function AnalyticsPage() {
             <button
               onClick={handleRecalculate}
               disabled={recalculating}
-              className="flex items-center gap-2 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white
+              className="flex items-center gap-2 whitespace-nowrap px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white
                          text-sm rounded-lg transition-all disabled:opacity-50 font-medium"
             >
               {recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}

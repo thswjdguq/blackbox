@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
@@ -71,7 +72,7 @@ public class TaskService {
         task.setTitle(req.title());
         task.setDescription(req.description());
         applyDeliverable(task, project, req.deliverableId(), req.requirementId(), false, false);
-        task.setCompletionCriteria(req.completionCriteria());
+        task.setCompletionCriteria(req.completionCriteria() == null ? null : req.completionCriteria().trim());
         task.setStatus(req.status() != null ? req.status() : "TODO");
         task.setPriority(req.priority() != null ? req.priority() : "MEDIUM");
         task.setTag(req.tag());
@@ -104,8 +105,12 @@ public class TaskService {
                 ? taskRepository.findByProjectAndStatusOrderByCreatedAtDesc(project, status)
                 : taskRepository.findByProjectOrderByCreatedAtDesc(project);
 
+        if (tasks.isEmpty()) return List.of();
+        // 컬렉션 fetch join은 업무 행을 중복시키므로 담당자를 한 번에 읽어 업무별로 묶는다.
+        Map<UUID, List<TaskAssignee>> assignments = taskAssigneeRepository.findByTaskIn(tasks).stream()
+                .collect(Collectors.groupingBy(a -> a.getTask().getId()));
         return tasks.stream()
-                .map(t -> TaskResponse.from(t, taskAssigneeRepository.findByTask(t)))
+                .map(t -> TaskResponse.from(t, assignments.getOrDefault(t.getId(), List.of())))
                 .toList();
     }
 
@@ -247,6 +252,24 @@ public class TaskService {
     }
 
     private List<TaskAssignee> setAssigneesInternal(Task task, List<UUID> assigneeIds) {
+        // 요청자의 쓰기 권한은 호출부에서 확인한다. 후보 자격 오류는 입력 오류이며
+        // 기존 배정을 지우기 전에 전부 검증해 실패 요청의 불필요한 쓰기를 피한다.
+        List<User> candidates = (assigneeIds == null ? List.<UUID>of() : assigneeIds).stream()
+                .distinct()
+                .map(uid -> {
+                    User candidate = userRepository.findById(uid)
+                            .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다: " + uid));
+                    ProjectMember member = projectMemberRepository.findByProjectAndUser(task.getProject(), candidate)
+                            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                                    "프로젝트의 팀장·팀원만 담당자로 지정할 수 있습니다"));
+                    if (!"LEADER".equals(member.getRole()) && !"MEMBER".equals(member.getRole())) {
+                        throw new org.springframework.web.server.ResponseStatusException(
+                                org.springframework.http.HttpStatus.BAD_REQUEST,
+                                "관찰자는 업무 담당자로 지정할 수 없습니다");
+                    }
+                    return candidate;
+                }).toList();
         taskAssigneeRepository.deleteByTask(task);
         taskAssigneeRepository.flush();
 
@@ -254,12 +277,8 @@ public class TaskService {
             return List.of();
         }
 
-        List<TaskAssignee> result = assigneeIds.stream()
-                .distinct()
-                .map(uid -> {
-                    User assignee = userRepository.findById(uid)
-                            .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다: " + uid));
-                    accessChecker.requireContributor(task.getProject(), assignee);
+        List<TaskAssignee> result = candidates.stream()
+                .map(assignee -> {
                     TaskAssignee ta = new TaskAssignee();
                     ta.setTask(task);
                     ta.setUser(assignee);

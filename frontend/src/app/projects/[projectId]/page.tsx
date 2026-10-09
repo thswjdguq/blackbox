@@ -5,6 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { blobApiError } from "@/lib/apiError";
+import { getDeliverables } from "@/lib/api/deliverable";
+import type { Deliverable } from "@/types/deliverable";
+import NextStepCard from "@/components/project/NextStepCard";
+import { roleLabel } from "@/lib/roleLabel";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Task } from "@/types/task";
 import { Meeting } from "@/types/meeting";
@@ -199,6 +204,9 @@ export default function ProjectHomePage() {
   const [scores,   setScores]   = useState<ScoreEntry[]>([]);
   const [alerts,   setAlerts]   = useState<Alert[]>([]);
   const [members,  setMembers]  = useState<Member[]>([]);
+  // null: 제출물 목록을 못 불러옴 → 다음 할 일 카드를 숨긴다 (잘못된 안내보다 낫다)
+  const [deliverables, setDeliverables] = useState<Deliverable[] | null>(null);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState("");
 
@@ -212,7 +220,7 @@ export default function ProjectHomePage() {
     setLoading(true);
     setError("");
     try {
-      const [projRes, taskRes, meetRes, fileRes, scoreRes, alertRes, memberRes] = await Promise.all([
+      const [projRes, taskRes, meetRes, fileRes, scoreRes, alertRes, memberRes, delRes, profileRes] = await Promise.all([
         api.get<ProjectDetail>(`/projects/${projectId}`),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Meeting[]>(`/projects/${projectId}/meetings`),
@@ -220,7 +228,12 @@ export default function ProjectHomePage() {
         api.get<ScoreEntry[]>(`/projects/${projectId}/scores`).catch(() => ({ data: [] as ScoreEntry[] })),
         api.get<Alert[]>(`/projects/${projectId}/alerts`).catch(() => ({ data: [] as Alert[] })),
         api.get<Member[]>(`/projects/${projectId}/members`).catch(() => ({ data: [] as Member[] })),
+        // 다음 할 일 안내용. 실패하면 안내 카드만 빠진다
+        getDeliverables(projectId).then((r) => r.data).catch(() => null),
+        api.get<{ id: string }>("/auth/profile").then((r) => r.data.id).catch(() => null),
       ]);
+      setDeliverables(delRes);
+      setMyUserId(profileRes);
       setProject(projRes.data);
       setTasks(taskRes.data);
       setMeetings(meetRes.data);
@@ -254,8 +267,8 @@ export default function ProjectHomePage() {
       a.download = `blackbox-evidence-${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      alert("증거 패키지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } catch (err) {
+      alert(await blobApiError(err, "증거 패키지 생성에 실패했습니다. 잠시 후 다시 시도해주세요."));
     } finally {
       setDownloading(false);
     }
@@ -277,7 +290,7 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-4 max-w-5xl">
             <div className="h-8 bg-bb-surface rounded w-64 mb-2" />
             <div className="h-4 bg-bb-surface rounded w-40 mb-8" />
@@ -298,7 +311,7 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
           <div className="text-center">
             <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
             <p className="text-sm text-red-400">{error || "프로젝트를 찾을 수 없습니다"}</p>
@@ -340,7 +353,7 @@ export default function ProjectHomePage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         <div className="max-w-5xl">
 
           {/* ── 프로젝트 헤더 ───────────────────────────────────────────── */}
@@ -365,7 +378,7 @@ export default function ProjectHomePage() {
                   )}
                   {project.myRole && (
                     <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-medium">
-                      {project.myRole}
+                      {roleLabel(project.myRole)}
                     </span>
                   )}
                 </div>
@@ -419,11 +432,14 @@ export default function ProjectHomePage() {
             )}
           </div>
 
-          <Link href={`/projects/${projectId}/deliverables`} className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15">
-            <h2 className="font-semibold text-bb-text">제출물부터 계획하기</h2>
-            <p className="mt-2 text-sm text-bb-text2">제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요.</p>
-            <span className="mt-3 inline-block text-sm font-medium text-teal-500">제출물·요구사항 열기 →</span>
-          </Link>
+          {deliverables && (
+            <NextStepCard
+              projectId={projectId}
+              deliverables={deliverables}
+              tasks={tasks}
+              canWrite={["LEADER", "MEMBER"].includes(members.find((m) => m.userId === myUserId)?.role ?? "")}
+            />
+          )}
           {/* ── 연동 온보딩 배너 ─────────────────────────────────────────── */}
           <OnboardingBanner projectId={projectId} />
 
@@ -615,7 +631,7 @@ export default function ProjectHomePage() {
           {/* ── Hash Vault ───────────────────────────────────────────────── */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
             <SectionHeader
-              title="Hash Vault"
+              title="파일 금고"
               icon={Files}
               href={`/projects/${projectId}/vault`}
             />
@@ -659,7 +675,7 @@ export default function ProjectHomePage() {
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-bb-text mb-1">팀플 종료 — 증거 패키지 발급</h2>
                 <p className="text-xs text-bb-text2 leading-relaxed">
-                  회의록 전체 · 기여도 PDF · Hash Vault 이력을 하나의 ZIP으로 묶어 교수님께 제출하세요.
+                  회의록 전체 · 기여도 PDF · 파일 금고 이력을 하나의 ZIP으로 묶어 교수님께 제출하세요.
                   PDF에는 SHA-256 무결성 해시가 포함되어 데이터 위변조를 방지합니다.
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">

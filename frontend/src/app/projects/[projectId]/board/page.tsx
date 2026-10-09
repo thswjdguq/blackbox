@@ -42,7 +42,7 @@ interface ScoreEntry {
 // ── Small stats banner ──────────────────────────────────────────────────────
 function StatPill({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bb-surface border border-bb-border`}>
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bb-surface border border-bb-border whitespace-nowrap">
       <div className={`w-2 h-2 rounded-full ${accent}`} />
       <span className="text-xs text-bb-text2">{label}</span>
       <span className="text-sm font-bold text-bb-text">{value}</span>
@@ -66,6 +66,11 @@ export default function BoardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [notionUrl, setNotionUrl] = useState<string | null>(null);
+  // 동기화 실패는 보드 전체 오류(error)와 분리한다. 실패해도 보드는 그대로 보여야 한다
+  const [syncError, setSyncError] = useState("");
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
+  const readOnly = members.find((m) => m.userId === myUserId)?.role === "OBSERVER";
 
   // ── 필터 ──────────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<KanbanFilter>({ assigneeId: null, priority: null, tag: "" });
@@ -86,14 +91,16 @@ export default function BoardPage() {
     setLoading(true);
     setError("");
     try {
-      const [projRes, taskRes, memberRes] = await Promise.all([
+      const [projRes, taskRes, memberRes, profileRes] = await Promise.all([
         api.get<ProjectInfo>(`/projects/${projectId}`),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Member[]>(`/projects/${projectId}/members`),
+        api.get<{ id: string }>("/auth/profile"),
       ]);
       setProject(projRes.data);
       setTasks(taskRes.data);
       setMembers(memberRes.data);
+      setMyUserId(profileRes.data.id);
 
       // Scores (may not exist yet — gracefully ignore 404)
       try {
@@ -130,13 +137,14 @@ export default function BoardPage() {
   async function handleNotionSync() {
     setSyncing(true);
     setNotionUrl(null);
+    setSyncError("");
     try {
       const res = await api.post<{ pageUrl: string; taskCount: number; message: string }>(
         `/projects/${projectId}/tasks/notion/sync`
       );
       setNotionUrl(res.data.pageUrl);
     } catch {
-      setError("Notion 동기화 실패 — Notion 페이지에 Integration 연결이 되어있는지 확인해주세요 (페이지 → ... → Connections).");
+      setSyncError("Notion 동기화 실패 — Notion 페이지에 Integration 연결이 되어있는지 확인해주세요 (페이지 → ... → Connections).");
     } finally {
       setSyncing(false);
     }
@@ -155,7 +163,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
           <div className="animate-pulse space-y-6">
             <div className="h-7 bg-bb-surface rounded-lg w-48" />
             <div className="grid grid-cols-3 gap-6">
@@ -174,7 +182,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="ml-64 min-h-screen p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
           <div className="text-center">
             <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
             <p className="text-bb-text text-sm mb-4">{error}</p>
@@ -195,13 +203,13 @@ export default function BoardPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="ml-64 min-h-screen flex flex-col">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen flex flex-col">
         {/* Top bar with gradient accent */}
-        <div className="relative px-8 pt-8 pb-6 border-b border-slate-800 overflow-hidden">
+        <div className="relative px-4 md:px-8 pt-6 md:pt-8 pb-6 border-b border-bb-border overflow-hidden">
           {/* Decorative gradient */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 via-transparent to-teal-400/5 pointer-events-none" />
 
-          <div className="relative flex items-start justify-between">
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div>
               {/* Breadcrumb */}
               <div className="flex items-center gap-2 text-xs text-bb-text2 mb-2">
@@ -213,7 +221,7 @@ export default function BoardPage() {
                   대시보드
                 </span>
                 <ChevronDown size={10} className="-rotate-90" />
-                <span className="text-bb-text2">칸반 보드</span>
+                <span className="text-bb-text2">업무 보드</span>
               </div>
 
               {/* 프로젝트 선택 드롭다운 */}
@@ -278,7 +286,7 @@ export default function BoardPage() {
             </div>
 
             {/* Stats + refresh */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <StatPill label="할 일" value={todoCount} accent="bg-slate-500" />
               <StatPill label="진행 중" value={inProgressCount} accent="bg-indigo-500" />
               <StatPill label="완료" value={doneCount} accent="bg-teal-400" />
@@ -288,7 +296,7 @@ export default function BoardPage() {
                 <span className="text-xs text-bb-text2">
                   완료율 <span className="text-teal-400 font-bold">{completionPct}%</span>
                 </span>
-                <div className="w-24 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                <div className="w-24 h-1.5 bg-bb-surface2 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
                     style={{ width: `${completionPct}%` }}
@@ -300,7 +308,7 @@ export default function BoardPage() {
               <button
                 onClick={handleNotionSync}
                 disabled={syncing}
-                title="칸반 보드를 Notion으로 내보내기"
+                title="업무 보드를 Notion으로 내보내기"
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-bb-surface border border-bb-border
                            text-xs text-bb-text2 hover:text-white hover:bg-[#191919] hover:border-[#191919]
                            transition-all disabled:opacity-50 font-medium"
@@ -325,6 +333,20 @@ export default function BoardPage() {
           </div>
         </div>
 
+        {syncError && (
+          <div role="alert" className="mx-8 mt-4 flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
+            <AlertCircle size={14} className="shrink-0" />
+            {syncError}
+            <button onClick={() => setSyncError("")} className="ml-auto hover:text-red-300" aria-label="안내 닫기">
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
+        {readOnly && (
+          <p className="mx-8 mt-4 text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다. 업무를 클릭하면 내용을 확인할 수 있습니다.</p>
+        )}
+
         {/* Notion sync result banner */}
         {notionUrl && (
           <div className="mx-8 mt-4 flex items-center gap-3 px-4 py-3 bg-[#191919] border border-[#333] rounded-xl text-sm text-white">
@@ -342,7 +364,7 @@ export default function BoardPage() {
         )}
 
         {/* ── 필터 바 ──────────────────────────────────────────────────────── */}
-        <div className="px-8 py-3 border-b border-slate-800 flex items-center gap-3 flex-wrap">
+        <div className="px-8 py-3 border-b border-bb-border flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-bb-text2 shrink-0">
             <SlidersHorizontal size={13} />
             <span>필터</span>
@@ -365,7 +387,7 @@ export default function BoardPage() {
           {(["LOW", "MEDIUM", "HIGH", "URGENT"] as TaskPriority[]).map((p) => {
             const labels: Record<TaskPriority, string> = { LOW: "낮음", MEDIUM: "보통", HIGH: "높음", URGENT: "긴급" };
             const colors: Record<TaskPriority, string> = {
-              LOW: "border-slate-600 text-slate-400 data-[active=true]:bg-slate-600/30 data-[active=true]:text-slate-200",
+              LOW: "border-bb-border text-bb-text2 data-[active=true]:bg-bb-surface2/30 data-[active=true]:text-bb-text",
               MEDIUM: "border-blue-500/50 text-blue-400 data-[active=true]:bg-blue-500/20 data-[active=true]:text-blue-300",
               HIGH: "border-orange-500/50 text-orange-400 data-[active=true]:bg-orange-500/20 data-[active=true]:text-orange-300",
               URGENT: "border-red-500/50 text-red-400 data-[active=true]:bg-red-500/20 data-[active=true]:text-red-300",
@@ -406,25 +428,25 @@ export default function BoardPage() {
         </div>
 
         {/* Board area */}
-        <div className="flex-1 p-8 overflow-x-auto">
-          <div className="min-w-[900px]">
+        <div className="flex-1 p-4 md:p-8 md:overflow-x-auto">
+          <div className="md:min-w-[900px]">
             <KanbanBoard
               projectId={projectId}
               initialTasks={tasks}
-              members={members.map((m) => ({
-                userId: m.userId,
-                name: m.name,
-                email: m.email,
-              }))}
+              // 서버는 관찰자를 업무 담당자로 받지 않는다
+              members={members
+                .filter((m) => m.role !== "OBSERVER")
+                .map((m) => ({ userId: m.userId, name: m.name, email: m.email }))}
               scoreMap={scoreMap}
               filter={filter}
               onTasksChange={setTasks}
+              readOnly={readOnly}
             />
           </div>
 
           {/* 팀원별 진행 현황 */}
           {members.length > 0 && (
-            <div className="min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-5">
+            <div className="md:min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-5">
               <h2 className="text-sm font-semibold text-bb-text mb-4 flex items-center gap-2">
                 <FolderKanban size={14} className="text-indigo-400" />
                 팀원별 태스크 현황
@@ -442,7 +464,7 @@ export default function BoardPage() {
                   const hue = m.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
 
                   return (
-                    <div key={m.userId} className="flex items-center gap-4">
+                    <div key={m.userId} className="flex flex-wrap md:flex-nowrap items-center gap-x-4 gap-y-2">
                       {/* Avatar */}
                       <div
                         style={{ background: `hsl(${hue} 55% 45%)` }}
@@ -456,7 +478,7 @@ export default function BoardPage() {
 
                       {/* Pill badges */}
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-bb-surface text-bb-text2 border border-bb-border">
                           할 일 {myTodo}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
@@ -468,8 +490,8 @@ export default function BoardPage() {
                       </div>
 
                       {/* Progress bar */}
-                      <div className="flex-1 flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="flex-1 min-w-[8rem] flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-bb-surface rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-indigo-500 to-teal-400 rounded-full transition-all duration-500"
                             style={{ width: `${pct}%` }}

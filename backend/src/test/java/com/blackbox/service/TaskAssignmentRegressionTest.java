@@ -77,12 +77,17 @@ class TaskAssignmentRegressionTest {
         verify(tasks, never()).save(any());
     }
     @Test void outsiderCannotBeAssigned() {
-        assertThrows(ForbiddenException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of(candidate.getId())), actor));
+        var error = assertThrows(ResponseStatusException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of(candidate.getId())), actor));
+        assertEquals(400, error.getStatusCode().value());
+        verify(assignees, never()).deleteByTask(any());
         verify(assignees, never()).save(any()); verifyNoInteractions(discord);
     }
     @Test void observerCannotBeAssigned() {
         grant(candidate, "OBSERVER");
-        assertThrows(ForbiddenException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of(candidate.getId())), actor));
+        var error = assertThrows(ResponseStatusException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of(candidate.getId())), actor));
+        assertEquals(400, error.getStatusCode().value());
+        assertEquals("관찰자는 업무 담당자로 지정할 수 없습니다", error.getReason());
+        verify(assignees, never()).deleteByTask(any());
         verify(assignees, never()).save(any()); verifyNoInteractions(discord);
     }
     @Test void duplicateAssigneeIsSavedOnce() {
@@ -130,6 +135,7 @@ class TaskAssignmentRegressionTest {
         when(users.findById(candidate.getId())).thenReturn(Optional.empty());
         assertThrows(NotFoundException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of(candidate.getId())), actor));
         verify(assignees, never()).save(any());
+        verify(assignees, never()).deleteByTask(any());
         verifyNoInteractions(discord);
         // 실제 DB에서 기존 배정 삭제의 롤백 여부는 통합 테스트로 별도 검증한다.
     }
@@ -154,5 +160,41 @@ class TaskAssignmentRegressionTest {
         grant(actor, "OBSERVER");
         assertThrows(ForbiddenException.class, () -> service.deleteTask(project.getId(), task.getId(), actor));
         verifyNoInteractions(tasks, assignees);
+    }
+
+    @Test void creationTrimsCompletionCriteriaLikeUpdate() {
+        var response = service.createTask(project.getId(), new CreateTaskRequest("조사", null, null,
+                null, null, List.of(), null, null, null, "  출처 포함  "), actor);
+        assertEquals("출처 포함", response.completionCriteria());
+    }
+
+    @Test void taskListKeepsMultipleAndMissingAssignmentsWithoutDuplicatingTasks() {
+        task.setDeliverable(delivery); task.setRequirement(requirement);
+        var other = new Task(); other.setId(UUID.randomUUID()); other.setProject(project); other.setCreatedBy(actor);
+        var first = new TaskAssignee(); first.setTask(task); first.setUser(actor);
+        var second = new TaskAssignee(); second.setTask(task); second.setUser(candidate);
+        when(tasks.findByProjectOrderByCreatedAtDesc(project)).thenReturn(List.of(task, other));
+        when(assignees.findByTaskIn(List.of(task, other))).thenReturn(List.of(first, second));
+        var response = service.listTasks(project.getId(), null, actor);
+        assertEquals(2, response.size());
+        assertEquals(2, response.get(0).assignees().size());
+        assertTrue(response.get(1).assignees().isEmpty());
+        assertEquals(delivery.getId(), response.get(0).deliverableId());
+        assertEquals(requirement.getId(), response.get(0).requirementId());
+        verify(assignees, never()).findByTask(any());
+    }
+
+    @Test void emptyTaskListDoesNotQueryAssignments() {
+        when(tasks.findByProjectOrderByCreatedAtDesc(project)).thenReturn(List.of());
+        assertTrue(service.listTasks(project.getId(), null, actor).isEmpty());
+        verifyNoInteractions(assignees);
+    }
+
+    @Test void filteredTaskListPreservesStatusFilterAndAllowsObserverReading() {
+        grant(actor, "OBSERVER"); task.setStatus("DONE");
+        when(tasks.findByProjectAndStatusOrderByCreatedAtDesc(project, "DONE")).thenReturn(List.of(task));
+        when(assignees.findByTaskIn(List.of(task))).thenReturn(List.of());
+        assertEquals("DONE", service.listTasks(project.getId(), "DONE", actor).get(0).status());
+        verify(tasks, never()).findByProjectOrderByCreatedAtDesc(any());
     }
 }
