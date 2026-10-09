@@ -148,8 +148,8 @@ class AgentToolboxTest {
     }
 
     @Test void toolsAreFoundByNameAndNamesMustBeUnique() {
-        assertEquals(ALL, toolbox.bind(project.getId(), leader, ALL).stream().map(AgentTool::name).toList());
-        assertThrows(IllegalArgumentException.class, () -> toolbox.bind(project.getId(), leader, List.of("delete_project")));
+        assertEquals(ALL, toolbox.bind(project.getId(), leader, ALL, (name, label) -> {}).stream().map(AgentTool::name).toList());
+        assertThrows(IllegalArgumentException.class, () -> toolbox.bind(project.getId(), leader, List.of("delete_project"), (name, label) -> {}));
 
         ProjectTool one = named("same", List.of()), two = named("same", List.of());
         assertThrows(IllegalStateException.class, () -> new AgentToolbox(List.of(one, two), json, properties));
@@ -159,7 +159,7 @@ class AgentToolboxTest {
         // 상한은 도구가 아니라 도구함이 건다. 목록을 돌려주는 도구는 모두 같은 모양으로 나간다
         AgentProperties two = new AgentProperties(); two.setToolListLimit(2);
         ProjectTool numbers = named("numbers", List.of(1, 2, 3));
-        AgentTool tool = new AgentToolbox(List.of(numbers), json, two).bind(project.getId(), leader, List.of("numbers")).get(0);
+        AgentTool tool = new AgentToolbox(List.of(numbers), json, two).bind(project.getId(), leader, List.of("numbers"), (name, label) -> {}).get(0);
 
         JsonNode out = json.readTree(tool.call("{}"));
         assertEquals(List.of(1, 2), stream(out.path("items")).map(JsonNode::asInt).toList());
@@ -175,13 +175,13 @@ class AgentToolboxTest {
             @Override public String description() { return "broken"; }
             @Override public Object read(UUID projectId, User user, JsonNode arguments) { throw new IllegalStateException("내부 사정"); }
         };
-        AgentTool tool = new AgentToolbox(List.of(broken), json, properties).bind(project.getId(), leader, List.of("broken")).get(0);
+        AgentTool tool = new AgentToolbox(List.of(broken), json, properties).bind(project.getId(), leader, List.of("broken"), (name, label) -> {}).get(0);
 
         assertThrows(IllegalStateException.class, () -> tool.call("{}"));
     }
 
     private Map<String, AgentTool> bind(User user) {
-        return toolbox.bind(project.getId(), user, ALL).stream().collect(Collectors.toMap(AgentTool::name, Function.identity()));
+        return toolbox.bind(project.getId(), user, ALL, (name, label) -> {}).stream().collect(Collectors.toMap(AgentTool::name, Function.identity()));
     }
 
     private JsonNode call(Map<String, AgentTool> tools, String name, String arguments) throws Exception {

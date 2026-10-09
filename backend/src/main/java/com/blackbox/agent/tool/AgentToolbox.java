@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.function.BiConsumer;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,8 +31,12 @@ public class AgentToolbox {
         this.properties = properties;
     }
 
-    public List<AgentTool> bind(UUID projectId, User user, Collection<String> names) {
-        return names.stream().map(name -> bound(find(name), projectId, user)).toList();
+    /** 등록된 도구의 이름 전부 */
+    public List<String> names() { return tools.keySet().stream().sorted().toList(); }
+
+    /** onCall은 모델이 도구를 부를 때마다 도구의 이름과 화면에 보일 말을 받는다 */
+    public List<AgentTool> bind(UUID projectId, User user, Collection<String> names, BiConsumer<String, String> onCall) {
+        return names.stream().map(name -> bound(find(name), projectId, user, onCall)).toList();
     }
 
     private ProjectTool find(String name) {
@@ -40,13 +45,14 @@ public class AgentToolbox {
         return tool;
     }
 
-    private AgentTool bound(ProjectTool tool, UUID projectId, User user) {
+    private AgentTool bound(ProjectTool tool, UUID projectId, User user, BiConsumer<String, String> onCall) {
         return new AgentTool() {
             @Override public String name() { return tool.name(); }
             @Override public String description() { return tool.description(); }
             @Override public String inputSchema() { return tool.inputSchema(); }
 
             @Override public String call(String argumentsJson) {
+                onCall.accept(tool.name(), tool.label());
                 JsonNode arguments;
                 try {
                     arguments = argumentsJson == null || argumentsJson.isBlank()
