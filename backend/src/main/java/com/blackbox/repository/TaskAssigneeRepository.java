@@ -6,6 +6,7 @@ import com.blackbox.entity.TaskAssignee;
 import com.blackbox.entity.TaskAssigneeId;
 import com.blackbox.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -13,6 +14,8 @@ import java.util.List;
 
 public interface TaskAssigneeRepository extends JpaRepository<TaskAssignee, TaskAssigneeId> {
     List<TaskAssignee> findByTask(Task task);
+    @EntityGraph(attributePaths = "user")
+    List<TaskAssignee> findByTaskIn(List<Task> tasks);
     void deleteByTask(Task task);
 
     /** 해당 프로젝트에서 유저가 담당한 DONE 태스크 수 */
