@@ -8,6 +8,7 @@ import TaskModal from "@/components/kanban/TaskModal";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
+import SubmitPanel from "@/components/deliverable/SubmitPanel";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
 import {
@@ -54,7 +55,7 @@ type Tab = "overview" | "review" | "submit";
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "overview", label: "요구사항·업무", implemented: true },
   { id: "review", label: "검토", implemented: true },
-  { id: "submit", label: "최종 제출", implemented: false },
+  { id: "submit", label: "최종 제출", implemented: true },
 ];
 
 const TASK_STATUS_LABEL: Record<Task["status"], string> = {
@@ -679,6 +680,19 @@ export default function DeliverableDetailPage() {
                 projectId={projectId}
                 deliverableId={deliverableId}
                 canWrite={canWrite}
+            {activeTab === "submit" && deliverable && (
+              <SubmitPanel
+                projectId={projectId}
+                deliverableId={deliverableId}
+                myRole={myRole}
+                requiredCount={deliverable.requirements.filter((r) => r.required).length}
+                submissionMethod={deliverable.submissionMethod}
+                openTaskCount={progress ? progress.tasks.total - progress.tasks.completed : null}
+                onGoTab={setActiveTab}
+                onChanged={refresh}
+              />
+            )}
+
                 myUserId={myUserId}
                 tasks={tasks}
                 onTasksChanged={refresh}
