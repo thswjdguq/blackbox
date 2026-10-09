@@ -57,6 +57,9 @@ app:
   file:
     upload-dir: ${FILE_UPLOAD_DIR:/data/uploads}
   frontend-base-url: ${FRONTEND_BASE_URL:}       # 10분 전 알림 URL 생성용 (예: https://yourdomain.com)
+  agent:
+    zone: Asia/Seoul        # "오늘"과 "늦음"을 판단하는 시간대
+    tool-list-limit: 100    # 도구가 한 번에 돌려주는 목록의 건수. 넘으면 잘렸다고 알린다
 
 external:
   github:
