@@ -15,7 +15,8 @@ class AgentPropertiesTest {
             .withBean(AgentProperties.class);
 
     @Test void bindsTheValues() {
-        runner.withPropertyValues("app.agent.zone=Asia/Seoul", "app.agent.tool-list-limit=100").run(context -> {
+        runner.withPropertyValues("app.agent.zone=Asia/Seoul", "app.agent.tool-list-limit=100", "app.agent.run-time-limit=120s",
+                "app.agent.runs-per-hour=30", "app.agent.brief-max-length=20000", "app.agent.question-max-length=1000").run(context -> {
             assertNull(context.getStartupFailure());
             assertEquals(100, context.getBean(AgentProperties.class).getToolListLimit());
             assertNotNull(context.getBean(AgentProperties.class).today());
@@ -23,7 +24,9 @@ class AgentPropertiesTest {
     }
 
     @Test void refusesToStartWithoutAZoneOrWithALimitBelowOne() {
-        runner.withPropertyValues("app.agent.tool-list-limit=100").run(context -> assertNotNull(context.getStartupFailure()));
-        runner.withPropertyValues("app.agent.zone=Asia/Seoul", "app.agent.tool-list-limit=0").run(context -> assertNotNull(context.getStartupFailure()));
+        runner.withPropertyValues("app.agent.tool-list-limit=100", "app.agent.run-time-limit=120s",
+                "app.agent.runs-per-hour=30", "app.agent.brief-max-length=20000", "app.agent.question-max-length=1000").run(context -> assertNotNull(context.getStartupFailure()));
+        runner.withPropertyValues("app.agent.zone=Asia/Seoul", "app.agent.tool-list-limit=0", "app.agent.run-time-limit=120s",
+                "app.agent.runs-per-hour=30", "app.agent.brief-max-length=20000", "app.agent.question-max-length=1000").run(context -> assertNotNull(context.getStartupFailure()));
     }
 }

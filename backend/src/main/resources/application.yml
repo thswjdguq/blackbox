@@ -60,6 +60,10 @@ app:
   agent:
     zone: Asia/Seoul        # "오늘"과 "늦음"을 판단하는 시간대
     tool-list-limit: 100    # 도구가 한 번에 돌려주는 목록의 건수. 넘으면 잘렸다고 알린다
+    run-time-limit: 120s    # 실행 하나의 시간 상한. 넘긴 실행은 끝난 것으로 본다
+    runs-per-hour: 30       # 프로젝트 하나가 한 시간에 실행할 수 있는 횟수
+    brief-max-length: 20000 # 과제 안내문의 글자 수 상한
+    question-max-length: 1000
 
 external:
   github:
