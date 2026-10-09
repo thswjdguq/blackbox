@@ -39,14 +39,14 @@ public class ScoreController {
     public ResponseEntity<List<ScoreResponse>> recalculate(
             @PathVariable UUID projectId,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(scoreService.recalculate(projectId));
+        return ResponseEntity.ok(scoreService.recalculate(projectId, user));
     }
 
     @GetMapping("/alerts")
     public ResponseEntity<List<AlertResponse>> getAlerts(
             @PathVariable UUID projectId,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(alertService.getAlerts(projectId));
+        return ResponseEntity.ok(alertService.getAlerts(projectId, user));
     }
 
     @PatchMapping("/alerts/{alertId}/read")
@@ -54,7 +54,7 @@ public class ScoreController {
             @PathVariable UUID projectId,
             @PathVariable UUID alertId,
             @AuthenticationPrincipal User user) {
-        alertService.markAsRead(projectId, alertId);
+        alertService.markAsRead(projectId, alertId, user);
         return ResponseEntity.noContent().build();
     }
 
