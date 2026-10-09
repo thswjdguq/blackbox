@@ -25,6 +25,20 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  # AI 에이전트(K-30)의 모델 공급자. 기본은 none이라 키가 없어도 서버가 뜨고 에이전트만 꺼진다.
+  # 켤 때는 환경 변수로 준다. 키와 모델 이름도 환경 변수이고 이 파일에는 적지 않는다(.env.example 참고)
+  #   SPRING_AI_MODEL_CHAT=google-genai      + SPRING_AI_GOOGLE_GENAI_API_KEY
+  #   SPRING_AI_MODEL_CHAT=bedrock-converse  + SPRING_AI_BEDROCK_AWS_REGION 과 AWS 자격 증명
+  ai:
+    model:
+      chat: none
+    google:
+      genai:
+        chat:
+          options:
+            # Spring AI 1.1.8의 기본 모델은 폐기돼 404가 난다. 바꾸려면 SPRING_AI_GOOGLE_GENAI_CHAT_OPTIONS_MODEL
+            model: gemini-3.5-flash
+
   servlet:
     multipart:
       max-file-size: 100MB
