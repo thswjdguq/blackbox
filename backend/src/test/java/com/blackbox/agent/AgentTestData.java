@@ -7,14 +7,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
  * 트랜잭션을 스스로 나누는 코드(실행기, HTTP)를 실제 DB로 시험할 때 쓰는 준비 자료.
- * 테스트 트랜잭션으로 되돌릴 수 없으므로 만든 것을 기억했다가 cleanup에서 지운다.
+ * 테스트 트랜잭션으로 되돌릴 수 없으므로 만든 것을 cleanup에서 지운다.
  */
 public class AgentTestData {
     private static final String EMAIL_DOMAIN = "@agent-run.example.invalid";
@@ -22,10 +21,10 @@ public class AgentTestData {
     private final EntityManager em;
     private final TransactionTemplate tx;
     private final JdbcTemplate jdbc;
-    private final List<UUID> projectIds = new ArrayList<>();
 
     public AgentTestData(EntityManager em, PlatformTransactionManager transactions, JdbcTemplate jdbc) {
         this.em = em; this.tx = new TransactionTemplate(transactions); this.jdbc = jdbc;
+        cleanup();
     }
 
     public <T> T inTransaction(Supplier<T> work) { return tx.execute(status -> work.get()); }
@@ -42,7 +41,6 @@ public class AgentTestData {
         Project project = inTransaction(() -> {
             Project p = new Project(); p.setName(name); p.setCreatedBy(leader); em.persist(p); return p;
         });
-        projectIds.add(project.getId());
         join(project, leader, "LEADER");
         return project;
     }
@@ -68,15 +66,16 @@ public class AgentTestData {
         });
     }
 
+    /** 이 도우미가 만든 사용자의 프로젝트와 거기 딸린 것을 모두 지운다. 중간에 죽은 실행이 남긴 것도 함께 지워진다 */
     public void cleanup() {
-        for (UUID id : projectIds) {
-            jdbc.update("DELETE FROM agent_proposal_results WHERE proposal_id IN (SELECT id FROM agent_proposals WHERE project_id = ?)", id);
-            jdbc.update("DELETE FROM agent_proposals WHERE project_id = ?", id);
-            jdbc.update("DELETE FROM agent_runs WHERE project_id = ?", id);
-            jdbc.update("DELETE FROM activity_logs WHERE project_id = ?", id);
-            jdbc.update("DELETE FROM projects WHERE id = ?", id);
+        String like = "%" + EMAIL_DOMAIN;
+        String projects = "(SELECT p.id FROM projects p JOIN users u ON u.id = p.created_by WHERE u.email LIKE ?)";
+        jdbc.update("DELETE FROM agent_proposal_results WHERE proposal_id IN (SELECT id FROM agent_proposals WHERE project_id IN " + projects + ")", like);
+        // 점수 재계산 일정(ScoreScheduler)이 테스트 중에 돌면 점수와 경보가 생긴다. 이 표들은 프로젝트를 지워도 따라 지워지지 않는다
+        for (String table : List.of("agent_proposals", "agent_runs", "activity_logs", "contribution_scores", "alerts")) {
+            jdbc.update("DELETE FROM " + table + " WHERE project_id IN " + projects, like);
         }
-        jdbc.update("DELETE FROM users WHERE email LIKE ?", "%" + EMAIL_DOMAIN);
-        projectIds.clear();
+        jdbc.update("DELETE FROM projects WHERE id IN " + projects, like);
+        jdbc.update("DELETE FROM users WHERE email LIKE ?", like);
     }
 }
