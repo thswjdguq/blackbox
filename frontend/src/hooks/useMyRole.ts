@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { getMembers } from "@/lib/api/member";
 import type { MemberRole } from "@/types/member";
+import { onSessionReset } from "@/lib/sessionCache";
 
 /**
  * 프로젝트별 내 역할 캐시. Sidebar처럼 페이지마다 다시 마운트되는 곳에서
  * 같은 요청을 반복하지 않게 진행 중인 요청을 함께 쓴다. 실패하면 캐시하지 않는다.
  */
 const roleCache = new Map<string, Promise<MemberRole | null>>();
+onSessionReset(() => roleCache.clear());
 
 function loadRole(projectId: string): Promise<MemberRole | null> {
   const cached = roleCache.get(projectId);
