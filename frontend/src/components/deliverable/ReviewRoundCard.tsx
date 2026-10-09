@@ -46,6 +46,7 @@ export default function ReviewRoundCard({
   deliverableId,
   round,
   comments,
+  commentsReady = true,
   locked,
   unresolvedCount,
   canWrite,
@@ -57,6 +58,8 @@ export default function ReviewRoundCard({
   deliverableId: string;
   round: ReviewRound;
   comments: ReviewComment[];
+  /** false면 피드백 API(K-11)가 아직 없다. 회차·결정은 쓰고 피드백 칸만 준비 중으로 보인다 */
+  commentsReady?: boolean;
   /** CONFIRMED·SUBMITTED 제출물은 검토 기록을 바꾸지 않는다 */
   locked: boolean;
   unresolvedCount: number;
@@ -220,6 +223,15 @@ export default function ReviewRoundCard({
       )}
 
       {/* 피드백 */}
+      {!commentsReady ? (
+        <div className="mt-4">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-bb-text2">
+            <MessageSquare size={12} />
+            피드백
+          </p>
+          <p className="mt-2 text-xs text-bb-text2">피드백은 서버 준비 중입니다. 회차 열기와 승인·수정 요청은 지금 쓸 수 있습니다.</p>
+        </div>
+      ) : (
       <div className="mt-4">
         <p className="flex items-center gap-1.5 text-xs font-medium text-bb-text2">
           <MessageSquare size={12} />
@@ -369,6 +381,7 @@ export default function ReviewRoundCard({
           </form>
         )}
       </div>
+      )}
     </section>
   );
 }

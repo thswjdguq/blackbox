@@ -49,6 +49,8 @@ export default function ReviewPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notReady, setNotReady] = useState(false);
+  // 회차 API(A-11)가 먼저 들어오고 피드백 API(B-20)가 뒤에 온다. 피드백만 없으면 회차는 그대로 쓴다
+  const [commentsReady, setCommentsReady] = useState(true);
   const [showOpen, setShowOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -56,9 +58,19 @@ export default function ReviewPanel({
     try {
       const { data } = await getReviewSummary(projectId, deliverableId);
       // 코멘트 목록은 회차 단위 경로라 회차마다 요청한다 (K-11 1장)
+      let ready = true;
       const lists = await Promise.all(
-        data.rounds.map((r) => getComments(projectId, deliverableId, r.id).then((res) => [r.id, res.data] as const))
+        data.rounds.map((r) =>
+          getComments(projectId, deliverableId, r.id)
+            .then((res) => [r.id, res.data] as const)
+            .catch((err) => {
+              if (!isReviewApiMissing(err)) throw err;
+              ready = false;
+              return [r.id, []] as const;
+            })
+        )
       );
+      setCommentsReady(ready);
       setSummary(data);
       setComments(Object.fromEntries(lists));
       setNotReady(false);
@@ -181,6 +193,7 @@ export default function ReviewPanel({
             deliverableId={deliverableId}
             round={r}
             comments={comments[r.id] ?? []}
+            commentsReady={commentsReady}
             locked={locked}
             unresolvedCount={summary.unresolvedCommentCount}
             canWrite={canWrite}
