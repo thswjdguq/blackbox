@@ -2,7 +2,6 @@ package com.blackbox.service;
 
 import com.blackbox.dto.AlertResponse;
 import com.blackbox.entity.*;
-import com.blackbox.exception.ForbiddenException;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
 import org.springframework.stereotype.Service;
@@ -22,29 +21,36 @@ public class AlertService {
     private final ProjectMemberRepository       memberRepository;
     private final ContributionScoreRepository   scoreRepository;
     private final DiscordNotificationService    discordService;
+    private final ProjectAccessChecker         accessChecker;
 
     public AlertService(AlertRepository alertRepository,
                         ActivityLogRepository activityLogRepository,
                         ProjectRepository projectRepository,
                         ProjectMemberRepository memberRepository,
                         ContributionScoreRepository scoreRepository,
-                        DiscordNotificationService discordService) {
+                        DiscordNotificationService discordService,
+                        ProjectAccessChecker accessChecker) {
         this.alertRepository       = alertRepository;
         this.activityLogRepository = activityLogRepository;
         this.projectRepository     = projectRepository;
         this.memberRepository      = memberRepository;
         this.scoreRepository       = scoreRepository;
         this.discordService        = discordService;
+        this.accessChecker         = accessChecker;
     }
 
     // ── 읽음 처리 ─────────────────────────────────────────────────────────
 
     @Transactional
-    public void markAsRead(UUID projectId, UUID alertId) {
+    public void markAsRead(UUID projectId, UUID alertId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        // 읽음 상태는 팀 공용 데이터의 변경이므로 관찰자의 읽기 전용 권한으로 바꿀 수 없다.
+        accessChecker.requireContributor(project, user);
         Alert alert = alertRepository.findById(alertId)
                 .orElseThrow(() -> new NotFoundException("경보를 찾을 수 없습니다"));
         if (!alert.getProject().getId().equals(projectId)) {
-            throw new ForbiddenException("접근 권한이 없습니다");
+            // 다른 프로젝트 경보의 존재 여부도 공개하지 않는다.
+            throw new NotFoundException("경보를 찾을 수 없습니다");
         }
         alert.setRead(true);
         alertRepository.save(alert);
@@ -53,9 +59,9 @@ public class AlertService {
     // ── 경보 조회 (활성만) ────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public List<AlertResponse> getAlerts(UUID projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("프로젝트 없음: " + projectId));
+    public List<AlertResponse> getAlerts(UUID projectId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        accessChecker.requireMember(project, user);
         return alertRepository.findActiveByProject(project).stream()
                 .map(AlertResponse::from)
                 .toList();

@@ -332,13 +332,13 @@ export default function KanbanBoard({
 
   return (
     <>
-      <div className="flex items-center gap-3 mb-4">
-        <select aria-label="제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <select aria-label="제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="max-w-full rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
           <option value="">전체 제출물</option>
           <option value="unlinked">제출물 미연결</option>
           {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
-        <Link href={`/projects/${projectId}/deliverables`} className="text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
+        <Link href={`/projects/${projectId}/deliverables`} className="whitespace-nowrap text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
         <div role="group" aria-label="업무 보기 방식" className="ml-auto flex rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
           {([["board", "보드", Columns3], ["list", "목록", List]] as const).map(([v, label, Icon]) => (
             <button
@@ -402,7 +402,7 @@ export default function KanbanBoard({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-6 h-full">
+          <div className="grid grid-cols-[repeat(3,minmax(16rem,1fr))] md:grid-cols-3 gap-4 md:gap-6 h-full overflow-x-auto md:overflow-visible pb-2 md:pb-0">
             {KANBAN_COLUMNS.map((col) => (
               <KanbanColumn
                 key={col.id}
