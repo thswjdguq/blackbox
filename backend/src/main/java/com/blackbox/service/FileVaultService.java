@@ -20,7 +20,6 @@ public class FileVaultService {
 
     private final FileVaultRepository fileVaultRepository;
     private final TamperDetectionLogRepository tamperLogRepository;
-    private final AlertRepository alertRepository;
     private final HashService hashService;
     private final FileStorageService fileStorageService;
     private final ProjectAccessChecker accessChecker;
@@ -30,7 +29,6 @@ public class FileVaultService {
 
     public FileVaultService(FileVaultRepository fileVaultRepository,
                             TamperDetectionLogRepository tamperLogRepository,
-                            AlertRepository alertRepository,
                             HashService hashService,
                             FileStorageService fileStorageService,
                             ProjectAccessChecker accessChecker,
@@ -39,7 +37,6 @@ public class FileVaultService {
                             NotionService notionService) {
         this.fileVaultRepository = fileVaultRepository;
         this.tamperLogRepository = tamperLogRepository;
-        this.alertRepository = alertRepository;
         this.hashService = hashService;
         this.fileStorageService = fileStorageService;
         this.accessChecker = accessChecker;
@@ -71,10 +68,9 @@ public class FileVaultService {
         if (prev != null) {
             nextVersion = prev.getVersion() + 1;
             if (!prev.getFileHash().equals(newHash)) {
-                // 해시 변경 → 변조 의심
+                // 같은 이름으로 내용이 다른 파일은 수정본이다. 변경 기록만 남기고 경보는 만들지 않는다(K-10 5장)
                 tamperDetected = true;
                 recordTamper(prev, newHash);
-                createTamperAlert(project, uploader, originalName);
             }
             // 동일 해시면 중복 업로드 — 버전만 증가
         }
@@ -170,17 +166,6 @@ public class FileVaultService {
         log.setDetectorType("REUPLOAD");
         log.setStatus("FLAGGED");
         tamperLogRepository.save(log);
-    }
-
-    private void createTamperAlert(Project project, User uploader, String fileName) {
-        if (!alertRepository.existsByProjectAndUserIsNullAndAlertTypeAndResolvedAtIsNull(project, "TAMPER")) {
-            Alert alert = new Alert();
-            alert.setProject(project);
-            alert.setAlertType("TAMPER");
-            alert.setSeverity("HIGH");
-            alert.setMessage("파일 변경 내역: '" + fileName + "' 재업로드 시 해시가 변경되었습니다");
-            alertRepository.save(alert);
-        }
     }
 
     private String escapeJson(String s) {
