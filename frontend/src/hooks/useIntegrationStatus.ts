@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { onSessionReset } from "@/lib/sessionCache";
 
 export interface IntegrationStatus {
   discordConnected:  boolean | null;
@@ -23,6 +24,7 @@ interface ConnStatus {
  * 뱃지가 깜빡였음 — 캐시된 값을 즉시 보여주고 백그라운드에서 갱신한다 (stale-while-revalidate).
  */
 const statusCache = new Map<string, ConnStatus>();
+onSessionReset(() => statusCache.clear());
 
 /** Discord / Notion / Google Calendar 연동 상태를 조합해 미연동 항목 개수를 계산 */
 export function useIntegrationStatus(projectId: string | null): IntegrationStatus {

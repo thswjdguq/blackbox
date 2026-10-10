@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, ChevronsUpDown, FolderKanban } from "lucide-react";
 import api from "@/lib/api";
+import { onSessionReset } from "@/lib/sessionCache";
 
 interface ProjectItem {
   id: string;
@@ -16,6 +17,7 @@ interface ProjectItem {
  * 바로 보여 주고 뒤에서 다시 불러온다 (useIntegrationStatus와 같은 방식).
  */
 let cache: ProjectItem[] | null = null;
+onSessionReset(() => { cache = null; });
 
 /** 다른 프로젝트로 옮길 때 같은 메뉴로 간다. 상세 화면(제출물·회의록 하나)은 목록으로 */
 function targetPath(pathname: string, projectId: string): string {

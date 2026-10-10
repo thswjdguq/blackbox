@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
+import { useMyRole } from "@/hooks/useMyRole";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
@@ -89,11 +90,18 @@ function NotificationBell({ projectId }: { projectId: string }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // 읽음 표시는 팀 공용이라 팀장·팀원만 바꾼다(관찰자 403). 역할을 아직 모르면 시도하고 403이면 멈춘다
+  const role = useMyRole(projectId);
+  const [readDenied, setReadDenied] = useState(false);
+  const canMarkRead = role !== "OBSERVER" && !readDenied;
+
   const handleMarkRead = (alert: Alert) => {
-    if (!alert.isRead) {
+    if (!alert.isRead && canMarkRead) {
       api.patch(`/projects/${projectId}/alerts/${alert.id}/read`)
         .then(() => setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, isRead: true } : a)))
-        .catch(() => {});
+        .catch((err) => {
+          if ((err as { response?: { status?: number } })?.response?.status === 403) setReadDenied(true);
+        });
     }
     setOpen(false);
   };
@@ -131,6 +139,11 @@ function NotificationBell({ projectId }: { projectId: string }) {
               <span className="text-xs text-bb-text2">{unread}개 읽지 않음</span>
             )}
           </div>
+          {!canMarkRead && (
+            <p className="px-4 py-2 border-b border-bb-border text-[11px] text-bb-text2">
+              읽음 표시는 팀이 함께 쓰는 상태라 팀장·팀원만 바꿀 수 있습니다.
+            </p>
+          )}
 
           {/* 목록 */}
           <div className="max-h-80 overflow-y-auto">
