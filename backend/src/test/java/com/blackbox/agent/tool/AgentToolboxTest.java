@@ -157,7 +157,7 @@ class AgentToolboxTest {
 
     @Test void aLongListIsCutAndSaysSo() throws Exception {
         // 상한은 도구가 아니라 도구함이 건다. 목록을 돌려주는 도구는 모두 같은 모양으로 나간다
-        AgentProperties two = new AgentProperties(); two.setToolListLimit(2);
+        AgentProperties two = new AgentProperties(); two.setToolListLimit(2); two.setMaxToolCalls(10);
         ProjectTool numbers = named("numbers", List.of(1, 2, 3));
         AgentTool tool = new AgentToolbox(List.of(numbers), json, two).bind(project.getId(), leader, List.of("numbers"), (name, label) -> {}).get(0);
 
@@ -165,6 +165,24 @@ class AgentToolboxTest {
         assertEquals(List.of(1, 2), stream(out.path("items")).map(JsonNode::asInt).toList());
         assertEquals(3, out.path("total").asInt());
         assertTrue(out.path("truncated").asBoolean());
+    }
+
+    @Test void afterTheCallLimitToolsStopReadingAndSaySo() throws Exception {
+        AgentProperties twoCalls = new AgentProperties(); twoCalls.setToolListLimit(10); twoCalls.setMaxToolCalls(2);
+        List<String> heard = new java.util.ArrayList<>();
+        List<AgentTool> tools = new AgentToolbox(List.of(named("a", List.of(1)), named("b", List.of(2))), json, twoCalls)
+                .bind(project.getId(), leader, List.of("a", "b"), (name, label) -> heard.add(name));
+
+        assertFalse(json.readTree(tools.get(0).call("{}")).has("error"));
+        assertFalse(json.readTree(tools.get(1).call("{}")).has("error"));
+        // 상한은 도구마다가 아니라 한 번의 실행에서 부른 횟수를 합쳐 센다
+        JsonNode third = json.readTree(tools.get(0).call("{}"));
+        assertTrue(third.path("error").asText().contains("더 부를 수 없습니다"), third.toString());
+        assertEquals(List.of("a", "b"), heard, "막힌 호출은 조회하지 않고 화면에도 알리지 않는다");
+
+        // 다시 묶으면(다음 실행) 처음부터 센다
+        assertFalse(json.readTree(new AgentToolbox(List.of(named("a", List.of(1))), json, twoCalls)
+                .bind(project.getId(), leader, List.of("a"), (name, label) -> {}).get(0).call("{}")).has("error"));
     }
 
     @Test void anUnexpectedFailureIsNotHandedToTheModel() {

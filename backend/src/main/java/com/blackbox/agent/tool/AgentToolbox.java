@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +35,13 @@ public class AgentToolbox {
     /** 등록된 도구의 이름 전부 */
     public List<String> names() { return tools.keySet().stream().sorted().toList(); }
 
-    /** onCall은 모델이 도구를 부를 때마다 도구의 이름과 화면에 보일 말을 받는다 */
+    /**
+     * onCall은 모델이 도구를 부를 때마다 도구의 이름과 화면에 보일 말을 받는다.
+     * 한 번 묶은 도구들은 호출 횟수를 함께 센다. 상한을 넘으면 조회하지 않고 그만 부르라고 돌려준다
+     */
     public List<AgentTool> bind(UUID projectId, User user, Collection<String> names, BiConsumer<String, String> onCall) {
-        return names.stream().map(name -> bound(find(name), projectId, user, onCall)).toList();
+        AtomicInteger calls = new AtomicInteger();
+        return names.stream().map(name -> bound(find(name), projectId, user, onCall, calls)).toList();
     }
 
     private ProjectTool find(String name) {
@@ -45,13 +50,16 @@ public class AgentToolbox {
         return tool;
     }
 
-    private AgentTool bound(ProjectTool tool, UUID projectId, User user, BiConsumer<String, String> onCall) {
+    private AgentTool bound(ProjectTool tool, UUID projectId, User user, BiConsumer<String, String> onCall, AtomicInteger calls) {
         return new AgentTool() {
             @Override public String name() { return tool.name(); }
             @Override public String description() { return tool.description(); }
             @Override public String inputSchema() { return tool.inputSchema(); }
 
             @Override public String call(String argumentsJson) {
+                if (calls.incrementAndGet() > properties.getMaxToolCalls()) {
+                    return error("도구를 더 부를 수 없습니다. 지금까지 조회한 기록으로 답하세요");
+                }
                 onCall.accept(tool.name(), tool.label());
                 JsonNode arguments;
                 try {
