@@ -6,7 +6,9 @@ import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
+import DeliverableTimeline from "@/components/deliverable/DeliverableTimeline";
 import api from "@/lib/api";
+import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import { getDeliverables, createDeliverable, deleteDeliverable } from "@/lib/api/deliverable";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
@@ -51,6 +53,15 @@ export default function DeliverablesPage() {
   const [notice, setNotice] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
+  // 목록 / 일정 보기. 보는 사람의 브라우저에만 기억한다
+  const [view, setView] = useState<"list" | "timeline">("list");
+  useEffect(() => {
+    try { if (localStorage.getItem("deliverable-view") === "timeline") setView("timeline"); } catch { /* 목록 */ }
+  }, []);
+  const changeView = (v: "list" | "timeline") => {
+    setView(v);
+    try { localStorage.setItem("deliverable-view", v); } catch { /* 무시 */ }
+  };
 
   // 팀장·팀원만 쓰기 가능. 관찰자(OBSERVER)는 읽기 전용.
   // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
@@ -181,6 +192,25 @@ export default function DeliverablesPage() {
         )}
 
         {!loading && !error && deliverables.length > 0 && (
+          <div role="group" aria-label="제출물 보기 방식" className="mb-3 flex w-fit rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
+            {([["list", "목록"], ["timeline", "일정"]] as const).map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => changeView(v)}
+                aria-pressed={view === v}
+                className={`rounded-md px-3 py-1.5 ${view === v ? "bg-bb-surface2 font-medium text-bb-text" : "text-bb-text2 hover:text-bb-text"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!loading && !error && deliverables.length > 0 && view === "timeline" && (
+          <DeliverableTimeline projectId={projectId} deliverables={deliverables} tasks={tasks} />
+        )}
+
+        {!loading && !error && deliverables.length > 0 && view === "list" && (
           <div className="space-y-3">
             {deliverables.map((d) => {
               const requiredCount = d.requirements.filter((r) => r.required).length;
@@ -198,7 +228,8 @@ export default function DeliverablesPage() {
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-bb-text2">
                         <span className="flex items-center gap-1">
                           <CalendarDays size={12} />
-                          제출일 {d.dueDate}
+                          제출일 {shortDate(d.dueDate)}
+                          <span className={`font-medium ${DUE_TEXT[dueTone(d.dueDate)]}`}>· {dueLabel(d.dueDate)}</span>
                         </span>
                         <span className="flex items-center gap-1">
                           <User size={12} />
