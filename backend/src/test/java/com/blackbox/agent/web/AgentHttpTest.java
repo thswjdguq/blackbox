@@ -110,6 +110,11 @@ class AgentHttpTest {
         assertEquals(List.of("PLAN_FROM_BRIEF:false", "BREAK_DOWN_TASKS:false", "STATUS_BRIEF:true", "ASK:true"),
                 skills(body(get("/status", observer))));
 
+        // 제출물이 하나도 없는 프로젝트는 단계가 빈 배열이다(화면의 "제출물 없음"에 해당)
+        Project empty = data.project("빈 프로젝트", leader);
+        JsonNode stages = json.readTree(send("GET", "/api/projects/" + empty.getId() + "/agent/status", leader, null).body()).path("stages");
+        assertTrue(stages.isArray() && stages.isEmpty(), stages.toString());
+
         assertEquals(401, get("/status", null).statusCode());
         assertEquals(403, get("/status", outsider).statusCode());
         assertEquals(404, send("GET", "/api/projects/" + UUID.randomUUID() + "/agent/status", member, null).statusCode());
@@ -163,6 +168,10 @@ class AgentHttpTest {
         assertEquals(400, post("/runs", member, "{\"skill\":\"PLAN_FROM_BRIEF\"}").statusCode());
         assertEquals(400, post("/runs", member, "{잘못된 JSON").statusCode());
         assertEquals(404, post("/runs", member, "{\"skill\":\"BREAK_DOWN_TASKS\",\"input\":{\"deliverableId\":\"" + UUID.randomUUID() + "\"}}").statusCode());
+        Deliverable foreign = data.deliverable(data.project("다른 프로젝트", outsider), "남의 제출물", LocalDate.now());
+        HttpResponse<String> notHere = post("/runs", member, "{\"skill\":\"BREAK_DOWN_TASKS\",\"input\":{\"deliverableId\":\"" + foreign.getId() + "\"}}");
+        assertEquals(404, notHere.statusCode());
+        assertFalse(notHere.body().contains("남의 제출물"), "다른 프로젝트의 제목을 드러내지 않는다");
         assertEquals(401, post("/runs", null, ASK).statusCode());
         assertEquals(403, post("/runs", outsider, ASK).statusCode());
 
@@ -191,6 +200,21 @@ class AgentHttpTest {
         assertEquals(List.of("step", "text", "done"), events(first.get(10, TimeUnit.SECONDS).body()).stream().map(Event::name).toList());
         assertEquals(200, second.get(10, TimeUnit.SECONDS).statusCode());
         assertEquals(200, post("/runs", member, ASK).statusCode(), "끝난 뒤에는 다시 실행할 수 있다");
+    }
+
+    @Test void noCardIsSavedForAnObserverOrFromAMalformedAnswer() throws Exception {
+        // 관찰자의 상태 요약: 팀원이라면 저장됐을 카드를 모델이 내놓아도 글만 나가고 저장되지 않는다
+        answer = "{\"text\":\"업무가 없습니다.\",\"proposals\":[{\"kind\":\"TASKS\",\"title\":\"할 일\",\"rationale\":\"상태에서\",\"content\":{\"tasks\":[{\"title\":\"초안 쓰기\"}]}}]}";
+        assertEquals(List.of("step", "text", "done"), events(post("/runs", observer, "{\"skill\":\"STATUS_BRIEF\",\"input\":{}}").body()).stream().map(Event::name).toList());
+        assertEquals(0, cards());
+
+        // 형식에 맞지 않는 답이 두 번 오면 error로 끝나고 저장되지 않는다
+        answer = "{\"text\":\"\",\"proposals\":[{\"kind\":\"DELIVERABLE_PLAN\",\"title\":\"x\",\"rationale\":\"y\",\"content\":{}}]}";
+        List<Event> events = events(post("/runs", member, BRIEF).body());
+        assertEquals("error", events.get(events.size() - 1).name());
+        assertEquals("AI 응답을 받지 못했습니다. 다시 시도해주세요", events.get(events.size() - 1).data().path("detail").asText());
+        assertEquals(0, cards());
+        assertEquals(0, body(get("/status", member)).path("pendingProposalCount").asInt());
     }
 
     @Test void eventsArriveOneByOneWhileTheRunIsStillGoing() throws Exception {
@@ -255,6 +279,10 @@ class AgentHttpTest {
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException(e);
         }
+    }
+
+    private int cards() {
+        return jdbc.queryForObject("SELECT count(*) FROM agent_proposals WHERE project_id = ?", Integer.class, project.getId());
     }
 
     private AgentRun onlyRun() {
