@@ -4,25 +4,13 @@ import Link from "next/link";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
+import { daysLeft, dueLabel } from "@/lib/due";
 
 interface Step {
   title: string;
   detail: string;
   href: string;
   action: string;
-}
-
-function daysLeft(dueDate: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((new Date(dueDate).getTime() - today.getTime()) / 86_400_000);
-}
-
-function dueLabel(dueDate: string): string {
-  const d = daysLeft(dueDate);
-  if (d < 0) return `기한 ${-d}일 지남`;
-  if (d === 0) return "오늘 마감";
-  return `D-${d}`;
 }
 
 /**
