@@ -25,9 +25,9 @@ class ReviewRoundServiceTest {
     final UnresolvedCommentCounter unresolved = mock(UnresolvedCommentCounter.class);
     final DeliverableConfirmationRepository confirmations = mock(DeliverableConfirmationRepository.class);
     final DeliverableSubmissionRepository submissions = mock(DeliverableSubmissionRepository.class);
-    final DeliverableStatuses statuses = new DeliverableStatuses(deliveries, rounds, confirmations, submissions);
-    final ReviewRoundService service = new ReviewRoundService(rounds, deliveries, files,
-            new ProjectAccessChecker(projects, members), unresolved, statuses);
+    final ProjectAccessChecker access = new ProjectAccessChecker(projects, members);
+    final DeliverableStatuses statuses = new DeliverableStatuses(access, deliveries, rounds, confirmations, submissions);
+    final ReviewRoundService service = new ReviewRoundService(rounds, deliveries, files, access, unresolved, statuses);
     final Project project = new Project();
     final Deliverable delivery = new Deliverable();
     final User reviewer = user("LEADER"), uploader = user("MEMBER"), observer = user("OBSERVER");
