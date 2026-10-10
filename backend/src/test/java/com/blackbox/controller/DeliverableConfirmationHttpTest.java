@@ -368,6 +368,36 @@ class DeliverableConfirmationHttpTest {
         assertFalse(submissions.existsById(report.getId()), "거절된 기록은 아무것도 남기지 않는다");
     }
 
+    /** 제출물 목록과 단건 응답의 status·latestDecision이 K-20 2장의 표와 같다. 목록의 다른 제출물은 영향을 받지 않는다. */
+    @Test void deliverableResponsesCarryStatusAndLatestDecision() throws Exception {
+        deliverable(em, project, "포스터");
+        FileVault file = upload(1, 'a');
+        assertDeliverableStatus("DRAFT", null);
+        round(em, report, 1, file, member, null);
+        assertDeliverableStatus("IN_REVIEW", null);
+        round(em, report, 2, file, member, "CHANGES_REQUESTED");
+        assertDeliverableStatus("DRAFT", "CHANGES_REQUESTED");
+        ReviewRound approved = round(em, report, 3, file, member, "APPROVED");
+        assertDeliverableStatus("IN_REVIEW", "APPROVED");
+        confirm(leader, approved.getId(), 200);
+        assertDeliverableStatus("CONFIRMED", "APPROVED");
+        submit(member, submission(null, PAST, null), 200);
+        assertDeliverableStatus("SUBMITTED", "APPROVED");
+    }
+
+    private void assertDeliverableStatus(String status, String latestDecision) throws Exception {
+        String list = "/api/projects/" + project.getId() + "/deliverables";
+        JsonNode one = call(get(list + "/" + report.getId()), observer, 200), all = call(get(list), observer, 200);
+        JsonNode listed = null, poster = null;
+        for (JsonNode d : all) if (d.get("id").asText().equals(report.getId().toString())) listed = d; else poster = d;
+        for (JsonNode d : List.of(one, listed)) {
+            assertEquals(status, d.get("status").asText());
+            assertEquals(latestDecision, d.get("latestDecision").isNull() ? null : d.get("latestDecision").asText());
+        }
+        assertEquals("DRAFT", poster.get("status").asText());
+        assertTrue(poster.get("latestDecision").isNull());
+    }
+
     /** 확정 뒤에는 제출물, 요구사항, 충족 확인, 회차를 바꾸는 요청이 모두 409이고 아무것도 바뀌지 않는다(K-20 4장). */
     @Test void confirmedDeliverableRejectsEveryChange() throws Exception {
         DeliverableRequirement met = requirement(em, report, true, member);
