@@ -56,6 +56,8 @@ D4=44444444-4444-4444-8444-777777777777
 T3=33333333-3333-4333-8333-555555555555
 C1=88888888-8888-4888-8888-888888888888
 C2=88888888-8888-4888-8888-999999999999
+D5=44444444-4444-4444-8444-888888888888
+V2=77777777-7777-4777-8777-888888888888
 
 step()  { printf '\n\033[1m── %s\033[0m\n' "$*"; }
 run_log() { printf '   · %s\n' "$*"; }
@@ -165,8 +167,11 @@ INSERT INTO tasks (id, project_id, title, created_by) VALUES ('$T1', '$P1', '기
 INSERT INTO file_vault (id, project_id, uploader_id, file_name, file_hash, file_size, storage_path) VALUES
   ('$F1', '$P1', '$U1', '보고서.pdf', repeat('a', 64), 10, '/tmp/f1'),
   ('$F2', '$P2', '$U1', '보고서.pdf', repeat('b', 64), 10, '/tmp/f2');
+INSERT INTO deliverables (id, project_id, title, due_date) VALUES ('$D5', '$P1', '업그레이드 전 제출물', DATE '2026-10-18');
+INSERT INTO review_rounds (id, project_id, deliverable_id, round_no, file_id, opened_by, decision, decided_by, decided_at)
+  VALUES ('$V2', '$P1', '$D5', 1, '$F1', '$U1', 'APPROVED', '$U1', NOW());
 SQL
-ok "V$PREV_VERSION 시점 샘플 데이터 적재 (사용자 1 · 프로젝트 2 · 업무 2 · 파일 2)"
+ok "V$PREV_VERSION 시점 샘플 데이터 적재 (사용자 1 · 프로젝트 2 · 업무 2 · 파일 2 · 제출물 1 · 승인된 회차 1)"
 
 migrate "$UPGRADE_DB"
 ok "V$LATEST_VERSION 적용 + JPA 스키마 검증 통과"
@@ -174,6 +179,8 @@ expect_value "$UPGRADE_DB" "SELECT count(*) FROM tasks" 2 "기존 업무 보존"
 expect_value "$UPGRADE_DB" "SELECT count(*) FROM users" 1 "기존 사용자 보존"
 expect_value "$UPGRADE_DB" "SELECT count(*) FROM file_vault WHERE (id = '$F1' AND file_hash = repeat('a', 64)) OR (id = '$F2' AND file_hash = repeat('b', 64))" 2 "기존 파일 보존(행 변경 없음)"
 expect_value "$UPGRADE_DB" "SELECT deliverable_id IS NULL AND requirement_id IS NULL AND completion_criteria IS NULL FROM tasks WHERE id='$T1'" t "기존 업무는 제출물 미연결 상태"
+expect_value "$UPGRADE_DB" "SELECT count(*) FROM review_rounds r JOIN deliverables d ON d.id = r.deliverable_id WHERE r.id = '$V2' AND d.id = '$D5' AND d.title = '업그레이드 전 제출물' AND r.decision = 'APPROVED' AND r.file_id = '$F1'" 1 "기존 제출물과 회차 보존(행 변경 없음)"
+expect_value "$UPGRADE_DB" "SELECT (SELECT count(*) FROM deliverable_confirmations) + (SELECT count(*) FROM deliverable_submissions)" 0 "기존 제출물은 확정 전 상태"
 
 # ── 3. 제출물 연결 제약이 실제로 동작하는가 ─────────────────────────────
 step "3. 제출물 연결 제약 동작 확인 (서비스 검증을 우회해도 DB가 막는가)"
@@ -237,6 +244,22 @@ expect_reject "$UPGRADE_DB" "UPDATE review_comments SET resolved_by = '$U1' WHER
 expect_reject "$UPGRADE_DB" "UPDATE review_comments SET resolution_reason = '사유' WHERE id = '$C2'" "해결하지 않은 코멘트의 사유"
 psql_run "$UPGRADE_DB" -c "DELETE FROM tasks WHERE id = '$T1'" >/dev/null
 expect_value "$UPGRADE_DB" "SELECT linked_task_id IS NULL AND resolved_at IS NOT NULL FROM review_comments WHERE id='$C1'" t "연결 업무 삭제 시 연결만 비고 코멘트와 해결 기록은 남음"
+
+# ── 6. 최종 확정과 제출 기록 제약 (K-20 7장) ─────────────────────────────
+step "6. 최종 확정과 제출 기록 제약 동작 확인"
+psql_run "$UPGRADE_DB" <<SQL
+INSERT INTO deliverable_confirmations (deliverable_id, project_id, review_id, confirmed_by, confirmed_at) VALUES ('$D5', '$P1', '$V2', '$U1', NOW());
+SQL
+ok "업그레이드 전부터 있던 회차로 확정 성공"
+expect_reject "$UPGRADE_DB" "INSERT INTO deliverable_confirmations (deliverable_id, project_id, review_id, confirmed_by, confirmed_at) VALUES ('$D5', '$P1', '$V2', '$U1', NOW())" "같은 제출물을 두 번 확정"
+expect_reject "$UPGRADE_DB" "INSERT INTO deliverable_confirmations (deliverable_id, project_id, review_id, confirmed_by, confirmed_at) VALUES ('$D4', '$P1', '$V2', '$U1', NOW())" "다른 제출물의 회차로 확정"
+expect_reject "$UPGRADE_DB" "INSERT INTO deliverable_confirmations (deliverable_id, project_id, review_id, confirmed_by, confirmed_at) VALUES ('$D3', '$P2', '$V1', '$U1', NOW())" "프로젝트를 다르게 적은 확정"
+expect_reject "$UPGRADE_DB" "INSERT INTO deliverable_submissions (deliverable_id, submitted_at, recorded_by, recorded_at) VALUES ('$D4', NOW(), '$U1', NOW())" "확정하지 않은 제출물에 제출 기록"
+expect_reject "$UPGRADE_DB" "DELETE FROM review_rounds WHERE id = '$V2'" "확정에 쓰인 회차 삭제"
+psql_run "$UPGRADE_DB" -c "INSERT INTO deliverable_submissions (deliverable_id, submitted_at, recorded_by, recorded_at) VALUES ('$D5', NOW(), '$U1', NOW())" >/dev/null
+ok "확정된 제출물에 제출 기록 성공"
+expect_reject "$UPGRADE_DB" "INSERT INTO deliverable_submissions (deliverable_id, submitted_at, recorded_by, recorded_at) VALUES ('$D5', NOW(), '$U1', NOW())" "같은 제출물에 제출 기록 두 번"
+expect_reject "$UPGRADE_DB" "DELETE FROM deliverable_confirmations WHERE deliverable_id = '$D5'" "제출 기록이 있는 확정 삭제"
 
 # 참고(실패 아님) — V19 이전부터 있던 사실이다. 아래 테이블에 행이 있으면 프로젝트 삭제가 거절된다.
 step "참고 · projects를 참조하면서 연쇄 삭제가 없는 기존 테이블"
