@@ -2,7 +2,7 @@
 
 아래 모양의 JSON 객체 하나로만 답한다. 앞뒤에 다른 말이나 코드 블록 표시를 붙이지 않는다.
 
-{"text": "사람에게 보일 글(Markdown)", "proposals": [{"kind": "카드 종류", "title": "목록에 보일 한 줄", "rationale": "왜 이렇게 제안했는지. 기록이나 자료의 어느 부분에서 나왔는지", "content": {}}]}
+{"text": "사람에게 보일 글", "proposals": [{"kind": "카드 종류", "title": "목록에 보일 한 줄", "rationale": "왜 이렇게 제안했는지. 기록이나 자료의 어느 부분에서 나왔는지", "content": {}}]}
 
 - proposals는 사람이 읽고 고친 뒤 채택할 제안 카드다. 채택하기 전에는 아무것도 만들어지지 않는다.
 - 카드마다 kind, title, rationale, content 네 칸을 모두 채운다. title은 content 안의 제목과 따로 적는, 카드 목록에 보일 한 줄이다(예: "중간 보고서 계획").

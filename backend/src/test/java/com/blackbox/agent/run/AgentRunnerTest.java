@@ -135,7 +135,7 @@ class AgentRunnerTest {
         answers.add("중간 보고서는 요구사항만 있고 업무가 없습니다.");
         Recorder brief = run(observer, StatusBriefSkill.NAME, "{}");
         assertEquals("done 0", brief.seen.get(brief.seen.size() - 1));
-        assertTrue(guides.get(1).contains("Markdown 글로만 답한다") && !guides.get(1).contains("카드 종류"), "관찰자의 실행은 카드를 만들 수 없는 형식이다");
+        assertTrue(guides.get(1).contains("일반 글로만 답한다") && !guides.get(1).contains("카드 종류"), "관찰자의 실행은 카드를 만들 수 없는 형식이다");
 
         answers.add("{\"text\":\"업무가 없습니다.\",\"proposals\":[]}");
         run(member, StatusBriefSkill.NAME, "{}");
