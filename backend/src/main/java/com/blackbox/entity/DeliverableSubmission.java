@@ -6,11 +6,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
  * 제출 기록(K-20). 사람이 학교 시스템 등에 낸 뒤 남기는 기록이고 앱이 대신 내지 않는다.
- * 확정된 제출물에 하나이고, 만든 뒤에는 바뀌지 않는다.
+ * 확정된 제출물에 하나이고, 만든 뒤에는 바뀌지 않는다. 비어 있는 글은 없는 값으로, 시각은 DB가 돌려주는 모양으로 담는다.
  */
 @Entity @Table(name = "deliverable_submissions") @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -32,11 +33,21 @@ public class DeliverableSubmission {
                                            String note, User recordedBy, OffsetDateTime now) {
         DeliverableSubmission s = new DeliverableSubmission();
         s.confirmation = confirmation;
-        s.channel = channel;
-        s.submittedAt = submittedAt;
-        s.note = note;
+        s.channel = text(channel);
+        s.submittedAt = DeliverableConfirmation.stored(submittedAt);
+        s.note = text(note);
         s.recordedBy = recordedBy;
-        s.recordedAt = now;
+        s.recordedAt = DeliverableConfirmation.stored(now);
         return s;
+    }
+
+    /** 낸 곳, 낸 시각, 메모가 같은가. 누가 언제 기록했는지는 보지 않는다. */
+    public boolean sameContentAs(DeliverableSubmission other) {
+        return Objects.equals(channel, other.getChannel()) && Objects.equals(note, other.getNote())
+                && submittedAt.isEqual(other.getSubmittedAt());
+    }
+
+    private static String text(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

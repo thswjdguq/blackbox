@@ -11,6 +11,7 @@ import org.springframework.core.NestedExceptionUtils;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import static com.blackbox.repository.ReviewFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -48,6 +49,31 @@ class DeliverableConfirmationRepositoryTest {
         assertEquals("member", s.getRecordedBy().getName());
         assertEquals(NOW.plusHours(12).toInstant(), s.getSubmittedAt().toInstant(), "낸 시각과 기록한 시각은 따로다");
         assertEquals(NOW.plusHours(13).toInstant(), s.getRecordedAt().toInstant());
+    }
+
+    /** 방금 만든 기록과 다시 읽은 기록이 글자까지 같아야, 저장 직후의 응답과 이후의 조회가 같다. */
+    @Test void recordsAreCreatedInTheShapeTheDatabaseReturns() {
+        User leader = user(em, "leader");
+        ReviewRound approved = round(em, deliverable(em, project(em, leader), "중간 보고서"), 1, leader, "APPROVED");
+        OffsetDateTime precise = OffsetDateTime.parse("2026-10-17T21:10:00.123456789+09:00");
+        DeliverableConfirmation created = confirmations.saveAndFlush(DeliverableConfirmation.of(approved, leader, precise));
+        DeliverableSubmission recorded = submissions.saveAndFlush(
+                DeliverableSubmission.of(created, "  학교 LMS 과제함 ", precise.minusHours(1), "   ", leader, precise.plusHours(1)));
+        em.clear();
+
+        DeliverableConfirmation confirmation = confirmations.findById(created.getDeliverableId()).orElseThrow();
+        assertEquals(created.getConfirmedAt(), confirmation.getConfirmedAt());
+        assertEquals("2026-10-17T12:10:00.123456Z", created.getConfirmedAt().toString());
+        DeliverableSubmission submission = submissions.findById(created.getDeliverableId()).orElseThrow();
+        assertEquals(recorded.getSubmittedAt(), submission.getSubmittedAt());
+        assertEquals(recorded.getRecordedAt(), submission.getRecordedAt());
+        assertEquals("학교 LMS 과제함", submission.getChannel());
+        assertNull(submission.getNote(), "비어 있는 글은 없는 값으로 남는다");
+        assertTrue(submission.sameContentAs(DeliverableSubmission.of(confirmation, "학교 LMS 과제함",
+                precise.minusHours(1).withOffsetSameInstant(ZoneOffset.ofHours(-5)), null, user(em, "other"), precise)));
+        assertFalse(submission.sameContentAs(DeliverableSubmission.of(confirmation, "이메일", precise.minusHours(1), null, leader, precise)));
+        assertFalse(submission.sameContentAs(DeliverableSubmission.of(confirmation, "학교 LMS 과제함", precise, null, leader, precise)));
+        assertFalse(submission.sameContentAs(DeliverableSubmission.of(confirmation, "학교 LMS 과제함", precise.minusHours(1), "메모", leader, precise)));
     }
 
     @Test void databaseRejectsWhatTheServiceMustNeverWrite() {

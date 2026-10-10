@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
@@ -34,7 +36,12 @@ public class DeliverableConfirmation {
         c.project = approved.getProject();
         c.review = approved;
         c.confirmedBy = confirmedBy;
-        c.confirmedAt = now;
+        c.confirmedAt = stored(now);
         return c;
+    }
+
+    /** DB가 돌려주는 모양(UTC, 마이크로초)으로 맞춘다. 방금 만든 기록과 다시 읽은 기록이 같은 값을 낸다. */
+    static OffsetDateTime stored(OffsetDateTime time) {
+        return time.withOffsetSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 }
