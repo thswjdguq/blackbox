@@ -68,6 +68,39 @@ public class AgentTestData {
         });
     }
 
+    /** 요구사항을 충족됐다고 확인한 것으로 만든다 */
+    public void assess(DeliverableRequirement requirement, User by) {
+        inTransaction(() -> {
+            em.find(DeliverableRequirement.class, requirement.getId()).assess(em.find(User.class, by.getId()));
+            return null;
+        });
+    }
+
+    /** 제출물, 요구사항, 담당자는 없으면 null을 준다 */
+    public void task(Project project, User createdBy, String title, String status, LocalDate dueDate,
+                     Deliverable deliverable, DeliverableRequirement requirement, User assignee) {
+        inTransaction(() -> {
+            Task t = new Task(); t.setProject(em.find(Project.class, project.getId())); t.setCreatedBy(em.find(User.class, createdBy.getId()));
+            t.setTitle(title); t.setStatus(status); t.setPriority("MEDIUM"); t.setDueDate(dueDate);
+            if ("DONE".equals(status)) t.setCompletedAt(OffsetDateTime.now());
+            if (deliverable != null) t.setDeliverable(em.find(Deliverable.class, deliverable.getId()));
+            if (requirement != null) t.setRequirement(em.find(DeliverableRequirement.class, requirement.getId()));
+            em.persist(t);
+            if (assignee != null) {
+                TaskAssignee a = new TaskAssignee(); a.setTask(t); a.setUser(em.find(User.class, assignee.getId())); em.persist(a);
+            }
+            return null;
+        });
+    }
+
+    /** 풀리지 않은 경보 하나 */
+    public void alert(Project project, User about, String message) {
+        inTransaction(() -> {
+            Alert a = new Alert(); a.setProject(em.find(Project.class, project.getId())); a.setUser(em.find(User.class, about.getId()));
+            a.setAlertType("DROPOUT"); a.setSeverity("HIGH"); a.setMessage(message); em.persist(a); return a;
+        });
+    }
+
     /** 끝난 실행 하나와 거기서 나온 대기 중인 카드. 검증을 거치지 않고 넣으므로 형식에 맞지 않는 내용도 넣을 수 있다 */
     public AgentProposal card(Project project, User requestedBy, String kind, String title, String contentJson) {
         return inTransaction(() -> {
