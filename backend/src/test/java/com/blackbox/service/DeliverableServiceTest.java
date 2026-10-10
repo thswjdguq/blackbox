@@ -22,7 +22,7 @@ class DeliverableServiceTest {
     final ReviewRoundRepository rounds = mock(ReviewRoundRepository.class);
     final DeliverableConfirmationRepository confirmations = mock(DeliverableConfirmationRepository.class);
     final DeliverableService service = new DeliverableService(deliveries, requirements, tasks, rounds, members, access,
-            new DeliverableStatuses(rounds, confirmations, mock(DeliverableSubmissionRepository.class)));
+            new DeliverableStatuses(deliveries, rounds, confirmations, mock(DeliverableSubmissionRepository.class)));
     final Project project = new Project();
     final User user = new User();
     final Deliverable delivery = new Deliverable();
@@ -35,6 +35,7 @@ class DeliverableServiceTest {
         when(projects.findById(project.getId())).thenReturn(Optional.of(project));
         when(members.findByProjectAndUser(project, user)).thenReturn(Optional.of(member));
         when(deliveries.findByIdAndProject(delivery.getId(), project)).thenReturn(Optional.of(delivery));
+        when(deliveries.lockByIdAndProject(delivery.getId(), project)).thenReturn(Optional.of(delivery));
     }
 
     @Test void countsOnlyRequiredRequirements() {

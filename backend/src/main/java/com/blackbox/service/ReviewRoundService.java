@@ -36,7 +36,7 @@ public class ReviewRoundService implements ReviewRoundReader {
     public Round open(UUID projectId, UUID deliverableId, OpenRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        Deliverable d = lock(project, deliverableId);
+        Deliverable d = statuses.lockEditable(project, deliverableId);
         List<ReviewRound> all = rounds.findByDeliverableOrderByRoundNoDesc(d);
         ReviewRound r = new ReviewRound();
         r.setProject(project);
@@ -51,7 +51,7 @@ public class ReviewRoundService implements ReviewRoundReader {
     public Round decide(UUID projectId, UUID deliverableId, UUID reviewId, String decision, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        List<ReviewRound> all = rounds.findByDeliverableOrderByRoundNoDesc(lock(project, deliverableId));
+        List<ReviewRound> all = rounds.findByDeliverableOrderByRoundNoDesc(statuses.lockEditable(project, deliverableId));
         ReviewRound r = pick(all, reviewId);
         if (r != all.get(0)) throw conflict("최신 회차에만 결정할 수 있습니다");
         if (r.getFile() != null && r.getFile().getUploader().getId().equals(user.getId()))
