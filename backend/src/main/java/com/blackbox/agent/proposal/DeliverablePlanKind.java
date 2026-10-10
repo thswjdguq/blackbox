@@ -1,8 +1,11 @@
 package com.blackbox.agent.proposal;
 
+import com.blackbox.agent.AgentProposal;
 import com.blackbox.dto.CreateTaskRequest;
 import com.blackbox.dto.DeliverableDtos;
 import com.blackbox.entity.User;
+import com.blackbox.service.DeliverableService;
+import com.blackbox.service.TaskService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,8 +15,10 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -25,10 +30,12 @@ public class DeliverablePlanKind implements ProposalKind {
 
     private final ObjectMapper json;
     private final Validator validator;
+    private final DeliverableService deliverables;
+    private final TaskService tasks;
 
     @Override public String name() { return NAME; }
 
-    @Override public Checked check(UUID projectId, User user, JsonNode content) {
+    @Override public Checked check(UUID projectId, User user, JsonNode content, boolean forAccept) {
         Content read;
         try {
             read = json.treeToValue(content, Content.class);
@@ -40,9 +47,9 @@ public class DeliverablePlanKind implements ProposalKind {
                 read.requirements() == null ? List.of() : read.requirements(), read.tasks() == null ? List.of() : read.tasks());
 
         Deliverable d = c.deliverable();
-        // 안내문에 기한이 없으면 모델이 비워 두고 사람이 채운다. 채택할 때 다시 본다
+        // 안내문에 기한이 없으면 모델이 비워 두고 사람이 채운다. 채택할 때는 있어야 한다
         List<String> problems = new ArrayList<>(ProposalKind.violations(validator, "deliverable",
-                new DeliverableDtos.SaveRequest(d.title(), d.description(), d.dueDate(), d.submissionMethod(), null), "dueDate"));
+                d.toRequest(), forAccept ? new String[0] : new String[] {"dueDate"}));
         Set<String> keys = new HashSet<>();
         for (int i = 0; i < c.requirements().size(); i++) {
             Requirement r = c.requirements().get(i);
@@ -63,8 +70,31 @@ public class DeliverablePlanKind implements ProposalKind {
         return new Checked(json.valueToTree(c), problems);
     }
 
+    @Override public List<AgentProposal.Result> accept(UUID projectId, User user, JsonNode content) {
+        Content c = json.convertValue(content, Content.class);
+        List<AgentProposal.Result> created = new ArrayList<>();
+        UUID deliverableId = deliverables.save(projectId, null, c.deliverable().toRequest(), user).id();
+        created.add(new AgentProposal.Result(TargetTypes.DELIVERABLE, deliverableId));
+        Map<String, UUID> requirementIds = new HashMap<>();
+        for (Requirement r : c.requirements()) {
+            UUID id = deliverables.saveRequirement(projectId, deliverableId, null,
+                    new DeliverableDtos.RequirementRequest(r.content(), r.required()), user).id();
+            requirementIds.put(r.key(), id);
+            created.add(new AgentProposal.Result(TargetTypes.REQUIREMENT, id));
+        }
+        for (Task t : c.tasks()) {
+            UUID id = tasks.createTask(projectId, t.toRequest(deliverableId, requirementIds.get(t.requirementKey())), user).id();
+            created.add(new AgentProposal.Result(TargetTypes.TASK, id));
+        }
+        return created;
+    }
+
     record Content(Deliverable deliverable, List<Requirement> requirements, List<Task> tasks) {}
-    record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod) {}
+    record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod) {
+        DeliverableDtos.SaveRequest toRequest() {
+            return new DeliverableDtos.SaveRequest(title, description, dueDate, submissionMethod, null);
+        }
+    }
     record Requirement(String key, String content, boolean required) {}
     record Task(String title, String completionCriteria, LocalDate dueDate, String requirementKey) {
         CreateTaskRequest toRequest(UUID deliverableId, UUID requirementId) {

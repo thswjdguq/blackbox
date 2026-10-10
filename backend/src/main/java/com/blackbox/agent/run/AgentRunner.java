@@ -9,6 +9,7 @@ import com.blackbox.agent.model.AgentModel;
 import com.blackbox.agent.model.AgentModelException;
 import com.blackbox.agent.proposal.ProposalKind;
 import com.blackbox.agent.proposal.ProposalKinds;
+import com.blackbox.agent.proposal.ProposalService;
 import com.blackbox.agent.skill.AgentSkill;
 import com.blackbox.agent.tool.AgentToolbox;
 import com.blackbox.entity.Project;
@@ -81,7 +82,7 @@ public class AgentRunner {
         boolean contributor = ProjectAccessChecker.canContribute(member);
         AgentSkill skill = skills.get(skillName);
         if (skill == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모르는 실행 종류입니다");
-        if (!skill.allows(contributor)) throw new ForbiddenException("관찰자는 제안을 만들거나 채택할 수 없습니다");
+        if (!skill.allows(contributor)) throw new ForbiddenException(ProposalService.OBSERVER_REFUSED);
         JsonNode given = input == null ? json.createObjectNode() : input;
         String material = skill.material(projectId, user, given);
         if (!model.available()) {
@@ -190,7 +191,7 @@ public class AgentRunner {
             if (rationale.isEmpty()) problems.add(at + ".rationale: 비어 있다");
             if (!(item.path("content") instanceof ObjectNode content)) { problems.add(at + ".content: 객체여야 한다"); continue; }
             p.skill().complete(content, p.input());
-            ProposalKind.Checked checked = kinds.get(kind).check(p.run().getProject().getId(), p.run().getRequestedBy(), content);
+            ProposalKind.Checked checked = kinds.get(kind).check(p.run().getProject().getId(), p.run().getRequestedBy(), content, false);
             checked.problems().forEach(problem -> problems.add(at + ".content." + problem));
             // 저장하는 것은 그 종류가 아는 칸만 남긴 내용이다
             drafts.add(new Draft(kind, title, rationale, checked.content()));

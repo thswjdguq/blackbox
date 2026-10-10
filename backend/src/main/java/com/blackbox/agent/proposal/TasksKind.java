@@ -1,10 +1,12 @@
 package com.blackbox.agent.proposal;
 
+import com.blackbox.agent.AgentProposal;
 import com.blackbox.dto.CreateTaskRequest;
 import com.blackbox.dto.DeliverableDtos.RequirementResponse;
 import com.blackbox.entity.User;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.service.DeliverableService;
+import com.blackbox.service.TaskService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,10 +30,11 @@ public class TasksKind implements ProposalKind {
     private final ObjectMapper json;
     private final Validator validator;
     private final DeliverableService deliverables;
+    private final TaskService tasks;
 
     @Override public String name() { return NAME; }
 
-    @Override public Checked check(UUID projectId, User user, JsonNode content) {
+    @Override public Checked check(UUID projectId, User user, JsonNode content, boolean forAccept) {
         Content c;
         try {
             c = json.treeToValue(content, Content.class);
@@ -60,6 +63,13 @@ public class TasksKind implements ProposalKind {
             }
         }
         return new Checked(json.valueToTree(c), problems);
+    }
+
+    @Override public List<AgentProposal.Result> accept(UUID projectId, User user, JsonNode content) {
+        Content c = json.convertValue(content, Content.class);
+        return c.tasks().stream()
+                .map(t -> new AgentProposal.Result(TargetTypes.TASK, tasks.createTask(projectId, t.toRequest(c.deliverableId()), user).id()))
+                .toList();
     }
 
     record Content(UUID deliverableId, List<Task> tasks) {}
