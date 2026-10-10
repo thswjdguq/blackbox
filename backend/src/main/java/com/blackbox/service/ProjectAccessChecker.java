@@ -38,10 +38,15 @@ public class ProjectAccessChecker {
     /** 관찰자는 읽기만 허용한다. */
     public ProjectMember requireContributor(Project project, User user) {
         ProjectMember member = requireMember(project, user);
-        if (!"LEADER".equals(member.getRole()) && !"MEMBER".equals(member.getRole())) {
+        if (!canContribute(member)) {
             throw new ForbiddenException("관찰자는 프로젝트를 수정할 수 없습니다");
         }
         return member;
+    }
+
+    /** 기록을 만들거나 고칠 수 있는 역할인가. 예외 없이 묻기만 할 때 쓴다 */
+    public static boolean canContribute(ProjectMember member) {
+        return "LEADER".equals(member.getRole()) || "MEMBER".equals(member.getRole());
     }
 
     /** LEADER 권한 확인 */

@@ -38,7 +38,7 @@
 
 ## 코드 컨벤션 (프로젝트 공통 — 실행자 무관)
 
-### 백엔드 (Spring Boot 3.3.5 / Java 17)
+### 백엔드 (Spring Boot 3.5.16 / Java 17)
 - 레이어: Controller(얇음) → Service(`@Transactional`, `activityLogService.log()` 호출) → Repository.
 - DTO는 `dto/` 패키지 Java `record`. Entity는 Controller에서 직접 반환 금지.
 - 권한 검증은 `ProjectAccessChecker` 사용.
