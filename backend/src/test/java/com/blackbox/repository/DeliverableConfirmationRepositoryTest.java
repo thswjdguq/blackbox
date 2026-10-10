@@ -10,10 +10,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
+import static com.blackbox.repository.ReviewFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** 실제 PostgreSQL에서 확정과 제출 기록의 매핑, 그리고 서비스 검증을 우회해도 DB가 막는 것을 확인한다(K-20 7장). */
@@ -28,10 +27,10 @@ class DeliverableConfirmationRepositoryTest {
     @Autowired DeliverableSubmissionRepository submissions;
 
     @Test void confirmationAndSubmissionAreStoredAndReadBack() {
-        User leader = user("leader"), member = user("member");
-        Project project = project(leader);
-        Deliverable report = deliverable(project, "중간 보고서");
-        ReviewRound approved = round(report, 2, leader);
+        User leader = user(em, "leader"), member = user(em, "member");
+        Project project = project(em, leader);
+        Deliverable report = deliverable(em, project, "중간 보고서");
+        ReviewRound approved = round(em, report, 2, leader, "APPROVED");
 
         confirmations.saveAndFlush(DeliverableConfirmation.of(approved, leader, NOW));
         submissions.saveAndFlush(DeliverableSubmission.of(confirmations.findById(report.getId()).orElseThrow(),
@@ -52,10 +51,10 @@ class DeliverableConfirmationRepositoryTest {
     }
 
     @Test void databaseRejectsWhatTheServiceMustNeverWrite() {
-        User leader = user("leader");
-        Project project = project(leader), other = project(leader);
-        Deliverable report = deliverable(project, "중간 보고서"), poster = deliverable(project, "포스터"), foreign = deliverable(other, "남의 제출물");
-        ReviewRound round = round(report, 1, leader), posterRound = round(poster, 1, leader), foreignRound = round(foreign, 1, leader);
+        User leader = user(em, "leader");
+        Project project = project(em, leader), other = project(em, leader);
+        Deliverable report = deliverable(em, project, "중간 보고서"), poster = deliverable(em, project, "포스터"), foreign = deliverable(em, other, "남의 제출물");
+        ReviewRound round = round(em, report, 1, leader, "APPROVED"), posterRound = round(em, poster, 1, leader, "APPROVED"), foreignRound = round(em, foreign, 1, leader, "APPROVED");
         confirmations.saveAndFlush(DeliverableConfirmation.of(round, leader, NOW));
         String confirm = "insert into deliverable_confirmations (deliverable_id, project_id, review_id, confirmed_by, confirmed_at) values (?, ?, ?, ?, now())";
         String submit = "insert into deliverable_submissions (deliverable_id, submitted_at, recorded_by, recorded_at) values (?, now(), ?, now())";
@@ -76,9 +75,9 @@ class DeliverableConfirmationRepositoryTest {
 
     /** 키를 직접 넣는 엔티티는 저장소의 save가 기존 줄에 합쳐 조용히 넘어간다. 그렇게 되지 않고 DB까지 가서 거절되는지 본다. */
     @Test void savingAgainThroughTheRepositoryIsRejectedNotIgnored() {
-        User leader = user("leader");
-        Deliverable report = deliverable(project(leader), "중간 보고서");
-        ReviewRound first = round(report, 1, leader), second = round(report, 2, leader);
+        User leader = user(em, "leader");
+        Deliverable report = deliverable(em, project(em, leader), "중간 보고서");
+        ReviewRound first = round(em, report, 1, leader, "APPROVED"), second = round(em, report, 2, leader, "APPROVED");
         confirmations.saveAndFlush(DeliverableConfirmation.of(first, leader, NOW));
         submissions.saveAndFlush(DeliverableSubmission.of(confirmations.getReferenceById(report.getId()), null, NOW, null, leader, NOW));
         em.clear();
@@ -105,27 +104,5 @@ class DeliverableConfirmationRepositoryTest {
         var query = em.createNativeQuery(sql);
         for (int i = 0; i < parameters.length; i++) query.setParameter(i + 1, parameters[i]);
         query.executeUpdate();
-    }
-
-    private ReviewRound round(Deliverable deliverable, int no, User opener) {
-        ReviewRound round = new ReviewRound(); round.setProject(deliverable.getProject()); round.setDeliverable(deliverable);
-        round.setRoundNo(no); round.setOpenedBy(opener); round.decide("APPROVED", opener); em.persist(round);
-        return round;
-    }
-
-    private Deliverable deliverable(Project project, String title) {
-        Deliverable d = new Deliverable(); d.setProject(project); d.setTitle(title); d.setDueDate(LocalDate.of(2026, 10, 18));
-        em.persist(d); return d;
-    }
-
-    private Project project(User creator) {
-        Project project = new Project(); project.setName("confirmation-" + UUID.randomUUID()); project.setCreatedBy(creator);
-        em.persist(project); return project;
-    }
-
-    private User user(String name) {
-        User user = new User(); user.setEmail(name + "-" + UUID.randomUUID() + "@example.com"); user.setName(name);
-        user.setPasswordHash("not-a-real-hash"); user.setRole("STUDENT"); em.persist(user);
-        return user;
     }
 }
