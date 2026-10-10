@@ -40,7 +40,7 @@ public class DeliverableService {
     public Response save(UUID projectId, UUID id, SaveRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        Deliverable d = id == null ? new Deliverable() : find(project, id);
+        Deliverable d = id == null ? new Deliverable() : statuses.lockEditable(project, id);
         d.setProject(project);
         d.setTitle(req.title().trim());
         d.setDescription(req.description());
@@ -57,7 +57,7 @@ public class DeliverableService {
     public void delete(UUID projectId, UUID id, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        Deliverable d = find(project, id);
+        Deliverable d = statuses.lockEditable(project, id);
         if (tasks.existsByDeliverable(d)) throw new ResponseStatusException(HttpStatus.CONFLICT, "연결된 업무를 먼저 다른 제출물로 옮기거나 연결 해제해주세요");
         if (rounds.existsByDeliverable(d)) throw new ResponseStatusException(HttpStatus.CONFLICT, "검토 기록이 있는 제출물은 삭제할 수 없습니다");
         requirements.deleteByDeliverable(d);
@@ -68,7 +68,7 @@ public class DeliverableService {
     public RequirementResponse saveRequirement(UUID projectId, UUID id, UUID requirementId, RequirementRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        Deliverable d = find(project, id);
+        Deliverable d = statuses.lockEditable(project, id);
         DeliverableRequirement r = requirementId == null ? new DeliverableRequirement() : findRequirement(d, requirementId);
         r.setDeliverable(d);
         String content = req.content().trim();
@@ -81,7 +81,7 @@ public class DeliverableService {
     public void deleteRequirement(UUID projectId, UUID id, UUID requirementId, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        DeliverableRequirement r = findRequirement(find(project, id), requirementId);
+        DeliverableRequirement r = findRequirement(statuses.lockEditable(project, id), requirementId);
         if (tasks.existsByRequirement(r)) throw new ResponseStatusException(HttpStatus.CONFLICT, "이 요구사항에 연결된 업무를 먼저 변경해주세요");
         requirements.delete(r);
     }
@@ -101,7 +101,7 @@ public class DeliverableService {
     private DeliverableRequirement requirementToWrite(UUID projectId, UUID id, UUID requirementId, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        return findRequirement(find(project, id), requirementId);
+        return findRequirement(statuses.lockEditable(project, id), requirementId);
     }
 
     /** 진척 조회(K-13)가 쓰는 읽기 전용 집계. 요구사항 행 전체를 읽지 않고 개수만 센다. */
