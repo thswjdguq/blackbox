@@ -29,7 +29,9 @@ import java.util.UUID;
 import static com.blackbox.repository.ReviewFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -366,10 +368,68 @@ class DeliverableConfirmationHttpTest {
         assertFalse(submissions.existsById(report.getId()), "거절된 기록은 아무것도 남기지 않는다");
     }
 
+    /** 확정 뒤에는 제출물, 요구사항, 충족 확인, 회차를 바꾸는 요청이 모두 409이고 아무것도 바뀌지 않는다(K-20 4장). */
+    @Test void confirmedDeliverableRejectsEveryChange() throws Exception {
+        DeliverableRequirement met = requirement(em, report, true, member);
+        ReviewRound approved = confirmReport();
+        String unchanged = snapshot();
+
+        assertEveryChangeIsRefused(met, approved);
+        assertEquals(unchanged, snapshot());
+        submit(member, submission(null, PAST, null), 200);
+        assertEveryChangeIsRefused(met, approved);
+        assertEquals(unchanged, snapshot());
+    }
+
+    @Test void otherDeliverablesStayWritableAfterAConfirmation() throws Exception {
+        confirmReport();
+        Deliverable poster = deliverable(em, project, "포스터");
+        String base = "/api/projects/" + project.getId() + "/deliverables/" + poster.getId();
+        call(json(put(base), "{\"title\":\"발표 포스터\",\"dueDate\":\"2026-10-20\"}"), member, 200);
+        String requirement = call(json(post(base + "/requirements"), "{\"content\":\"A1 크기\",\"required\":true}"), member, 201).get("id").asText();
+        call(put(base + "/requirements/" + requirement + "/assessment"), leader, 200);
+        call(json(post(base + "/reviews"), "{}"), member, 201);
+    }
+
+    private void assertEveryChangeIsRefused(DeliverableRequirement requirement, ReviewRound round) throws Exception {
+        String base = "/api/projects/" + project.getId() + "/deliverables/" + report.getId();
+        String one = base + "/requirements/" + requirement.getId(), decision = base + "/reviews/" + round.getId() + "/decision";
+        List<MockHttpServletRequestBuilder> changes = List.of(
+                json(put(base), "{\"title\":\"바뀐 제목\",\"dueDate\":\"2026-10-20\"}"),
+                delete(base),
+                json(post(base + "/requirements"), "{\"content\":\"새 요구사항\",\"required\":true}"),
+                json(put(one), "{\"content\":\"바뀐 문구\",\"required\":false}"),
+                delete(one),
+                put(one + "/assessment"),
+                delete(one + "/assessment"),
+                json(post(base + "/reviews"), "{}"),
+                json(put(decision), "{\"decision\":\"CHANGES_REQUESTED\"}"),
+                json(put(decision), "{\"decision\":\"APPROVED\"}"));
+        for (MockHttpServletRequestBuilder change : changes)
+            assertEquals("확정된 제출물은 변경할 수 없습니다", call(change, leader, 409).get("detail").asText());
+    }
+
+    /** 제출물, 요구사항, 회차의 지금 내용. 거절된 요청 앞뒤로 같아야 한다. */
+    private String snapshot() {
+        em.flush(); em.clear();
+        return String.valueOf(em.createNativeQuery("""
+                select (select title || '|' || due_date || '|' || coalesce(description, '') from deliverables where id = :id)
+                    || ' / ' || (select coalesce(string_agg(id || '|' || content || '|' || required || '|' || coalesce(assessed_by::text, '-'), ','
+                                 order by id), '') from deliverable_requirements where deliverable_id = :id)
+                    || ' / ' || (select string_agg(id || '|' || round_no || '|' || coalesce(decision, '-'), ',' order by round_no)
+                                 from review_rounds where deliverable_id = :id)
+                """).setParameter("id", report.getId()).getSingleResult());
+    }
+
+    private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
+        return request.contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
     /** 조건을 채워 팀장이 확정한 상태로 만든다. */
-    private void confirmReport() throws Exception {
+    private ReviewRound confirmReport() throws Exception {
         ReviewRound approved = round(em, report, 1, upload(1, 'a'), member, "APPROVED");
         confirm(leader, approved.getId(), 200);
+        return approved;
     }
 
     private String submission(String channel, OffsetDateTime submittedAt, String note) {
