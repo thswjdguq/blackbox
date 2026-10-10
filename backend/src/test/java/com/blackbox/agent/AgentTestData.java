@@ -1,12 +1,14 @@
 package com.blackbox.agent;
 
 import com.blackbox.entity.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -63,6 +65,22 @@ public class AgentTestData {
         return inTransaction(() -> {
             DeliverableRequirement r = new DeliverableRequirement(); r.setDeliverable(deliverable); r.setContent(content);
             r.setRequired(required); em.persist(r); return r;
+        });
+    }
+
+    /** 끝난 실행 하나와 거기서 나온 대기 중인 카드. 검증을 거치지 않고 넣으므로 형식에 맞지 않는 내용도 넣을 수 있다 */
+    public AgentProposal card(Project project, User requestedBy, String kind, String title, String contentJson) {
+        return inTransaction(() -> {
+            try {
+                AgentRun run = AgentRun.start(project, requestedBy, "TEST", OffsetDateTime.now());
+                run.finish(OffsetDateTime.now());
+                em.persist(run);
+                AgentProposal card = AgentProposal.propose(run, kind, title, "테스트 근거", new ObjectMapper().readTree(contentJson), OffsetDateTime.now());
+                em.persist(card);
+                return card;
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                throw new IllegalArgumentException(e);
+            }
         });
     }
 
