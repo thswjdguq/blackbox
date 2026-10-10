@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 
-/** 검토 회차(K-10). 제출물 상태와 확정 근거는 저장하지 않고 회차 목록에서 계산한다. */
+/** 검토 회차(K-10). 확정 근거는 저장하지 않고 회차 목록에서 계산한다. 제출물 상태는 DeliverableStatuses가 정한다. */
 @Service @RequiredArgsConstructor @Transactional
 public class ReviewRoundService implements ReviewRoundReader {
     private final ReviewRoundRepository rounds;
@@ -21,13 +21,15 @@ public class ReviewRoundService implements ReviewRoundReader {
     private final ProjectAccessChecker access;
     // 형식으로만 주입받는다. 구현이 없거나 둘이면 서버가 뜨지 않아야 한다(K-10 5장)
     private final UnresolvedCommentCounter unresolvedComments;
+    private final DeliverableStatuses statuses;
 
     @Transactional(readOnly = true)
     public ListResponse list(UUID projectId, UUID deliverableId, User user) {
         Project project = access.getProject(projectId);
         access.requireMember(project, user);
-        List<ReviewRound> all = rounds.findByDeliverableOrderByRoundNoDesc(find(project, deliverableId));
-        return new ListResponse(status(all), unresolvedComments.countUnresolvedComments(projectId, deliverableId),
+        Deliverable d = find(project, deliverableId);
+        List<ReviewRound> all = rounds.findByDeliverableOrderByRoundNoDesc(d);
+        return new ListResponse(status(d, all), unresolvedComments.countUnresolvedComments(projectId, deliverableId),
                 all.stream().map(r -> round(r, r == all.get(0))).toList());
     }
 
@@ -81,7 +83,7 @@ public class ReviewRoundService implements ReviewRoundReader {
         List<ReviewRound> all = rounds.findByDeliverableOrderByRoundNoDesc(d);
         ReviewRound r = pick(all, reviewId);
         return new ReviewRoundView(r.getId(), d.getId(), d.getProject().getId(), r.getRoundNo(),
-                r == all.get(0), r.getDecision(), status(all));
+                r == all.get(0), r.getDecision(), status(d, all));
     }
 
     // 회차는 저장하지 않은 값 두 가지를 함께 내보낸다: 최신 회차인가, 이 승인이 지금 확정 근거인가
@@ -97,9 +99,8 @@ public class ReviewRoundService implements ReviewRoundReader {
                 .map(newest -> newest.getFileHash().equals(r.getFile().getFileHash())).orElse(false);
     }
 
-    private static String status(List<ReviewRound> all) {
-        if (all.isEmpty() || "CHANGES_REQUESTED".equals(all.get(0).getDecision())) return "DRAFT";
-        return "IN_REVIEW";
+    private String status(Deliverable d, List<ReviewRound> all) {
+        return statuses.of(d, all.stream().findFirst()).status();
     }
 
     private static ReviewRound pick(List<ReviewRound> all, UUID reviewId) {

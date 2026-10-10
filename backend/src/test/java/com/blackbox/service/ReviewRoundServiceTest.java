@@ -23,8 +23,11 @@ class ReviewRoundServiceTest {
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
     final ProjectRepository projects = mock(ProjectRepository.class);
     final UnresolvedCommentCounter unresolved = mock(UnresolvedCommentCounter.class);
+    final DeliverableConfirmationRepository confirmations = mock(DeliverableConfirmationRepository.class);
+    final DeliverableSubmissionRepository submissions = mock(DeliverableSubmissionRepository.class);
+    final DeliverableStatuses statuses = new DeliverableStatuses(rounds, confirmations, submissions);
     final ReviewRoundService service = new ReviewRoundService(rounds, deliveries, files,
-            new ProjectAccessChecker(projects, members), unresolved);
+            new ProjectAccessChecker(projects, members), unresolved, statuses);
     final Project project = new Project();
     final Deliverable delivery = new Deliverable();
     final User reviewer = user("LEADER"), uploader = user("MEMBER"), observer = user("OBSERVER");
@@ -44,6 +47,17 @@ class ReviewRoundServiceTest {
         assertEquals("DRAFT", statusOf(round(1, null, "CHANGES_REQUESTED")));
         assertEquals("IN_REVIEW", statusOf(round(1, null, "APPROVED")));
         assertEquals("IN_REVIEW", statusOf(round(2, null, null), round(1, null, "CHANGES_REQUESTED")));
+    }
+
+    /** 확정과 제출 기록은 회차로 계산한 상태보다 먼저다(K-20 2장). 피드백 명령이 읽는 값에도 그대로 나온다. */
+    @Test void confirmationAndSubmissionComeBeforeTheRoundStatus() {
+        ReviewRound approved = round(1, null, "APPROVED");
+        when(confirmations.existsById(delivery.getId())).thenReturn(true);
+        assertEquals("CONFIRMED", statusOf(approved));
+        assertEquals("CONFIRMED", service.get(project.getId(), delivery.getId(), approved.getId()).deliverableStatus());
+        when(submissions.existsById(delivery.getId())).thenReturn(true);
+        assertEquals("SUBMITTED", statusOf(approved));
+        assertEquals("SUBMITTED", service.lockForWrite(project.getId(), delivery.getId(), approved.getId()).deliverableStatus());
     }
 
     @Test void openNumbersTheRoundAfterTheLatest() {
@@ -189,6 +203,7 @@ class ReviewRoundServiceTest {
         context.registerBean(DeliverableRepository.class, () -> deliveries);
         context.registerBean(FileVaultRepository.class, () -> files);
         context.registerBean(ProjectAccessChecker.class, () -> new ProjectAccessChecker(projects, members));
+        context.registerBean(DeliverableStatuses.class, () -> statuses);
         context.register(ReviewRoundService.class);
         if (counters.length > 0) context.register(counters);
         context.refresh();
