@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,6 +41,7 @@ class DeliverableConfirmationHttpTest {
     static final OffsetDateTime NOW = OffsetDateTime.parse("2026-10-17T21:10:00+09:00");
     static final String FILE = "중간보고서.pdf";
     static final String PATH = "/api/projects/{projectId}/deliverables/{deliverableId}/confirmation";
+    static final String SUBMISSION = "/api/projects/{projectId}/deliverables/{deliverableId}/submission";
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -275,6 +277,79 @@ class DeliverableConfirmationHttpTest {
         assertEquals("이미 확정된 제출물입니다", confirm(leader, earlier.getId(), 409).get("detail").asText());
         confirm(leader, UUID.randomUUID(), 404);
         assertEquals(approved.getId().toString(), read(leader).at("/confirmation/reviewId").asText());
+    }
+
+    @Test void memberRecordsTheSubmissionOnceAfterConfirmation() throws Exception {
+        em.find(Deliverable.class, report.getId()).setSubmissionMethod("학교 LMS 과제함");
+        OffsetDateTime submittedAt = OffsetDateTime.parse("2026-10-01T09:30:00+09:00");   // 지난 시각이어야 한다
+        String request = submission(null, submittedAt, "접수 번호 2026-1234");
+        assertEquals("최종본을 확정한 뒤에 제출을 기록할 수 있습니다", submit(member, request, 409).get("detail").asText());
+        confirmReport();
+        OffsetDateTime before = OffsetDateTime.now();
+
+        JsonNode body = submit(member, request, 200);
+        assertEquals("SUBMITTED", body.get("status").asText());
+        assertFalse(body.get("confirmation").isNull());
+        JsonNode submission = body.get("submission");
+        assertEquals("학교 LMS 과제함", submission.get("channel").asText(), "낸 곳을 비우면 제출물의 제출 경로가 들어간다");
+        assertEquals("접수 번호 2026-1234", submission.get("note").asText());
+        assertEquals(submittedAt.toInstant(), OffsetDateTime.parse(submission.get("submittedAt").asText()).toInstant());
+        assertEquals("손팀원", submission.at("/recordedBy/name").asText());
+        assertTrue(Duration.between(before, OffsetDateTime.parse(submission.get("recordedAt").asText())).abs().toSeconds() < 5);
+
+        // 같은 내용은 누가 다시 보내도 처음의 기록 그대로다. 표기만 다른 같은 시각과 앞뒤 공백도 같은 내용이다
+        assertEquals(body, submit(leader, request, 200));
+        assertEquals(body, submit(leader, submission(" 학교 LMS 과제함 ", submittedAt.withOffsetSameInstant(ZoneOffset.UTC), "접수 번호 2026-1234"), 200));
+        assertEquals(body, read(observer));
+        for (String different : List.of(submission("이메일", submittedAt, "접수 번호 2026-1234"), submission(null, submittedAt.plusMinutes(1), "접수 번호 2026-1234"),
+                submission(null, submittedAt, null)))
+            assertEquals("이미 제출이 기록됐습니다", submit(leader, different, 409).get("detail").asText());
+        assertEquals(body, read(observer));
+    }
+
+    @Test void submissionInputIsChecked() throws Exception {
+        confirmReport();
+        OffsetDateTime now = OffsetDateTime.now();
+        submit(observer, submission(null, now, null), 403);
+        submit(outsider, submission(null, now, null), 403);
+        submit(null, submission(null, now, null), 401);
+        assertEquals("제출 시각은 지금보다 뒤일 수 없습니다", submit(member, submission(null, now.plusMinutes(10), null), 400).get("detail").asText());
+        for (String invalid : List.of("{}", "{\"submittedAt\":null}", "{\"submittedAt\":\"어제\"}",
+                submission("가".repeat(501), now, null), submission(null, now, "가".repeat(1001))))
+            submit(member, invalid, 400);
+        call(put(SUBMISSION, project.getId(), UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content(submission(null, now, null)), member, 404);
+        em.flush(); em.clear();
+        assertFalse(submissions.existsById(report.getId()), "거절된 기록은 아무것도 남기지 않는다");
+
+        // 낸 곳과 메모를 비우면 없는 값으로 남는다. 시계가 조금 빠른 것과 확정보다 먼저 낸 것은 받는다
+        JsonNode submission = submit(leader, submission("  ", now.plusMinutes(4), ""), 200).get("submission");
+        assertTrue(submission.get("channel").isNull() && submission.get("note").isNull());
+        assertEquals("송팀장", submission.at("/recordedBy/name").asText());
+    }
+
+    @Test void submissionMayPredateTheConfirmation() throws Exception {
+        confirmReport();
+        OffsetDateTime yesterday = OffsetDateTime.now().minusDays(1);
+        JsonNode body = submit(member, submission("이메일", yesterday, null), 200);
+        assertTrue(OffsetDateTime.parse(body.at("/submission/submittedAt").asText())
+                .isBefore(OffsetDateTime.parse(body.at("/confirmation/confirmedAt").asText())));
+    }
+
+    /** 조건을 채워 팀장이 확정한 상태로 만든다. */
+    private void confirmReport() throws Exception {
+        ReviewRound approved = round(em, report, 1, upload(1, 'a'), member, "APPROVED");
+        confirm(leader, approved.getId(), 200);
+    }
+
+    private String submission(String channel, OffsetDateTime submittedAt, String note) {
+        var body = json.createObjectNode().put("submittedAt", submittedAt.toString());
+        if (channel != null) body.put("channel", channel);
+        if (note != null) body.put("note", note);
+        return body.toString();
+    }
+
+    private JsonNode submit(User as, String body, int expectedStatus) throws Exception {
+        return call(put(SUBMISSION, project.getId(), report.getId()).contentType(MediaType.APPLICATION_JSON).content(body), as, expectedStatus);
     }
 
     private void assertRefused(ReviewRound target, String detail) throws Exception {
