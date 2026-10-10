@@ -25,19 +25,37 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
-  # AI 에이전트(K-30)의 모델 공급자. 기본은 none이라 키가 없어도 서버가 뜨고 에이전트만 꺼진다.
-  # 켤 때는 환경 변수로 준다. 키와 모델 이름도 환경 변수이고 이 파일에는 적지 않는다(.env.example 참고)
-  #   SPRING_AI_MODEL_CHAT=google-genai      + SPRING_AI_GOOGLE_GENAI_API_KEY
-  #   SPRING_AI_MODEL_CHAT=bedrock-converse  + SPRING_AI_BEDROCK_AWS_REGION 과 AWS 자격 증명
+  # ── AI 에이전트(K-30)의 모델 ──────────────────────────────────────────
+  # 공급자와 모델에 닿는 설정은 여기(spring.ai)에, 에이전트가 스스로 지키는 상한은 아래 app.agent에 둔다.
+  # 값을 바꿀 때는 환경 변수로 준다(.env.example 참고). 키는 이 파일에 적지 않는다
   ai:
     model:
+      # 공급자. none이면 키가 없어도 서버가 뜨고 에이전트만 꺼진다
+      #   google-genai      + SPRING_AI_GOOGLE_GENAI_API_KEY
+      #   bedrock-converse  + SPRING_AI_BEDROCK_AWS_REGION 과 AWS 자격 증명
       chat: none
     google:
       genai:
         chat:
+          # 쓰지 않는 기능이고, 켜 두면 Spring AI가 이 기능의 조건을 따지다가 모델 빈을 설정이 읽히기도 전에 만든다.
+          # 그러면 그 빈이 쓰는 우리 설정(app.agent)이 빈 채로 굳는다. 끄면 모델 빈이 제때 만들어진다
+          enable-cached-content: false
           options:
-            # Spring AI 1.1.8의 기본 모델은 폐기돼 404가 난다. 바꾸려면 SPRING_AI_GOOGLE_GENAI_CHAT_OPTIONS_MODEL
-            model: gemini-3.5-flash
+            # Spring AI 1.1.8이 기본으로 쓰는 모델은 폐기돼 404가 나므로 반드시 정한다.
+            # 무료 등급에서 Flash-Lite는 하루 500번, Flash는 하루 20번이다(2026-10 기준, docs/team/tasks/A-30.md)
+            model: gemini-3.5-flash-lite
+            # temperature와 thinking-level은 정하지 않는다. Gemini 3 계열은 temperature를 기본값(1.0)에서
+            # 낮추면 답이 나빠질 수 있다고 Google이 안내하고, Flash-Lite의 생각 수준은 기본이 가장 낮다
+    bedrock:
+      aws:
+        timeout: ${app.agent.model-request-timeout}   # 호출 하나의 전체 시간 제한
+    retry:
+      # Spring AI의 기본은 10번, 2초부터 5배씩이라 한 번의 실패가 몇 분을 끈다. 실행의 시간 상한 안에 들어오게 줄인다
+      max-attempts: 2
+      backoff:
+        initial-interval: 1s
+        multiplier: 2
+        max-interval: 5s
 
   servlet:
     multipart:
@@ -62,8 +80,13 @@ app:
     tool-list-limit: 100    # 도구가 한 번에 돌려주는 목록의 건수. 넘으면 잘렸다고 알린다
     proposal-list-limit: 50 # 제안 카드 목록이 돌려주는 건수. 최신이 먼저다
     run-time-limit: 120s    # 실행 하나의 시간 상한. 넘긴 실행은 끝난 것으로 본다
+    model-request-timeout: 60s   # 모델에 보내는 요청 하나의 시간 제한. 없으면 응답이 없는 요청이 스레드를 끝없이 잡는다
+    model-request-attempts: 2    # 요청 하나를 몇 번까지 보내는가(처음 포함). 일시적인 실패(503 등)만 다시 보낸다
+    max-tool-calls: 12      # 실행 하나에서 모델이 도구를 부를 수 있는 횟수. 넘으면 조회한 것으로 답하게 한다
     runs-per-hour: 30       # 프로젝트 하나가 한 시간에 실행할 수 있는 횟수
-    max-concurrent-runs: 4  # 서버 전체에서 동시에 도는 실행의 수. 모델이 멈춰도 다른 기능의 스레드를 쓰지 않게 따로 둔다
+    # 서버 전체에서 동시에 도는 실행의 수. 모델이 멈춰도 다른 기능의 스레드를 쓰지 않게 따로 둔다.
+    # 실행 하나가 요청을 2~3번 보내므로 4면 분당 12번 안쪽이다(Flash-Lite 무료 등급의 분당 한도는 15번)
+    max-concurrent-runs: 4
     brief-max-length: 20000 # 과제 안내문의 글자 수 상한
     question-max-length: 1000
 

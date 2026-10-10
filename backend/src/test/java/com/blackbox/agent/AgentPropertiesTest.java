@@ -4,29 +4,33 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.context.ConfigurationPropertiesAutoConfiguration;
 import org.springframework.boot.autoconfigure.validation.ValidationAutoConfiguration;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** 설정이 빠지거나 틀리면 실행 중에 엉뚱하게 동작하지 않고 서버가 뜨지 않는다. */
+/** 설정이 빠지거나 틀리면 실행 중에 엉뚱하게 동작하지 않고 서버가 뜨지 않는다. 값은 실제 application.yml에서 읽는다. */
 class AgentPropertiesTest {
     final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withInitializer(new ConfigDataApplicationContextInitializer())
             .withConfiguration(AutoConfigurations.of(ConfigurationPropertiesAutoConfiguration.class, ValidationAutoConfiguration.class))
             .withBean(AgentProperties.class);
 
-    @Test void bindsTheValues() {
-        runner.withPropertyValues("app.agent.zone=Asia/Seoul", "app.agent.tool-list-limit=100", "app.agent.proposal-list-limit=50", "app.agent.run-time-limit=120s",
-                "app.agent.runs-per-hour=30", "app.agent.max-concurrent-runs=4", "app.agent.brief-max-length=20000", "app.agent.question-max-length=1000").run(context -> {
+    @Test void applicationYmlHasEveryValueTheAgentNeeds() {
+        runner.run(context -> {
             assertNull(context.getStartupFailure());
-            assertEquals(100, context.getBean(AgentProperties.class).getToolListLimit());
-            assertNotNull(context.getBean(AgentProperties.class).today());
+            AgentProperties properties = context.getBean(AgentProperties.class);
+            assertNotNull(properties.today());
+            assertTrue(properties.getModelRequestTimeout().compareTo(properties.getRunTimeLimit()) < 0,
+                    "요청 하나의 시간 제한은 실행의 시간 상한보다 짧아야 한다");
         });
     }
 
-    @Test void refusesToStartWithoutAZoneOrWithALimitBelowOne() {
-        runner.withPropertyValues("app.agent.tool-list-limit=100", "app.agent.proposal-list-limit=50", "app.agent.run-time-limit=120s",
-                "app.agent.runs-per-hour=30", "app.agent.max-concurrent-runs=4", "app.agent.brief-max-length=20000", "app.agent.question-max-length=1000").run(context -> assertNotNull(context.getStartupFailure()));
-        runner.withPropertyValues("app.agent.zone=Asia/Seoul", "app.agent.tool-list-limit=0", "app.agent.proposal-list-limit=50", "app.agent.run-time-limit=120s",
-                "app.agent.runs-per-hour=30", "app.agent.max-concurrent-runs=4", "app.agent.brief-max-length=20000", "app.agent.question-max-length=1000").run(context -> assertNotNull(context.getStartupFailure()));
+    @Test void refusesToStartWithAValueThatMakesNoSense() {
+        for (String wrong : new String[] {"app.agent.zone=Mars/Olympus", "app.agent.tool-list-limit=0", "app.agent.proposal-list-limit=0",
+                "app.agent.run-time-limit=soon", "app.agent.model-request-attempts=0", "app.agent.max-tool-calls=0",
+                "app.agent.runs-per-hour=0", "app.agent.max-concurrent-runs=0"}) {
+            runner.withPropertyValues(wrong).run(context -> assertNotNull(context.getStartupFailure(), wrong));
+        }
     }
 }
