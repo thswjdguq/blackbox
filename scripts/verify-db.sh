@@ -5,6 +5,8 @@
 #   1) 깨끗한 DB에 전체 마이그레이션이 적용되고, 엔티티와 스키마가 일치하는가(JPA ddl-auto=validate)
 #   2) 직전 버전의 데이터가 들어 있는 DB에 최신 마이그레이션을 얹어도 데이터가 보존되는가
 #   3) 제출물 연결 제약이 실제로 잘못된 연결을 거절하는가
+#   4) 검토 회차 제약이 실제로 잘못된 회차를 거절하는가
+#   5) 피드백 코멘트와 업무 연결 제약이 실제로 동작하는가
 #
 # 사용
 #   bash scripts/verify-db.sh                 # 검사 전용 DB를 띄우고 전체 검증
@@ -46,6 +48,14 @@ D1=44444444-4444-4444-8444-444444444444
 R1=55555555-5555-4555-8555-555555555555
 P3=22222222-2222-4222-8222-444444444444
 D2=44444444-4444-4444-8444-555555555555
+D3=44444444-4444-4444-8444-666666666666
+F1=66666666-6666-4666-8666-666666666666
+F2=66666666-6666-4666-8666-777777777777
+V1=77777777-7777-4777-8777-777777777777
+D4=44444444-4444-4444-8444-777777777777
+T3=33333333-3333-4333-8333-555555555555
+C1=88888888-8888-4888-8888-888888888888
+C2=88888888-8888-4888-8888-999999999999
 
 step()  { printf '\n\033[1m── %s\033[0m\n' "$*"; }
 run_log() { printf '   · %s\n' "$*"; }
@@ -152,13 +162,17 @@ INSERT INTO users (id, email, name, password_hash) VALUES ('$U1', 'a01@example.c
 INSERT INTO projects (id, name, created_by) VALUES ('$P1', '기존 프로젝트', '$U1'), ('$P2', '다른 프로젝트', '$U1');
 INSERT INTO project_members (project_id, user_id, role) VALUES ('$P1', '$U1', 'LEADER'), ('$P2', '$U1', 'LEADER');
 INSERT INTO tasks (id, project_id, title, created_by) VALUES ('$T1', '$P1', '기존 업무', '$U1'), ('$T2', '$P2', '다른 프로젝트 업무', '$U1');
+INSERT INTO file_vault (id, project_id, uploader_id, file_name, file_hash, file_size, storage_path) VALUES
+  ('$F1', '$P1', '$U1', '보고서.pdf', repeat('a', 64), 10, '/tmp/f1'),
+  ('$F2', '$P2', '$U1', '보고서.pdf', repeat('b', 64), 10, '/tmp/f2');
 SQL
-ok "V$PREV_VERSION 시점 샘플 데이터 적재 (사용자 1 · 프로젝트 2 · 업무 2)"
+ok "V$PREV_VERSION 시점 샘플 데이터 적재 (사용자 1 · 프로젝트 2 · 업무 2 · 파일 2)"
 
 migrate "$UPGRADE_DB"
 ok "V$LATEST_VERSION 적용 + JPA 스키마 검증 통과"
 expect_value "$UPGRADE_DB" "SELECT count(*) FROM tasks" 2 "기존 업무 보존"
 expect_value "$UPGRADE_DB" "SELECT count(*) FROM users" 1 "기존 사용자 보존"
+expect_value "$UPGRADE_DB" "SELECT count(*) FROM file_vault WHERE (id = '$F1' AND file_hash = repeat('a', 64)) OR (id = '$F2' AND file_hash = repeat('b', 64))" 2 "기존 파일 보존(행 변경 없음)"
 expect_value "$UPGRADE_DB" "SELECT deliverable_id IS NULL AND requirement_id IS NULL AND completion_criteria IS NULL FROM tasks WHERE id='$T1'" t "기존 업무는 제출물 미연결 상태"
 
 # ── 3. 제출물 연결 제약이 실제로 동작하는가 ─────────────────────────────
@@ -185,6 +199,44 @@ INSERT INTO deliverables (id, project_id, title, due_date) VALUES ('$D2', '$P3',
 DELETE FROM projects WHERE id = '$P3';
 SQL
 expect_value "$UPGRADE_DB" "SELECT count(*) FROM deliverables WHERE id='$D2'" 0 "프로젝트 삭제 시 제출물 연쇄 삭제"
+
+# ── 4. 검토 회차 제약이 실제로 동작하는가 (K-10 6장) ──────────────────────
+step "4. 검토 회차 제약 동작 확인"
+psql_run "$UPGRADE_DB" <<SQL
+INSERT INTO deliverables (id, project_id, title, due_date) VALUES ('$D3', '$P1', '검토 대상', DATE '2026-10-18');
+INSERT INTO review_rounds (id, project_id, deliverable_id, round_no, file_id, opened_by) VALUES ('$V1', '$P1', '$D3', 1, '$F1', '$U1');
+INSERT INTO review_rounds (project_id, deliverable_id, round_no, opened_by) VALUES ('$P1', '$D3', 2, '$U1');
+UPDATE review_rounds SET decision = 'APPROVED', decided_by = '$U1', decided_at = NOW() WHERE id = '$V1';
+SQL
+ok "같은 프로젝트 파일로 회차, 파일 없는 회차, 결정 기록 성공"
+expect_reject "$UPGRADE_DB" "INSERT INTO review_rounds (project_id, deliverable_id, round_no, file_id, opened_by) VALUES ('$P1', '$D3', 3, '$F2', '$U1')" "다른 프로젝트의 파일을 가리키는 회차"
+expect_reject "$UPGRADE_DB" "INSERT INTO review_rounds (project_id, deliverable_id, round_no, opened_by) VALUES ('$P2', '$D3', 3, '$U1')" "제출물과 다른 프로젝트 id를 섞은 회차"
+expect_reject "$UPGRADE_DB" "INSERT INTO review_rounds (project_id, deliverable_id, round_no, opened_by) VALUES ('$P1', '$D3', 1, '$U1')" "같은 제출물에 같은 회차 번호"
+expect_reject "$UPGRADE_DB" "INSERT INTO review_rounds (project_id, deliverable_id, round_no, opened_by, decision) VALUES ('$P1', '$D3', 3, '$U1', 'APPROVED')" "결정자 없는 결정"
+expect_reject "$UPGRADE_DB" "INSERT INTO review_rounds (project_id, deliverable_id, round_no, opened_by, decision, decided_by, decided_at) VALUES ('$P1', '$D3', 3, '$U1', 'REJECTED', '$U1', NOW())" "정해지지 않은 결정 값"
+expect_reject "$UPGRADE_DB" "DELETE FROM deliverables WHERE id = '$D3'" "회차가 있는 제출물 삭제"
+
+# ── 5. 피드백 코멘트와 업무 연결 제약 (K-11 5장, K-12) ─────────────────────
+step "5. 피드백 코멘트와 업무 연결 제약 동작 확인"
+psql_run "$UPGRADE_DB" <<SQL
+INSERT INTO deliverables (id, project_id, title, due_date) VALUES ('$D4', '$P1', '다른 제출물', DATE '2026-10-18');
+INSERT INTO tasks (id, project_id, title, created_by, deliverable_id) VALUES ('$T3', '$P1', '다른 제출물의 업무', '$U1', '$D4');
+UPDATE tasks SET deliverable_id = '$D3' WHERE id = '$T1';
+INSERT INTO review_comments (id, project_id, deliverable_id, review_id, author_id, content) VALUES
+  ('$C1', '$P1', '$D3', '$V1', '$U1', '출처를 추가해주세요'), ('$C2', '$P1', '$D3', '$V1', '$U1', '표 번호를 맞춰주세요');
+UPDATE review_comments SET linked_task_id = '$T1' WHERE id = '$C1';
+UPDATE review_comments SET resolved_by = '$U1', resolved_at = NOW() WHERE id = '$C1';
+SQL
+ok "코멘트 작성, 같은 제출물의 업무 연결, 사유 없는 해결 성공"
+expect_reject "$UPGRADE_DB" "INSERT INTO review_comments (project_id, deliverable_id, review_id, author_id, content) VALUES ('$P1', '$D4', '$V1', '$U1', 'x')" "회차와 다른 제출물을 섞은 코멘트"
+expect_reject "$UPGRADE_DB" "UPDATE review_comments SET linked_task_id = '$T3' WHERE id = '$C2'" "다른 제출물의 업무 연결"
+expect_reject "$UPGRADE_DB" "UPDATE review_comments SET linked_task_id = '$T1' WHERE id = '$C2'" "같은 업무를 두 번째 코멘트에 연결"
+expect_reject "$UPGRADE_DB" "UPDATE tasks SET deliverable_id = '$D4' WHERE id = '$T1'" "연결된 업무를 다른 제출물로 이동"
+expect_reject "$UPGRADE_DB" "UPDATE tasks SET deliverable_id = NULL WHERE id = '$T1'" "연결된 업무의 제출물 연결 해제"
+expect_reject "$UPGRADE_DB" "UPDATE review_comments SET resolved_by = '$U1' WHERE id = '$C2'" "해결 시각 없는 해결자"
+expect_reject "$UPGRADE_DB" "UPDATE review_comments SET resolution_reason = '사유' WHERE id = '$C2'" "해결하지 않은 코멘트의 사유"
+psql_run "$UPGRADE_DB" -c "DELETE FROM tasks WHERE id = '$T1'" >/dev/null
+expect_value "$UPGRADE_DB" "SELECT linked_task_id IS NULL AND resolved_at IS NOT NULL FROM review_comments WHERE id='$C1'" t "연결 업무 삭제 시 연결만 비고 코멘트와 해결 기록은 남음"
 
 # 참고(실패 아님) — V19 이전부터 있던 사실이다. 아래 테이블에 행이 있으면 프로젝트 삭제가 거절된다.
 step "참고 · projects를 참조하면서 연쇄 삭제가 없는 기존 테이블"

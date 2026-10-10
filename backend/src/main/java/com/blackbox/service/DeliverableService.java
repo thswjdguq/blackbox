@@ -16,6 +16,7 @@ public class DeliverableService {
     private final DeliverableRepository deliverables;
     private final DeliverableRequirementRepository requirements;
     private final TaskRepository tasks;
+    private final ReviewRoundRepository rounds;
     private final ProjectMemberRepository members;
     private final ProjectAccessChecker access;
 
@@ -55,6 +56,7 @@ public class DeliverableService {
         access.requireContributor(project, user);
         Deliverable d = find(project, id);
         if (tasks.existsByDeliverable(d)) throw new ResponseStatusException(HttpStatus.CONFLICT, "연결된 업무를 먼저 다른 제출물로 옮기거나 연결 해제해주세요");
+        if (rounds.existsByDeliverable(d)) throw new ResponseStatusException(HttpStatus.CONFLICT, "검토 기록이 있는 제출물은 삭제할 수 없습니다");
         requirements.deleteByDeliverable(d);
         requirements.flush();
         deliverables.delete(d);
