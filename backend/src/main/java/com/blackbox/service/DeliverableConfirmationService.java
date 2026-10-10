@@ -11,10 +11,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +26,8 @@ public class DeliverableConfirmationService {
     // K-20 3장의 checks[].code. 응답에는 이 순서로 들어간다
     static final String REQUIRED_REQUIREMENTS = "REQUIRED_REQUIREMENTS", APPROVED_FILE = "APPROVED_FILE",
             NO_UNRESOLVED_COMMENTS = "NO_UNRESOLVED_COMMENTS";
+    // 낸 시각이 서버 시각보다 이만큼까지 뒤여도 받는다. 기록하는 사람의 시계가 조금 빠를 수 있다(K-20 2장)
+    static final Duration CLOCK_ALLOWANCE = Duration.ofMinutes(5);
 
     private final ProjectAccessChecker access;
     private final DeliverableRepository deliverables;
@@ -40,8 +44,7 @@ public class DeliverableConfirmationService {
     public Response get(UUID projectId, UUID deliverableId, User user) {
         Project project = access.getProject(projectId);
         access.requireMember(project, user);
-        return response(deliverables.findByIdAndProject(deliverableId, project)
-                .orElseThrow(() -> new NotFoundException("제출물을 찾을 수 없습니다")));
+        return response(deliverables.findByIdAndProject(deliverableId, project).orElseThrow(DeliverableConfirmationService::noDeliverable));
     }
 
     /** 팀장이 화면에서 본 회차(reviewId)를 최종본으로 확정한다. 되돌리는 명령은 없다. */
@@ -49,9 +52,7 @@ public class DeliverableConfirmationService {
         Project project = access.getProject(projectId);
         if (!"LEADER".equals(access.requireMember(project, user).getRole()))
             throw new ForbiddenException("최종본 확정은 팀장만 할 수 있습니다");
-        // 같은 제출물의 확정, 충족 확인, 회차 쓰기를 차례대로 처리한다(K-20 6장)
-        Deliverable d = deliverables.lockByIdAndProject(deliverableId, project)
-                .orElseThrow(() -> new NotFoundException("제출물을 찾을 수 없습니다"));
+        Deliverable d = lock(project, deliverableId);
         // 이 제출물의 회차가 아닌 id는 다른 프로젝트의 것이든 없는 것이든 똑같이 404다
         rounds.findById(reviewId).filter(r -> r.getDeliverable().getId().equals(d.getId()))
                 .orElseThrow(() -> new NotFoundException("검토 회차를 찾을 수 없습니다"));
@@ -69,6 +70,46 @@ public class DeliverableConfirmationService {
             throw conflict("확정하려는 대상이 바뀌었습니다. 새로고침해 다시 확인해주세요");
         confirmations.save(DeliverableConfirmation.of(readiness.candidate(), user, now()));
         return response(d);
+    }
+
+    /** 학교 시스템 등에 낸 사실을 남긴다. 확정된 제출물에 한 번이고 고치는 명령은 없다. */
+    public Response submit(UUID projectId, UUID deliverableId, SubmitRequest req, User user) {
+        Project project = access.getProject(projectId);
+        access.requireContributor(project, user);
+        OffsetDateTime submittedAt = stored(req.submittedAt());
+        if (submittedAt.isAfter(now().plus(CLOCK_ALLOWANCE)))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제출 시각은 지금보다 뒤일 수 없습니다");
+        Deliverable d = lock(project, deliverableId);
+        DeliverableConfirmation confirmation = confirmations.findById(d.getId())
+                .orElseThrow(() -> conflict("최종본을 확정한 뒤에 제출을 기록할 수 있습니다"));
+        // 낸 곳을 비우면 제출물의 제출 경로를 쓴다. 둘 다 비어 있으면 없는 값으로 남는다
+        String channel = text(req.channel()) != null ? text(req.channel()) : text(d.getSubmissionMethod());
+        String note = text(req.note());
+        Optional<DeliverableSubmission> existing = submissions.findById(d.getId());
+        if (existing.isPresent()) {
+            DeliverableSubmission recorded = existing.get();
+            // 같은 내용을 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다. 처음 기록한 사람과 시각이 남는다
+            if (!Objects.equals(recorded.getChannel(), channel) || !Objects.equals(recorded.getNote(), note)
+                    || !recorded.getSubmittedAt().toInstant().equals(submittedAt.toInstant())) throw conflict("이미 제출이 기록됐습니다");
+            return response(d);
+        }
+        // 기록 시각은 잠금을 잡은 뒤의 지금이다. 확정을 기다렸다 들어온 기록이 확정보다 앞선 시각으로 남지 않는다
+        submissions.save(DeliverableSubmission.of(confirmation, channel, submittedAt, note, user, now()));
+        return response(d);
+    }
+
+    // 비어 있는 글은 없는 값으로 저장한다
+    private static String text(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** 같은 제출물의 확정, 제출 기록, 충족 확인, 회차 쓰기를 차례대로 처리하는 행 잠금(K-20 6장). */
+    private Deliverable lock(Project project, UUID id) {
+        return deliverables.lockByIdAndProject(id, project).orElseThrow(DeliverableConfirmationService::noDeliverable);
+    }
+
+    private static NotFoundException noDeliverable() {
+        return new NotFoundException("제출물을 찾을 수 없습니다");
     }
 
     private Response response(Deliverable d) {
@@ -127,9 +168,13 @@ public class DeliverableConfirmationService {
                 unresolved == 0 ? "미해결 피드백이 없습니다" : "미해결 피드백 " + unresolved + "건을 해결해야 확정할 수 있습니다");
     }
 
-    // DB가 돌려주는 모양(UTC, 마이크로초)으로 맞춘다. 저장 직후의 응답과 이후의 조회가 같은 값을 낸다
     private static OffsetDateTime now() {
-        return OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+        return stored(OffsetDateTime.now());
+    }
+
+    // DB가 돌려주는 모양(UTC, 마이크로초)으로 맞춘다. 저장 직후의 응답과 이후의 조회가 같은 값을 낸다
+    private static OffsetDateTime stored(OffsetDateTime time) {
+        return time.withOffsetSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
     }
 
     private static ResponseStatusException conflict(String detail) {
