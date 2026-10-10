@@ -60,6 +60,7 @@ app:
   agent:
     zone: Asia/Seoul        # "오늘"과 "늦음"을 판단하는 시간대
     tool-list-limit: 100    # 도구가 한 번에 돌려주는 목록의 건수. 넘으면 잘렸다고 알린다
+    proposal-list-limit: 50 # 제안 카드 목록이 돌려주는 건수. 최신이 먼저다
     run-time-limit: 120s    # 실행 하나의 시간 상한. 넘긴 실행은 끝난 것으로 본다
     runs-per-hour: 30       # 프로젝트 하나가 한 시간에 실행할 수 있는 횟수
     max-concurrent-runs: 4  # 서버 전체에서 동시에 도는 실행의 수. 모델이 멈춰도 다른 기능의 스레드를 쓰지 않게 따로 둔다
