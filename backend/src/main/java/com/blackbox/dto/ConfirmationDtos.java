@@ -44,5 +44,14 @@ public final class ConfirmationDtos {
         }
     }
     public record Response(String status, boolean canConfirm, List<Check> checks, Candidate candidate,
-            boolean soleContributor, Confirmation confirmation, Submission submission) {}
+            boolean soleContributor, Confirmation confirmation, Submission submission) {
+        /** 확정 전. 세 검사를 모두 통과해야 확정할 수 있다. */
+        public static Response pending(String status, List<Check> checks, Candidate candidate, boolean soleContributor) {
+            return new Response(status, checks.stream().allMatch(Check::passed), checks, candidate, soleContributor, null, null);
+        }
+        /** 확정 뒤. 검사와 확정 대상은 더 내보내지 않는다. submission은 기록 전이면 null이다. */
+        public static Response confirmed(String status, boolean soleContributor, Confirmation confirmation, Submission submission) {
+            return new Response(status, false, List.of(), null, soleContributor, confirmation, submission);
+        }
+    }
 }

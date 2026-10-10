@@ -88,18 +88,21 @@ public class ReviewRoundService implements ReviewRoundReader {
 
     // 회차는 저장하지 않은 값 두 가지를 함께 내보낸다: 최신 회차인가, 이 승인이 지금 확정 근거인가
     private Round round(ReviewRound r, boolean latest) {
-        return Round.from(r, latest, latest && approvedFileIsNewest(r));
+        return Round.from(r, latest, latest && basisOf(r) == Basis.CURRENT);
     }
 
-    /**
-     * 승인됐고 파일이 있으며, 그 파일 이름의 최신 버전이 이 회차의 파일과 내용이 같은가.
-     * 최신 회차가 이것을 채우면 확정 근거다(K-10 3장). 확정(K-20)도 같은 규칙을 쓴다.
-     */
-    public boolean approvedFileIsNewest(ReviewRound r) {
-        if (!"APPROVED".equals(r.getDecision()) || r.getFile() == null) return false;
+    /** 회차의 승인이 확정 근거가 되는지, 안 되면 왜인지(K-10 3장·7장). CURRENT만 근거다. */
+    public enum Basis { CURRENT, UNDECIDED, CHANGES_REQUESTED, NO_FILE, NEWER_CONTENT }
+
+    /** 최신 회차가 CURRENT이면 지금 확정 근거다. 확정(K-20)도 이 판정을 쓴다. */
+    public Basis basisOf(ReviewRound r) {
+        if (r.getDecision() == null) return Basis.UNDECIDED;
+        if (!"APPROVED".equals(r.getDecision())) return Basis.CHANGES_REQUESTED;
+        if (r.getFile() == null) return Basis.NO_FILE;
         // 같은 내용을 다시 올려도 버전은 올라가므로 버전 번호가 아니라 해시로 비교한다
-        return files.findTopByProjectAndFileNameOrderByVersionDesc(r.getProject(), r.getFile().getFileName())
-                .map(newest -> newest.getFileHash().equals(r.getFile().getFileHash())).orElse(false);
+        boolean newest = files.findTopByProjectAndFileNameOrderByVersionDesc(r.getProject(), r.getFile().getFileName())
+                .map(latestVersion -> latestVersion.getFileHash().equals(r.getFile().getFileHash())).orElse(false);
+        return newest ? Basis.CURRENT : Basis.NEWER_CONTENT;
     }
 
     private String status(Deliverable d, List<ReviewRound> all) {

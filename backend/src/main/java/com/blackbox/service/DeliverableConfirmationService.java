@@ -5,18 +5,17 @@ import com.blackbox.entity.*;
 import com.blackbox.exception.ForbiddenException;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
+import com.blackbox.service.ReviewRoundService.Basis;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,11 +39,14 @@ public class DeliverableConfirmationService {
     private final DeliverableSubmissionRepository submissions;
     private final DeliverableStatuses statuses;
 
+    // ── 조회와 명령 ───────────────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public Response get(UUID projectId, UUID deliverableId, User user) {
         Project project = access.getProject(projectId);
         access.requireMember(project, user);
-        return response(deliverables.findByIdAndProject(deliverableId, project).orElseThrow(DeliverableConfirmationService::noDeliverable));
+        return response(deliverables.findByIdAndProject(deliverableId, project)
+                .orElseThrow(DeliverableConfirmationService::noDeliverable));
     }
 
     /** 팀장이 화면에서 본 회차(reviewId)를 최종본으로 확정한다. 되돌리는 명령은 없다. */
@@ -53,22 +55,19 @@ public class DeliverableConfirmationService {
         if (!"LEADER".equals(access.requireMember(project, user).getRole()))
             throw new ForbiddenException("최종본 확정은 팀장만 할 수 있습니다");
         Deliverable d = lock(project, deliverableId);
-        // 이 제출물의 회차가 아닌 id는 다른 프로젝트의 것이든 없는 것이든 똑같이 404다
-        rounds.findById(reviewId).filter(r -> r.getDeliverable().getId().equals(d.getId()))
-                .orElseThrow(() -> new NotFoundException("검토 회차를 찾을 수 없습니다"));
-        Optional<DeliverableConfirmation> existing = confirmations.findById(d.getId());
-        if (existing.isPresent()) {
+        requireRoundOf(d, reviewId);
+        Optional<DeliverableConfirmation> confirmed = confirmations.findById(d.getId());
+        if (confirmed.isPresent()) {
             // 같은 회차로 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다
-            if (!existing.get().getReview().getId().equals(reviewId)) throw conflict("이미 확정된 제출물입니다");
+            if (!confirmed.get().getReview().getId().equals(reviewId)) throw conflict("이미 확정된 제출물입니다");
             return response(d);
         }
         Readiness readiness = readiness(d, rounds.findFirstByDeliverableOrderByRoundNoDesc(d));
-        readiness.checks().stream().filter(check -> !check.passed()).findFirst()
-                .ifPresent(blocked -> { throw conflict(blocked.detail()); });
+        for (Check check : readiness.checks()) if (!check.passed()) throw conflict(check.detail());
         // 세 검사를 통과했는데 대상이 다르면 팀장이 화면에서 본 것과 다른 파일이다
         if (!readiness.candidate().getId().equals(reviewId))
             throw conflict("확정하려는 대상이 바뀌었습니다. 새로고침해 다시 확인해주세요");
-        confirmations.save(DeliverableConfirmation.of(readiness.candidate(), user, now()));
+        confirmations.save(DeliverableConfirmation.of(readiness.candidate(), user, OffsetDateTime.now()));
         return response(d);
     }
 
@@ -76,68 +75,56 @@ public class DeliverableConfirmationService {
     public Response submit(UUID projectId, UUID deliverableId, SubmitRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        OffsetDateTime submittedAt = stored(req.submittedAt());
-        if (submittedAt.isAfter(now().plus(CLOCK_ALLOWANCE)))
+        if (req.submittedAt().isAfter(OffsetDateTime.now().plus(CLOCK_ALLOWANCE)))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제출 시각은 지금보다 뒤일 수 없습니다");
         Deliverable d = lock(project, deliverableId);
         DeliverableConfirmation confirmation = confirmations.findById(d.getId())
                 .orElseThrow(() -> conflict("최종본을 확정한 뒤에 제출을 기록할 수 있습니다"));
         // 낸 곳을 비우면 제출물의 제출 경로를 쓴다. 둘 다 비어 있으면 없는 값으로 남는다
-        String channel = text(req.channel()) != null ? text(req.channel()) : text(d.getSubmissionMethod());
-        String note = text(req.note());
-        Optional<DeliverableSubmission> existing = submissions.findById(d.getId());
-        if (existing.isPresent()) {
-            DeliverableSubmission recorded = existing.get();
-            // 같은 내용을 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다. 처음 기록한 사람과 시각이 남는다
-            if (!Objects.equals(recorded.getChannel(), channel) || !Objects.equals(recorded.getNote(), note)
-                    || !recorded.getSubmittedAt().toInstant().equals(submittedAt.toInstant())) throw conflict("이미 제출이 기록됐습니다");
-            return response(d);
-        }
+        String channel = StringUtils.hasText(req.channel()) ? req.channel() : d.getSubmissionMethod();
         // 기록 시각은 잠금을 잡은 뒤의 지금이다. 확정을 기다렸다 들어온 기록이 확정보다 앞선 시각으로 남지 않는다
-        submissions.save(DeliverableSubmission.of(confirmation, channel, submittedAt, note, user, now()));
+        DeliverableSubmission submission = DeliverableSubmission.of(
+                confirmation, channel, req.submittedAt(), req.note(), user, OffsetDateTime.now());
+        Optional<DeliverableSubmission> recorded = submissions.findById(d.getId());
+        // 같은 내용을 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다. 처음 기록한 사람과 시각이 남는다
+        if (recorded.isEmpty()) submissions.save(submission);
+        else if (!recorded.get().sameContentAs(submission)) throw conflict("이미 제출이 기록됐습니다");
         return response(d);
     }
 
-    // 비어 있는 글은 없는 값으로 저장한다
-    private static String text(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
-
-    /** 같은 제출물의 확정, 제출 기록, 충족 확인, 회차 쓰기를 차례대로 처리하는 행 잠금(K-20 6장). */
-    private Deliverable lock(Project project, UUID id) {
-        return deliverables.lockByIdAndProject(id, project).orElseThrow(DeliverableConfirmationService::noDeliverable);
-    }
-
-    private static NotFoundException noDeliverable() {
-        return new NotFoundException("제출물을 찾을 수 없습니다");
-    }
+    // ── 응답 ──────────────────────────────────────────────────────────────
 
     private Response response(Deliverable d) {
         Optional<ReviewRound> latest = rounds.findFirstByDeliverableOrderByRoundNoDesc(d);
         String status = statuses.of(d, latest).status();
         boolean sole = soleContributor(d.getProject());
-        Optional<DeliverableConfirmation> confirmation = confirmations.findById(d.getId());
-        if (confirmation.isEmpty()) {
-            Readiness r = readiness(d, latest);
-            return new Response(status, r.ready(), r.checks(), r.candidate() == null ? null : Candidate.of(r.candidate()), sole, null, null);
+        Optional<DeliverableConfirmation> confirmed = confirmations.findById(d.getId());
+        if (confirmed.isEmpty()) {
+            Readiness readiness = readiness(d, latest);
+            Candidate candidate = readiness.candidate() == null ? null : Candidate.of(readiness.candidate());
+            return Response.pending(status, readiness.checks(), candidate, sole);
         }
-        DeliverableConfirmation c = confirmation.get();
+        DeliverableConfirmation confirmation = confirmed.get();
         // 확정 뒤에 내용이 다른 새 버전이 올라왔는지만 알린다. 확정본은 회차가 가리키는 버전 그대로다
-        return new Response(status, false, List.of(), null, sole, Confirmation.from(c, reviews.approvedFileIsNewest(c.getReview())),
+        boolean fileStillLatest = reviews.basisOf(confirmation.getReview()) == Basis.CURRENT;
+        return Response.confirmed(status, sole, Confirmation.from(confirmation, fileStillLatest),
                 submissions.findById(d.getId()).map(Submission::from).orElse(null));
     }
 
-    /** 세 검사와, 승인된 파일 검사를 통과했을 때의 확정 대상. */
-    private record Readiness(List<Check> checks, ReviewRound candidate) {
-        boolean ready() { return checks.stream().allMatch(Check::passed); }
+    /** 팀장·팀원이 한 명뿐이면 올린 사람이 자기 파일을 승인할 수 없어 확정 조건을 채울 수 없다(K-20 5장). */
+    private boolean soleContributor(Project project) {
+        return members.countByProjectAndRole(project, "LEADER") + members.countByProjectAndRole(project, "MEMBER") <= 1;
     }
 
+    // ── 세 검사 ───────────────────────────────────────────────────────────
+
+    /** 세 검사와, 승인된 파일 검사를 통과했을 때의 확정 대상. 통과하지 못했으면 candidate는 null이다. */
+    private record Readiness(List<Check> checks, ReviewRound candidate) {}
+
     private Readiness readiness(Deliverable d, Optional<ReviewRound> latest) {
-        // 통과 여부는 회차 목록의 currentBasis와 같은 규칙으로 정한다(K-10 3장)
-        ReviewRound candidate = latest.filter(reviews::approvedFileIsNewest).orElse(null);
-        return new Readiness(List.of(requirementCheck(d),
-                new Check(APPROVED_FILE, candidate != null, fileDetail(latest, candidate != null)),
-                commentCheck(d)), candidate);
+        Check file = latest.map(this::fileCheck)
+                .orElseGet(() -> new Check(APPROVED_FILE, false, "검토 회차가 없습니다. 파일을 골라 검토를 요청해주세요"));
+        return new Readiness(List.of(requirementCheck(d), file, commentCheck(d)), file.passed() ? latest.get() : null);
     }
 
     private Check requirementCheck(Deliverable d) {
@@ -150,16 +137,19 @@ public class DeliverableConfirmationService {
         return new Check(REQUIRED_REQUIREMENTS, unmet == 0, detail);
     }
 
-    // 통과하지 못한 사유는 K-10 7장과 같은 말을 쓰고, 다음에 할 일을 덧붙인다
-    private static String fileDetail(Optional<ReviewRound> latest, boolean passed) {
-        if (latest.isEmpty()) return "검토 회차가 없습니다. 파일을 골라 검토를 요청해주세요";
-        ReviewRound r = latest.get();
-        String round = r.getRoundNo() + "회차";
-        if (passed) return round + "에서 " + r.getFile().getFileName() + " " + r.getFile().getVersion() + "버전이 승인됐습니다";
-        if (r.getDecision() == null) return round + "가 결정 전입니다. 승인을 받아주세요";
-        if (!"APPROVED".equals(r.getDecision())) return round + "에서 수정 요청을 받았습니다. 보완한 뒤 새 회차를 열어주세요";
-        if (r.getFile() == null) return round + "는 파일 없는 회차입니다. 파일을 골라 새 회차를 열어주세요";
-        return round + "에서 승인된 파일이 같은 이름의 최신 버전과 내용이 다릅니다. 최신 버전으로 새 회차를 열어주세요";
+    // 판정과 까닭을 회차 쪽의 한 규칙에서 받는다. 회차 목록의 currentBasis와 어긋나지 않고, 까닭이 늘면 여기서 컴파일이 막힌다.
+    // 통과하지 못한 까닭은 K-10 7장과 같은 말을 쓰고 다음에 할 일을 덧붙인다
+    private Check fileCheck(ReviewRound latest) {
+        Basis basis = reviews.basisOf(latest);
+        String round = latest.getRoundNo() + "회차";
+        String detail = switch (basis) {
+            case CURRENT -> round + "에서 " + latest.getFile().getFileName() + " " + latest.getFile().getVersion() + "버전이 승인됐습니다";
+            case UNDECIDED -> round + "가 결정 전입니다. 승인을 받아주세요";
+            case CHANGES_REQUESTED -> round + "에서 수정 요청을 받았습니다. 보완한 뒤 새 회차를 열어주세요";
+            case NO_FILE -> round + "는 파일 없는 회차입니다. 파일을 골라 새 회차를 열어주세요";
+            case NEWER_CONTENT -> round + "에서 승인된 파일이 같은 이름의 최신 버전과 내용이 다릅니다. 최신 버전으로 새 회차를 열어주세요";
+        };
+        return new Check(APPROVED_FILE, basis == Basis.CURRENT, detail);
     }
 
     private Check commentCheck(Deliverable d) {
@@ -168,21 +158,24 @@ public class DeliverableConfirmationService {
                 unresolved == 0 ? "미해결 피드백이 없습니다" : "미해결 피드백 " + unresolved + "건을 해결해야 확정할 수 있습니다");
     }
 
-    private static OffsetDateTime now() {
-        return stored(OffsetDateTime.now());
+    // ── 찾기와 오류 ───────────────────────────────────────────────────────
+
+    /** 같은 제출물의 확정, 제출 기록, 충족 확인, 회차 쓰기를 차례대로 처리하는 행 잠금(K-20 6장). */
+    private Deliverable lock(Project project, UUID id) {
+        return deliverables.lockByIdAndProject(id, project).orElseThrow(DeliverableConfirmationService::noDeliverable);
     }
 
-    // DB가 돌려주는 모양(UTC, 마이크로초)으로 맞춘다. 저장 직후의 응답과 이후의 조회가 같은 값을 낸다
-    private static OffsetDateTime stored(OffsetDateTime time) {
-        return time.withOffsetSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+    /** 이 제출물의 회차가 아닌 id는 다른 프로젝트의 것이든 없는 것이든 똑같이 404다. */
+    private void requireRoundOf(Deliverable d, UUID reviewId) {
+        if (rounds.findById(reviewId).filter(r -> r.getDeliverable().getId().equals(d.getId())).isEmpty())
+            throw new NotFoundException("검토 회차를 찾을 수 없습니다");
+    }
+
+    private static NotFoundException noDeliverable() {
+        return new NotFoundException("제출물을 찾을 수 없습니다");
     }
 
     private static ResponseStatusException conflict(String detail) {
         return new ResponseStatusException(HttpStatus.CONFLICT, detail);
-    }
-
-    /** 팀장·팀원이 한 명뿐이면 올린 사람이 자기 파일을 승인할 수 없어 확정 조건을 채울 수 없다(K-20 5장). */
-    private boolean soleContributor(Project project) {
-        return members.countByProjectAndRole(project, "LEADER") + members.countByProjectAndRole(project, "MEMBER") <= 1;
     }
 }
