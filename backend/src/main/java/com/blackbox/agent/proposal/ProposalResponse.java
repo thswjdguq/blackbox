@@ -20,6 +20,14 @@ public record ProposalResponse(UUID id, UUID runId, String kind, String status, 
         static Person of(User user) { return new Person(user.getId(), user.getName()); }
     }
     public record Decision(String result, Person decidedBy, OffsetDateTime decidedAt) {}
+    /** 프로젝트에서 채택으로 만들어진 기록 전부의 id(K-30 2장의 출처 조회). 기록이 나중에 지워져도 id는 남는다 */
+    public record Origins(List<UUID> deliverableIds, List<UUID> requirementIds, List<UUID> taskIds) {
+        public static Origins of(Collection<AgentProposal.Result> created) {
+            return new Origins(Results.ids(created, TargetTypes.DELIVERABLE), Results.ids(created, TargetTypes.REQUIREMENT),
+                    Results.ids(created, TargetTypes.TASK));
+        }
+    }
+
     /** 채택으로 만들어진 것의 id. 계약이 정한 모양이라 대상 종류 셋을 칸으로 나눈다. 순서는 조회할 때마다 같게만 하고 뜻은 없다 */
     public record Results(UUID deliverableId, List<UUID> requirementIds, List<UUID> taskIds) {
         static Results of(Collection<AgentProposal.Result> created) {

@@ -26,6 +26,10 @@ public interface AgentProposalRepository extends JpaRepository<AgentProposal, UU
 
     long countByProjectAndStatus(Project project, AgentProposal.Status status);
 
+    /** 이 프로젝트에서 제안 카드의 채택으로 만들어진 기록 전부. 화면이 "AI 제안" 표시를 붙일 때 쓴다 */
+    @Query("select r from AgentProposal p join p.results r where p.project = :project")
+    List<AgentProposal.Result> findResultsByProject(@Param("project") Project project);
+
     /** 이 기록이 제안 카드의 채택으로 만들어졌는가(K-30 7장) */
     @Query("select count(p) > 0 from AgentProposal p join p.results r "
             + "where p.project.id = :projectId and r.targetType = :targetType and r.targetId = :targetId")

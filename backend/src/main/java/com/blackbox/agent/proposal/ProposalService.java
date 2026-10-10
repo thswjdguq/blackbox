@@ -82,6 +82,14 @@ public class ProposalService implements AgentOriginReader {
         return ProposalResponse.from(proposal);
     }
 
+    /** 화면이 업무·요구사항·제출물에 "AI 제안" 표시를 붙일 수 있게, 채택으로 만들어진 기록의 id를 모아 준다 */
+    @Transactional(readOnly = true)
+    public ProposalResponse.Origins origins(UUID projectId, User user) {
+        Project project = access.getProject(projectId);
+        access.requireMember(project, user);
+        return ProposalResponse.Origins.of(proposals.findResultsByProject(project));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public boolean createdFromProposal(UUID projectId, String targetType, UUID targetId) {

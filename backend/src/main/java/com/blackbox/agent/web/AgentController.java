@@ -1,6 +1,8 @@
 package com.blackbox.agent.web;
 
 import com.blackbox.agent.model.AgentModelException;
+import com.blackbox.agent.proposal.ProposalResponse;
+import com.blackbox.agent.proposal.ProposalService;
 import com.blackbox.agent.run.AgentRunLauncher;
 import com.blackbox.agent.run.AgentRunner;
 import com.blackbox.entity.User;
@@ -25,10 +27,17 @@ public class AgentController {
     private final AgentStatusReader status;
     private final AgentRunner runner;
     private final AgentRunLauncher launcher;
+    private final ProposalService proposals;
 
     @GetMapping("/status")
     public AgentStatusReader.Status status(@PathVariable UUID projectId, @AuthenticationPrincipal User user) {
         return status.read(projectId, user);
+    }
+
+    /** 채택으로 만들어진 기록의 id. 모델이 꺼져 있어도 동작한다 */
+    @GetMapping("/origins")
+    public ProposalResponse.Origins origins(@PathVariable UUID projectId, @AuthenticationPrincipal User user) {
+        return proposals.origins(projectId, user);
     }
 
     public record RunRequest(String skill, JsonNode input) {}
