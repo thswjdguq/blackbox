@@ -1,6 +1,7 @@
 package com.blackbox.agent.web;
 
 import com.blackbox.agent.AgentProposal;
+import com.blackbox.agent.proposal.ProposalResponse;
 import com.blackbox.agent.run.AgentEvents;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
