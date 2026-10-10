@@ -2,12 +2,18 @@ package com.blackbox.service;
 
 import com.blackbox.dto.ConfirmationDtos.*;
 import com.blackbox.entity.*;
+import com.blackbox.exception.ForbiddenException;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,6 +42,33 @@ public class DeliverableConfirmationService {
         access.requireMember(project, user);
         return response(deliverables.findByIdAndProject(deliverableId, project)
                 .orElseThrow(() -> new NotFoundException("제출물을 찾을 수 없습니다")));
+    }
+
+    /** 팀장이 화면에서 본 회차(reviewId)를 최종본으로 확정한다. 되돌리는 명령은 없다. */
+    public Response confirm(UUID projectId, UUID deliverableId, UUID reviewId, User user) {
+        Project project = access.getProject(projectId);
+        if (!"LEADER".equals(access.requireMember(project, user).getRole()))
+            throw new ForbiddenException("최종본 확정은 팀장만 할 수 있습니다");
+        // 같은 제출물의 확정, 충족 확인, 회차 쓰기를 차례대로 처리한다(K-20 6장)
+        Deliverable d = deliverables.lockByIdAndProject(deliverableId, project)
+                .orElseThrow(() -> new NotFoundException("제출물을 찾을 수 없습니다"));
+        // 이 제출물의 회차가 아닌 id는 다른 프로젝트의 것이든 없는 것이든 똑같이 404다
+        rounds.findById(reviewId).filter(r -> r.getDeliverable().getId().equals(d.getId()))
+                .orElseThrow(() -> new NotFoundException("검토 회차를 찾을 수 없습니다"));
+        Optional<DeliverableConfirmation> existing = confirmations.findById(d.getId());
+        if (existing.isPresent()) {
+            // 같은 회차로 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다
+            if (!existing.get().getReview().getId().equals(reviewId)) throw conflict("이미 확정된 제출물입니다");
+            return response(d);
+        }
+        Readiness readiness = readiness(d, rounds.findFirstByDeliverableOrderByRoundNoDesc(d));
+        readiness.checks().stream().filter(check -> !check.passed()).findFirst()
+                .ifPresent(blocked -> { throw conflict(blocked.detail()); });
+        // 세 검사를 통과했는데 대상이 다르면 팀장이 화면에서 본 것과 다른 파일이다
+        if (!readiness.candidate().getId().equals(reviewId))
+            throw conflict("확정하려는 대상이 바뀌었습니다. 새로고침해 다시 확인해주세요");
+        confirmations.save(DeliverableConfirmation.of(readiness.candidate(), user, now()));
+        return response(d);
     }
 
     private Response response(Deliverable d) {
@@ -92,6 +125,15 @@ public class DeliverableConfirmationService {
         long unresolved = unresolvedComments.countUnresolvedComments(d.getProject().getId(), d.getId());
         return new Check(NO_UNRESOLVED_COMMENTS, unresolved == 0,
                 unresolved == 0 ? "미해결 피드백이 없습니다" : "미해결 피드백 " + unresolved + "건을 해결해야 확정할 수 있습니다");
+    }
+
+    // DB가 돌려주는 모양(UTC, 마이크로초)으로 맞춘다. 저장 직후의 응답과 이후의 조회가 같은 값을 낸다
+    private static OffsetDateTime now() {
+        return OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+    }
+
+    private static ResponseStatusException conflict(String detail) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, detail);
     }
 
     /** 팀장·팀원이 한 명뿐이면 올린 사람이 자기 파일을 승인할 수 없어 확정 조건을 채울 수 없다(K-20 5장). */

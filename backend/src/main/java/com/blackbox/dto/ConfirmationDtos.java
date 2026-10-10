@@ -5,6 +5,7 @@ import com.blackbox.dto.ReviewDtos.Person;
 import com.blackbox.entity.DeliverableConfirmation;
 import com.blackbox.entity.DeliverableSubmission;
 import com.blackbox.entity.ReviewRound;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -16,6 +17,8 @@ import java.util.UUID;
  */
 public final class ConfirmationDtos {
     private ConfirmationDtos() {}
+    // 화면이 보여 준 확정 대상(candidate.reviewId)이다
+    public record ConfirmRequest(@NotNull UUID reviewId) {}
     public record Check(String code, boolean passed, String detail) {}
     /** 지금 확정하면 확정본이 될 회차와 파일. file의 모양은 K-10 3장과 같다. */
     public record Candidate(UUID reviewId, int roundNo, FileSummary file) {

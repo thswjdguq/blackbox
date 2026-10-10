@@ -1,8 +1,10 @@
 package com.blackbox.controller;
 
+import com.blackbox.dto.ConfirmationDtos.ConfirmRequest;
 import com.blackbox.dto.ConfirmationDtos.Response;
 import com.blackbox.entity.User;
 import com.blackbox.service.DeliverableConfirmationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -15,5 +17,9 @@ public class DeliverableConfirmationController {
     @GetMapping("/confirmation") public Response get(@PathVariable UUID projectId, @PathVariable UUID deliverableId,
             @AuthenticationPrincipal User user) {
         return service.get(projectId, deliverableId, user);
+    }
+    @PutMapping("/confirmation") public Response confirm(@PathVariable UUID projectId, @PathVariable UUID deliverableId,
+            @Valid @RequestBody ConfirmRequest req, @AuthenticationPrincipal User user) {
+        return service.confirm(projectId, deliverableId, req.reviewId(), user);
     }
 }
