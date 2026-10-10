@@ -161,6 +161,17 @@ class ProposalHttpTest {
         assertEquals(1, count("deliverables"));
         assertEquals(2, count("tasks"));
 
+        // 화면이 "AI 제안" 표시를 붙일 수 있게 채택으로 만들어진 기록의 id를 모아 준다. 관찰자도 본다
+        JsonNode origins = json.readTree(api("GET", "/api/projects/" + project.getId() + "/agent/origins", observer, null).body());
+        assertEquals(List.of(deliverableId), texts(origins.path("deliverableIds")));
+        assertEquals(texts(results.path("requirementIds")), texts(origins.path("requirementIds")));
+        assertEquals(texts(results.path("taskIds")), texts(origins.path("taskIds")));
+        // 다른 프로젝트에서는 보이지 않고, 참여자가 아니면 볼 수 없다
+        JsonNode elsewhere = json.readTree(api("GET", "/api/projects/" + otherProject.getId() + "/agent/origins", outsider, null).body());
+        assertTrue(elsewhere.path("taskIds").isEmpty() && elsewhere.path("deliverableIds").isEmpty(), elsewhere.toString());
+        assertEquals(403, api("GET", "/api/projects/" + project.getId() + "/agent/origins", outsider, null).statusCode());
+        assertEquals(401, api("GET", "/api/projects/" + project.getId() + "/agent/origins", null, null).statusCode());
+
         assertTrue(origin.createdFromProposal(project.getId(), "TASK", UUID.fromString(draft.path("id").asText())));
         assertTrue(origin.createdFromProposal(project.getId(), "DELIVERABLE", UUID.fromString(deliverableId)));
         assertFalse(origin.createdFromProposal(project.getId(), "TASK", UUID.randomUUID()));
@@ -259,6 +270,12 @@ class ProposalHttpTest {
     private static JsonNode find(JsonNode tasks, String title) {
         for (JsonNode task : tasks) if (task.path("title").asText().equals(title)) return task;
         throw new AssertionError("업무가 없다: " + title);
+    }
+
+    private static List<String> texts(JsonNode array) {
+        List<String> out = new ArrayList<>();
+        array.forEach(n -> out.add(n.asText()));
+        return out;
     }
 
     private static List<String> titles(JsonNode cards) {

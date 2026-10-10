@@ -123,6 +123,8 @@ class AgentHttpTest {
         JsonNode off = body(get("/status", member));
         assertFalse(off.path("available").asBoolean());
         assertEquals("AI 기능이 설정되지 않았습니다", off.path("unavailableReason").asText());
+        // 모델이 꺼져 있어도 단계는 준다. 화면의 "다음 할 일" 카드가 이것을 쓴다
+        assertEquals("NO_TASK", off.path("stages").get(0).path("stage").asText());
     }
 
     @Test void aRunStreamsStepTextProposalAndDone() throws Exception {

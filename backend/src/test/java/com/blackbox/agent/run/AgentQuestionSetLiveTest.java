@@ -53,6 +53,7 @@ class AgentQuestionSetLiveTest {
     DeliverableRequirement structure, video;
     final LocalDate today = LocalDate.now();
     final List<String> failures = new ArrayList<>();
+    final List<String> texts = new ArrayList<>();
 
     @BeforeEach void demoProject() {
         data = new AgentTestData(em, transactions, jdbc);
@@ -150,6 +151,14 @@ class AgentQuestionSetLiveTest {
                     tasks.summary());
         }
 
+        // ── 글의 표기: 화면이 글자를 그대로 보여 주므로 줄바꿈, "- " 목록, 링크만 쓴다. 링크는 이 프로젝트의 화면 경로뿐이다
+        String all = String.join("\n", texts);
+        check("글에 제목·굵게·코드·HTML 표기가 없음", !java.util.regex.Pattern.compile("(?m)^\\s*#{1,6} |\\*\\*|`|<[a-zA-Z/][^>]*>").matcher(all).find(), all);
+        java.util.regex.Matcher links = java.util.regex.Pattern.compile("\\]\\(([^)]*)\\)").matcher(all);
+        List<String> wrong = new ArrayList<>();
+        while (links.find()) if (!links.group(1).startsWith("/projects/" + project.getId() + "/")) wrong.add(links.group(1));
+        check("링크가 모두 이 프로젝트의 화면 경로", wrong.isEmpty(), wrong.toString());
+
         assertTrue(failures.isEmpty(), failures.size() + "개 항목이 기대와 달랐다:\n" + String.join("\n", failures));
     }
 
@@ -168,6 +177,7 @@ class AgentQuestionSetLiveTest {
             @Override public void error(String detail) { seen.add("error"); }
         });
         System.out.println("QTEXT|" + skill + "|" + user.getName() + "|" + seen + "|" + text.toString().replace("\n", " "));
+        texts.add(text.toString());
         return new Run(seen.isEmpty() ? "none" : seen.get(seen.size() - 1), text.toString(), cards);
     }
 
