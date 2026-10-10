@@ -7,6 +7,8 @@ import Sidebar from "@/components/Sidebar";
 import TaskModal from "@/components/kanban/TaskModal";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
+import ReviewPanel from "@/components/deliverable/ReviewPanel";
+import SubmitPanel from "@/components/deliverable/SubmitPanel";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
 import {
@@ -52,8 +54,8 @@ type Tab = "overview" | "review" | "submit";
 
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "overview", label: "요구사항·업무", implemented: true },
-  { id: "review", label: "검토", implemented: false },
-  { id: "submit", label: "최종 제출", implemented: false },
+  { id: "review", label: "검토", implemented: true },
+  { id: "submit", label: "최종 제출", implemented: true },
 ];
 
 const TASK_STATUS_LABEL: Record<Task["status"], string> = {
@@ -164,6 +166,9 @@ export default function DeliverableDetailPage() {
   // 역할은 멤버 목록에서 내 항목으로 판단한다. GET /projects/{id} 응답의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
   const myRole = members.find((m) => m.userId === myUserId)?.role ?? null;
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
+  // 확정·제출 기록된 제출물은 정보·요구사항·충족 확인·업무 연결을 바꿀 수 없다 (K-20 4장, 서버도 409)
+  const locked = deliverable?.status === "CONFIRMED" || deliverable?.status === "SUBMITTED";
+  const editable = canWrite && !locked;
   // K-14 §2: 문구(content)가 바뀌면 서버가 충족 확인을 푼다. 필수 여부만 바꾸면 유지된다
   const editingReq = deliverable?.requirements.find((r) => r.id === editingReqId) ?? null;
   const assessmentWillReset =
@@ -376,7 +381,7 @@ export default function DeliverableDetailPage() {
                   <ClipboardList size={20} className="text-bb-primary shrink-0" />
                   {deliverable.title}
                 </h1>
-                {canWrite && (
+                {editable && (
                   <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => setShowEdit(true)}
@@ -467,7 +472,9 @@ export default function DeliverableDetailPage() {
                   <p className="mt-1 text-xs text-bb-text2">
                     과제 안내의 필수 내용과 형식을 적으세요. 업무 완료와 요구사항 충족은 따로 확인합니다.
                   </p>
-                  {!canWrite && (
+                  {locked ? (
+                    <p className="mt-1 text-xs text-bb-text2">최종본이 확정된 제출물이라 요구사항·충족 확인·업무 연결을 바꿀 수 없습니다.</p>
+                  ) : !canWrite && (
                     <p className="mt-1 text-xs text-bb-text2">관찰자는 충족 여부를 확인할 수 없습니다.</p>
                   )}
 
@@ -486,16 +493,16 @@ export default function DeliverableDetailPage() {
                           <li key={req.id} className="py-3">
                             <div className="flex items-start gap-3">
                               <button
-                                onClick={() => canWrite && handleToggleAssessment(req)}
-                                disabled={!canWrite || assessingIds.has(req.id)}
+                                onClick={() => editable && handleToggleAssessment(req)}
+                                disabled={!editable || assessingIds.has(req.id)}
                                 className={`shrink-0 mt-0.5 p-0.5 rounded transition-colors ${
-                                  canWrite
+                                  editable
                                     ? assessed
                                       ? "text-teal-400 hover:text-teal-300"
                                       : "text-bb-text2 hover:text-teal-400"
                                     : "text-bb-border cursor-not-allowed"
                                 }`}
-                                title={!canWrite ? "관찰자는 확인할 수 없습니다." : assessed ? "충족 확인 해제" : "충족 확인"}
+                                title={locked ? "확정된 제출물은 바꿀 수 없습니다." : !canWrite ? "관찰자는 확인할 수 없습니다." : assessed ? "충족 확인 해제" : "충족 확인"}
                                 aria-label={assessed ? "충족 확인 해제" : "충족 확인"}
                               >
                                 {assessed ? <CheckSquare size={16} /> : <Circle size={16} />}
@@ -524,7 +531,7 @@ export default function DeliverableDetailPage() {
                               {allDone && !assessed && (
                                 <span className="text-amber-400">업무가 모두 끝났습니다. 충족 여부를 확인하세요.</span>
                               )}
-                              {canWrite && (
+                              {editable && (
                                 <>
                                   <button onClick={() => setTaskDraft({ requirementId: req.id })} className="text-bb-primary hover:underline">
                                     이 요구사항의 업무 만들기
@@ -544,7 +551,7 @@ export default function DeliverableDetailPage() {
                     </ul>
                   )}
 
-                  {canWrite && (
+                  {editable && (
                     <form onSubmit={handleSaveRequirement} className="space-y-2 border-t border-bb-border pt-4">
                       <label htmlFor="requirement-content" className="block text-sm text-bb-text">
                         {editingReqId ? "요구사항 수정" : "요구사항 추가"}
@@ -601,7 +608,7 @@ export default function DeliverableDetailPage() {
                       >
                         보드에서 이 제출물 업무 보기
                       </Link>
-                      {canWrite && (
+                      {editable && (
                         <button
                           onClick={() => setTaskDraft({ requirementId: "" })}
                           className="flex items-center gap-1 px-3 py-1.5 bg-bb-primary hover:bg-bb-primary-h text-white text-xs rounded-lg"
@@ -642,7 +649,7 @@ export default function DeliverableDetailPage() {
                     </ul>
                   )}
 
-                  {canWrite && unlinkedTasks.length > 0 && (
+                  {editable && unlinkedTasks.length > 0 && (
                     <form onSubmit={handleLinkTask} className="mt-4 flex flex-wrap items-end gap-3 border-t border-bb-border pt-4">
                       <label className="flex-1 min-w-[200px] text-xs text-bb-text2">
                         기존 미연결 업무
@@ -671,6 +678,30 @@ export default function DeliverableDetailPage() {
                   )}
                 </section>
               </div>
+            )}
+
+            {activeTab === "submit" && deliverable && (
+              <SubmitPanel
+                projectId={projectId}
+                deliverableId={deliverableId}
+                myRole={myRole}
+                requiredCount={deliverable.requirements.filter((r) => r.required).length}
+                submissionMethod={deliverable.submissionMethod}
+                openTaskCount={progress ? progress.tasks.total - progress.tasks.completed : null}
+                onGoTab={setActiveTab}
+                onChanged={refresh}
+              />
+            )}
+
+            {activeTab === "review" && (
+              <ReviewPanel
+                projectId={projectId}
+                deliverableId={deliverableId}
+                canWrite={canWrite}
+                myUserId={myUserId}
+                tasks={tasks}
+                onTasksChanged={refresh}
+              />
             )}
           </>
         )}
