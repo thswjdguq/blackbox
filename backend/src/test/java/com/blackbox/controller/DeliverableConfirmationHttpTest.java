@@ -14,10 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +29,7 @@ import static com.blackbox.repository.ReviewFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
  * K-20 11장의 수용 조건을 실제 DB와 HTTP 요청으로 확인한다.
@@ -35,6 +39,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class DeliverableConfirmationHttpTest {
     static final OffsetDateTime NOW = OffsetDateTime.parse("2026-10-17T21:10:00+09:00");
     static final String FILE = "중간보고서.pdf";
+    static final String PATH = "/api/projects/{projectId}/deliverables/{deliverableId}/confirmation";
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -190,6 +195,98 @@ class DeliverableConfirmationHttpTest {
         assertFalse(body.get("confirmation").isNull());
     }
 
+    @Test void leaderConfirmsTheCandidateAndRepeatingKeepsTheFirstRecord() throws Exception {
+        requirement(em, report, true, member);
+        FileVault file = upload(1, 'a');
+        ReviewRound approved = round(em, report, 1, file, member, "APPROVED");
+        String candidate = read(leader).at("/candidate/reviewId").asText();
+        OffsetDateTime before = OffsetDateTime.now();
+
+        JsonNode body = confirm(leader, candidate, 200);
+        assertEquals("CONFIRMED", body.get("status").asText());
+        assertFalse(body.get("canConfirm").asBoolean());
+        assertTrue(body.get("checks").isEmpty() && body.get("candidate").isNull() && body.get("submission").isNull());
+        JsonNode confirmation = body.get("confirmation");
+        assertEquals(approved.getId().toString(), confirmation.get("reviewId").asText());
+        assertEquals(file.getId().toString(), confirmation.at("/file/fileId").asText());
+        assertEquals("송팀장", confirmation.at("/confirmedBy/name").asText());
+        assertTrue(confirmation.get("fileStillLatest").asBoolean());
+        OffsetDateTime confirmedAt = OffsetDateTime.parse(confirmation.get("confirmedAt").asText());
+        assertTrue(Duration.between(before, confirmedAt).abs().toSeconds() < 5, "확정 시각은 서버의 지금이다");
+
+        // 같은 회차로 다시 보낸 것은 중복 클릭이다. 처음의 응답과 글자까지 같은 객체를 돌려준다
+        assertEquals(body, confirm(leader, candidate, 200));
+        assertEquals(body, read(observer));
+    }
+
+    @Test void onlyTheLeaderConfirms() throws Exception {
+        requirement(em, report, true, member);
+        ReviewRound approved = round(em, report, 1, upload(1, 'a'), member, "APPROVED");
+
+        assertEquals("최종본 확정은 팀장만 할 수 있습니다", confirm(member, approved.getId(), 403).get("detail").asText());
+        confirm(observer, approved.getId(), 403);
+        confirm(outsider, approved.getId(), 403);
+        confirm(null, approved.getId(), 401);
+        assertNotConfirmed();
+    }
+
+    /** 검사를 하나라도 통과하지 못하면 409이고, 세 검사의 순서에서 처음 막힌 사유를 준다. */
+    @Test void confirmationIsRefusedWithTheFirstBlockingReason() throws Exception {
+        DeliverableRequirement unmet = requirement(em, report, true, null);
+        FileVault first = upload(1, 'a');
+        ReviewRound undecided = round(em, report, 1, first, member, null);
+        assertRefused(undecided, "필수 요구사항 1개 중 1개의 충족을 확인해주세요");
+        em.find(DeliverableRequirement.class, unmet.getId()).assess(leader);
+        assertRefused(undecided, "1회차가 결정 전입니다. 승인을 받아주세요");
+        assertRefused(round(em, report, 2, first, member, "CHANGES_REQUESTED"), "2회차에서 수정 요청을 받았습니다. 보완한 뒤 새 회차를 열어주세요");
+        assertRefused(round(em, report, 3, null, member, "APPROVED"), "3회차는 파일 없는 회차입니다. 파일을 골라 새 회차를 열어주세요");
+
+        ReviewRound approved = round(em, report, 4, first, member, "APPROVED");
+        when(unresolved.countUnresolvedComments(project.getId(), report.getId())).thenReturn(2L);
+        assertRefused(approved, "미해결 피드백 2건을 해결해야 확정할 수 있습니다");
+        when(unresolved.countUnresolvedComments(project.getId(), report.getId())).thenReturn(0L);
+        upload(2, 'c');   // 승인 뒤에 내용이 다른 새 버전이 올라왔다
+        assertRefused(approved, "4회차에서 승인된 파일이 같은 이름의 최신 버전과 내용이 다릅니다. 최신 버전으로 새 회차를 열어주세요");
+        // 화면을 본 뒤 새 회차가 열렸으면 대상 대조까지 가지 않고 승인된 파일 검사의 사유가 나온다
+        round(em, report, 5, null, member, null);
+        assertRefused(approved, "5회차가 결정 전입니다. 승인을 받아주세요");
+    }
+
+    @Test void targetMustBeTheCandidateTheLeaderSaw() throws Exception {
+        Project other = project(em, leader);
+        member(em, other, leader, "LEADER");
+        Deliverable foreign = deliverable(em, other, "다른 프로젝트의 제출물");
+        ReviewRound foreignRound = round(em, foreign, 1, file(em, other, member, FILE, 1, 'a'), member, "APPROVED");
+        FileVault file = upload(1, 'a');
+        ReviewRound earlier = round(em, report, 1, file, member, "CHANGES_REQUESTED");
+        ReviewRound approved = round(em, report, 2, file, member, "APPROVED");
+
+        assertRefused(earlier, "확정하려는 대상이 바뀌었습니다. 새로고침해 다시 확인해주세요");
+        // 이 제출물의 회차가 아니면 다른 프로젝트의 것이든 없는 것이든 404다
+        assertEquals("검토 회차를 찾을 수 없습니다", confirm(leader, foreignRound.getId(), 404).get("detail").asText());
+        confirm(leader, UUID.randomUUID(), 404);
+        call(put(PATH, project.getId(), foreign.getId()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reviewId\":\"" + foreignRound.getId() + "\"}"), leader, 404);
+        for (String invalid : List.of("{}", "{\"reviewId\":null}", "{\"reviewId\":\"not-a-uuid\"}"))
+            call(put(PATH, project.getId(), report.getId()).contentType(MediaType.APPLICATION_JSON).content(invalid), leader, 400);
+        assertNotConfirmed();
+
+        confirm(leader, approved.getId(), 200);
+        assertEquals("이미 확정된 제출물입니다", confirm(leader, earlier.getId(), 409).get("detail").asText());
+        confirm(leader, UUID.randomUUID(), 404);
+        assertEquals(approved.getId().toString(), read(leader).at("/confirmation/reviewId").asText());
+    }
+
+    private void assertRefused(ReviewRound target, String detail) throws Exception {
+        assertEquals(detail, confirm(leader, target.getId(), 409).get("detail").asText());
+        assertNotConfirmed();
+    }
+
+    private void assertNotConfirmed() {
+        em.flush(); em.clear();
+        assertFalse(confirmations.existsById(report.getId()), "거절된 확정은 아무것도 남기지 않는다");
+    }
+
     private void assertNotApproved(String detail) throws Exception {
         JsonNode body = read(member);
         assertEquals(detail, detail(body, "APPROVED_FILE"));
@@ -206,10 +303,18 @@ class DeliverableConfirmationHttpTest {
 
     private JsonNode read(User as) throws Exception { return read(as, project.getId(), report.getId(), 200); }
 
-    /** 요청마다 서버가 DB에서 새로 읽도록 영속성 컨텍스트를 비운다. as가 null이면 로그인하지 않은 요청이다. */
     private JsonNode read(User as, Object projectId, Object deliverableId, int expectedStatus) throws Exception {
+        return call(get(PATH, projectId, deliverableId), as, expectedStatus);
+    }
+
+    private JsonNode confirm(User as, Object reviewId, int expectedStatus) throws Exception {
+        return call(put(PATH, project.getId(), report.getId()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reviewId\":\"" + reviewId + "\"}"), as, expectedStatus);
+    }
+
+    /** 요청마다 서버가 DB에서 새로 읽도록 영속성 컨텍스트를 비운다. as가 null이면 로그인하지 않은 요청이다. */
+    private JsonNode call(MockHttpServletRequestBuilder request, User as, int expectedStatus) throws Exception {
         em.flush(); em.clear();
-        var request = get("/api/projects/{projectId}/deliverables/{deliverableId}/confirmation", projectId, deliverableId);
         if (as != null) request.header("Authorization", "Bearer " + jwt.generateAccessToken(as.getEmail()));
         var response = mvc.perform(request).andReturn().getResponse();
         response.setCharacterEncoding("UTF-8");
