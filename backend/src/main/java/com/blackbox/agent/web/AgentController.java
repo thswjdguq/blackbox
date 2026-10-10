@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.UUID;
 
 /** K-30 2장의 상태 조회와 실행. */
@@ -35,11 +36,14 @@ public class AgentController {
     /** 스트림이 시작되기 전의 실패(권한, 입력, 상한)는 HTTP 오류로 나가고, 그 뒤는 이벤트로 나간다 */
     @PostMapping("/runs")
     public ResponseEntity<SseEmitter> run(@PathVariable UUID projectId, @RequestBody RunRequest request,
-                                          @AuthenticationPrincipal User user) {
+                                          @AuthenticationPrincipal User user) throws IOException {
         AgentRunner.Prepared prepared = runner.prepare(projectId, user, request.skill(), request.input());
 
         // 스트림은 실행이 done이나 error를 알릴 때 닫힌다. 시간 상한은 실행 쪽이 지키므로 서블릿의 시간 제한은 두지 않는다
         SseEmitter emitter = new SseEmitter(0L);
+        // 실행 스레드보다 먼저 한 줄을 넣어 둔다. 응답의 헤더가 요청 스레드에서 나가게 하려는 것이다.
+        // 이것이 없으면 실행 스레드의 첫 이벤트와 요청 스레드의 마무리가 헤더를 동시에 써서 응답이 깨질 때가 있다
+        emitter.send(SseEmitter.event().comment("start"));
         launcher.launch(prepared, new SseAgentEvents(emitter));
 
         return ResponseEntity.ok()

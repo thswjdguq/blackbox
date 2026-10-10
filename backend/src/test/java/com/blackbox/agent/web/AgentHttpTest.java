@@ -128,6 +128,7 @@ class AgentHttpTest {
         assertEquals(200, response.statusCode());
         assertTrue(response.headers().firstValue("Content-Type").orElse("").startsWith("text/event-stream"));
         assertEquals("no", response.headers().firstValue("X-Accel-Buffering").orElse(""), "프록시가 응답을 모아 두지 않게 알린다");
+        assertTrue(response.body().startsWith(":start"), "첫 줄은 화면이 무시하는 주석이다");
         List<Event> events = events(response.body());
         assertEquals(List.of("step", "text", "proposal", "done"), events.stream().map(Event::name).toList());
         assertEquals("list_deliverables", events.get(0).data().path("tool").asText());
@@ -200,7 +201,7 @@ class AgentHttpTest {
 
         // 모델이 아직 답하지 않았는데 조회 한 줄이 먼저 도착한다. 끝에 한꺼번에 오지 않는다
         assertTrue(entered.await(10, TimeUnit.SECONDS));
-        assertEquals("event:step", CompletableFuture.supplyAsync(() -> firstLine(stream)).get(5, TimeUnit.SECONDS));
+        assertEquals("event:step", CompletableFuture.supplyAsync(() -> firstEvent(stream)).get(5, TimeUnit.SECONDS));
         assertEquals(AgentRun.Status.RUNNING, onlyRun().getStatus());
 
         release.countDown();
@@ -246,8 +247,14 @@ class AgentHttpTest {
         }
     }
 
-    private static String firstLine(java.io.BufferedReader stream) {
-        try { return stream.readLine(); } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+    /** 이벤트의 이름 줄이 나올 때까지 읽는다. 스트림은 주석 줄(:start)로 시작한다 */
+    private static String firstEvent(java.io.BufferedReader stream) {
+        try {
+            for (String line; (line = stream.readLine()) != null; ) if (line.startsWith("event:")) return line;
+            return null;
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
     }
 
     private AgentRun onlyRun() {
