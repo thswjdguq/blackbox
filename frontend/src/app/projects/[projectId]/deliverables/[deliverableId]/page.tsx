@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import TaskModal from "@/components/kanban/TaskModal";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
+import ReviewPanel from "@/components/deliverable/ReviewPanel";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
 import {
@@ -52,7 +53,7 @@ type Tab = "overview" | "review" | "submit";
 
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "overview", label: "요구사항·업무", implemented: true },
-  { id: "review", label: "검토", implemented: false },
+  { id: "review", label: "검토", implemented: true },
   { id: "submit", label: "최종 제출", implemented: false },
 ];
 
@@ -671,6 +672,17 @@ export default function DeliverableDetailPage() {
                   )}
                 </section>
               </div>
+            )}
+
+            {activeTab === "review" && (
+              <ReviewPanel
+                projectId={projectId}
+                deliverableId={deliverableId}
+                canWrite={canWrite}
+                myUserId={myUserId}
+                tasks={tasks}
+                onTasksChanged={refresh}
+              />
             )}
           </>
         )}
