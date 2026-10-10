@@ -23,12 +23,14 @@ public final class DeliverableDtos {
     public record Assessor(UUID userId, String name) {}
     public record Response(UUID id, UUID projectId, String title, String description,
             LocalDate dueDate, String submissionMethod, UUID ownerId, String ownerName,
-            List<RequirementResponse> requirements) {
-        public static Response from(Deliverable d, List<DeliverableRequirement> requirements) {
+            List<RequirementResponse> requirements,
+            // K-20 2장. latestDecision은 최신 회차의 결정이고 회차가 없거나 결정 전이면 null
+            String status, String latestDecision) {
+        public static Response from(Deliverable d, List<DeliverableRequirement> requirements, String status, String latestDecision) {
             return new Response(d.getId(), d.getProject().getId(), d.getTitle(), d.getDescription(),
                     d.getDueDate(), d.getSubmissionMethod(), d.getOwner() == null ? null : d.getOwner().getId(),
                     d.getOwner() == null ? null : d.getOwner().getName(),
-                    requirements.stream().map(RequirementResponse::from).toList());
+                    requirements.stream().map(RequirementResponse::from).toList(), status, latestDecision);
         }
     }
 }
