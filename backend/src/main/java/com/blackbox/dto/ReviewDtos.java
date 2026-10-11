@@ -14,14 +14,17 @@ public final class ReviewDtos {
     public record Person(UUID userId, String name) {
         static Person of(User u) { return new Person(u.getId(), u.getName()); }
     }
-    public record FileSummary(UUID fileId, String fileName, int version, String shortHash, UUID uploaderId, String uploaderName) {}
+    public record FileSummary(UUID fileId, String fileName, int version, String shortHash, UUID uploaderId, String uploaderName) {
+        static FileSummary of(FileVault f) {
+            return new FileSummary(f.getId(), f.getFileName(), f.getVersion(),
+                    f.getFileHash().substring(0, 7), f.getUploader().getId(), f.getUploader().getName());
+        }
+    }
     public record Decision(String result, Person decidedBy, OffsetDateTime decidedAt) {}
     public record Round(UUID id, int roundNo, boolean latest, FileSummary file, Person openedBy,
             OffsetDateTime openedAt, Decision decision, boolean currentBasis) {
         public static Round from(ReviewRound r, boolean latest, boolean currentBasis) {
-            FileVault f = r.getFile();
-            FileSummary file = f == null ? null : new FileSummary(f.getId(), f.getFileName(), f.getVersion(),
-                    f.getFileHash().substring(0, 7), f.getUploader().getId(), f.getUploader().getName());
+            FileSummary file = r.getFile() == null ? null : FileSummary.of(r.getFile());
             Decision decision = r.getDecision() == null ? null
                     : new Decision(r.getDecision(), Person.of(r.getDecidedBy()), r.getDecidedAt());
             return new Round(r.getId(), r.getRoundNo(), latest, file, Person.of(r.getOpenedBy()), r.getOpenedAt(), decision, currentBasis);
