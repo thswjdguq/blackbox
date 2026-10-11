@@ -7,6 +7,7 @@ import { apiError } from "@/lib/apiError";
 import {
   addComment,
   createTaskFromComment,
+  isReviewApiMissing,
   decideReviewRound,
   reopenComment,
   resolveComment,
@@ -94,7 +95,8 @@ export default function ReviewRoundCard({
       onChanged();
       return true;
     } catch (err) {
-      setError(apiError(err, "요청을 처리하지 못했습니다. 다시 시도해주세요."));
+      // 아직 서버에 없는 경로(예: B-21 전의 업무로 만들기)는 Spring 의 영어 404 문장 대신 준비 중으로 알린다
+      setError(isReviewApiMissing(err) ? "이 기능은 서버 준비 중입니다." : apiError(err, "요청을 처리하지 못했습니다. 다시 시도해주세요."));
       return false;
     } finally {
       setBusy(null);
