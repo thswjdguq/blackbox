@@ -38,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** 상태 조회와 실행을 실제 서버, 실제 DB, 가짜 모델로 본다(K-30 2장·3장·4장·6장). */
@@ -202,6 +204,86 @@ class AgentHttpTest {
         assertEquals(List.of("step", "text", "done"), events(first.get(10, TimeUnit.SECONDS).body()).stream().map(Event::name).toList());
         assertEquals(200, second.get(10, TimeUnit.SECONDS).statusCode());
         assertEquals(200, post("/runs", member, ASK).statusCode(), "끝난 뒤에는 다시 실행할 수 있다");
+    }
+
+    /** 같은 사람이 처음부터 동시에 여러 번 보내도 실행은 하나만 시작되고 나머지는 409다(K-30 6장). */
+    @Test void simultaneousFirstRunsOfOnePersonStartOnlyOne() throws Exception {
+        entered = new CountDownLatch(1); release = new CountDownLatch(1);
+        List<CompletableFuture<HttpResponse<String>>> all = new ArrayList<>();
+        for (int i = 0; i < 6; i++) all.add(http.sendAsync(request("POST", path("/runs"), member, ASK), HttpResponse.BodyHandlers.ofString()));
+        assertTrue(entered.await(10, TimeUnit.SECONDS), "하나는 모델을 기다리는 중이다");
+
+        // 시작된 실행은 스트림이 열린 채 남고, 나머지 다섯은 바로 거절된다
+        List<CompletableFuture<HttpResponse<String>>> refused = awaitDone(all, 5);
+        for (CompletableFuture<HttpResponse<String>> one : refused) assertEquals(409, one.get().statusCode(), one.get().body());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM agent_runs WHERE requested_by = ?", Integer.class, member.getId()));
+
+        release.countDown();
+        for (CompletableFuture<HttpResponse<String>> one : all) if (!refused.contains(one)) assertEquals(200, one.get(10, TimeUnit.SECONDS).statusCode());
+        verify(model, times(1)).generate(any(), any(), any());
+    }
+
+    /** 시간당 상한의 마지막 한 자리에 여러 사람이 동시에 들어오면 한 사람만 시작하고 나머지는 429다. */
+    @Test void simultaneousRunsAtTheHourlyLimitStartOnlyOne() throws Exception {
+        jdbc.update("INSERT INTO agent_runs (project_id, requested_by, skill, status, started_at, finished_at) "
+                + "SELECT ?, ?, 'ASK', 'DONE', now() - interval '1 minute', now() FROM generate_series(1, ?)",
+                project.getId(), outsider.getId(), properties.getRunsPerHour() - 1);
+        entered = new CountDownLatch(1); release = new CountDownLatch(1);
+        List<CompletableFuture<HttpResponse<String>>> all = new ArrayList<>();
+        for (User who : List.of(leader, member, observer)) all.add(http.sendAsync(request("POST", path("/runs"), who, ASK), HttpResponse.BodyHandlers.ofString()));
+        assertTrue(entered.await(10, TimeUnit.SECONDS), "하나는 모델을 기다리는 중이다");
+
+        List<CompletableFuture<HttpResponse<String>>> refused = awaitDone(all, 2);
+        for (CompletableFuture<HttpResponse<String>> one : refused) {
+            assertEquals(429, one.get().statusCode(), one.get().body());
+            assertEquals("잠시 뒤 다시 시도해주세요", json.readTree(one.get().body()).path("detail").asText());
+        }
+        assertEquals(properties.getRunsPerHour(), jdbc.queryForObject("SELECT count(*) FROM agent_runs WHERE project_id = ?", Integer.class, project.getId()),
+                "상한을 넘겨 기록된 실행이 없다");
+        release.countDown();
+        for (CompletableFuture<HttpResponse<String>> one : all) if (!refused.contains(one)) assertEquals(200, one.get(10, TimeUnit.SECONDS).statusCode());
+    }
+
+    /**
+     * 시작할 수 있는지 확인하는 것과 실행 기록을 만드는 것이 한 묶음인지 본다. 겹치는 순간에 기대지 않는다.
+     * 테스트가 프로젝트 줄을 잠근 동안 들어온 요청은 확인을 하기 전에 멈춰야 하고, 그 사이에 생긴 실행을 보고 거절돼야 한다.
+     * 확인을 잠금보다 먼저 하면 그 실행을 보지 못하고 시작해 버린다.
+     */
+    @Test void aRunStartChecksOnlyAfterItHoldsTheProjectRow() throws Exception {
+        CompletableFuture<HttpResponse<String>> waiting = data.inTransaction(() -> {
+            jdbc.queryForList("SELECT id FROM projects WHERE id = ? FOR UPDATE", project.getId());
+            CompletableFuture<HttpResponse<String>> sent = http.sendAsync(request("POST", path("/runs"), member, ASK), HttpResponse.BodyHandlers.ofString());
+            awaitALockWaiter(sent);
+            jdbc.update("INSERT INTO agent_runs (project_id, requested_by, skill, status, started_at) VALUES (?, ?, 'ASK', 'RUNNING', now())",
+                    project.getId(), member.getId());
+            return sent;
+        });
+        HttpResponse<String> response = waiting.get(10, TimeUnit.SECONDS);
+        assertEquals(409, response.statusCode(), response.body());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM agent_runs WHERE requested_by = ?", Integer.class, member.getId()));
+    }
+
+    /** 요청이 DB 잠금에서 멈출 때까지 기다린다. 그 전에 끝나 버리면 잠금을 기다리지 않은 것이다. */
+    private void awaitALockWaiter(CompletableFuture<?> request) {
+        for (long deadline = System.currentTimeMillis() + 10_000; System.currentTimeMillis() < deadline; ) {
+            assertFalse(request.isDone(), "실행 시작이 프로젝트 줄의 잠금을 기다리지 않고 끝났다");
+            // 세션 목록은 트랜잭션 안에서 처음 읽은 것이 그대로 남는다. 읽을 때마다 비워야 지금 것을 본다
+            jdbc.execute("SELECT pg_stat_clear_snapshot()");
+            Integer waiters = jdbc.queryForObject("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"
+                    + " AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()", Integer.class);
+            if (waiters != null && waiters > 0) return;
+            try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+        }
+        fail("실행 시작이 10초 안에 잠금에서 멈추지 않았다");
+    }
+
+    /** 요청들 가운데 count개가 끝날 때까지 기다렸다가 끝난 것들을 돌려준다. */
+    private <T> List<CompletableFuture<T>> awaitDone(List<CompletableFuture<T>> all, int count) throws InterruptedException {
+        for (long deadline = System.currentTimeMillis() + 10_000; System.currentTimeMillis() < deadline; Thread.sleep(50)) {
+            List<CompletableFuture<T>> done = all.stream().filter(CompletableFuture::isDone).toList();
+            if (done.size() >= count) return done;
+        }
+        return fail(count + "개가 끝나기를 기다렸는데 " + all.stream().filter(CompletableFuture::isDone).count() + "개만 끝났다");
     }
 
     @Test void noCardIsSavedForAnObserverOrFromAMalformedAnswer() throws Exception {
