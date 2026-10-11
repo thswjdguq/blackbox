@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import api from "@/lib/api";
+import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import { getDeliverables, createDeliverable, deleteDeliverable } from "@/lib/api/deliverable";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
@@ -198,7 +199,8 @@ export default function DeliverablesPage() {
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-bb-text2">
                         <span className="flex items-center gap-1">
                           <CalendarDays size={12} />
-                          제출일 {d.dueDate}
+                          제출일 {shortDate(d.dueDate)}
+                          <span className={`font-medium ${DUE_TEXT[dueTone(d.dueDate)]}`}>· {dueLabel(d.dueDate)}</span>
                         </span>
                         <span className="flex items-center gap-1">
                           <User size={12} />
