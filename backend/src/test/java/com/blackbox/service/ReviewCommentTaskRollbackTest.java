@@ -4,6 +4,9 @@ import com.blackbox.dto.ReviewCommentTaskDtos.Request;
 import com.blackbox.entity.*;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import com.blackbox.scheduler.ScoreScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
@@ -23,6 +26,25 @@ class ReviewCommentTaskRollbackTest {
     @Autowired PlatformTransactionManager transactions;
     @Autowired ReviewCommentTaskService service;
     @SpyBean ActivityLogService activity;
+    @MockBean ScoreScheduler scheduler;
+    private UUID projectId, userId;
+
+    @AfterEach void removeFixture() {
+        if (projectId == null) return;
+        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+            // 롤백 검사가 실패해 업무가 남아도 이 테스트의 UUID 범위 안에서만 정리한다.
+            em.createNativeQuery("delete from task_assignees where task_id in (select id from tasks where project_id=:p)")
+                    .setParameter("p", projectId).executeUpdate();
+            for (String table : java.util.List.of("review_comments", "activity_logs", "tasks", "review_rounds",
+                    "deliverables", "project_members")) {
+                em.createNativeQuery("delete from " + table + " where project_id=:p").setParameter("p", projectId).executeUpdate();
+            }
+            em.createNativeQuery("delete from projects where id=:p").setParameter("p", projectId).executeUpdate();
+            em.createNativeQuery("delete from users where id=:u").setParameter("u", userId).executeUpdate();
+            assertEquals(0L, ((Number) em.createNativeQuery("select count(*) from projects where id=:p")
+                    .setParameter("p", projectId).getSingleResult()).longValue());
+        });
+    }
 
     @Test void failedLinkAuditRollsBackTaskLinkAndEarlierActivity() {
         var tx=new TransactionTemplate(transactions);
@@ -36,6 +58,7 @@ class ReviewCommentTaskRollbackTest {
             ReviewComment c=new ReviewComment();c.setProject(p);c.setDeliverable(d);c.setReview(r);c.setAuthor(u);c.setContent("롤백 피드백");em.persist(c);
             return new Seed(p,d,r,c,u);
         });
+        projectId=seed.p().getId(); userId=seed.u().getId();
         doThrow(new IllegalStateException("검사용 감사 기록 실패")).when(activity)
                 .record(any(),any(),eq("FEEDBACK_TASK_LINK"),anyString());
         assertThrows(IllegalStateException.class,()->service.convert(seed.p().getId(),seed.d().getId(),seed.r().getId(),seed.c().getId(),new Request("업무 생성",null),seed.u()));
