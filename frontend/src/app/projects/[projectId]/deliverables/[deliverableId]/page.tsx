@@ -8,6 +8,7 @@ import TaskModal from "@/components/kanban/TaskModal";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import api from "@/lib/api";
+import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import {
   getDeliverable,
@@ -398,7 +399,10 @@ export default function DeliverableDetailPage() {
               <dl className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
                 <div>
                   <dt className="text-xs text-bb-text2">제출 기한</dt>
-                  <dd className="mt-0.5 text-bb-text">{deliverable.dueDate}</dd>
+                  <dd className="mt-0.5 text-bb-text">
+                    {deliverable.dueDate}{" "}
+                    <span className={`text-xs font-medium ${DUE_TEXT[dueTone(deliverable.dueDate)]}`}>{dueLabel(deliverable.dueDate)}</span>
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-bb-text2">제출 담당자</dt>
@@ -631,7 +635,7 @@ export default function DeliverableDetailPage() {
                           </Link>
                           <p className="mt-1 text-xs text-bb-text2">
                             {TASK_STATUS_LABEL[t.status]} · {t.assignees.map((a) => a.name).join(", ") || "담당자 미지정"} ·{" "}
-                            {t.dueDate || "마감 미설정"}
+                            {t.dueDate ? `${shortDate(t.dueDate)}${t.status === "DONE" ? "" : ` (${dueLabel(t.dueDate)})`}` : "마감 미설정"}
                             {t.requirementContent && ` · 요구사항: ${t.requirementContent}`}
                           </p>
                           <p className="mt-1 text-xs text-bb-text2 whitespace-pre-wrap break-words">
