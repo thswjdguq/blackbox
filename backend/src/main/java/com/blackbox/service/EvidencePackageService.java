@@ -72,7 +72,7 @@ public class EvidencePackageService {
                 addEntry(zos, entryName, buildMeetingText(m));
             }
 
-            // 3. Hash Vault 이력 CSV
+            // 3. 파일 금고 이력 CSV
             addEntry(zos, "evidence-package/vault-history.csv", buildVaultCsv(vaults));
 
             // 4. 기여도 무결성 PDF
@@ -110,7 +110,7 @@ public class EvidencePackageService {
         sb.append("\n");
         sb.append("━━━━━━━ 패키지 구성 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
         sb.append("  meetings/           - 회의록 ").append(meetingCount).append("건 (텍스트 파일)\n");
-        sb.append("  vault-history.csv   - Hash Vault 파일 이력 ").append(vaultCount).append("건\n");
+        sb.append("  vault-history.csv   - 업로드 파일 이력 ").append(vaultCount).append("건\n");
         sb.append("  contribution-report.pdf - SHA-256 무결성 기여도 리포트\n");
         sb.append("\n");
         sb.append("━━━━━━━ 무결성 안내 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
