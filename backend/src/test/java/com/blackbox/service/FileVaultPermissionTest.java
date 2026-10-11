@@ -16,7 +16,7 @@ class FileVaultPermissionTest {
     final FileVaultRepository vaults = mock(FileVaultRepository.class);
     final FileStorageService storage = mock(FileStorageService.class);
     final FileVaultService service = new FileVaultService(vaults, mock(TamperDetectionLogRepository.class),
-            mock(AlertRepository.class), mock(HashService.class), storage, new ProjectAccessChecker(projects, members),
+            mock(HashService.class), storage, new ProjectAccessChecker(projects, members),
             mock(ActivityLogService.class), mock(AlertService.class), mock(NotionService.class));
     final Project project = new Project();
     final User observer = new User();
