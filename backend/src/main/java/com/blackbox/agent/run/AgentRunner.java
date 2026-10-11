@@ -89,8 +89,9 @@ public class AgentRunner {
             throw new AgentModelException(AgentModelException.Reason.UNAVAILABLE, UNAVAILABLE, null);
         }
 
+        // 아래 두 확인과 실행 기록을 한 묶음으로 만든다. 동시에 들어온 요청도 하나씩 차례로 확인한다(K-30 6장의 409·429)
+        runs.lockProject(projectId);
         OffsetDateTime now = OffsetDateTime.now();
-        // ponytail: 확인과 기록 사이에 잠금이 없어 동시에 들어온 두 요청은 둘 다 지나간다. 문제가 되면 실행 중인 줄에 부분 유일 인덱스를 건다
         if (runs.hasRunning(project, user, now.minus(properties.getRunTimeLimit()))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "앞의 요청이 끝난 뒤 다시 시도해주세요");
         }
