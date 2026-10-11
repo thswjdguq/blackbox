@@ -19,7 +19,7 @@ class DeliverableServiceTest {
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
     final ProjectRepository projects = mock(ProjectRepository.class);
     final ProjectAccessChecker access = new ProjectAccessChecker(projects, members);
-    final DeliverableService service = new DeliverableService(deliveries, requirements, tasks, members, access);
+    final DeliverableService service = new DeliverableService(deliveries, requirements, tasks, mock(ReviewRoundRepository.class), members, access);
     final Project project = new Project();
     final User user = new User();
     final Deliverable delivery = new Deliverable();
