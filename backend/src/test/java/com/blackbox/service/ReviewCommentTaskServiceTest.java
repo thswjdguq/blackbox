@@ -65,7 +65,7 @@ class ReviewCommentTaskServiceTest {
         verifyNoInteractions(taskService,activity);
     }
     @Test void titleAndCriteriaValidation() {
-        for(String title:Arrays.asList(null,"  ","x".repeat(256))) assertThrows(ResponseStatusException.class,()->service.convert(p.getId(),d,r,c.getId(),new Request(title,null),user));
+        for(String title:Arrays.asList(null,"  ","\u3000", "\u2003\t\u3000", "x".repeat(256))) assertEquals(400, assertThrows(ResponseStatusException.class,()->service.convert(p.getId(),d,r,c.getId(),new Request(title,null),user)).getStatusCode().value());
         assertThrows(ResponseStatusException.class,()->service.convert(p.getId(),d,r,c.getId(),new Request("업무","x".repeat(2001)),user));
         verifyNoInteractions(taskService,activity);
     }

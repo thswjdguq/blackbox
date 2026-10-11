@@ -66,7 +66,7 @@ class ReviewCommentServiceTest {
         verify(activity).record(eq(p),eq(user),eq("FEEDBACK_CREATE"),anyString());
     }
     @Test void invalidContentRejected() {
-        for(String text : Arrays.asList(null,"  ","x".repeat(2001))) {
+        for(String text : Arrays.asList(null,"  ","\u3000", "\u2003\t\u3000", "x".repeat(2001))) {
             assertEquals(400, assertThrows(ResponseStatusException.class, () -> service.create(p.getId(),d.getId(),r.getId(),new CreateRequest(text),user)).getStatusCode().value());
         }
         verify(comments, never()).save(any());
@@ -107,7 +107,7 @@ class ReviewCommentServiceTest {
     }
     @Test void reasonLimitAndEmptyReason() {
         assertThrows(ResponseStatusException.class,()->resolve("x".repeat(1001)));
-        assertNull(resolve("  ").resolution().reason());
+        assertNull(resolve("\u3000  ").resolution().reason());
     }
     @Test void counterChecksDeliverableScopeAndAllRounds() {
         var counter=new ReviewCommentCounter(comments,deliverables,access);

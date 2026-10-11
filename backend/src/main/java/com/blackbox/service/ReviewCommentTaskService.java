@@ -42,7 +42,7 @@ public class ReviewCommentTaskService {
         return new Response(c.getId(),task.id(),true);
     }
     private static String text(String value,int max,boolean required) {
-        String normalized=value==null?"":value.trim();
+        String normalized=value==null?"":value.strip();
         if((required&&normalized.isEmpty())||normalized.length()>max)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"입력 내용의 길이가 올바르지 않습니다");
         return normalized.isEmpty()?null:normalized;
