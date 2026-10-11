@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, ChevronsUpDown, FolderKanban } from "lucide-react";
 import api from "@/lib/api";
-import { onSessionReset } from "@/lib/sessionCache";
+import { onSessionReset, sessionGeneration } from "@/lib/sessionCache";
 
 interface ProjectItem {
   id: string;
@@ -41,8 +41,14 @@ export default function ProjectSwitcher({ currentProjectId, pathname, onNavigate
 
   useEffect(() => {
     let alive = true;
+    const gen = sessionGeneration();
     api.get<ProjectItem[]>("/projects")
-      .then(({ data }) => { cache = data; if (alive) { setProjects(data); setFailed(false); } })
+      .then(({ data }) => {
+        // 그 사이 로그아웃했으면 앞 계정의 응답이다. 캐시에도 화면에도 넣지 않는다
+        if (gen !== sessionGeneration()) return;
+        cache = data;
+        if (alive) { setProjects(data); setFailed(false); }
+      })
       .catch(() => { if (alive) setFailed(true); });
     return () => { alive = false; };
   }, [currentProjectId]);

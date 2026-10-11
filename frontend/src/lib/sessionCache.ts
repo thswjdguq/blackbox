@@ -7,10 +7,21 @@
  */
 const resets = new Set<() => void>();
 
+/**
+ * 세션 세대. 비울 때마다 올라간다. 요청을 시작할 때 값을 잡아 두고, 응답이 왔을 때 값이 바뀌었으면
+ * (그 사이 로그아웃했으면) 그 응답을 캐시에 넣지 않는다. 앞 계정의 늦은 응답이 비운 캐시를 다시 채우던 문제(#82 리뷰).
+ */
+let generation = 0;
+
+export function sessionGeneration(): number {
+  return generation;
+}
+
 export function onSessionReset(reset: () => void): void {
   resets.add(reset);
 }
 
 export function resetSessionCaches(): void {
+  generation++;
   resets.forEach((reset) => reset());
 }

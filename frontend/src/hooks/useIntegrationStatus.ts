@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { onSessionReset } from "@/lib/sessionCache";
+import { onSessionReset, sessionGeneration } from "@/lib/sessionCache";
 
 export interface IntegrationStatus {
   discordConnected:  boolean | null;
@@ -43,6 +43,7 @@ export function useIntegrationStatus(projectId: string | null): IntegrationStatu
     setLoading(cached === null);
 
     let cancelled = false;
+    const gen = sessionGeneration();
     (async () => {
       try {
         const [discordRes, notionRes, calendarRes] = await Promise.all([
@@ -53,7 +54,8 @@ export function useIntegrationStatus(projectId: string | null): IntegrationStatu
           api.get<{ connected: boolean }>(`/projects/${projectId}/calendar/status`)
             .catch(() => ({ data: { connected: false } })),
         ]);
-        if (cancelled) return;
+        // 화면이 사라졌거나 그 사이 로그아웃했으면 넣지 않는다
+        if (cancelled || gen !== sessionGeneration()) return;
         const next: ConnStatus = {
           discordConnected:  !!discordRes.data.webhookUrl,
           notionConnected:   notionRes.data.connected,
