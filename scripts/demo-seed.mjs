@@ -15,7 +15,7 @@
 //   node scripts/demo-seed.mjs --base https://localhost:18443 --password '바꿀-비밀번호'
 //   node scripts/demo-seed.mjs --again                 # 이미 있어도 하나씩 더 만든다
 //
-// 알아 둘 것
+// 알아 둘 것 (그 PC의 설정처럼 이 스크립트가 확인하지 못하는 것은 docs/demo-setup.md 에 있다)
 //   - 실제 팀의 프로젝트에는 손대지 않는다. 새 프로젝트를 만들 뿐이다
 //   - 서버의 .env 에 NOTION_API_KEY 와 NOTION_PARENT_PAGE_ID 가 있으면 파일을 올릴 때마다 그 Notion 페이지 아래에
 //     "업로드 파일 이력" 쪽이 생긴다. 이 스크립트는 프로젝트마다 파일을 둘 올린다
