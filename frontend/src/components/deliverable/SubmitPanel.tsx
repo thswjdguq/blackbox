@@ -22,9 +22,11 @@ const STATUS_TEXT: Record<ConfirmationInfo["status"], string> = {
 /** 확정 뒤 막히는 것 (K-20 4장). 확정 창에서 그대로 보여 준다 */
 const LOCKED_AFTER_CONFIRM = [
   "제출물 정보 수정·삭제",
-  "요구사항 추가·수정·삭제와 충족 확인",
-  "검토 회차 열기·결정, 피드백 작성·해결",
-  "연결된 업무의 수정·상태 변경·담당자 변경·삭제·이동",
+  "요구사항 추가·수정·삭제와 충족 확인·해제",
+  "검토 회차 열기·결정",
+  "피드백 작성·해결·다시 열기, 피드백을 업무로 만들기",
+  "연결된 업무의 수정·상태 변경·담당자 변경·삭제, 다른 제출물로 이동·연결 해제",
+  "이 제출물에 새 업무를 만들거나 기존 업무를 연결하는 것",
 ];
 
 function fmt(iso: string): string {
@@ -50,6 +52,7 @@ export default function SubmitPanel({
   requiredCount,
   submissionMethod,
   openTaskCount,
+  onRetryOpenTasks,
   onGoTab,
   onChanged,
 }: {
@@ -61,6 +64,8 @@ export default function SubmitPanel({
   submissionMethod: string | null;
   /** 끝나지 않은 연결 업무 수(K-13). 못 불러오면 null */
   openTaskCount: number | null;
+  /** 연결 업무 수(K-13)를 다시 불러온다 */
+  onRetryOpenTasks?: () => void;
   onGoTab: (tab: "overview" | "review") => void;
   /** 확정·기록 뒤 제출물 화면의 잠금을 다시 반영한다 */
   onChanged: () => void;
@@ -335,6 +340,7 @@ export default function SubmitPanel({
         <ConfirmDialog
           info={info}
           openTaskCount={openTaskCount}
+          onRetryOpenTasks={onRetryOpenTasks}
           busy={busy}
           onCancel={() => setShowConfirm(false)}
           onConfirm={handleConfirm}
@@ -374,9 +380,10 @@ function CheckRow({ check, requiredCount, onGoTab }: {
   );
 }
 
-function ConfirmDialog({ info, openTaskCount, busy, onCancel, onConfirm }: {
+function ConfirmDialog({ info, openTaskCount, onRetryOpenTasks, busy, onCancel, onConfirm }: {
   info: ConfirmationInfo;
   openTaskCount: number | null;
+  onRetryOpenTasks?: () => void;
   busy: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -387,6 +394,12 @@ function ConfirmDialog({ info, openTaskCount, busy, onCancel, onConfirm }: {
     ref.current?.focus();
     return () => { before?.focus?.(); };
   }, []);
+  // 누른 버튼이 사라져 초점이 창 밖으로 나가도 Escape로 닫히게 (창 안에서는 창이 먼저 처리)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
   const c = info.candidate!;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -409,6 +422,15 @@ function ConfirmDialog({ info, openTaskCount, busy, onCancel, onConfirm }: {
           {LOCKED_AFTER_CONFIRM.map((t) => <li key={t}>{t}</li>)}
         </ul>
         <p className="mt-2 text-xs text-bb-text2">파일 금고에 새 버전은 계속 올릴 수 있지만 확정본은 바뀌지 않습니다.</p>
+        {/* 못 불러왔을 때 경고가 사라지면 0건으로 읽힌다. 모른다고 알린다 */}
+        {openTaskCount == null && (
+          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400" data-testid="open-task-unknown">
+            연결 업무 수를 확인하지 못했습니다. 끝나지 않은 업무는 확정 뒤 바꿀 수 없으니 요구사항·업무 탭에서 확인해 주세요.
+            {onRetryOpenTasks && (
+              <button onClick={onRetryOpenTasks} className="ml-1.5 underline hover:text-amber-300">다시 확인</button>
+            )}
+          </p>
+        )}
         {openTaskCount != null && openTaskCount > 0 && (
           <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400" data-testid="open-task-warning">
             끝나지 않은 연결 업무 {openTaskCount}건은 확정 뒤 바꿀 수 없습니다.

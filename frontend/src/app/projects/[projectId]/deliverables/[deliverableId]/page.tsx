@@ -688,6 +688,7 @@ export default function DeliverableDetailPage() {
                 requiredCount={deliverable.requirements.filter((r) => r.required).length}
                 submissionMethod={deliverable.submissionMethod}
                 openTaskCount={progress ? progress.tasks.total - progress.tasks.completed : null}
+                onRetryOpenTasks={fetchProgress}
                 onGoTab={setActiveTab}
                 onChanged={refresh}
               />
