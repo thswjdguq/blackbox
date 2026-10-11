@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, ChevronsUpDown, FolderKanban } from "lucide-react";
 import api from "@/lib/api";
+import { onSessionReset, sessionGeneration } from "@/lib/sessionCache";
 
 interface ProjectItem {
   id: string;
@@ -16,6 +17,7 @@ interface ProjectItem {
  * 바로 보여 주고 뒤에서 다시 불러온다 (useIntegrationStatus와 같은 방식).
  */
 let cache: ProjectItem[] | null = null;
+onSessionReset(() => { cache = null; });
 
 /** 다른 프로젝트로 옮길 때 같은 메뉴로 간다. 상세 화면(제출물·회의록 하나)은 목록으로 */
 function targetPath(pathname: string, projectId: string): string {
@@ -39,8 +41,14 @@ export default function ProjectSwitcher({ currentProjectId, pathname, onNavigate
 
   useEffect(() => {
     let alive = true;
+    const gen = sessionGeneration();
     api.get<ProjectItem[]>("/projects")
-      .then(({ data }) => { cache = data; if (alive) { setProjects(data); setFailed(false); } })
+      .then(({ data }) => {
+        // 그 사이 로그아웃했으면 앞 계정의 응답이다. 캐시에도 화면에도 넣지 않는다
+        if (gen !== sessionGeneration()) return;
+        cache = data;
+        if (alive) { setProjects(data); setFailed(false); }
+      })
       .catch(() => { if (alive) setFailed(true); });
     return () => { alive = false; };
   }, [currentProjectId]);
