@@ -79,7 +79,9 @@ app:
     zone: Asia/Seoul        # "오늘"과 "늦음"을 판단하는 시간대
     tool-list-limit: 100    # 도구가 한 번에 돌려주는 목록의 건수. 넘으면 잘렸다고 알린다
     proposal-list-limit: 50 # 제안 카드 목록이 돌려주는 건수. 최신이 먼저다
-    run-time-limit: 120s    # 실행 하나의 시간 상한. 넘긴 실행은 끝난 것으로 본다
+    # 실행 하나의 시간 상한. 넘긴 실행은 끝난 것으로 본다.
+    # 이벤트 사이가 이만큼 조용할 수 있으므로 nginx의 proxy_read_timeout(nginx/*.conf)이 이보다 길어야 한다
+    run-time-limit: 120s
     model-request-timeout: 60s   # 모델에 보내는 요청 하나의 시간 제한. 없으면 응답이 없는 요청이 스레드를 끝없이 잡는다
     model-request-attempts: 2    # 요청 하나를 몇 번까지 보내는가(처음 포함). 일시적인 실패(503 등)만 다시 보낸다
     max-tool-calls: 12      # 실행 하나에서 모델이 도구를 부를 수 있는 횟수. 넘으면 조회한 것으로 답하게 한다
