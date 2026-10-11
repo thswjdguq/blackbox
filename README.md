@@ -132,7 +132,7 @@ flowchart LR
 
 | 영역 | 스택 |
 |---|---|
-| **백엔드** | Spring Boot 3.3.5 · Java 17 · Spring Web / Data JPA / Security / Validation · WebFlux(WebClient) · jjwt 0.12.6 · OpenPDF 1.3.30 |
+| **백엔드** | Spring Boot 3.5.16 · Java 17 · Spring Web / Data JPA / Security / Validation · WebFlux(WebClient) · jjwt 0.12.6 · OpenPDF 1.3.30 |
 | **프론트엔드** | Next.js 16 · React 18 · TypeScript 5 · Tailwind CSS 3 · Zustand 5 · axios · @dnd-kit(칸반) · Recharts · date-fns |
 | **데이터베이스** | PostgreSQL 16 · Flyway 마이그레이션(V1~V18) |
 | **인프라** | Docker Compose · Nginx 리버스 프록시(HTTP→HTTPS, SSL) |

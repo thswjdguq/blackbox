@@ -34,7 +34,7 @@ interface TaskModalProps {
 // ── 우선순위 선택지 ───────────────────────────────────────────────────
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: "LOW",    label: "낮음" },
-  { value: "MEDIUM", label: "중간" },
+  { value: "MEDIUM", label: "보통" },
   { value: "HIGH",   label: "높음" },
   { value: "URGENT", label: "긴급" },
 ];

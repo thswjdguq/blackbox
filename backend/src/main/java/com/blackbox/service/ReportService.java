@@ -275,10 +275,10 @@ public class ReportService {
         doc.add(spacer(12));
     }
 
-    // ── Hash Vault 섹션 ───────────────────────────────────────────────────────
+    // ── 파일 금고 섹션 ───────────────────────────────────────────────────────
 
     private void addVaultSection(Document doc, List<FileVault> vaults) throws DocumentException {
-        doc.add(sectionTitle("Hash Vault — 파일 무결성 증거"));
+        doc.add(sectionTitle("업로드 파일 이력"));
 
         if (vaults.isEmpty()) {
             doc.add(emptyNote("업로드된 파일이 없습니다."));

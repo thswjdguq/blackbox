@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, TaskStatus, ScoreMap } from "@/types/task";
+import { daysLeft, dueLabel, shortDate } from "@/lib/due";
 import {
   GripVertical,
   Calendar,
@@ -28,38 +29,33 @@ interface TaskCardProps {
 const PRIORITY_CONFIG = {
   URGENT: { icon: ChevronsUp,  label: "긴급", cls: "text-rose-400 bg-rose-400/10" },
   HIGH:   { icon: ChevronUp,   label: "높음", cls: "text-orange-400 bg-orange-400/10" },
-  MEDIUM: { icon: Minus,       label: "중간", cls: "text-indigo-400 bg-indigo-400/10" },
+  MEDIUM: { icon: Minus,       label: "보통", cls: "text-indigo-400 bg-indigo-400/10" },
   LOW:    { icon: ChevronDown, label: "낮음", cls: "text-bb-text2 bg-bb-surface2" },
 };
 
 function formatDue(dueDate: string | null): { label: string; cls: string } | null {
   if (!dueDate) return null;
-  const due = new Date(dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-  const label = due.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+  const diff = daysLeft(dueDate);
+  const label = shortDate(dueDate);
   if (diff < 0)  return { label, cls: "text-rose-400" };
   if (diff <= 2) return { label, cls: "text-orange-400" };
   return { label, cls: "text-bb-text2" };
 }
 
-// 마감일 경고 배지 + 카드 좌측 강조선 (오늘 날짜 기준 클라이언트 계산)
+// 마감일 경고 배지 + 카드 좌측 강조선. 문구는 모든 화면 공통(lib/due)
 function getDueWarning(dueDate: string | null, isDone: boolean): { label: string; badgeCls: string; barCls: string } | null {
   if (!dueDate || isDone) return null;
-  const due = new Date(dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+  const diff = daysLeft(dueDate);
+  const label = dueLabel(dueDate);
 
   if (diff < 0) {
-    return { label: `D+${Math.abs(diff)} 지연`, badgeCls: "text-red-400 bg-red-400/10 border border-red-400/20", barCls: "bg-red-500" };
+    return { label, badgeCls: "text-red-400 bg-red-400/10 border border-red-400/20", barCls: "bg-red-500" };
   }
   if (diff === 0) {
-    return { label: "오늘 마감", badgeCls: "text-orange-400 bg-orange-400/10 border border-orange-400/20", barCls: "bg-orange-500" };
+    return { label, badgeCls: "text-orange-400 bg-orange-400/10 border border-orange-400/20", barCls: "bg-orange-500" };
   }
   if (diff <= 3) {
-    return { label: `D-${diff}`, badgeCls: "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20", barCls: "bg-yellow-500" };
+    return { label, badgeCls: "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20", barCls: "bg-yellow-500" };
   }
   return null;
 }
