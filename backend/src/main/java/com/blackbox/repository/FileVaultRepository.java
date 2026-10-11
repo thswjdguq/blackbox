@@ -14,6 +14,7 @@ public interface FileVaultRepository extends JpaRepository<FileVault, UUID> {
     List<FileVault> findByProjectAndFileNameOrderByVersionDesc(Project project, String fileName);
     Optional<FileVault> findTopByProjectAndFileNameOrderByVersionDesc(Project project, String fileName);
     int countByProjectAndFileName(Project project, String fileName);
+    Optional<FileVault> findByIdAndProject(UUID id, Project project);
 
     /** 해당 프로젝트에서 유저가 업로드한 파일 수 */
     long countByProjectAndUploader(Project project, User uploader);

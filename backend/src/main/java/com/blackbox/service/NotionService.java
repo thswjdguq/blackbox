@@ -214,14 +214,14 @@ public class NotionService {
     }
 
     /**
-     * Hash Vault 파일 업로드 시 Notion 페이지 자동 생성.
+     * 파일 금고 업로드 시 Notion 페이지 자동 생성.
      */
     public String syncFileEntry(String projectName, String fileName, String fileHash,
                                 String uploaderName, int version, long fileSize,
                                 java.time.OffsetDateTime uploadedAt) {
         validateConfig();
 
-        String title = "📎 Hash Vault — " + fileName + " (v" + version + ")";
+        String title = "📎 업로드 파일 이력 — " + fileName + " (v" + version + ")";
 
         List<Map<String, Object>> children = new ArrayList<>();
         children.add(heading2("📁 파일 정보"));
@@ -236,7 +236,7 @@ public class NotionService {
         children.add(heading2("🔐 SHA-256 해시"));
         children.add(callout(fileHash, "🔒"));
         children.add(divider());
-        children.add(paragraph("📎 이 페이지는 Team Blackbox Hash Vault에서 자동 생성되었습니다."));
+        children.add(paragraph("📎 이 페이지는 Team Blackbox 파일 금고에서 자동 생성되었습니다."));
 
         String pageId = createPage(title, children);
         return toUrl(pageId);
