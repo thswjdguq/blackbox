@@ -29,7 +29,7 @@ interface TaskCardProps {
 const PRIORITY_CONFIG = {
   URGENT: { icon: ChevronsUp,  label: "긴급", cls: "text-rose-400 bg-rose-400/10" },
   HIGH:   { icon: ChevronUp,   label: "높음", cls: "text-orange-400 bg-orange-400/10" },
-  MEDIUM: { icon: Minus,       label: "중간", cls: "text-indigo-400 bg-indigo-400/10" },
+  MEDIUM: { icon: Minus,       label: "보통", cls: "text-indigo-400 bg-indigo-400/10" },
   LOW:    { icon: ChevronDown, label: "낮음", cls: "text-bb-text2 bg-bb-surface2" },
 };
 
