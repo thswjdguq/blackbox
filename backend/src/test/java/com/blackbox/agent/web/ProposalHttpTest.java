@@ -239,6 +239,35 @@ class ProposalHttpTest {
         assertEquals(1, count("tasks"));
     }
 
+    /**
+     * 카드 내용이 가리키는 제출물이 이 프로젝트의 것이 아니면 수정도 채택도 400이고 어느 칸인지 알려 준다(K-30 6장).
+     * 다른 프로젝트의 제출물과 없는 id를 구분하지 않고, 그 제출물의 제목을 드러내지 않으며, 카드와 업무는 그대로다.
+     */
+    @Test void aCardPointingAtADeliverableOutsideTheProjectIsRefusedWithoutLeakingIt() throws Exception {
+        Deliverable mine = data.deliverable(project, "중간 보고서", LocalDate.now().plusDays(7));
+        Deliverable theirs = data.deliverable(otherProject, "남의 비밀 보고서", LocalDate.now().plusDays(7));
+        String content = "{\"deliverableId\":\"" + mine.getId() + "\",\"tasks\":["
+                + "{\"title\":\"초안 쓰기\",\"completionCriteria\":null,\"dueDate\":null,\"requirementId\":null}]}";
+        AgentProposal card = data.card(project, member, "TASKS", "업무 초안", content);
+
+        for (String outside : List.of(theirs.getId().toString(), UUID.randomUUID().toString())) {
+            String pointing = content.replace(mine.getId().toString(), outside);
+            HttpResponse<String> edited = send("PUT", "/" + card.getId(), member, "{\"content\":" + pointing + "}");
+            assertEquals(400, edited.statusCode(), edited.body());
+            assertTrue(json.readTree(edited.body()).path("detail").asText().contains("deliverableId"), edited.body());
+            assertFalse(edited.body().contains("남의 비밀 보고서"), edited.body());
+            assertEquals(mine.getId().toString(), body(send("GET", "/" + card.getId(), member, null)).path("content").path("deliverableId").asText(), "카드는 그대로다");
+
+            // 그런 내용이 이미 들어 있는 카드를 채택하는 경우
+            AgentProposal planted = data.card(project, member, "TASKS", "밖을 가리키는 카드", pointing);
+            HttpResponse<String> accepted = post(planted, "/accept", member);
+            assertEquals(400, accepted.statusCode(), accepted.body());
+            assertFalse(accepted.body().contains("남의 비밀 보고서"), accepted.body());
+            assertEquals("PENDING", body(send("GET", "/" + planted.getId(), member, null)).path("status").asText());
+        }
+        assertEquals(0, count("tasks"), "아무 업무도 만들어지지 않았다");
+    }
+
     @Test void aDecisionIsFinal() throws Exception {
         AgentProposal rejected = data.card(project, member, "DELIVERABLE_PLAN", "거절할 카드", PLAN);
         assertEquals(403, post(rejected, "/reject", observer).statusCode());
