@@ -26,7 +26,7 @@
 | 팀원 박팀원(활동 없음) | `park@demo.example.com` | `park.r@demo.example.com` |
 | 관찰자 최교수 | `choi@demo.example.com` | `choi.r@demo.example.com` |
 
-비밀번호는 모두 `Demo-pass-2026`이다(`--password`로 바꾼다). 시연 중에 올릴 수정본은 홈 폴더의 `blackbox-demo/중간보고서_초안.pdf`에 생긴다.
+비밀번호는 모두 `Demo-pass-2026`이다(`--password`로 바꾼다). 이 주소와 비밀번호는 공개 저장소에 적혀 있고 `docker-compose.yml`은 80·443 포트를 그 PC 밖에서도 닿게 연다(방화벽이 막지 않으면). 같은 네트워크의 다른 사람이 닿을 수 있는 곳에서는 비밀번호를 바꿔 돌린다. 시연 중에 올릴 수정본은 홈 폴더의 `blackbox-demo/중간보고서_초안.pdf`에 생긴다.
 
 ## 3. 스크립트가 확인하지 못하는 것
 
