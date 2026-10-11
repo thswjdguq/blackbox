@@ -3,31 +3,41 @@ package com.blackbox.service;
 import com.blackbox.dto.UpdateTaskRequest;
 import com.blackbox.entity.*;
 import com.blackbox.scheduler.ScoreScheduler;
+import com.blackbox.security.JwtService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.http.MediaType;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.util.*;
 import java.util.concurrent.*;
 import static com.blackbox.repository.ReviewFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 /** 별도 트랜잭션 사이의 잠금을 실제 PostgreSQL에서 확인한다. HTTP 권한 검사는 별도 통합 테스트에 둔다. */
-@SpringBootTest(properties = "spring.datasource.hikari.minimum-idle=0") @ActiveProfiles("test")
+@SpringBootTest(properties = "spring.datasource.hikari.minimum-idle=0") @ActiveProfiles("test") @AutoConfigureMockMvc
 class TaskWriteConcurrencyTest {
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager manager;
     @Autowired TaskService service;
+    @Autowired MockMvc mvc;
+    @Autowired JwtService jwt;
     @MockBean ScoreScheduler scheduler;
     TransactionTemplate tx;
-    User actor;
+    User actor, uploader;
     Project project;
     Deliverable first, second;
     Task task, other;
@@ -37,18 +47,59 @@ class TaskWriteConcurrencyTest {
         tx = new TransactionTemplate(manager); pool = Executors.newFixedThreadPool(2);
         tx.executeWithoutResult(status -> {
             actor = user(em, "B22동시검사"); project = project(em, actor); member(em, project, actor, "LEADER");
+            uploader = user(em, "B22작성자"); member(em, project, uploader, "MEMBER");
             first = deliverable(em, project, "첫 제출물"); second = deliverable(em, project, "둘째 제출물");
             task = task(first); other = task(second);
         });
+    }
+
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void confirmationAndReopenRespectWhicheverObtainsTheLockFirst(boolean confirmFirst) throws Exception {
+        String[] paths = tx.execute(status -> {
+            var old = round(em, first, 1, uploader, "CHANGES_REQUESTED");
+            var approved = round(em, first, 2, file(em, project, uploader, "경쟁.pdf", 1, 'a'), actor, "APPROVED");
+            var comment = new ReviewComment(); comment.setProject(project); comment.setDeliverable(first);
+            comment.setReview(old); comment.setAuthor(actor); comment.setContent("반영 확인한 의견");
+            comment.setResolvedBy(actor); comment.setResolvedAt(java.time.OffsetDateTime.now()); em.persist(comment); em.flush();
+            String base = "/api/projects/" + project.getId() + "/deliverables/" + first.getId();
+            return new String[]{base + "/confirmation", "{\"reviewId\":\"" + approved.getId() + "\"}",
+                    base + "/reviews/" + old.getId() + "/comments/" + comment.getId() + "/resolution"};
+        });
+        List<Future<Integer>> waiting = new ArrayList<>();
+        tx.executeWithoutResult(status -> {
+            jdbc.queryForList("select id from deliverables where id=? for update", first.getId());
+            waiting.add(pool.submit(() -> confirmFirst ? call(delete(paths[2])) : call(put(paths[0]).content(paths[1]))));
+            awaitDeliverableWait(waiting.get(0));
+            assertEquals(200, confirmFirst ? call(put(paths[0]).content(paths[1])) : call(delete(paths[2])));
+        });
+        assertEquals(409, waiting.get(0).get(20, TimeUnit.SECONDS));
+        assertEquals(confirmFirst ? 1 : 0, jdbc.queryForObject("select count(*) from deliverable_confirmations where project_id=?", Integer.class, project.getId()));
+        assertEquals(confirmFirst ? 0 : 1, jdbc.queryForObject("select count(*) from review_comments where project_id=? and resolved_at is null", Integer.class, project.getId()));
+    }
+
+    private int call(MockHttpServletRequestBuilder request) {
+        try {
+            return mvc.perform(request.contentType(MediaType.APPLICATION_JSON)
+                    .header("Authorization", "Bearer " + jwt.generateAccessToken(actor.getEmail())))
+                    .andReturn().getResponse().getStatus();
+        } catch (Exception error) { throw new AssertionError(error); }
     }
     @AfterEach void cleanup() throws Exception {
         pool.shutdownNow(); assertTrue(pool.awaitTermination(20, TimeUnit.SECONDS));
         if (project == null) return;
         tx.executeWithoutResult(status -> {
+            jdbc.update("delete from deliverable_confirmations where project_id=?", project.getId());
+            jdbc.update("delete from review_comments where project_id=?", project.getId());
+            jdbc.update("delete from review_rounds where project_id=?", project.getId());
+            jdbc.update("delete from activity_logs where project_id=?", project.getId());
+            // 커밋된 검사 파일만 정리한다. 트리거 변경도 같은 트랜잭션이어서 실패 시 함께 되돌아간다.
+            jdbc.execute("alter table file_vault disable trigger vault_immutable");
+            jdbc.update("delete from file_vault where project_id=?", project.getId());
+            jdbc.execute("alter table file_vault enable trigger vault_immutable");
             for (String table : List.of("tasks", "deliverables", "project_members"))
                 jdbc.update("delete from " + table + " where project_id=?", project.getId());
             jdbc.update("delete from projects where id=?", project.getId());
-            jdbc.update("delete from users where id=?", actor.getId());
+            jdbc.update("delete from users where id in (?,?)", actor.getId(), uploader.getId());
         });
     }
 
