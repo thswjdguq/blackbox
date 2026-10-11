@@ -108,9 +108,13 @@ class AgentHttpTest {
         assertEquals(LocalDate.now().plusDays(7).toString(), stage.path("dueDate").asText());
         assertEquals("NO_TASK", stage.path("stage").asText());
         assertEquals(0, forMember.path("pendingProposalCount").asInt());
+        assertTrue(forMember.path("canDecide").asBoolean(), "팀원은 카드를 고치고 결정할 수 있다");
+        assertTrue(body(get("/status", leader)).path("canDecide").asBoolean(), "팀장도 같다");
 
-        assertEquals(List.of("PLAN_FROM_BRIEF:false", "BREAK_DOWN_TASKS:false", "STATUS_BRIEF:true", "ASK:true"),
-                skills(body(get("/status", observer))));
+        JsonNode forObserver = body(get("/status", observer));
+        assertEquals(List.of("PLAN_FROM_BRIEF:false", "BREAK_DOWN_TASKS:false", "STATUS_BRIEF:true", "ASK:true"), skills(forObserver));
+        // 칸이 빠져도 실패하게 없을 때의 값을 참으로 읽는다
+        assertFalse(forObserver.path("canDecide").asBoolean(true), "관찰자는 카드를 결정할 수 없다");
 
         // 제출물이 하나도 없는 프로젝트는 단계가 빈 배열이다(화면의 "제출물 없음"에 해당)
         Project empty = data.project("빈 프로젝트", leader);
@@ -127,6 +131,8 @@ class AgentHttpTest {
         assertEquals("AI 기능이 설정되지 않았습니다", off.path("unavailableReason").asText());
         // 모델이 꺼져 있어도 단계는 준다. 화면의 "다음 할 일" 카드가 이것을 쓴다
         assertEquals("NO_TASK", off.path("stages").get(0).path("stage").asText());
+        // 이미 만들어진 카드는 모델이 꺼진 뒤에도 결정할 수 있으므로 역할은 그대로 온다
+        assertTrue(off.path("canDecide").asBoolean());
     }
 
     @Test void aRunStreamsStepTextProposalAndDone() throws Exception {
