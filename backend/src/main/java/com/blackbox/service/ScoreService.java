@@ -148,12 +148,12 @@ public class ScoreService {
     // ── 태스크 완료 이벤트용 비동기 재계산 ─────────────────────────────────
 
     @Async
+    @Transactional
     public void recalculateAsync(UUID projectId) {
-        try {
-            recalculate(projectId);
-        } catch (Exception e) {
-            log.warn("Async score recalculation failed for project {}: {}", projectId, e.getMessage());
-        }
+        // 같은 객체의 recalculate 호출은 트랜잭션 프록시를 거치지 않는다.
+        // 비동기 작업의 진입점에서 시작해야 지연 조회와 점수·경보 저장이 한 트랜잭션에 속한다.
+        // 실패는 밖으로 전달하여 전체 롤백하고 Spring의 비동기 예외 처리기에 기록한다.
+        recalculate(projectId);
     }
 
     // ── 조회 ──────────────────────────────────────────────────────────────
