@@ -34,13 +34,15 @@ public class AgentStatusReader {
         boolean available = model.available();
         return new Status(available, available ? null : AgentRunner.UNAVAILABLE,
                 runner.skills().stream().map(s -> new Skill(s.name(), s.label(), s.allows(contributor))).toList(),
+                contributor,
                 stages.read(projectId, user).stream()
                         .map(s -> new Stage(s.deliverable().id(), s.deliverable().title(), s.deliverable().dueDate(), s.stage())).toList(),
                 proposals.countByProjectAndStatus(project, AgentProposal.Status.PENDING));
     }
 
-    public record Status(boolean available, String unavailableReason, List<Skill> skills, List<Stage> stages,
-                         long pendingProposalCount) {}
+    /** canDecide는 이 사람이 제안 카드를 고치고 채택·거절할 수 있는가다. 모델이 꺼져 있어도 역할대로 온다 */
+    public record Status(boolean available, String unavailableReason, List<Skill> skills, boolean canDecide,
+                         List<Stage> stages, long pendingProposalCount) {}
     public record Skill(String skill, String label, boolean allowed) {}
     public record Stage(UUID deliverableId, String title, LocalDate dueDate, DeliverableStage stage) {}
 }
