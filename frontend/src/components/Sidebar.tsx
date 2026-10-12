@@ -30,6 +30,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useMyRole } from "@/hooks/useMyRole";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
+import AgentLauncher from "@/components/agent/AgentLauncher";
 import api from "@/lib/api";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Alert } from "@/types/vault";
@@ -330,6 +331,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           <Shield size={16} className="text-bb-primary" />
           <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
         </button>
+        {currentProjectId && <AgentLauncher projectId={currentProjectId} compact />}
       </header>
 
       {mobileOpen && (
@@ -369,6 +371,8 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
         </div>
 
         <ProjectSwitcher currentProjectId={currentProjectId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+        {/* 작은 화면의 메뉴 안에서는 상단 바의 버튼을 쓴다 */}
+        {currentProjectId && <div className="hidden md:flex md:flex-col"><AgentLauncher projectId={currentProjectId} /></div>}
 
         {/* 네비게이션 — 짧은 화면에서는 메뉴만 스크롤 */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
