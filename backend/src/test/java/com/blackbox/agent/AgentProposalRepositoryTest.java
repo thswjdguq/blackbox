@@ -18,7 +18,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** V23의 테이블과 엔티티가 실제 DB에서 맞물리는지, 제약이 잘못된 줄을 거절하는지 본다. */
+/** V25의 테이블과 엔티티가 실제 DB에서 맞물리는지, 제약이 잘못된 줄을 거절하는지 본다. */
 // 목록 조회가 묶음(채택 결과)을 함께 끌어오면 Hibernate가 건수 제한을 DB가 아니라 메모리에서 건다. 그런 조회는 실패하게 해서 막는다
 @DataJpaTest(properties = {"spring.jpa.hibernate.ddl-auto=validate",
         "spring.jpa.properties.hibernate.query.fail_on_pagination_over_collection_fetch=true",
