@@ -25,11 +25,11 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const setTokens = useAuthStore((s) => s.setTokens);
 
   useEffect(() => {
-    const theme = localStorage.getItem("theme") || "dark";
+    const theme = localStorage.getItem("teamplay-ui-theme") || "light";
     setIsDark(theme === "dark");
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, []);
@@ -37,7 +37,7 @@ export default function SignupPage() {
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
-    localStorage.setItem("theme", next ? "dark" : "light");
+    localStorage.setItem("teamplay-ui-theme", next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
   };
 

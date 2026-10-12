@@ -15,7 +15,7 @@ class ProjectDeleteTest {
     final ProjectRepository projects = mock(ProjectRepository.class);
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
     final ProjectService service = new ProjectService(projects, members,
-            new ProjectAccessChecker(projects, members), mock(EntityManager.class));
+            new ProjectAccessChecker(projects, members), mock(EntityManager.class), mock(MeetingAttendanceService.class));
     final Project project = new Project();
     final User leader = new User();
 

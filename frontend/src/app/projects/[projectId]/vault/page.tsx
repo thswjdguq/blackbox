@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
@@ -396,6 +397,7 @@ export default function VaultPage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-32 mb-6" />
             <div className="h-32 bg-bb-surface rounded-xl" />
@@ -413,15 +415,16 @@ export default function VaultPage() {
       <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2">
               <Files size={22} className="text-indigo-400" />
-              파일 금고
+              프로젝트 자료
             </h1>
             <p className="text-sm text-bb-text2 mt-1">
-              파일 변경 내역을 SHA-256 해시로 추적합니다
+              팀 자료를 모으고, 파일 버전별 변경 내역을 확인하세요.
             </p>
           </div>
         </div>

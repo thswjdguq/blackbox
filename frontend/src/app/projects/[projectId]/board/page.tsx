@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
 import { Task, ScoreMap } from "@/types/task";
@@ -56,18 +57,13 @@ export default function BoardPage() {
   const projectId = params?.projectId as string;
 
   const [project, setProject] = useState<ProjectInfo | null>(null);
-  const [allProjects, setAllProjects] = useState<ProjectInfo[]>([]);
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [scoreMap, setScoreMap] = useState<ScoreMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [notionUrl, setNotionUrl] = useState<string | null>(null);
   // 동기화 실패는 보드 전체 오류(error)와 분리한다. 실패해도 보드는 그대로 보여야 한다
-  const [syncError, setSyncError] = useState("");
   const [myUserId, setMyUserId] = useState<string | null>(null);
   // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
   const readOnly = members.find((m) => m.userId === myUserId)?.role === "OBSERVER";
@@ -83,8 +79,6 @@ export default function BoardPage() {
       return;
     }
     bootstrap();
-    // 참여 중인 프로젝트 목록 로드
-    api.get<ProjectInfo[]>("/projects").then(({ data }) => setAllProjects(data)).catch(() => {});
   }, [projectId]);
 
   async function bootstrap() {
@@ -134,21 +128,6 @@ export default function BoardPage() {
     finally { setRefreshing(false); }
   }
 
-  async function handleNotionSync() {
-    setSyncing(true);
-    setNotionUrl(null);
-    setSyncError("");
-    try {
-      const res = await api.post<{ pageUrl: string; taskCount: number; message: string }>(
-        `/projects/${projectId}/tasks/notion/sync`
-      );
-      setNotionUrl(res.data.pageUrl);
-    } catch {
-      setSyncError("Notion 동기화 실패 — Notion 페이지에 Integration 연결이 되어있는지 확인해주세요 (페이지 → ... → Connections).");
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   // Stats
   const todoCount = tasks.filter((t) => t.status === "TODO").length;
@@ -164,6 +143,7 @@ export default function BoardPage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
           <div className="animate-pulse space-y-6">
             <div className="h-7 bg-bb-surface rounded-lg w-48" />
             <div className="grid grid-cols-3 gap-6">
@@ -183,6 +163,7 @@ export default function BoardPage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
+        <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
           <div className="text-center">
             <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
             <p className="text-bb-text text-sm mb-4">{error}</p>
@@ -204,78 +185,16 @@ export default function BoardPage() {
       <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen flex flex-col">
+        <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
         {/* Top bar with gradient accent */}
         <div className="relative px-4 md:px-8 pt-6 md:pt-8 pb-6 border-b border-bb-border overflow-hidden">
           {/* Decorative gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 via-transparent to-teal-400/5 pointer-events-none" />
+          <div className="absolute inset-0 bg-bb-surface pointer-events-none" />
 
           <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div>
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-2 text-xs text-bb-text2 mb-2">
-                <FolderKanban size={12} />
-                <span
-                  className="hover:text-bb-text cursor-pointer transition-colors"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  대시보드
-                </span>
-                <ChevronDown size={10} className="-rotate-90" />
-                <span className="text-bb-text2">업무 보드</span>
-              </div>
-
-              {/* 프로젝트 선택 드롭다운 */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowProjectDropdown((v) => !v)}
-                  className="flex items-center gap-2 group"
-                >
-                  <h1 className="text-xl font-bold text-bb-text group-hover:text-indigo-400 transition-colors">
-                    {project?.name ?? "프로젝트"}
-                  </h1>
-                  <ChevronDown
-                    size={16}
-                    className={`text-bb-text2 transition-transform ${showProjectDropdown ? "rotate-180" : ""}`}
-                  />
-                </button>
-
-                {showProjectDropdown && allProjects.length > 0 && (
-                  <div className="absolute top-full left-0 mt-1 z-30 w-64 bg-bb-surface border border-bb-border rounded-xl shadow-xl overflow-hidden">
-                    <div className="px-3 py-2 border-b border-bb-border">
-                      <p className="text-[11px] text-bb-text2 font-medium">참여 중인 프로젝트</p>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto">
-                      {allProjects.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => {
-                            setShowProjectDropdown(false);
-                            router.push(`/projects/${p.id}/board`);
-                          }}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-bb-surface2 transition-colors ${
-                            p.id === projectId ? "bg-indigo-500/10" : ""
-                          }`}
-                        >
-                          <div className="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
-                            <FolderKanban size={12} className="text-indigo-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm truncate ${p.id === projectId ? "text-indigo-300 font-medium" : "text-bb-text"}`}>
-                              {p.name}
-                            </p>
-                            {p.courseName && (
-                              <p className="text-[11px] text-bb-text2 truncate">{p.courseName}</p>
-                            )}
-                          </div>
-                          {p.id === projectId && (
-                            <span className="text-[10px] text-indigo-400 shrink-0">현재</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <h1 className="text-xl font-bold text-bb-text">업무</h1>
+              <p className="text-xs text-bb-text2 mt-1">{project?.name}</p>
 
               {project?.courseName && (
                 <p className="text-xs text-bb-text2 mt-1">
@@ -304,21 +223,6 @@ export default function BoardPage() {
                 </div>
               </div>
 
-              {/* Notion sync */}
-              <button
-                onClick={handleNotionSync}
-                disabled={syncing}
-                title="업무 보드를 Notion으로 내보내기"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-bb-surface border border-bb-border
-                           text-xs text-bb-text2 hover:text-white hover:bg-[#191919] hover:border-[#191919]
-                           transition-all disabled:opacity-50 font-medium"
-              >
-                {syncing
-                  ? <Loader2 size={13} className="animate-spin" />
-                  : <span className="text-[11px]">N</span>}
-                Notion
-              </button>
-
               {/* Score refresh — 수동 재계산은 팀장·팀원만(관찰자 403) */}
               {!readOnly && (
                 <button
@@ -336,34 +240,8 @@ export default function BoardPage() {
           </div>
         </div>
 
-        {syncError && (
-          <div role="alert" className="mx-8 mt-4 flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
-            <AlertCircle size={14} className="shrink-0" />
-            {syncError}
-            <button onClick={() => setSyncError("")} className="ml-auto hover:text-red-300" aria-label="안내 닫기">
-              <X size={12} />
-            </button>
-          </div>
-        )}
-
         {readOnly && (
           <p className="mx-8 mt-4 text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다. 업무를 클릭하면 내용을 확인할 수 있습니다.</p>
-        )}
-
-        {/* Notion sync result banner */}
-        {notionUrl && (
-          <div className="mx-8 mt-4 flex items-center gap-3 px-4 py-3 bg-[#191919] border border-[#333] rounded-xl text-sm text-white">
-            <span className="text-[11px] font-bold bg-white text-[#191919] px-1.5 py-0.5 rounded">N</span>
-            <span className="text-xs text-gray-300">Notion 페이지가 생성됐습니다</span>
-            <a
-              href={notionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1 text-xs text-teal-400 hover:underline"
-            >
-              열기 <ExternalLink size={11} />
-            </a>
-          </div>
         )}
 
         {/* ── 필터 바 ──────────────────────────────────────────────────────── */}

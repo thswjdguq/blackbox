@@ -31,6 +31,20 @@ class TaskListDatabaseTest {
     @MockBean DiscordNotificationService discord;
     @MockBean ScoreService scores;
     @MockBean DeliverableService deliverables;
+    @MockBean TaskWorkflowService workflow;
+
+    @Test void databaseRejectsNewDoneWithoutApproval() {
+        User leader = user("approval-constraint");
+        Project project = new Project(); project.setName("approval constraint"); project.setCreatedBy(leader);
+        em.persist(project); em.flush();
+        RuntimeException failure = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
+                em.createNativeQuery("INSERT INTO tasks(project_id,title,status,priority,created_by) VALUES (:project,'unapproved','DONE','MEDIUM',:user)")
+                        .setParameter("project", project.getId()).setParameter("user", leader.getId()).executeUpdate());
+        Throwable root = failure; while (root.getCause() != null) root = root.getCause();
+        assertTrue(root instanceof java.sql.SQLException);
+        assertEquals("23514", ((java.sql.SQLException) root).getSQLState());
+        assertTrue(root.getMessage().contains("task_done_requires_approval"));
+    }
 
     @Test void listLoadsDistinctDeliverablesRequirementsAndAssigneesWithFourQueries() {
         User leader = user("leader");
@@ -44,7 +58,8 @@ class TaskListDatabaseTest {
             DeliverableRequirement requirement = new DeliverableRequirement(); requirement.setDeliverable(delivery);
             requirement.setContent("requirement-" + i); requirement.setRequired(true); em.persist(requirement);
             Task task = new Task(); task.setProject(project); task.setCreatedBy(leader); task.setTitle("task-" + i);
-            task.setStatus(i % 2 == 0 ? "DONE" : "TODO"); task.setPriority("MEDIUM");
+            task.setStatus(i % 2 == 0 ? "DONE" : "TODO");
+            if ("DONE".equals(task.getStatus())) { task.setCompletionApprovedAt(java.time.OffsetDateTime.now()); task.setCompletionApprovedBy(leader); } task.setPriority("MEDIUM");
             task.setDeliverable(delivery); task.setRequirement(requirement); em.persist(task);
             if (i != 7) {
                 assign(task, leader);

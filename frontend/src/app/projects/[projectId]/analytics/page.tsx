@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { daysLeft, shortDate } from "@/lib/due";
@@ -191,6 +192,7 @@ export default function AnalyticsPage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-bb-surface2 rounded w-48" />
             <div className="grid grid-cols-4 gap-4">
@@ -208,6 +210,7 @@ export default function AnalyticsPage() {
       <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         {/* ── 헤더 ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>

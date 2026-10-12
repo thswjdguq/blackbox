@@ -3,8 +3,10 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import TaskModal from "@/components/kanban/TaskModal";
+import TaskFilesPanel from "@/components/deliverable/TaskFilesPanel";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
@@ -158,6 +160,7 @@ export default function DeliverableDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: "deliverable" } | { kind: "requirement"; req: DeliverableRequirement } | null>(null);
   const [taskDraft, setTaskDraft] = useState<{ requirementId: string } | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [linkTaskId, setLinkTaskId] = useState("");
   const [linking, setLinking] = useState(false);
   // 충족 확인 요청 중인 요구사항 — 빠른 연타로 PUT·DELETE 가 엇갈려 도착하지 않게 한다
@@ -337,6 +340,7 @@ export default function DeliverableDetailPage() {
       <Sidebar />
 
       <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         <Link
           href={`/projects/${projectId}/deliverables`}
           className="inline-flex items-center gap-1 mb-3 text-xs text-bb-text2 hover:text-bb-text transition-colors"
@@ -444,6 +448,8 @@ export default function DeliverableDetailPage() {
 
             {activeTab === "overview" && (
               <div className="space-y-6">
+                <TaskFilesPanel key={selectedTask?.id ?? "closed"} projectId={projectId} deliverableId={deliverableId}
+                  onOpenTask={id => { const task = tasks.find(t => t.id === id); if (task) setSelectedTask(task); }} />
                 {notice && (
                   <div role="status" className="flex items-center gap-2 p-3 bg-teal-500/10 border border-teal-500/20 rounded-lg text-sm text-bb-text">
                     {notice}
@@ -627,13 +633,13 @@ export default function DeliverableDetailPage() {
                     <ul className="mt-3 divide-y divide-bb-border">
                       {linkedTasks.map((t) => (
                         <li key={t.id} className="py-3">
-                          <Link
-                            href={`/projects/${projectId}/board?task=${t.id}`}
+                          <button type="button"
+                            onClick={() => setSelectedTask(t)}
                             className="flex items-center gap-2 text-sm font-medium text-bb-text hover:text-bb-primary"
                           >
                             {t.title}
                             <ArrowRight size={14} />
-                          </Link>
+                          </button>
                           <p className="mt-1 text-xs text-bb-text2">
                             {TASK_STATUS_LABEL[t.status]} · {t.assignees.map((a) => a.name).join(", ") || "담당자 미지정"} ·{" "}
                             {t.dueDate ? `${shortDate(t.dueDate)}${t.status === "DONE" ? "" : ` (${dueLabel(t.dueDate)})`}` : "마감 미설정"}
@@ -709,11 +715,25 @@ export default function DeliverableDetailPage() {
           onClose={() => setDeleteTarget(null)}
         />
       )}
+      {selectedTask && <TaskModal mode="edit" task={selectedTask} members={contributors}
+        deliverables={deliverable ? [deliverable] : []} readOnly={!canWrite}
+        availableTasks={tasks}
+        onWorkflowChanged={data => { setSelectedTask(data); setTasks(prev => prev.map(t => t.id === data.id ? data : t)); fetchProgress(); }}
+        onClose={() => { setSelectedTask(null); refresh(); }}
+        onCreate={async () => {}}
+        onUpdate={async (id, payload) => {
+          await api.patch(`/projects/${projectId}/tasks/${id}`, payload);
+          if (payload.assigneeIds) await api.put(`/projects/${projectId}/tasks/${id}/assignees`, { assigneeIds: payload.assigneeIds });
+          if (payload.status && payload.status !== selectedTask.status) await api.patch(`/projects/${projectId}/tasks/${id}/status`, { status: payload.status });
+          setSelectedTask(null); await fetchAll(); await fetchProgress();
+        }}
+        onDelete={async id => { await api.delete(`/projects/${projectId}/tasks/${id}`); setSelectedTask(null); await fetchAll(); await fetchProgress(); }} />}
       {taskDraft && (
         <TaskModal
           mode="create"
           task={null}
           members={contributors}
+          availableTasks={tasks}
           deliverables={deliverable ? [deliverable] : []}
           defaultDeliverableId={deliverableId}
           defaultRequirementId={taskDraft.requirementId}

@@ -21,7 +21,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{
-              var t=localStorage.getItem('theme')||'dark';
+              var t=localStorage.getItem('teamplay-ui-theme')||'light';
               document.documentElement.classList.toggle('dark',t==='dark');
             }catch(e){}})()`,
           }}

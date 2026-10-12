@@ -3,14 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { blobApiError } from "@/lib/apiError";
 import { getDeliverables } from "@/lib/api/deliverable";
 import type { Deliverable } from "@/types/deliverable";
+import ProjectWorkflow from "@/components/project/ProjectWorkflow";
 import NextStepCard from "@/components/project/NextStepCard";
 import { roleLabel } from "@/lib/roleLabel";
-import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Task } from "@/types/task";
 import { Meeting } from "@/types/meeting";
 import { FileRecord, ScoreEntry, Alert } from "@/types/vault";
@@ -21,61 +22,6 @@ import {
   AlertCircle, Hash, Archive, Download,
   X, ArrowRight,
 } from "lucide-react";
-
-const ONBOARDING_DISMISS_KEY = (projectId: string) => `onboarding-banner-dismissed-${projectId}`;
-
-// ── 온보딩 배너 ──────────────────────────────────────────────────────────
-function OnboardingBanner({ projectId }: { projectId: string }) {
-  const router = useRouter();
-  const { missingCount } = useIntegrationStatus(projectId);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    setDismissed(localStorage.getItem(ONBOARDING_DISMISS_KEY(projectId)) === "1");
-  }, [projectId]);
-
-  // missingCount === null → 아직 로딩 중(데이터 미확정), 0 → 전부 연동 완료
-  if (dismissed || !missingCount) return null;
-
-  const handleDismiss = () => {
-    localStorage.setItem(ONBOARDING_DISMISS_KEY(projectId), "1");
-    setDismissed(true);
-  };
-
-  return (
-    <div className="relative bg-indigo-600 rounded-2xl p-5 mb-6 flex items-start gap-4 flex-wrap">
-      <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0 text-lg">
-        🔧
-      </div>
-      <div className="flex-1 min-w-[220px]">
-        <p className="text-sm font-semibold text-white leading-relaxed">
-          Discord, Notion, Google Calendar를 연동하면<br />
-          팀 알림과 AI 기능이 활성화됩니다
-        </p>
-        <p className="text-xs text-white/75 mt-1.5">
-          {missingCount}개 항목이 연동 대기 중입니다
-        </p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={() => router.push(`/projects/${projectId}/settings`)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-white/90
-                     text-indigo-700 text-sm font-semibold rounded-xl transition-colors"
-        >
-          지금 설정하기
-          <ArrowRight size={14} />
-        </button>
-        <button
-          onClick={handleDismiss}
-          aria-label="배너 닫기"
-          className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-        >
-          <X size={16} />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── 타입 ─────────────────────────────────────────────────────────────────
 interface ProjectDetail {
@@ -111,19 +57,6 @@ function fmtDateTime(iso: string | null) {
   });
 }
 
-// ── 건강도 계산 ──────────────────────────────────────────────────────────
-function getHealth(alerts: Alert[], tasks: Task[]) {
-  const hasCritical = alerts.some((a) => a.alertType === "TAMPER" || a.alertType === "DROPOUT");
-  const hasWarning  = alerts.some((a) => a.alertType === "FREE_RIDE" || a.alertType === "OVERLOAD");
-  const done        = tasks.filter((t) => t.status === "DONE").length;
-  const rate        = tasks.length > 0 ? done / tasks.length : 1;
-
-  if (hasCritical)            return { dot: "🔴", label: "위험",  cls: "text-red-400 bg-red-500/10 border-red-500/25" };
-  if (hasWarning || rate < 0.3) return { dot: "🟠", label: "주의",  cls: "text-orange-400 bg-orange-500/10 border-orange-500/25" };
-  if (rate < 0.65)            return { dot: "🟡", label: "보통",  cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/25" };
-  return                             { dot: "🟢", label: "정상",  cls: "text-green-400 bg-green-500/10 border-green-500/25" };
-}
-
 // ── 멤버 아바타 ──────────────────────────────────────────────────────────
 function Avatar({ name, size = 8 }: { name: string; size?: number }) {
   const hue = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
@@ -155,7 +88,7 @@ function KpiCard({
   );
 }
 
-// ── 태스크 상태 배지 ─────────────────────────────────────────────────────
+// ── 업무 상태 배지 ─────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: Task["status"] }) {
   const cfg = {
     TODO:        { label: "할 일",  cls: "bg-slate-700 text-slate-400" },
@@ -213,7 +146,7 @@ export default function ProjectHomePage() {
   // 초대코드 복사 토스트
   const [copied, setCopied] = useState(false);
 
-  // 증거 패키지 다운로드
+  // 활동 보고서 다운로드
   const [downloading, setDownloading] = useState(false);
 
   const fetchAll = useCallback(async () => {
@@ -268,7 +201,7 @@ export default function ProjectHomePage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert(await blobApiError(err, "증거 패키지 생성에 실패했습니다. 잠시 후 다시 시도해주세요."));
+      alert(await blobApiError(err, "활동 보고서 생성에 실패했습니다. 잠시 후 다시 시도해주세요."));
     } finally {
       setDownloading(false);
     }
@@ -291,6 +224,7 @@ export default function ProjectHomePage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-4 max-w-5xl">
             <div className="h-8 bg-bb-surface rounded w-64 mb-2" />
             <div className="h-4 bg-bb-surface rounded w-40 mb-8" />
@@ -312,6 +246,7 @@ export default function ProjectHomePage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
+<ProjectNav projectId={projectId} />
           <div className="text-center">
             <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
             <p className="text-sm text-red-400">{error || "프로젝트를 찾을 수 없습니다"}</p>
@@ -319,7 +254,7 @@ export default function ProjectHomePage() {
               onClick={() => router.push("/dashboard")}
               className="mt-4 text-xs text-bb-text2 hover:text-bb-text underline"
             >
-              대시보드로 돌아가기
+              내 프로젝트로 돌아가기
             </button>
           </div>
         </main>
@@ -336,7 +271,6 @@ export default function ProjectHomePage() {
 
   const fullCount  = scores.filter((s) => s.participationLevel === "FULL").length;
 
-  const health     = getHealth(alerts, tasks);
   const recentTasks    = [...tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3);
   const recentMeetings = meetings.slice(0, 3);
   const recentFiles    = files.slice(0, 3);
@@ -354,19 +288,18 @@ export default function ProjectHomePage() {
       <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
         <div className="max-w-5xl">
 
           {/* ── 프로젝트 헤더 ───────────────────────────────────────────── */}
-          <div className="bg-bb-surface border border-bb-border rounded-2xl p-6 mb-6">
+          <div className="border-b border-bb-border pb-7 mb-7">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               {/* 제목 + 메타 */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap mb-1">
                   <h1 className="text-2xl font-bold text-bb-text truncate">{project.name}</h1>
                   {/* 건강도 배지 */}
-                  <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${health.cls}`}>
-                    {health.dot} {health.label}
-                  </span>
+                  <span className="text-xs px-2.5 py-1 rounded-md bg-bb-surface2 text-bb-text2">프로젝트 공간</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-bb-text2 mt-1">
                   {project.courseName && <span>{project.courseName}</span>}
@@ -392,10 +325,12 @@ export default function ProjectHomePage() {
                 {/* 초대코드 복사 버튼 */}
                 <button
                   onClick={copyInviteCode}
+                  aria-label="팀원 초대 코드 복사"
                   className="flex items-center gap-2 px-3 py-2 bg-bb-bg border border-bb-border
                              hover:border-indigo-500/40 hover:bg-indigo-500/5
                              rounded-xl text-xs text-bb-text2 hover:text-bb-text transition-all group"
                 >
+                  <span>팀원 초대</span>
                   <Hash size={12} className="text-bb-text2 group-hover:text-indigo-400 transition-colors" />
                   <span className="font-mono font-semibold tracking-widest text-bb-text">
                     {project.inviteCode}
@@ -441,47 +376,15 @@ export default function ProjectHomePage() {
             />
           )}
           {/* ── 연동 온보딩 배너 ─────────────────────────────────────────── */}
-          <OnboardingBanner projectId={projectId} />
+          <ProjectWorkflow />
 
-          {/* ── KPI 4개 ──────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <KpiCard
-              icon={Kanban}
-              label="태스크 완료율"
-              value={`${doneRate}%`}
-              sub={`${doneCount} / ${totalTasks}개 완료`}
-              color="bg-indigo-500/10 text-indigo-400"
-            />
-            <KpiCard
-              icon={FileText}
-              label="전체 회의"
-              value={meetings.length}
-              sub={meetings.length > 0 ? `최근: ${fmtDate(meetings[0]?.meetingDate)}` : "아직 없음"}
-              color="bg-teal-500/10 text-teal-400"
-            />
-            <KpiCard
-              icon={Files}
-              label="업로드 파일"
-              value={files.length}
-              sub={files.length > 0 ? `최근: ${files[0]?.fileName}` : "아직 없음"}
-              color="bg-purple-500/10 text-purple-400"
-            />
-            <KpiCard
-              icon={BarChart2}
-              label="전체 참여"
-              value={scores.length > 0 ? `${fullCount}명` : "-"}
-              sub={scores.length > 0 ? `${scores.length}명 중 전체참여` : "재계산 필요"}
-              color="bg-amber-500/10 text-amber-400"
-            />
-          </div>
-
-          {/* ── 두 열 그리드: 태스크 + 회의 ─────────────────────────────── */}
+          {/* ── 두 열 그리드: 업무 + 회의 ─────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-            {/* 태스크 현황 */}
+            {/* 업무 현황 */}
             <div className="bg-bb-surface border border-bb-border rounded-xl p-5">
               <SectionHeader
-                title="태스크 현황"
+                title="업무 현황"
                 icon={Kanban}
                 href={`/projects/${projectId}/board`}
               />
@@ -503,9 +406,9 @@ export default function ProjectHomePage() {
                 ))}
               </div>
 
-              {/* 최근 태스크 */}
+              {/* 최근 업무 */}
               {recentTasks.length === 0 ? (
-                <p className="text-xs text-bb-text2 text-center py-4">등록된 태스크가 없습니다</p>
+                <p className="text-xs text-bb-text2 text-center py-4">등록된 업무가 없습니다</p>
               ) : (
                 <div className="space-y-2">
                   {recentTasks.map((t) => (
@@ -575,6 +478,39 @@ export default function ProjectHomePage() {
             </div>
           </div>
 
+          <details className="mb-6 rounded-xl border border-bb-border bg-bb-surface p-5"><summary className="cursor-pointer text-sm font-semibold">팀 활동·자료 더 보기</summary><div className="mt-5">
+          {/* ── KPI 4개 ──────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <KpiCard
+              icon={Kanban}
+              label="업무 완료율"
+              value={`${doneRate}%`}
+              sub={`${doneCount} / ${totalTasks}개 완료`}
+              color="bg-indigo-500/10 text-indigo-400"
+            />
+            <KpiCard
+              icon={FileText}
+              label="전체 회의"
+              value={meetings.length}
+              sub={meetings.length > 0 ? `최근: ${fmtDate(meetings[0]?.meetingDate)}` : "아직 없음"}
+              color="bg-teal-500/10 text-teal-400"
+            />
+            <KpiCard
+              icon={Files}
+              label="업로드 파일"
+              value={files.length}
+              sub={files.length > 0 ? `최근: ${files[0]?.fileName}` : "아직 없음"}
+              color="bg-purple-500/10 text-purple-400"
+            />
+            <KpiCard
+              icon={BarChart2}
+              label="전체 참여"
+              value={scores.length > 0 ? `${fullCount}명` : "-"}
+              sub={scores.length > 0 ? `${scores.length}명 중 전체참여` : "재계산 필요"}
+              color="bg-amber-500/10 text-amber-400"
+            />
+          </div>
+
           {/* ── 기여도 현황 ──────────────────────────────────────────────── */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
             <SectionHeader
@@ -585,7 +521,7 @@ export default function ProjectHomePage() {
 
             {scores.length === 0 ? (
               <p className="text-xs text-bb-text2 text-center py-4">
-                아직 참여 데이터가 없습니다. 태스크 완료·회의 체크인 후 재계산하세요.
+                아직 참여 데이터가 없습니다. 업무와 회의 참석 기록이 쌓이면 확인할 수 있습니다.
               </p>
             ) : (
               <div className="space-y-2">
@@ -631,7 +567,7 @@ export default function ProjectHomePage() {
           {/* ── Hash Vault ───────────────────────────────────────────────── */}
           <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
             <SectionHeader
-              title="파일 금고"
+              title="프로젝트 자료"
               icon={Files}
               href={`/projects/${projectId}/vault`}
             />
@@ -666,16 +602,17 @@ export default function ProjectHomePage() {
             )}
           </div>
 
-          {/* ── 팀플 종료 — 증거 패키지 ─────────────────────────────────── */}
+          </div></details>
+          {/* ── 팀플 종료 — 활동 보고서 ─────────────────────────────────── */}
           <div className="bg-gradient-to-br from-indigo-950/60 to-bb-surface border border-indigo-700/30 rounded-2xl p-6">
             <div className="flex items-start gap-4 flex-wrap">
               <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
                 <Archive size={18} className="text-indigo-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-bb-text mb-1">팀플 종료 — 증거 패키지 발급</h2>
+                <h2 className="text-sm font-semibold text-bb-text mb-1">팀 활동 내보내기</h2>
                 <p className="text-xs text-bb-text2 leading-relaxed">
-                  회의록 전체 · 기여도 PDF · 파일 금고 이력을 하나의 ZIP으로 묶어 교수님께 제출하세요.
+                  회의록 · 기여도 · 자료 이력을 ZIP으로 내려받습니다. 과제 제출은 제출물별 검토와 확정 후 학교 제출처에서 진행하세요.
                   PDF에는 SHA-256 무결성 해시가 포함되어 데이터 위변조를 방지합니다.
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">

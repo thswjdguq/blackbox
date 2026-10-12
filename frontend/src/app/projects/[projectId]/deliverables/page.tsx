@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
@@ -118,9 +119,8 @@ export default function DeliverablesPage() {
       <Sidebar />
 
       <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto p-4 md:p-8">
-        <Link href={`/projects/${projectId}`} className="text-xs text-bb-text2 hover:text-bb-text">
-          {projectName || "프로젝트"} / 프로젝트 홈
-        </Link>
+<ProjectNav projectId={projectId} />
+
 
         <div className="flex items-start justify-between gap-4 mt-3 mb-6">
           <div>

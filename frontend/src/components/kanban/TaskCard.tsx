@@ -92,13 +92,13 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
   const [isMoving, setIsMoving] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id, disabled: readOnly });
+    useSortable({ id: task.id, disabled: readOnly || task.status === "DONE" || !!task.completionRequestedAt });
 
   // 카드 전체에 drag listeners 적용 — 어디서든 드래그 가능
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : isMoving ? 0 : 1,
+    opacity: isDragging ? 0.4 : isMoving ? 0.6 : 1,
   };
 
   const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
@@ -110,12 +110,11 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
   const isDone = task.status === "DONE";
 
   // 버튼 클릭 → 이동 트리거 (drag와 분리)
-  const triggerMove = (e: React.MouseEvent, newStatus: TaskStatus) => {
+  const triggerMove = async (e: React.MouseEvent, newStatus: TaskStatus) => {
     e.stopPropagation();       // 카드 onClick(모달) 방지
     if (isMoving || !onMove) return;
     setIsMoving(true);
-    // 160ms 페이드아웃 후 실제 이동
-    setTimeout(() => onMove(task.id, newStatus), 160);
+    try { await onMove(task.id, newStatus); } finally { setIsMoving(false); }
   };
 
   // 버튼에서 포인터 다운 시 drag 시작 방지
@@ -128,7 +127,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
       // 카드 전체에 drag listeners 부착 (grip 아이콘 외에도 드래그 가능).
       // 읽기 전용이면 끌기 속성(aria-disabled 포함)을 붙이지 않는다. 붙이면 '업무 보기'로 여는 카드가
       // 보조기기에 비활성으로 읽히고 키보드로 열 수 없다
-      {...(readOnly
+      {...(readOnly || task.status === "DONE" || task.completionRequestedAt
         ? {
             role: "button",
             tabIndex: 0,
@@ -142,7 +141,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
           }
         : { ...attributes, ...listeners })}
       onClick={() => !isMoving && onEdit(task)}
-      className={`group relative bg-bb-surface border rounded-xl p-4 ${readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}
+      className={`group relative bg-bb-surface border rounded-xl p-4 ${readOnly || task.status === "DONE" || task.completionRequestedAt ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}
                   transition-colors duration-200 select-none overflow-hidden
                   ${isDone
                     ? "border-bb-border/40 opacity-60"
@@ -233,6 +232,10 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
       )}
 
       {/* Bottom Row */}
+      {task.completionRequestedAt && <p className="text-xs text-bb-primary mt-2">팀원 확인 대기</p>}
+      {task.completionRejectionReason && <p className="text-xs text-amber-700 mt-2">보완 요청 · 업무를 열어 확인하세요.</p>}
+      {task.predecessorTitle && <p className="text-xs text-bb-text2 mt-2">선행: {task.predecessorTitle}</p>}
+      {task.status === "DONE" && !task.completionApprovedAt && <p className="text-xs text-bb-text2 mt-2">이전 완료 · 승인 기록 없음</p>}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-bb-border/60">
         {/* Assignee avatars */}
         <div className="flex items-center">
@@ -262,18 +265,18 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
             </span>
           )}
 
-          {task.status === "IN_PROGRESS" && !readOnly && (
+          {task.status === "IN_PROGRESS" && !readOnly && !task.completionRequestedAt && (
             <button
               onPointerDown={stopPointer}   // drag 시작 방지
-              onClick={(e) => triggerMove(e, "DONE")}
+              onClick={(e) => { e.stopPropagation(); onEdit(task); }}
               className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold
                          text-teal-400 bg-teal-400/10 border border-teal-400/20
                          hover:bg-teal-400/20 hover:border-teal-400/50
                          transition-all duration-150"
-              aria-label="완료로 이동"
+              aria-label="완료 조건 확인 후 요청"
             >
               <ArrowRight size={9} />
-              완료
+              완료 요청
             </button>
           )}
         </div>

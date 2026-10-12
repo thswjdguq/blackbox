@@ -71,10 +71,10 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
     return {
       title: `진행 중인 업무 ${open.length}개`,
       detail: `연결 업무 ${linked.length}개 중 ${linked.length - open.length}개 완료. ${
-        canWrite ? "업무 보드에서 진행 상황을 바꾸세요." : "업무 보드에서 진행 상황을 볼 수 있습니다."
+        canWrite ? "업무에서 진행 상태를 바꾸고 자료를 등록하세요." : "업무에서 진행 상황을 확인할 수 있습니다."
       }`,
       href: `/projects/${projectId}/board?deliverable=${d.id}`,
-      action: "업무 보드 열기",
+      action: "업무 이어하기",
     };
   }
   if (unchecked.length > 0) {
@@ -96,7 +96,7 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
   return canWrite
     ? {
         title: "검토를 요청할 준비가 됐습니다",
-        detail: "업무와 필수 요구사항 확인이 끝났습니다. 초안을 파일 금고에 올리고 검토를 요청하세요.",
+        detail: "업무와 필수 요구사항 확인이 끝났습니다. 업무에서 자료를 등록하고, 제출물에서 검토를 요청하세요.",
         href: base,
         action: "제출물 열기",
       }

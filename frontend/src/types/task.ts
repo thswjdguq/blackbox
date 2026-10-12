@@ -28,6 +28,14 @@ export interface Task {
   requirementId: string | null;
   requirementContent: string | null;
   completionCriteria: string | null;
+  predecessorId: string | null;
+  predecessorTitle: string | null;
+  attachmentRequired: boolean;
+  completionRequestedAt: string | null;
+  completionRequestedByName: string | null;
+  completionApprovedAt: string | null;
+  completionApprovedByName: string | null;
+  completionRejectionReason: string | null;
 }
 
 export interface ScoreMap {
@@ -49,6 +57,9 @@ export interface CreateTaskPayload {
   clearDeliverable?: boolean;
   clearRequirement?: boolean;
   completionCriteria?: string;
+  predecessorId?: string;
+  clearPredecessor?: boolean;
+  attachmentRequired?: boolean;
 }
 
 export interface UpdateTaskStatusPayload {

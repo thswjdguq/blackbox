@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import BeginnerGuide from "@/components/BeginnerGuide";
 import MemberSection from "./MemberSection";
@@ -138,6 +139,7 @@ export default function ProjectSettingsPage() {
     <div className="flex min-h-screen bg-bb-bg">
       <Sidebar />
       <main className="md:ml-64 mt-14 md:mt-0 flex-1 p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         <div className="max-w-2xl">
 
           <h1 className="text-2xl font-bold text-bb-text mb-1">프로젝트 설정</h1>

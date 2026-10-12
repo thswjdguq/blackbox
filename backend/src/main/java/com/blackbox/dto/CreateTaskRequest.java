@@ -18,5 +18,12 @@ public record CreateTaskRequest(
         @Pattern(regexp = "TODO|IN_PROGRESS|DONE") String status,
         UUID deliverableId,
         UUID requirementId,
-        @Size(max = 2000) String completionCriteria
-) {}
+        @Size(max = 2000) String completionCriteria,
+        UUID predecessorId,
+        Boolean attachmentRequired
+) {
+    public CreateTaskRequest(String title, String description, String priority, String tag, LocalDate dueDate,
+            List<UUID> assigneeIds, String status, UUID deliverableId, UUID requirementId, String criteria) {
+        this(title, description, priority, tag, dueDate, assigneeIds, status, deliverableId, requirementId, criteria, null, null);
+    }
+}

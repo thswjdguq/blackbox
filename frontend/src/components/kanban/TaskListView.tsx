@@ -99,7 +99,7 @@ export default function TaskListView({ tasks, onEdit, readOnly }: {
                   {t.tag && <span className="block truncate text-[11px] text-bb-text2">#{t.tag}</span>}
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] ${STATUS_CLS[t.status]}`}>{TASK_STATUS_TEXT[t.status]}</span>
+                  <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] ${STATUS_CLS[t.status]}`}>{t.completionRequestedAt ? "승인 대기" : TASK_STATUS_TEXT[t.status]}</span>
                 </td>
                 <td className="px-3 py-2.5 truncate text-bb-text2">
                   {t.assignees.length === 0 ? "미배정" : t.assignees.map((a) => a.name).join(", ")}

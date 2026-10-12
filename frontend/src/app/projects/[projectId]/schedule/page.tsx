@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
@@ -243,6 +244,7 @@ export default function SchedulePage() {
       )}
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         <div className="max-w-2xl">
 
           {/* 헤더 */}

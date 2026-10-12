@@ -175,6 +175,8 @@ export default function KanbanBoard({
         ? (overId as TaskStatus)
         : (prev.find((t) => t.id === overId)?.status ?? prev[activeIdx].status);
 
+      if (newStatus === "DONE" || prev[activeIdx].status === "DONE" || prev[activeIdx].completionRequestedAt) return prev;
+
       // Always update ref so handleDragEnd has the latest status
       dragStatusRef.current = newStatus;
 
@@ -200,6 +202,10 @@ export default function KanbanBoard({
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    if (newStatus === "DONE" || dragSnapshot.current.find(t => t.id === activeId)?.status === newStatus) {
+      setTasks(dragSnapshot.current); return;
+    }
+
     // Reorder within same column if dropped on another task
     setTasks((prev) => {
       const activeIdx = prev.findIndex((t) => t.id === activeId);
@@ -213,11 +219,12 @@ export default function KanbanBoard({
 
     // Persist status to backend using ref value (not stale closure)
     try {
-      await api.patch(
+      const { data } = await api.patch<Task>(
         `/projects/${projectId}/tasks/${activeId}/status`,
         { status: newStatus }
       );
-      onTasksChange?.(tasks.map(t => t.id === activeId ? { ...t, status: newStatus } : t));
+      setTasks(prev => prev.map(t => t.id === activeId ? data : t));
+      onTasksChange?.(dragSnapshot.current.map(t => t.id === activeId ? data : t));
     } catch (err) {
       setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
       setTasks(dragSnapshot.current);
@@ -309,6 +316,7 @@ export default function KanbanBoard({
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
     const original = tasks.find((t) => t.id === taskId);
     if (!original || original.status === newStatus) return;
+    if (newStatus === "DONE") { openEdit(original); return; }
     setBoardError("");
 
     // 낙관적 업데이트
@@ -317,8 +325,9 @@ export default function KanbanBoard({
     );
 
     try {
-      await api.patch(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
-      onTasksChange?.(tasks.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
+      const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
+      setTasks(prev => prev.map(t => t.id === taskId ? data : t));
+      onTasksChange?.(tasks.map(t => t.id === taskId ? data : t));
     } catch (err) {
       setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
       // 실패 시 원상복구
@@ -442,6 +451,8 @@ export default function KanbanBoard({
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           readOnly={readOnly}
+          availableTasks={tasks}
+          onWorkflowChanged={data => { setEditingTask(data); setTasks(prev => prev.map(t => t.id === data.id ? data : t)); onTasksChange?.(tasks.map(t => t.id === data.id ? data : t)); }}
         />
       )}
     </>

@@ -25,7 +25,7 @@ export default function KanbanColumn({
   onMoveTask,
   readOnly = false,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id, disabled: readOnly });
+  const { setNodeRef, isOver } = useDroppable({ id: column.id, disabled: readOnly || column.id === "DONE" });
   const isTodo = column.id === "TODO";
   const canAdd = isTodo && !readOnly;
 
@@ -96,12 +96,12 @@ export default function KanbanColumn({
               클릭하여 추가
             </div>
           ) : (
-            /* In Progress / Done은 드롭 안내만 */
+            /* 완료는 승인 결과로만 진입한다. */
             <div className="flex-1 flex flex-col items-center justify-center py-8 text-xs text-bb-text2/70 rounded-lg">
               <div className="w-8 h-8 rounded-lg border border-dashed border-bb-border flex items-center justify-center mb-2">
                 <Plus size={14} className="text-bb-text2/70" />
               </div>
-              드래그하여 이동
+              {column.id === "DONE" ? "팀원이 결과를 확인하면 이곳에 표시됩니다." : "드래그하여 이동"}
             </div>
           )
         )}

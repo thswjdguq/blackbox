@@ -31,15 +31,17 @@ public class ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectAccessChecker accessChecker;
     private final EntityManager entityManager;
+    private final MeetingAttendanceService attendance;
 
     public ProjectService(ProjectRepository projectRepository,
                           ProjectMemberRepository projectMemberRepository,
                           ProjectAccessChecker accessChecker,
-                          EntityManager entityManager) {
+                          EntityManager entityManager, MeetingAttendanceService attendance) {
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
+        this.attendance = attendance;
     }
 
     // ── 내 프로젝트 목록 ────────────────────────────────────────────────────
@@ -142,6 +144,7 @@ public class ProjectService {
         projectMemberRepository.save(member);
         entityManager.flush();
         entityManager.refresh(member);
+        attendance.enroll(project, user);
         return MemberResponse.from(member);
     }
 
@@ -176,6 +179,7 @@ public class ProjectService {
 
         target.setRole(req.role());
         projectMemberRepository.save(target);
+        attendance.enroll(project, target.getUser());
         return MemberResponse.from(target);
     }
 

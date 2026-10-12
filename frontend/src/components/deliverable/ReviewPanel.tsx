@@ -165,7 +165,7 @@ export default function ReviewPanel({
               {summary.unresolvedCommentCount > 0 && `미해결 피드백 ${summary.unresolvedCommentCount}건을 반영하고 해결 처리한 뒤, `}
               수정본을{latest.file ? ` 같은 이름(${latest.file.fileName})으로` : ""}{" "}
               <Link href={`/projects/${projectId}/vault`} className="underline">
-                파일 금고
+                프로젝트 자료
               </Link>
               에 올리고 새 검토 회차를 여세요.
             </p>
@@ -179,7 +179,7 @@ export default function ReviewPanel({
           <p className="mt-1 text-xs text-bb-text2">
             초안을{" "}
             <Link href={`/projects/${projectId}/vault`} className="underline">
-              파일 금고
+              프로젝트 자료
             </Link>
             에 올린 뒤 검토를 요청하세요. 파일 없이 중간 검토를 열 수도 있습니다.
           </p>
@@ -254,7 +254,7 @@ function OpenRoundDialog({
       .catch((err) => setLoadError(apiError(err, "파일 목록을 불러오지 못했습니다.")));
   }, [projectId]);
 
-  // 파일 금고의 버전 사슬은 같은 이름 기준이다 (A-10 결정 (다))
+  // 프로젝트 자료의 버전 사슬은 같은 이름 기준이다 (A-10 결정 (다))
   const byName = useMemo(() => {
     const map = new Map<string, VaultFile[]>();
     for (const f of files ?? []) map.set(f.fileName, [...(map.get(f.fileName) ?? []), f]);
@@ -343,9 +343,9 @@ function OpenRoundDialog({
 
             {files.length === 0 && (
               <p className="text-xs text-bb-text2">
-                파일 금고에 올린 파일이 없습니다. 파일 없이 중간 검토를 열거나{" "}
+                프로젝트 자료에 올린 파일이 없습니다. 파일 없이 중간 검토를 열거나{" "}
                 <Link href={`/projects/${projectId}/vault`} className="underline">
-                  파일 금고
+                  프로젝트 자료
                 </Link>
                 에 먼저 올리세요.
               </p>

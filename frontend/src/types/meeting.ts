@@ -9,12 +9,14 @@ export interface Meeting {
   purpose: string | null;       // 회의 목적/안건
   notes: string | null;         // 회의록 내용
   decisions: string | null;     // 결정사항
-  checkinCode: string;          // 6자리 체크인 코드
+  checkinCode: string | null;  // 호환 필드. 새 응답은 null이며 코드 참여를 지원하지 않는다.
   aiSummary: string | null;     // AI 요약 (저장됨)
   notionPageId: string | null;  // Notion 동기화 URL
   notionSyncedAt: string | null; // 마지막 동기화 시각
   createdBy: string;
   createdAt: string;
+  attendanceGraceMinutes: number;
+  attendanceWindowMinutes: number;
 }
 
 /** 참석자 응답 DTO */

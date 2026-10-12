@@ -34,6 +34,7 @@ public class TaskService {
     private final EntityManager entityManager;
     private final DeliverableService deliverableService;
     private final ReviewCommentRepository reviewComments;
+    private final TaskWorkflowService workflow;
 
     public TaskService(TaskRepository taskRepository,
                        TaskAssigneeRepository taskAssigneeRepository,
@@ -47,7 +48,7 @@ public class TaskService {
                        ScoreService scoreService,
                        EntityManager entityManager,
                        DeliverableService deliverableService,
-                       ReviewCommentRepository reviewComments) {
+                       ReviewCommentRepository reviewComments, TaskWorkflowService workflow) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -61,6 +62,7 @@ public class TaskService {
         this.entityManager = entityManager;
         this.deliverableService = deliverableService;
         this.reviewComments = reviewComments;
+        this.workflow = workflow;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -69,6 +71,8 @@ public class TaskService {
     public TaskResponse createTask(UUID projectId, CreateTaskRequest req, User creator) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, creator);
+        workflow.lock(project);
+        if ("DONE".equals(req.status())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "새 업무를 완료로 만들 수 없습니다. 다른 팀원의 결과 확인이 필요합니다.");
 
         Task task = new Task();
         task.setProject(project);
@@ -77,6 +81,7 @@ public class TaskService {
         applyDeliverable(task, project, req.deliverableId(), req.requirementId(), false, false);
         task.setCompletionCriteria(req.completionCriteria() == null ? null : req.completionCriteria().trim());
         task.setStatus(req.status() != null ? req.status() : "TODO");
+        workflow.configure(task, project, req.predecessorId(), false, req.attachmentRequired());
         task.setPriority(req.priority() != null ? req.priority() : "MEDIUM");
         task.setTag(req.tag());
         task.setDueDate(req.dueDate());
@@ -129,11 +134,14 @@ public class TaskService {
     public TaskResponse updateTask(UUID projectId, UUID taskId, UpdateTaskRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
 
         applyDeliverable(task, project, req.deliverableId(), req.requirementId(),
                 Boolean.TRUE.equals(req.clearDeliverable()), Boolean.TRUE.equals(req.clearRequirement()));
         if (req.completionCriteria() != null) task.setCompletionCriteria(req.completionCriteria().trim());
+        workflow.configure(task, project, req.predecessorId(), Boolean.TRUE.equals(req.clearPredecessor()), req.attachmentRequired());
 
         if (req.title() != null)       task.setTitle(req.title());
         if (req.description() != null) task.setDescription(req.description());
@@ -151,7 +159,10 @@ public class TaskService {
     public void deleteTask(UUID projectId, UUID taskId, User user) {
         Project project = accessChecker.getProject(projectId);
         ProjectMember member = accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
+        if (taskRepository.existsByPredecessor(task)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "후속 업무가 참조하는 선행 업무는 삭제할 수 없습니다.");
 
         // 본인 생성 또는 LEADER만 삭제 가능
         boolean isCreator = task.getCreatedBy().getId().equals(user.getId());
@@ -171,33 +182,14 @@ public class TaskService {
                                      UpdateTaskStatusRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
 
-        String oldStatus = task.getStatus();
-        task.setStatus(req.status());
-
-        if ("DONE".equals(req.status()) && !"DONE".equals(oldStatus)) {
-            task.setCompletedAt(OffsetDateTime.now());
-            taskRepository.save(task);
-            entityManager.flush();
-            entityManager.refresh(task);
-            activityLogService.record(project, user, "TASK_COMPLETE",
-                    "{\"taskId\":\"" + task.getId() + "\",\"title\":\"" + escapeJson(task.getTitle()) + "\",\"completedAt\":\"" + task.getCompletedAt() + "\"}");
-            alertService.reevaluate(user, project);
-            discordService.notifyTaskCompleted(task, user, project);
-            UUID projectIdForScore = project.getId();
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    scoreService.recalculateAsync(projectIdForScore);
-                }
-            });
-        } else {
-            if (!"DONE".equals(req.status())) task.setCompletedAt(null);
-            taskRepository.save(task);
-            entityManager.flush();
-            entityManager.refresh(task);
-        }
+        if ("DONE".equals(req.status())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "결과 제출 후 다른 팀원의 확인을 받아야 완료됩니다.");
+        if ("IN_PROGRESS".equals(req.status())) workflow.requirePredecessor(task);
+        task.setStatus(req.status()); task.setCompletedAt(null);
+        taskRepository.save(task); entityManager.flush(); entityManager.refresh(task);
 
         return TaskResponse.from(task, taskAssigneeRepository.findByTask(task));
     }
@@ -209,7 +201,9 @@ public class TaskService {
                                      AssignTaskRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
 
         List<TaskAssignee> assignees = setAssigneesInternal(task, req.assigneeIds());
         entityManager.flush();

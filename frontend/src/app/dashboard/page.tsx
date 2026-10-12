@@ -25,13 +25,6 @@ import api from "@/lib/api";
 import { roleLabel } from "@/lib/roleLabel";
 import { apiError } from "@/lib/apiError";
 
-interface CheckinRecord {
-  meetingId: string;
-  meetingTitle: string;
-  projectId: string;
-  checkedAt: string;
-}
-
 interface Project {
   id: string;
   name: string;
@@ -48,6 +41,7 @@ interface Project {
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -59,25 +53,22 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
-  // 코드 참여 모달 (프로젝트 초대 OR 회의 체크인 통합)
+  // 코드 참여 모달
   const [showJoin, setShowJoin] = useState(false);
   const [code, setCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
-  const [joinSuccess, setJoinSuccess] = useState<{ type: "project" | "checkin"; label: string } | null>(null);
+  const [joinSuccess, setJoinSuccess] = useState<{ type: "project"; label: string } | null>(null);
 
   // 프로젝트 삭제 모달
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  // 내 체크인 내역
-  const [myCheckins, setMyCheckins] = useState<CheckinRecord[]>([]);
-
   // 인증 확인 + 초기 데이터
   useEffect(() => {
     fetchProjects();
-    api.get<CheckinRecord[]>("/my/checkins").then(({ data }) => setMyCheckins(data)).catch(() => {});
+
   }, []);
 
   const fetchProjects = async () => {
@@ -138,44 +129,15 @@ export default function DashboardPage() {
     }
   };
 
-  // 코드 참여 — 프로젝트 초대코드 시도 → 실패 시 회의 체크인 시도
+  // 프로젝트 초대 코드로 참여하면 미마감 회의의 참석 대상에도 포함된다.
   const handleJoin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setJoining(true);
-    setJoinError("");
-    setJoinSuccess(null);
-    const trimmed = code.trim().toUpperCase();
-
+    e.preventDefault(); setJoining(true); setJoinError(""); setJoinSuccess(null);
     try {
-      // 1차: 프로젝트 참여 시도
-      await api.post("/projects/join", { inviteCode: trimmed });
-      setJoinSuccess({ type: "project", label: "프로젝트에 참여했습니다!" });
-      setCode("");
-      fetchProjects();
+      await api.post("/projects/join", { inviteCode: code.trim().toUpperCase() });
+      setJoinSuccess({ type: "project", label: "프로젝트에 참여했습니다!" }); setCode(""); fetchProjects();
       setTimeout(() => { setShowJoin(false); setJoinSuccess(null); }, 1500);
-    } catch (projectErr: unknown) {
-      const status = (projectErr as { response?: { status?: number } })?.response?.status;
-      if (status === 404) {
-        // 2차: 회의 체크인 시도
-        try {
-          const { data } = await api.post<CheckinRecord>("/meetings/checkin", { checkinCode: trimmed });
-          setJoinSuccess({ type: "checkin", label: `"${data.meetingTitle}" 체크인 완료!` });
-          setCode("");
-          setMyCheckins((prev) => [data, ...prev.filter((c) => c.meetingId !== data.meetingId)]);
-          // 체크인 시 프로젝트 멤버로 자동 추가되므로 프로젝트 목록도 갱신
-          fetchProjects();
-          setTimeout(() => { setShowJoin(false); setJoinSuccess(null); }, 2000);
-        } catch (checkinErr: unknown) {
-          const detail = (checkinErr as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-          setJoinError(detail || "유효하지 않은 코드입니다. 프로젝트 초대 코드 또는 회의 체크인 코드를 확인하세요.");
-        }
-      } else {
-        const detail = (projectErr as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-        setJoinError(detail || "참여에 실패했습니다");
-      }
-    } finally {
-      setJoining(false);
-    }
+    } catch (e) { setJoinError(apiError(e, "프로젝트 초대 코드를 확인하세요.")); }
+    finally { setJoining(false); }
   };
 
   const closeCreate = () => {
@@ -199,7 +161,7 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-bb-text">내 프로젝트</h1>
+            <p className="text-xs font-semibold tracking-widest text-bb-primary mb-2">TEAM WORKSPACE</p><h1 className="text-3xl font-bold text-bb-text">함께 만드는 결과물, 한곳에서.</h1>
             <p className="text-sm text-bb-text2 mt-1">참여 중인 프로젝트 {projects.length}개</p>
           </div>
           <div className="flex shrink-0 gap-3">
@@ -224,6 +186,8 @@ export default function DashboardPage() {
         {!loading && <MyTasks projects={projects} />}
 
         {/* Project Grid */}
+        <input aria-label="프로젝트 검색" value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="프로젝트 검색" className="mb-5 w-full max-w-md border border-bb-border bg-bb-surface rounded-lg p-3 text-sm" />
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
@@ -275,55 +239,12 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
+            {projects.filter(p => (p.name + " " + (p.courseName ?? "")).toLowerCase().includes(query.trim().toLowerCase())).map((project) => (
               <ProjectCard key={project.id} project={project} onDelete={() => setShowDeleteId(project.id)} />
             ))}
           </div>
         )}
 
-        {/* 내 체크인 회의 내역 */}
-        {myCheckins.length > 0 && (
-          <section className="mt-10">
-            <h2 className="text-sm font-semibold text-bb-text2 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Clock size={14} />
-              내 체크인 회의
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {myCheckins.map((c) => (
-                <Link
-                  key={c.meetingId}
-                  href={`/projects/${c.projectId}/meetings/${c.meetingId}`}
-                  className="bg-bb-surface border border-bb-border rounded-xl p-4 flex items-center gap-3
-                             hover:border-indigo-500/40 hover:bg-slate-800/60 hover:shadow-md hover:shadow-indigo-500/5
-                             transition-all group cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0
-                                  group-hover:bg-green-500/20 transition-colors">
-                    <CheckSquare size={15} className="text-green-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-bb-text truncate group-hover:text-white transition-colors">
-                      {c.meetingTitle}
-                    </p>
-                    {c.checkedAt && (
-                      <p className="text-xs text-bb-text2 mt-0.5">
-                        {new Date(c.checkedAt).toLocaleDateString("ko-KR", {
-                          month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                        })}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">
-                      체크인
-                    </span>
-                    <ChevronRight size={13} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
       </main>
 
       {/* 프로젝트 생성 모달 */}
@@ -389,7 +310,7 @@ export default function DashboardPage() {
         </Modal>
       )}
 
-      {/* 코드 참여 모달 (프로젝트 초대 + 회의 체크인 통합) */}
+      {/* 코드 참여 모달 */}
       {showJoin && (
         <Modal title="코드로 참여" onClose={closeJoin}>
           <form onSubmit={handleJoin} className="space-y-4">
@@ -404,7 +325,7 @@ export default function DashboardPage() {
                   ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
                   : "bg-green-500/10 border border-green-500/20 text-green-400"
               }`}>
-                {joinSuccess.type === "checkin" && <CheckSquare size={14} className="inline mr-1.5" />}
+
                 {joinSuccess.label}
               </div>
             )}
@@ -418,7 +339,7 @@ export default function DashboardPage() {
                 className={INPUT_CLS + " tracking-widest font-mono uppercase"}
               />
               <p className="text-xs text-slate-500 mt-1.5">
-                프로젝트 초대 코드 또는 회의 체크인 코드를 입력하세요 — 자동으로 구분합니다
+                프로젝트 초대 코드를 입력하세요. 예정된 회의에도 자동 등록됩니다
               </p>
             </Field>
             <div className="flex justify-end gap-3 pt-2">

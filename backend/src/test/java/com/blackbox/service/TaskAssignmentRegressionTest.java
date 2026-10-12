@@ -24,7 +24,7 @@ class TaskAssignmentRegressionTest {
     final DiscordNotificationService discord = mock(DiscordNotificationService.class);
     final TaskService service = new TaskService(tasks, assignees, members, users, access,
             mock(ActivityLogService.class), mock(NotionService.class), mock(AlertService.class),
-            discord, mock(ScoreService.class), mock(EntityManager.class), deliveries, mock(ReviewCommentRepository.class));
+            discord, mock(ScoreService.class), mock(EntityManager.class), deliveries, mock(ReviewCommentRepository.class), mock(TaskWorkflowService.class));
     final Project project = new Project();
     final User actor = new User();
     final User candidate = new User();

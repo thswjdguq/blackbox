@@ -6,20 +6,10 @@ import {
   Menu,
   X,
   Shield,
-  FolderKanban,
-  Kanban,
-  ClipboardList,
-  FileText,
-  Files,
-  BarChart2,
   LogOut,
   Sun,
   Moon,
-  LayoutDashboard,
-  Settings,
-  CalendarClock,
   UserCircle,
-  Link2,
   Bell,
   AlertTriangle,
   Zap,
@@ -29,9 +19,9 @@ import {
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useMyRole } from "@/hooks/useMyRole";
+import SidebarNavigation from "@/components/project/SidebarNavigation";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
-import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Alert } from "@/types/vault";
 
 // ── 알림 유틸 ──────────────────────────────────────────────────────────────
@@ -215,8 +205,7 @@ interface SidebarProps {
 export default function Sidebar({ hasProjects }: SidebarProps) {
   const pathname = usePathname();
   const router   = useRouter();
-  const [isDark, setIsDark] = useState(true);
-  const [toast,  setToast]  = useState(false);
+  const [isDark, setIsDark] = useState(false);
   // 768px 미만에서는 사이드바를 숨기고 상단 바의 메뉴 버튼으로 연다
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuButtonRef  = useRef<HTMLButtonElement>(null);
@@ -245,24 +234,8 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const projectIdMatch = pathname.match(/\/projects\/([^/]+)/);
   const currentProjectId = projectIdMatch?.[1] ?? null;
 
-  // 미연동 항목 개수 (Discord / Notion / Google Calendar)
-  const { missingCount } = useIntegrationStatus(currentProjectId);
-
-  // 메뉴는 용도별로 묶는다 (C-50 2번): 과제를 진행하는 곳 / 함께 정하는 곳 / 남는 기록
-  const NAV_ITEMS = [
-    { group: null,   href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
-    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
-    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: ClipboardList,   label: "제출물",        needsProject: true, exactActive: false },
-    { group: "진행", href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "업무 보드",    needsProject: true, exactActive: false },
-    { group: "함께", href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
-    { group: "함께", href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
-    { group: "기록", href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "파일 금고",     needsProject: true, exactActive: false },
-    { group: "기록", href: currentProjectId ? `/projects/${currentProjectId}/analytics`  : "/analytics",           icon: BarChart2,       label: "기여도",       needsProject: true, exactActive: false },
-    { group: "",     href: currentProjectId ? `/projects/${currentProjectId}/settings`   : "/settings",            icon: Settings,        label: "프로젝트 설정", needsProject: true, exactActive: false, badgeCount: currentProjectId ? missingCount : 0 },
-  ];
-
   useEffect(() => {
-    const theme = localStorage.getItem("theme") ?? "dark";
+    const theme = localStorage.getItem("teamplay-ui-theme") ?? "light";
     setIsDark(theme === "dark");
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, []);
@@ -270,34 +243,8 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
-    localStorage.setItem("theme", next ? "dark" : "light");
+    localStorage.setItem("teamplay-ui-theme", next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
-  };
-
-  const showNoProjectToast = () => {
-    setToast(true);
-    setTimeout(() => setToast(false), 3000);
-  };
-
-  const handleNavClick = (e: React.MouseEvent, href: string, needsProject?: boolean) => {
-    // 지금 화면의 메뉴를 누르면 pathname이 바뀌지 않으므로 허용된 선택이면 여기서 닫는다
-    if (!needsProject) { setMobileOpen(false); return; }
-    // 현재 URL에 projectId가 없으면 무조건 차단 (폴백 URL은 존재하지 않는 경로)
-    if (!currentProjectId) {
-      e.preventDefault();
-      showNoProjectToast();
-      return;
-    }
-    const stored = localStorage.getItem("projectCount");
-    const count  = hasProjects !== undefined
-      ? (hasProjects ? 1 : 0)
-      : stored !== null ? Number(stored) : -1;
-    if (count === 0) {
-      e.preventDefault();
-      showNoProjectToast();
-      return;
-    }
-    setMobileOpen(false);
   };
 
   const handleLogout = async () => {
@@ -345,7 +292,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
                     ${mobileOpen ? "translate-x-0 visible transition-transform" : "-translate-x-full invisible transition-[transform,visibility]"}`}
       >
         {/* 로고 + 알림 벨 */}
-        <div className="px-6 py-5 border-b border-bb-border flex items-center justify-between">
+        <div className="px-5 py-6 border-b border-bb-border flex items-center justify-between">
           <div
             className="flex items-center gap-2 cursor-pointer hover:opacity-75 transition-opacity"
             onClick={() => router.push("/dashboard")}
@@ -368,52 +315,9 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           </div>
         </div>
 
-        <ProjectSwitcher currentProjectId={currentProjectId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+        {currentProjectId && <ProjectSwitcher currentProjectId={currentProjectId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />}
 
-        {/* 네비게이션 — 짧은 화면에서는 메뉴만 스크롤 */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {NAV_ITEMS.map(({ group, href, icon: Icon, label, needsProject, exactActive, badgeCount }, i) => {
-            // 묶음이 바뀌는 자리에 이름(빈 이름이면 구분선만)
-            const groupStart = i > 0 && group !== NAV_ITEMS[i - 1].group;
-            const heading = groupStart && (
-              group
-                ? <p key={`g-${group}`} className="px-3 pt-4 pb-1 text-[11px] font-semibold text-bb-text2/70">{group}</p>
-                : <div key={`g-${i}`} className="mx-3 my-3 border-t border-bb-border" />
-            );
-            // exactActive=true → exact pathname match only (프로젝트 홈 등)
-            const segment = href.split("/").pop()!;
-            const active = needsProject && !currentProjectId
-              ? false
-              : exactActive
-              ? pathname === href
-              : (pathname === href
-                || pathname.endsWith(`/${segment}`)
-                || pathname.includes(`/${segment}/`));
-            return [heading, (
-              <Link
-                // 프로젝트 선택 전에는 여러 메뉴의 href 가 /dashboard 로 같아진다
-                key={label}
-                href={href}
-                prefetch={!needsProject || !!currentProjectId}
-                onClick={(e) => handleNavClick(e, href, needsProject)}
-                className={`relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active
-                    ? "bg-bb-primary/10 text-bb-primary font-medium before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-full before:bg-bb-primary"
-                    : "text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
-                }`}
-              >
-                <Icon size={16} className={active ? "text-bb-primary" : "text-bb-text2"} />
-                {label}
-                {!!badgeCount && (
-                  <span className="ml-auto min-w-[18px] h-[18px] px-1 flex items-center justify-center
-                                   rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
-                    {badgeCount}
-                  </span>
-                )}
-              </Link>
-            )];
-          })}
-        </nav>
+        <SidebarNavigation projectId={currentProjectId} onNavigate={() => setMobileOpen(false)} />
 
         {/* 하단 버튼 */}
         <div className="px-3 py-4 border-t border-bb-border space-y-0.5">
@@ -437,18 +341,6 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             <UserCircle size={16} className={pathname === "/profile/settings" ? "text-bb-primary" : "text-bb-text2"} />
             프로필 설정
           </Link>
-          <Link
-            href="/profile/notion"
-            onClick={() => setMobileOpen(false)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname === "/profile/notion"
-                ? "bg-bb-primary/10 text-bb-primary font-medium"
-                : "text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
-            }`}
-          >
-            <Link2 size={16} className={pathname === "/profile/notion" ? "text-bb-primary" : "text-bb-text2"} />
-            Notion 연동
-          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
@@ -460,16 +352,6 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
         </div>
       </aside>
 
-      {/* 토스트 */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
-                        flex items-center gap-2 px-5 py-3 rounded-xl shadow-lg
-                        bg-bb-surface border border-bb-border
-                        text-sm text-bb-text animate-fade-in">
-          <FolderKanban size={15} className="text-bb-primary shrink-0" />
-          먼저 프로젝트를 생성하거나 참여해주세요
-        </div>
-      )}
     </>
   );
 }

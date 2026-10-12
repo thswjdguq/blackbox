@@ -1,0 +1,17 @@
+const fs = require('fs');
+const assert = require('assert/strict');
+const ts = require('typescript');
+const source = fs.readFileSync('src/lib/taskChecklist.ts', 'utf8');
+const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const moduleExports = {};
+new Function('exports', compiled)(moduleExports);
+const { checklistItems, toggleChecklistItem } = moduleExports;
+const original = '출처를 보존합니다.\n- [ ] 자료 수집\n- [x] 비교표 작성\n```markdown\n- [ ] 예제 코드\n```\n추가 설명';
+assert.equal(checklistItems(original).length, 2);
+const checked = toggleChecklistItem(original, 1, true);
+assert.equal(checked, original.replace('- [ ] 자료 수집', '- [x] 자료 수집'));
+assert.equal(toggleChecklistItem(checked, 1, false), original);
+assert.equal(toggleChecklistItem(original, 4, true), original, '코드 블록 안의 예제는 변경하지 않는다');
+assert.equal(toggleChecklistItem(original, 0, true), original, '본문을 체크 항목으로 바꾸지 않는다');
+assert.equal(checklistItems('- [X] 완료\r\n- [ ] 다음')[0].checked, true);
+console.log('체크리스트: 본문·코드 보존, 체크·해제 왕복, CRLF 처리 통과');
