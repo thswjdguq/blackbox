@@ -19,6 +19,8 @@
 //   - 실제 팀의 프로젝트에는 손대지 않는다. 새 프로젝트를 만들 뿐이다
 //   - 서버의 .env 에 NOTION_API_KEY 와 NOTION_PARENT_PAGE_ID 가 있으면 파일을 올릴 때마다 그 Notion 페이지 아래에
 //     "업로드 파일 이력" 쪽이 생긴다. 이 스크립트는 프로젝트마다 파일을 둘 올린다
+//   - 중간에 실패하면 그 프로젝트는 이름 끝에 "(만드는 중)"이 붙은 채 남는다. 다시 돌리면 그것은 두고 새로 만든다.
+//     지울 수는 없어 그 계정의 프로젝트 목록에 남는다
 //   - 같은 이름의 프로젝트가 이미 있는 계정은 건너뛴다. 실수로 두 번 돌려 겹치지 않게 하려는 것이다.
 //     --again 을 주면 또 만들지만, 그 계정의 화면에 같은 이름의 프로젝트가 둘 보인다
 //   - 기한은 돌린 날을 기준으로 잡는다(중간 보고서 6일 뒤, "API 설계 문서"는 어제). 시연 당일에 돌린다
@@ -37,6 +39,7 @@ const BASE = option("base", "https://localhost").replace(/\/$/, "");
 const PASSWORD = option("password", "Demo-pass-2026");
 const COUNT = Number(option("count", "2"));
 const AGAIN = args.includes("--again");
+const UNFINISHED = " (만드는 중)";
 const PROJECT_NAME = "캡스톤 디자인 — 우리 동네 재활용 안내 앱";
 const DRAFT_NAME = "중간보고서_초안.pdf";
 
@@ -143,9 +146,11 @@ async function upload(who, projectId, fileName, content) {
   return who.must(`파일 "${fileName}" 올리기`, "POST", `/projects/${projectId}/files`, undefined, form);
 }
 
+// 만드는 동안에는 이름 끝에 UNFINISHED 를 붙여 두고 맨 끝에 뗀다. 중간에 실패한 프로젝트가
+// 다 만든 것과 같은 이름으로 남지 않게 하려는 것이다. 그래서 이름이 맞는 프로젝트는 다 만들어진 것이다
 async function seedProject(people, name) {
   const { leader, member, idle, professor } = people;
-  const project = await leader.must("프로젝트 만들기", "POST", "/projects", { name });
+  const project = await leader.must("프로젝트 만들기", "POST", "/projects", { name: name + UNFINISHED });
   const P = `/projects/${project.id}`;
   for (const who of [member, idle, professor]) {
     await who.must("초대 코드로 참여", "POST", "/projects/join", { inviteCode: project.inviteCode });
@@ -190,6 +195,7 @@ async function seedProject(people, name) {
   await leader.must("첫 요구사항 충족 확인", "PUT", `${D}/requirements/${requirementId(wanted[0][0])}/assessment`);
   // 기여도 화면이 처음부터 채워져 있게 한 번 계산해 둔다
   await leader.must("기여도 계산", "POST", `${P}/scores/recalculate`);
+  await leader.must("프로젝트 이름에서 표시 떼기", "PATCH", P, { name });
   return project;
 }
 
@@ -199,6 +205,7 @@ async function main() {
   console.log(`서버: ${BASE}`);
 
   const made = [];
+  let leftovers = 0;
   for (const set of SETS) {
     console.log(`\n${set.label}`);
     const people = {};
@@ -208,6 +215,11 @@ async function main() {
     }
     const mine = await people.leader.must("프로젝트 목록", "GET", "/projects");
     const existing = mine.filter((p) => p.name === set.projectName);
+    const broken = mine.filter((p) => p.name === set.projectName + UNFINISHED).length;
+    if (broken) {
+      leftovers += broken;
+      console.log(`  만들다 만 프로젝트가 ${broken}개 남아 있습니다. 이름 끝에 "${UNFINISHED.trim()}"이 붙어 있고 쓰지 않습니다`);
+    }
     if (existing.length && !AGAIN) {
       console.log(`  프로젝트가 이미 있어 만들지 않았습니다. 또 만들려면 --again`);
       made.push({ ...set, id: existing[0].id, skipped: true });
@@ -232,6 +244,7 @@ async function main() {
   }
   console.log(`  시연 중에 올릴 수정본: ${revised}`);
   if (made.length > 1) console.log("  연습은 리허설용 계정으로 하고, 본 시연용 프로젝트는 시연까지 건드리지 않습니다.");
+  if (leftovers) console.log(`  만들다 만 프로젝트 ${leftovers}개는 지울 수 없어 그 계정의 프로젝트 목록에 남습니다. 시연 때 열지 않습니다.`);
 }
 
 await main();
