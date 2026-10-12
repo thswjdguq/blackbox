@@ -441,7 +441,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {/* 업무·파일·기여도 같은 기록이 생긴 프로젝트는 서버가 지우지 않는다(A-03, 409). 사실대로 묻는다 */}
             <p className="text-sm text-bb-text2">
-              기록이 남은 프로젝트(업무, 파일, 기여도 등)는 기록 보존을 위해 삭제할 수 없습니다. 아직 기록이 없는 프로젝트만 삭제되며, 삭제하면 되돌릴 수 없습니다. 삭제할까요?
+              기록이 남은 프로젝트(업무, 파일, 기여도 등)는 기록 보존을 위해 삭제할 수 없습니다. 아직 기록이 없는 프로젝트만 삭제되며, 제출물·요구사항도 함께 지워지고 되돌릴 수 없습니다.{!deleteBlocked && " 삭제할까요?"}
             </p>
             {deleteError && (
               <p role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400 whitespace-pre-wrap">
