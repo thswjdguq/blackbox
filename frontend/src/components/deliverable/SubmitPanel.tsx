@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Clock, Download, Loader2, Lock, XCircle } from "lucide-react";
-import { apiError } from "@/lib/apiError";
+import { apiError, blobApiError } from "@/lib/apiError";
+import { downloadFile } from "@/lib/download";
 import { isReviewApiMissing } from "@/lib/api/review";
 import { confirmDeliverable, getConfirmation, recordSubmission } from "@/lib/api/confirmation";
 import type { ConfirmationCheck, ConfirmationInfo } from "@/types/confirmation";
@@ -84,6 +85,22 @@ export default function SubmitPanel({
   const [note, setNote] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [formError, setFormError] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+
+  // 주소로 열면 로그인 갱신(401 → refresh)을 거치지 않는다. 파일 금고와 같은 함수로 받는다(#109)
+  const handleDownload = async (fileId: string, fileName: string) => {
+    if (downloading) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      await downloadFile(fileId, fileName);
+    } catch (err) {
+      setDownloadError(await blobApiError(err, "확정본을 내려받지 못했습니다. 다시 시도해주세요."));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const isLeader = myRole === "LEADER";
   const canRecord = myRole === "LEADER" || myRole === "MEMBER";
@@ -252,9 +269,17 @@ export default function SubmitPanel({
             <dt className="text-bb-text2">확정본</dt>
             <dd className="text-bb-text">
               {info.confirmation.file.fileName} v{info.confirmation.file.version} · <span className="font-mono">{info.confirmation.file.shortHash}</span>{" "}
-              <a href={`/api/files/${info.confirmation.file.fileId}/download`} className="ml-1 inline-flex items-center gap-0.5 text-bb-primary hover:underline">
-                <Download size={12} /> 내려받기
-              </a>
+              <button
+                type="button"
+                onClick={() => handleDownload(info.confirmation!.file.fileId, info.confirmation!.file.fileName)}
+                disabled={downloading}
+                className="ml-1 inline-flex items-center gap-0.5 text-bb-primary hover:underline disabled:opacity-50"
+              >
+                {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} 확정본 내려받기
+              </button>
+              {downloadError && (
+                <span role="alert" className="mt-1 block text-red-400">{downloadError}</span>
+              )}
             </dd>
             <dt className="text-bb-text2">확정</dt>
             <dd className="text-bb-text">{info.confirmation.confirmedBy.name} · {fmt(info.confirmation.confirmedAt)} · {info.confirmation.roundNo}회차 승인본</dd>
