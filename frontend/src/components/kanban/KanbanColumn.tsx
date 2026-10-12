@@ -52,7 +52,7 @@ export default function KanbanColumn({
             onClick={() => onAddTask(column.id)}
             className="text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10
                        p-1.5 rounded-lg transition-all duration-150"
-            aria-label="태스크 추가"
+            aria-label="업무 추가"
           >
             <Plus size={15} />
           </button>

@@ -279,7 +279,7 @@ export default function AnalyticsPage() {
             <span className="text-5xl mb-4">📊</span>
             <p className="text-sm font-semibold text-bb-text mb-1.5">아직 분석할 데이터가 없어요</p>
             <p className="text-xs text-bb-text2 mb-6">
-              태스크 완료, 회의 체크인, 파일 업로드 후 분석이 시작됩니다
+              업무 완료, 회의 체크인, 파일 업로드 후 분석이 시작됩니다
             </p>
             {canRecalc ? (
               <button
@@ -341,7 +341,7 @@ export default function AnalyticsPage() {
                 <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-0 border-b border-bb-border bg-bb-bg/60">
                   {[
                     { label: "팀원", cls: "text-left pl-5" },
-                    { label: "태스크 완료", cls: "text-center" },
+                    { label: "업무 완료", cls: "text-center" },
                     { label: "회의 참석", cls: "text-center" },
                     { label: "파일 업로드", cls: "text-center" },
                     { label: "액션아이템", cls: "text-center" },
@@ -421,7 +421,7 @@ export default function AnalyticsPage() {
 
               {/* 판정 기준 안내 */}
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-bb-text2">
-                <span>태스크: 담당 태스크 1개↑ 완료</span>
+                <span>업무: 담당 업무 1개↑ 완료</span>
                 <span>회의: 전체 회의 50%↑ 체크인</span>
                 <span>파일: 1개↑ 업로드</span>
                 <span>액션아이템: 담당 1개↑ 완료</span>
@@ -480,8 +480,8 @@ export default function AnalyticsPage() {
                   {/* 통계 */}
                   <div className="bg-bb-surface border border-bb-border rounded-xl p-6 space-y-3">
                     <StatRow label="완료율" value={`${risk.completionRate}%`} />
-                    <StatRow label="완료 태스크" value={`${risk.doneTasks} / ${risk.totalTasks}개`} />
-                    <StatRow label="지연 태스크" value={`${risk.overdueTasks}개`} />
+                    <StatRow label="완료 업무" value={`${risk.doneTasks} / ${risk.totalTasks}개`} />
+                    <StatRow label="지연 업무" value={`${risk.overdueTasks}개`} />
                     <StatRow label="남은 기간" value={risk.daysRemaining != null ? `${risk.daysRemaining}일` : "-"} />
                     {risk.reasons.length > 0 && (
                       <div className="pt-2 border-t border-bb-border">
@@ -549,7 +549,7 @@ export default function AnalyticsPage() {
                         )}
 
                         {myTasks.length === 0 ? (
-                          <p className="text-xs text-bb-text2 italic">배정된 태스크가 없습니다</p>
+                          <p className="text-xs text-bb-text2 italic">배정된 업무가 없습니다</p>
                         ) : (
                           <div className="space-y-1.5">
                             {myTasks.map((task) => {
