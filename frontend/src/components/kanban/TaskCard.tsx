@@ -16,6 +16,7 @@ import {
   Star,
   Check,
   ArrowRight,
+  Lock,
 } from "lucide-react";
 
 interface TaskCardProps {
@@ -24,6 +25,8 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onMove?: (taskId: string, newStatus: TaskStatus) => void;
   readOnly?: boolean;
+  /** 확정·제출된 제출물의 업무. 읽기 전용으로 열고 표시를 붙인다 */
+  locked?: boolean;
 }
 
 const PRIORITY_CONFIG = {
@@ -88,7 +91,8 @@ function ScoreChip({ score }: { score: number }) {
   );
 }
 
-export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false }: TaskCardProps) {
+export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly: viewer = false, locked = false }: TaskCardProps) {
+  const readOnly = viewer || locked;
   const [isMoving, setIsMoving] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -132,7 +136,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
         ? {
             role: "button",
             tabIndex: 0,
-            "aria-label": `${task.title} 보기`,
+            "aria-label": `${task.title} 보기${locked ? " (확정된 제출물)" : ""}`,
             onKeyDown: (e: React.KeyboardEvent) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -212,8 +216,14 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
         )}
       </div>
 
-      <p className="mb-2 text-xs text-teal-400 truncate" title={task.deliverableTitle ?? "제출물 미연결"}>
-        {task.deliverableTitle ? `제출물: ${task.deliverableTitle}` : "제출물 미연결"}
+      <p className="mb-2 flex min-w-0 items-center gap-1.5 text-xs text-teal-400" title={task.deliverableTitle ?? "제출물 미연결"}>
+        <span className="truncate">{task.deliverableTitle ? `제출물: ${task.deliverableTitle}` : "제출물 미연결"}</span>
+        {locked && (
+          <span data-testid="task-locked" className="inline-flex shrink-0 items-center gap-0.5 rounded bg-bb-surface2 px-1.5 py-0.5 text-[10px] font-medium text-bb-text2">
+            <Lock size={9} aria-hidden="true" />
+            확정됨
+          </span>
+        )}
       </p>
       {/* Description preview */}
       {task.description && (
