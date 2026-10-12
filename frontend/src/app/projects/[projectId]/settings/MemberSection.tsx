@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import { forgetMyRole } from "@/hooks/useMyRole";
 import { getMembers, updateMemberRole, removeMember, leaveProject } from "@/lib/api/member";
 import { ROLE_LABEL, type MemberRole, type ProjectMember } from "@/types/member";
 import { AlertCircle, Loader2, LogOut, RefreshCw, UserMinus, Users } from "lucide-react";
@@ -75,6 +76,8 @@ export default function MemberSection({ projectId }: { projectId: string }) {
     try {
       const { data } = await updateMemberRole(projectId, member.memberId, role);
       setMembers((prev) => prev.map((m) => (m.memberId === data.memberId ? data : m)));
+      // 내 역할이 바뀌면 다른 화면(알림·기여도)이 쓰는 역할 캐시를 비운다
+      if (data.userId === myUserId) forgetMyRole(projectId);
     } catch (err) {
       setActionError(apiError(err, "역할 변경에 실패했습니다. 다시 시도해주세요."));
     } finally {
