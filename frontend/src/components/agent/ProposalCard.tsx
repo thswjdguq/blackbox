@@ -5,10 +5,11 @@ import Link from "next/link";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { acceptProposal, getProposal, rejectProposal } from "@/lib/api/agent";
 import { apiError } from "@/lib/apiError";
-import { fieldName, fieldProblems } from "@/lib/agent/problems";
+import { fieldName, fieldProblems, problemSummary } from "@/lib/agent/problems";
 import { shortDate } from "@/lib/due";
 import { useAgentStore } from "@/lib/store/agentStore";
 import type { AgentStatus, Proposal } from "@/types/agent";
+import ProposalEditor from "./ProposalEditor";
 
 const KIND_LABEL: Record<string, string> = { DELIVERABLE_PLAN: "제출물 계획", TASKS: "업무" };
 const STATUS_LABEL: Record<string, string> = { PENDING: "대기", ACCEPTED: "채택됨", REJECTED: "거절됨" };
@@ -45,7 +46,7 @@ function Value({ text }: { text: string | null | undefined }) {
 
 /**
  * 제안 카드 (화면 문서 4.7). 접힌 모양 ↔ 펼친 모양. 채택·거절은 서버의 카드로 화면을 바꾼다.
- * 고치는 모양(3단계)은 아직 없다. 400이면 막힌 칸을 카드 안에 목록으로 보인다.
+ * 고치는 모양은 ProposalEditor. 채택이 400이면 고치는 모양을 열어 막힌 칸을 표시한다(4.7 채택 4번).
  */
 export default function ProposalCard({
   proposal: p,
@@ -69,6 +70,7 @@ export default function ProposalCard({
   const [error, setError] = useState("");
   const [problems, setProblems] = useState<Record<string, string>>({});
   const [gone, setGone] = useState(false);
+  const [editing, setEditing] = useState<null | { problems: Record<string, string>; focusDue: boolean }>(null);
   const resultRef = useRef<HTMLParagraphElement>(null);
   const putProposal = useAgentStore((s) => s.putProposal);
   const bumpRecords = useAgentStore((s) => s.bumpRecords);
@@ -140,7 +142,12 @@ export default function ProposalCard({
         return;
       }
       setError(detail);
-      if (code === 400) setProblems(fieldProblems(detail));
+      // 400: 아무것도 만들어지지 않았다. 고치는 모양으로 열어 칸을 표시한다
+      if (code === 400) {
+        const found = fieldProblems(detail);
+        setEditing({ problems: found, focusDue: false });
+        if (Object.keys(found).length) setError(problemSummary(detail));
+      }
       if (code === 409) refetch();
     } finally {
       setBusy("");
@@ -178,7 +185,20 @@ export default function ProposalCard({
         {open ? <ChevronUp size={14} className="mt-1 shrink-0 text-bb-text2" /> : <ChevronDown size={14} className="mt-1 shrink-0 text-bb-text2" />}
       </button>
 
-      {open && (
+      {open && editing && (
+        <div className="border-t border-bb-border px-3 pb-3 pt-2">
+          {error && <p role="alert" className="mb-2 text-xs text-red-400">{error}</p>}
+          <ProposalEditor
+            proposal={p}
+            projectId={projectId}
+            initialProblems={editing.problems}
+            focusDue={editing.focusDue}
+            onDone={() => { setEditing(null); setError(""); }}
+          />
+        </div>
+      )}
+
+      {open && !editing && (
         <div className="space-y-3 border-t border-bb-border px-3 pb-3 pt-2 text-sm">
           <p className="flex flex-wrap gap-1.5 text-[11px]">
             <span className="rounded bg-bb-primary/10 px-1.5 py-0.5 text-bb-primary">AI 제안</span>
@@ -271,6 +291,16 @@ export default function ProposalCard({
                     >
                       {busy === "accept" && <Loader2 size={12} className="animate-spin" />}
                       {acceptLabel}
+                    </button>
+                  )}
+                  {known && (
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() => { setError(""); setProblems({}); setEditing({ problems: {}, focusDue: noDue }); }}
+                      className="rounded-lg border border-bb-border px-3 py-1.5 text-xs text-bb-text hover:bg-bb-surface2 disabled:opacity-50"
+                    >
+                      고치기
                     </button>
                   )}
                   <button type="button" disabled={!!busy} onClick={() => setConfirmReject(true)} className="rounded-lg border border-bb-border px-3 py-1.5 text-xs text-bb-text2 hover:bg-bb-surface2 hover:text-bb-text disabled:opacity-50">
