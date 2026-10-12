@@ -102,11 +102,13 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="signup-name" className="block text-sm font-medium text-bb-text2 mb-1.5">
               이름
             </label>
             <input
               type="text"
+              id="signup-name"
+              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="홍길동"
@@ -118,11 +120,13 @@ export default function SignupPage() {
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="signup-email" className="block text-sm font-medium text-bb-text2 mb-1.5">
               이메일
             </label>
             <input
               type="email"
+              id="signup-email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
@@ -133,12 +137,14 @@ export default function SignupPage() {
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="signup-password" className="block text-sm font-medium text-bb-text2 mb-1.5">
               비밀번호
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                id="signup-password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="8자 이상 입력"
