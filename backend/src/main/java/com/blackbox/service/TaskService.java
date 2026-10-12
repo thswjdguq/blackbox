@@ -33,6 +33,7 @@ public class TaskService {
     private final ScoreService scoreService;
     private final EntityManager entityManager;
     private final DeliverableService deliverableService;
+    private final ReviewCommentRepository reviewComments;
 
     public TaskService(TaskRepository taskRepository,
                        TaskAssigneeRepository taskAssigneeRepository,
@@ -45,7 +46,8 @@ public class TaskService {
                        DiscordNotificationService discordService,
                        ScoreService scoreService,
                        EntityManager entityManager,
-                       DeliverableService deliverableService) {
+                       DeliverableService deliverableService,
+                       ReviewCommentRepository reviewComments) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -58,6 +60,7 @@ public class TaskService {
         this.scoreService = scoreService;
         this.entityManager = entityManager;
         this.deliverableService = deliverableService;
+        this.reviewComments = reviewComments;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -296,6 +299,13 @@ public class TaskService {
                 || (clearRequirement && requirementId != null)) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST, "연결과 연결 해제를 동시에 요청할 수 없습니다");
+        }
+        // V22 복합 외래키 위반에 맡기기 전에 피드백의 원래 제출물 연결을 설명 가능한 409로 보호한다.
+        if (task.getId() != null && reviewComments.existsByLinkedTaskId(task.getId())
+                && (clearDeliverable || (deliverableId != null && (task.getDeliverable() == null
+                || !deliverableId.equals(task.getDeliverable().getId()))))) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "피드백에 연결된 업무는 제출물을 변경하거나 연결을 해제할 수 없습니다");
         }
         if (clearDeliverable) {
             task.setDeliverable(null);

@@ -4,6 +4,9 @@ import com.blackbox.dto.ReviewCommentDtos.CreateRequest;
 import com.blackbox.entity.*;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import com.blackbox.scheduler.ScoreScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
@@ -23,6 +26,23 @@ class ReviewCommentRollbackTest {
     @Autowired PlatformTransactionManager transactions;
     @Autowired ReviewCommentService service;
     @SpyBean ActivityLogService activity;
+    @MockBean ScoreScheduler scheduler;
+    private UUID projectId, userId;
+
+    @AfterEach void removeFixture() {
+        if (projectId == null) return;
+        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+            // 이번 테스트가 커밋한 준비 자료만 지운다. 실패한 검사도 정리되고 기존 DB 자료는 보존한다.
+            for (String table : java.util.List.of("review_comments", "activity_logs", "review_rounds",
+                    "deliverables", "project_members")) {
+                em.createNativeQuery("delete from " + table + " where project_id=:p").setParameter("p", projectId).executeUpdate();
+            }
+            em.createNativeQuery("delete from projects where id=:p").setParameter("p", projectId).executeUpdate();
+            em.createNativeQuery("delete from users where id=:u").setParameter("u", userId).executeUpdate();
+            assertEquals(0L, ((Number) em.createNativeQuery("select count(*) from projects where id=:p")
+                    .setParameter("p", projectId).getSingleResult()).longValue());
+        });
+    }
 
     @Test void failedAuditRollsBackCommentAndActivity() {
         var tx=new TransactionTemplate(transactions);
@@ -35,6 +55,7 @@ class ReviewCommentRollbackTest {
             ReviewRound r=new ReviewRound();r.setProject(p);r.setDeliverable(d);r.setOpenedBy(u);r.setRoundNo(1);em.persist(r);
             return new Seed(p.getId(),d.getId(),r.getId(),u);
         });
+        projectId=seed.project(); userId=seed.user().getId();
         doAnswer(invocation->{
             invocation.callRealMethod();
             em.flush();

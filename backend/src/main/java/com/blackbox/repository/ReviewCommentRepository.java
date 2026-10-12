@@ -10,4 +10,5 @@ public interface ReviewCommentRepository extends JpaRepository<ReviewComment, UU
     List<ReviewComment> findByProjectIdAndDeliverableIdAndReviewIdOrderByCreatedAtAscIdAsc(UUID projectId, UUID deliverableId, UUID reviewId);
     Optional<ReviewComment> findByIdAndProjectIdAndDeliverableIdAndReviewId(UUID id, UUID projectId, UUID deliverableId, UUID reviewId);
     long countByProjectIdAndDeliverableIdAndResolvedAtIsNull(UUID projectId, UUID deliverableId);
+    boolean existsByLinkedTaskId(UUID taskId);
 }
