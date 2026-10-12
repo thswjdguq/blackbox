@@ -70,6 +70,9 @@ export default function DashboardPage() {
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  // 서버가 삭제를 거절했다(409, 기록 보존). 다시 눌러도 같으므로 삭제 버튼을 감춘다
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const closeDelete = () => { setShowDeleteId(null); setDeleteError(""); setDeleteBlocked(false); };
 
   // 내 체크인 내역
   const [myCheckins, setMyCheckins] = useState<CheckinRecord[]>([]);
@@ -108,6 +111,7 @@ export default function DashboardPage() {
     } catch (err) {
       // 삭제할 수 없는 프로젝트는 서버가 409 와 사유(detail)를 준다 (A-03). 창을 닫지 않고 사유를 보여준다
       setDeleteError(apiError(err, "프로젝트를 삭제하지 못했습니다. 다시 시도해주세요."));
+      if ((err as { response?: { status?: number } })?.response?.status === 409) setDeleteBlocked(true);
     } finally {
       setDeleting(false);
     }
@@ -433,10 +437,11 @@ export default function DashboardPage() {
 
       {/* 프로젝트 삭제 확인 모달 */}
       {showDeleteId && (
-        <Modal title="프로젝트 삭제" onClose={() => { setShowDeleteId(null); setDeleteError(""); }}>
+        <Modal title="프로젝트 삭제" onClose={closeDelete}>
           <div className="space-y-4">
-            <p className="text-sm text-slate-300">
-              이 프로젝트를 삭제하면 모든 데이터(태스크, 회의록, 파일 등)가 영구적으로 삭제됩니다. 정말 삭제하시겠습니까?
+            {/* 업무·파일·기여도 같은 기록이 생긴 프로젝트는 서버가 지우지 않는다(A-03, 409). 사실대로 묻는다 */}
+            <p className="text-sm text-bb-text2">
+              기록이 남은 프로젝트(업무, 파일, 기여도 등)는 기록 보존을 위해 삭제할 수 없습니다. 아직 기록이 없는 프로젝트만 삭제되며, 삭제하면 되돌릴 수 없습니다. 삭제할까요?
             </p>
             {deleteError && (
               <p role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400 whitespace-pre-wrap">
@@ -444,17 +449,17 @@ export default function DashboardPage() {
               </p>
             )}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => { setShowDeleteId(null); setDeleteError(""); }} disabled={deleting} className={BTN_SECONDARY}>
-                취소
+              <button type="button" onClick={closeDelete} disabled={deleting} className={BTN_SECONDARY}>
+                {deleteBlocked ? "닫기" : "취소"}
               </button>
-              <button
+              {!deleteBlocked && <button
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
                 className="bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 {deleting ? <Spinner /> : <><Trash2 size={15} /> 삭제</>}
-              </button>
+              </button>}
             </div>
           </div>
         </Modal>
