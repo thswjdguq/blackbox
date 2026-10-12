@@ -7,11 +7,13 @@ import Sidebar from "@/components/Sidebar";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import DeliverableTimeline from "@/components/deliverable/DeliverableTimeline";
+import DeliverableStatusBadge from "@/components/deliverable/DeliverableStatusBadge";
 import api from "@/lib/api";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import { getDeliverables, createDeliverable, deleteDeliverable } from "@/lib/api/deliverable";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
+import { isDeliverableLocked } from "@/types/deliverable";
 import type { Task } from "@/types/task";
 import {
   ClipboardList,
@@ -215,6 +217,7 @@ export default function DeliverablesPage() {
             {deliverables.map((d) => {
               const requiredCount = d.requirements.filter((r) => r.required).length;
               const taskCount = tasks.filter((t) => t.deliverableId === d.id).length;
+              const locked = isDeliverableLocked(d);
               return (
                 <div
                   key={d.id}
@@ -222,14 +225,20 @@ export default function DeliverablesPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <Link href={`/projects/${projectId}/deliverables/${d.id}`} className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-bb-text group-hover:text-bb-primary transition-colors truncate">
-                        {d.title}
-                      </p>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="text-sm font-semibold text-bb-text group-hover:text-bb-primary transition-colors truncate">
+                          {d.title}
+                        </p>
+                        <DeliverableStatusBadge deliverable={d} />
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-bb-text2">
                         <span className="flex items-center gap-1">
                           <CalendarDays size={12} />
                           제출일 {shortDate(d.dueDate)}
-                          <span className={`font-medium ${DUE_TEXT[dueTone(d.dueDate)]}`}>· {dueLabel(d.dueDate)}</span>
+                          {/* 제출을 기록했으면 남은 날·지난 날은 더 뜻이 없다 */}
+                          {d.status !== "SUBMITTED" && (
+                            <span className={`font-medium ${DUE_TEXT[dueTone(d.dueDate)]}`}>· {dueLabel(d.dueDate)}</span>
+                          )}
                         </span>
                         <span className="flex items-center gap-1">
                           <User size={12} />
@@ -245,7 +254,8 @@ export default function DeliverablesPage() {
                     </Link>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      {canWrite && (
+                      {/* 확정·제출된 제출물은 지울 수 없다(서버 409) */}
+                      {canWrite && !locked && (
                         <button
                           onClick={() => setDeleteTarget(d)}
                           className="p-1.5 rounded-lg text-bb-text2 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"

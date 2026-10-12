@@ -14,6 +14,8 @@ interface KanbanColumnProps {
   onEditTask: (task: Task) => void;
   onMoveTask: (taskId: string, newStatus: TaskStatus) => void;
   readOnly?: boolean;
+  /** 확정·제출된 제출물의 업무인가. 그 카드만 읽기 전용이다 */
+  isLocked?: (task: Task) => boolean;
 }
 
 export default function KanbanColumn({
@@ -24,6 +26,7 @@ export default function KanbanColumn({
   onEditTask,
   onMoveTask,
   readOnly = false,
+  isLocked,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, disabled: readOnly });
   const isTodo = column.id === "TODO";
@@ -75,6 +78,7 @@ export default function KanbanColumn({
               onEdit={onEditTask}
               onMove={onMoveTask}
               readOnly={readOnly}
+              locked={isLocked?.(task) ?? false}
             />
           ))}
         </SortableContext>
