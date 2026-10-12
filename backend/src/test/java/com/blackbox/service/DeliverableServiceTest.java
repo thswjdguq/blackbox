@@ -19,7 +19,10 @@ class DeliverableServiceTest {
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
     final ProjectRepository projects = mock(ProjectRepository.class);
     final ProjectAccessChecker access = new ProjectAccessChecker(projects, members);
-    final DeliverableService service = new DeliverableService(deliveries, requirements, tasks, mock(ReviewRoundRepository.class), members, access);
+    final ReviewRoundRepository rounds = mock(ReviewRoundRepository.class);
+    final DeliverableConfirmationRepository confirmations = mock(DeliverableConfirmationRepository.class);
+    final DeliverableService service = new DeliverableService(deliveries, requirements, tasks, rounds, members, access,
+            new DeliverableStatuses(access, deliveries, rounds, confirmations, mock(DeliverableSubmissionRepository.class)));
     final Project project = new Project();
     final User user = new User();
     final Deliverable delivery = new Deliverable();
@@ -32,6 +35,7 @@ class DeliverableServiceTest {
         when(projects.findById(project.getId())).thenReturn(Optional.of(project));
         when(members.findByProjectAndUser(project, user)).thenReturn(Optional.of(member));
         when(deliveries.findByIdAndProject(delivery.getId(), project)).thenReturn(Optional.of(delivery));
+        when(deliveries.lockByIdAndProject(delivery.getId(), project)).thenReturn(Optional.of(delivery));
     }
 
     @Test void countsOnlyRequiredRequirements() {
@@ -90,6 +94,22 @@ class DeliverableServiceTest {
     @Test void countsOnlyMetRequiredRequirements() {
         when(requirements.countByDeliverableAndRequiredTrueAndAssessedAtIsNotNull(delivery)).thenReturn(1L);
         assertEquals(1L, service.countMetRequiredRequirements(delivery));
+    }
+
+    @Test void responsesCarryStatusAndLatestDecision() {
+        assertEquals("DRAFT", service.get(project.getId(), delivery.getId(), user).status());
+        assertNull(service.get(project.getId(), delivery.getId(), user).latestDecision());
+
+        ReviewRound approved = new ReviewRound(); approved.setDeliverable(delivery); approved.decide("APPROVED", user);
+        when(rounds.findFirstByDeliverableOrderByRoundNoDesc(delivery)).thenReturn(Optional.of(approved));
+        when(rounds.findLatestByProject(project)).thenReturn(List.of(approved));
+        when(confirmations.existsById(delivery.getId())).thenReturn(true);
+        when(confirmations.findDeliverableIdsByProject(project)).thenReturn(Set.of(delivery.getId()));
+        when(deliveries.findByProjectOrderByDueDateAscCreatedAtAsc(project)).thenReturn(List.of(delivery));
+        for (Response r : List.of(service.get(project.getId(), delivery.getId(), user), service.list(project.getId(), user).get(0))) {
+            assertEquals("CONFIRMED", r.status());
+            assertEquals("APPROVED", r.latestDecision());
+        }
     }
 
     @Test void observerCanReadButCannotWrite() {
