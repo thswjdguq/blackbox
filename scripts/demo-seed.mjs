@@ -31,6 +31,16 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
+// 모르는 옵션을 흘려 넘기면 기본 주소의 서버에 그대로 자료를 만든다. 요청을 보내기 전에 멈춘다
+const VALUE_OPTIONS = ["--base", "--password", "--count"], FLAGS = ["--again"];
+for (let i = 0; i < args.length; i++) {
+  if (VALUE_OPTIONS.includes(args[i]) && args[i + 1] !== undefined) i++;
+  else if (!FLAGS.includes(args[i])) {
+    const asked = ["--help", "-h"].includes(args[i]);
+    console[asked ? "log" : "error"](`${asked ? "" : `모르는 옵션: ${args[i]}\n`}사용: node scripts/demo-seed.mjs [--base 주소] [--password 비밀번호] [--count 1~3] [--again]\n자세한 설명은 이 파일의 맨 위와 docs/demo-setup.md 에 있다. 아무것도 만들지 않았다.`);
+    process.exit(asked ? 0 : 1);
+  }
+}
 const option = (name, fallback) => {
   const at = args.indexOf(`--${name}`);
   return at >= 0 && args[at + 1] ? args[at + 1] : fallback;
@@ -187,7 +197,7 @@ async function seedProject(people, name) {
   await task({ title: "요구사항 분석표 작성", status: "IN_PROGRESS", dueDate: day(3), priority: "HIGH",
     assigneeIds: [of(member).userId], requirementId: requirementId(wanted[2][0]) });
   await task({ title: "API 설계 문서", status: "TODO", dueDate: day(-1), priority: "HIGH", assigneeIds: [of(idle).userId] });
-  await task({ title: "참고 문헌 정리", status: "TODO", dueDate: day(4) });
+  await task({ title: "표지와 목차 정리", status: "TODO", dueDate: day(4) });
 
   await upload(member, project.id, DRAFT_NAME, pdf("Midterm report - draft v1"));
   // 팀장도 파일을 올려 둔다. 업무만 끝낸 사람은 "미참여"로 잡혀 팀장에게 무임승차 경보가 뜬다
