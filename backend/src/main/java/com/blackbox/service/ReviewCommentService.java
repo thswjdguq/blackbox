@@ -91,7 +91,7 @@ public class ReviewCommentService {
                 .orElseThrow(() -> new NotFoundException("피드백을 찾을 수 없습니다"));
     }
     private static String text(String value, int max, boolean required) {
-        String trimmed = value == null ? "" : value.trim();
+        String trimmed = value == null ? "" : value.strip();
         if ((required && trimmed.isEmpty()) || trimmed.length() > max)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "입력 내용의 길이가 올바르지 않습니다");
         return trimmed.isEmpty() ? null : trimmed;
