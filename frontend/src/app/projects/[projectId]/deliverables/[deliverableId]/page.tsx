@@ -9,6 +9,8 @@ import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal"
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
 import SubmitPanel from "@/components/deliverable/SubmitPanel";
+import AgentButton from "@/components/agent/AgentButton";
+import { useAgentStore } from "@/lib/store/agentStore";
 import api from "@/lib/api";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
@@ -184,6 +186,7 @@ export default function DeliverableDetailPage() {
   const unlinkedTasks = tasks.filter((t) => !t.deliverableId);
   const contributors = members.filter((m) => m.role !== "OBSERVER");
 
+  const recordsVersion = useAgentStore((s) => s.recordsVersion);
   const fetchAll = useCallback(async () => {
     setError("");
     try {
@@ -219,9 +222,10 @@ export default function DeliverableDetailPage() {
     fetchProgress();
   }, [fetchAll, fetchProgress]);
 
+  // AI 제안을 채택하면(recordsVersion) 창 뒤의 이 화면도 다시 읽는다(화면 문서 4.11)
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, recordsVersion]);
 
   const replaceRequirement = (updated: DeliverableRequirement) =>
     setDeliverable((prev) =>
@@ -611,7 +615,11 @@ export default function DeliverableDetailPage() {
                 <section className="bg-bb-surface border border-bb-border rounded-xl p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-sm font-semibold text-bb-text">연결 업무 {linkedTasks.length}개</h2>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* 요구사항이 있고 확정 전일 때만(4.9). 관찰자에게는 서버가 허용하지 않아 버튼이 없다 */}
+                      {!locked && deliverable.requirements.length > 0 && (
+                        <AgentButton projectId={projectId} skill="BREAK_DOWN_TASKS" input={{ deliverableId }} titleExtra={deliverable.title} />
+                      )}
                       <Link
                         href={`/projects/${projectId}/board?deliverable=${deliverableId}`}
                         className="text-xs text-bb-text2 hover:text-bb-primary"
