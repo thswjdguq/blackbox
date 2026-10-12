@@ -38,7 +38,7 @@
 | K-13 / B | `/deliverables/{id}/progress` 읽기 전용 진척 | C 홈·제출물 화면, A 확정 안내 |
 | K-14 / A | `/deliverables/{id}/requirements/{requirementId}/assessment` 요구사항 충족 확인·해제 | B 진척(K-13 `met`), C 제출물 화면 |
 | K-20 / A | `/deliverables/{id}/confirmation`, `/submission` 확정·제출 기록 | B 수정 차단, C 최종 제출 탭 |
-| K-30 / A+B | AI 호출 인터페이스(A) / PM 브리핑 API(B) | C AI 화면 |
+| K-30 / A | `/agent/status`, `/agent/runs`, `/agent/proposals` 에이전트 실행과 제안 카드 | B 점수·경보 자료와 기여도 반영, C 도우미 창·제안 카드 화면 |
 
 외부 HTTP 경로에는 위 공통 `/api/projects/{projectId}`를 붙인다. A의 기존 `DeliverableDtos`에 B 응답을 계속 추가하는 대신 B의 별도 조회 DTO를 쓴다. 프론트는 도메인별 호출 래퍼를 구성하고 페이지에서 URL·응답 변환을 중복 작성하지 않는다.
 
