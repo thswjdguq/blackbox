@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
-import { apiError } from "@/lib/apiError";
+import { apiError, blobApiError } from "@/lib/apiError";
+import { downloadFile } from "@/lib/download";
 import { FileRecord, FileUploadResult } from "@/types/vault";
 import {
   Files,
@@ -63,8 +64,20 @@ function HistoryItem({
   projectId: string;
   isTampered: boolean;
 }) {
-  const handleDownload = () => {
-    window.open(`/api/files/${record.id}/download`, "_blank");
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      await downloadFile(record.id, record.fileName);
+    } catch (err) {
+      setDownloadError(await blobApiError(err, "내려받지 못했습니다. 다시 시도해주세요."));
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const versionLabel = record.version === 1 ? "최초 업로드" : isTampered ? "파일 변경 내역" : `v${record.version} 재업로드`;
@@ -117,13 +130,22 @@ function HistoryItem({
       </div>
 
       {/* 다운로드 버튼 */}
-      <button
-        onClick={handleDownload}
-        title="다운로드"
-        className="p-2 text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all"
-      >
-        <Download size={14} />
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        {downloadError && (
+          <span role="alert" className="max-w-[12rem] text-xs text-red-400">
+            {downloadError}
+          </span>
+        )}
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          title="다운로드"
+          aria-label={`${record.fileName} v${record.version} 다운로드`}
+          className="p-2 text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all disabled:opacity-50"
+        >
+          {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+        </button>
+      </div>
     </div>
   );
 }
