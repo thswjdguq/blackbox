@@ -412,7 +412,10 @@ export default function DeliverableDetailPage() {
                   <dt className="text-xs text-bb-text2">제출 기한</dt>
                   <dd className="mt-0.5 text-bb-text">
                     {deliverable.dueDate}{" "}
-                    <span className={`text-xs font-medium ${DUE_TEXT[dueTone(deliverable.dueDate)]}`}>{dueLabel(deliverable.dueDate)}</span>
+                    {/* 제출을 기록했으면 남은 날·지난 날은 뜻이 없다(목록과 같게) */}
+                    {deliverable.status !== "SUBMITTED" && (
+                      <span className={`text-xs font-medium ${DUE_TEXT[dueTone(deliverable.dueDate)]}`}>{dueLabel(deliverable.dueDate)}</span>
+                    )}
                   </dd>
                 </div>
                 <div>
