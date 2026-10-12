@@ -9,6 +9,7 @@ import { blobApiError } from "@/lib/apiError";
 import { getDeliverables } from "@/lib/api/deliverable";
 import type { Deliverable } from "@/types/deliverable";
 import NextStepCard from "@/components/project/NextStepCard";
+import { useAgentStore } from "@/lib/store/agentStore";
 import { roleLabel } from "@/lib/roleLabel";
 import { useIntegrationStatus } from "@/hooks/useIntegrationStatus";
 import { Task } from "@/types/task";
@@ -251,7 +252,9 @@ export default function ProjectHomePage() {
     }
   }, [projectId, router]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  // AI 제안을 채택하면 창 뒤의 홈도 다시 읽는다(화면 문서 4.11)
+  const recordsVersion = useAgentStore((s) => s.recordsVersion);
+  useEffect(() => { fetchAll(); }, [fetchAll, recordsVersion]);
 
   const downloadEvidencePackage = async () => {
     if (downloading) return;
