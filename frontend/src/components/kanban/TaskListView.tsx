@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
+import AiBadge from "@/components/agent/AiBadge";
 import { PRIORITY_TEXT, TASK_STATUS_TEXT, type Task, type TaskPriority, type TaskStatus } from "@/types/task";
 
 type SortKey = "title" | "status" | "assignee" | "due" | "deliverable" | "priority";
@@ -41,12 +42,14 @@ function compare(a: Task, b: Task, key: SortKey): number {
  * 업무 목록 보기 (C-50 6번, Flow 업무 목록 참고). 보드와 같은 필터를 거친 업무를 표로 보여 준다.
  * 열 이름을 누르면 정렬하고, 행을 누르거나 Enter를 누르면 업무 창이 열린다.
  */
-export default function TaskListView({ tasks, onEdit, readOnly, isLocked }: {
+export default function TaskListView({ tasks, onEdit, readOnly, isLocked, isAi }: {
   tasks: Task[];
   onEdit: (task: Task) => void;
   readOnly?: boolean;
   /** 확정·제출된 제출물의 업무인가 */
   isLocked?: (task: Task) => boolean;
+  /** AI 제안을 채택해 만든 업무인가 */
+  isAi?: (task: Task) => boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("due");
   const [asc, setAsc] = useState(true);
@@ -98,7 +101,10 @@ export default function TaskListView({ tasks, onEdit, readOnly, isLocked }: {
                 className={`cursor-pointer border-b border-bb-border/60 last:border-0 hover:bg-bb-surface2 focus:outline-none focus-visible:bg-bb-surface2 ${done ? "opacity-60" : ""}`}
               >
                 <td className="px-3 py-2.5">
-                  <span className={`block truncate text-bb-text ${done ? "line-through" : ""}`}>{t.title}</span>
+                  <span className={`flex min-w-0 items-center gap-1.5 text-bb-text ${done ? "line-through" : ""}`}>
+                    <span className="truncate">{t.title}</span>
+                    {isAi?.(t) && <AiBadge />}
+                  </span>
                   {t.tag && <span className="block truncate text-[11px] text-bb-text2">#{t.tag}</span>}
                 </td>
                 <td className="px-3 py-2.5">

@@ -9,6 +9,7 @@ import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import DeliverableTimeline from "@/components/deliverable/DeliverableTimeline";
 import DeliverableStatusBadge from "@/components/deliverable/DeliverableStatusBadge";
 import AgentButton from "@/components/agent/AgentButton";
+import AiBadge, { useAiOrigins } from "@/components/agent/AiBadge";
 import { useAgentStore } from "@/lib/store/agentStore";
 import api from "@/lib/api";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
@@ -97,6 +98,7 @@ export default function DeliverablesPage() {
 
   // AI 제안을 채택하면 기록이 바뀐 횟수가 올라간다. 창 뒤의 목록을 다시 읽는다(화면 문서 4.11)
   const recordsVersion = useAgentStore((s) => s.recordsVersion);
+  const aiOrigins = useAiOrigins(projectId);
   useEffect(() => {
     fetchAll();
   }, [fetchAll, recordsVersion]);
@@ -240,6 +242,7 @@ export default function DeliverablesPage() {
                           {d.title}
                         </p>
                         <DeliverableStatusBadge deliverable={d} />
+                        {aiOrigins.deliverable.has(d.id) && <AiBadge />}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-bb-text2">
                         <span className="flex items-center gap-1">

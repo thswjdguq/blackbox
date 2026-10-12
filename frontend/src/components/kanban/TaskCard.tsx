@@ -5,6 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, TaskStatus, ScoreMap } from "@/types/task";
 import { daysLeft, dueLabel, shortDate } from "@/lib/due";
+import AiBadge from "@/components/agent/AiBadge";
 import {
   GripVertical,
   Calendar,
@@ -27,6 +28,8 @@ interface TaskCardProps {
   readOnly?: boolean;
   /** 확정·제출된 제출물의 업무. 읽기 전용으로 열고 표시를 붙인다 */
   locked?: boolean;
+  /** AI 제안을 채택해 만든 업무 */
+  aiOrigin?: boolean;
 }
 
 const PRIORITY_CONFIG = {
@@ -91,7 +94,7 @@ function ScoreChip({ score }: { score: number }) {
   );
 }
 
-export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly: viewer = false, locked = false }: TaskCardProps) {
+export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly: viewer = false, locked = false, aiOrigin = false }: TaskCardProps) {
   const readOnly = viewer || locked;
   const [isMoving, setIsMoving] = useState(false);
 
@@ -218,6 +221,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly: vie
 
       <p className="mb-2 flex min-w-0 items-center gap-1.5 text-xs text-teal-400" title={task.deliverableTitle ?? "제출물 미연결"}>
         <span className="truncate">{task.deliverableTitle ? `제출물: ${task.deliverableTitle}` : "제출물 미연결"}</span>
+        {aiOrigin && <AiBadge />}
         {locked && (
           <span data-testid="task-locked" className="inline-flex shrink-0 items-center gap-0.5 rounded bg-bb-surface2 px-1.5 py-0.5 text-[10px] font-medium text-bb-text2">
             <Lock size={9} aria-hidden="true" />
