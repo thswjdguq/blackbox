@@ -23,6 +23,11 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   assignees: AssigneeSummary[];
+  deliverableId: string | null;
+  deliverableTitle: string | null;
+  requirementId: string | null;
+  requirementContent: string | null;
+  completionCriteria: string | null;
 }
 
 export interface ScoreMap {
@@ -39,6 +44,11 @@ export interface CreateTaskPayload {
   dueDate?: string; // "YYYY-MM-DD"
   assigneeIds?: string[];
   status?: TaskStatus;
+  deliverableId?: string;
+  requirementId?: string;
+  clearDeliverable?: boolean;
+  clearRequirement?: boolean;
+  completionCriteria?: string;
 }
 
 export interface UpdateTaskStatusPayload {

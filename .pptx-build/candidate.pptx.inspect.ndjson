@@ -1,0 +1,227 @@
+{"kind":"deck","id":"pr/qn8wf5","name":"Deck"}
+{"kind":"layout","layoutId":"97608452-0f97-413e-b414-bb08ba777892","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"781e6e7a-5e92-4bb6-8c7c-c461b3efa551","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/ds53hb","slide":1,"title":"SSAK-LOG","textShapes":6}
+{"kind":"textbox","id":"sh/budcnepw","slide":1,"text":"SSAK-LOG","textPreview":"SSAK-LOG","textChars":8,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/cvmdgj6h","slide":1,"text":"대학생 팀 프로젝트 PMS 고도화 기획","textPreview":"대학생 팀 프로젝트 PMS 고도화 기획","textChars":21,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/dwvepo72","slide":1,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/25kvapof","slide":1,"text":"과제 시작부터 반복 검토와\n최종 제출까지","textPreview":"과제 시작부터 반복 검토와 | 최종 제출까지","textChars":22,"textLines":2,"bbox":[68,260,1120,175]}
+{"kind":"textbox","id":"sh/36tcjup0","slide":1,"text":"Team Blackbox","textPreview":"Team Blackbox","textChars":13,"textLines":1,"bbox":[70,518,1100,46]}
+{"kind":"textbox","id":"sh/o72dcz6l","slide":1,"text":"팀장 송승준    팀원 손정협 · 손정효","textPreview":"팀장 송승준    팀원 손정협 · 손정효","textChars":22,"textLines":1,"bbox":[70,570,1100,40]}
+{"kind":"notes","id":"nt/ds53hb","slide":1,"text":"프로젝트명과 조 이름은 기존 자료를 유지했습니다. 사용자 지정 최신 명단: 팀장 송승준, 팀원 손정협, 손정효. 본 발표의 고도화 기능은 개발 계획이며 기존 구현과 구분합니다."}
+{"kind":"slide","id":"sl/u6qq04","slide":2,"title":"목차","textShapes":11}
+{"kind":"textbox","id":"sh/5obulcz2","slide":2,"text":"목차","textPreview":"목차","textChars":2,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/i1kbqx0b","slide":2,"text":"대상 사용자와 개선 근거를 먼저 설명하고, 구현 계획으로 이어집니다","textPreview":"대상 사용자와 개선 근거를 먼저 설명하고, 구현 계획으로 이어집니다","textChars":37,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/j2tcj2hw","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/wzitoni5","slide":2,"text":"01  팀 소개","textPreview":"01  팀 소개","textChars":8,"textLines":1,"bbox":[68,222,250,52]}
+{"kind":"textbox","id":"sh/x0buhszq","slide":2,"text":"조 이름과 각오, 목표 산업, 신구 EXPO 출품 여부","textPreview":"조 이름과 각오, 목표 산업, 신구 EXPO 출품 여부","textChars":30,"textLines":1,"bbox":[330,222,865,86]}
+{"kind":"textbox","id":"sh/ax0bmd0f","slide":2,"text":"02  프로젝트","textPreview":"02  프로젝트","textChars":8,"textLines":1,"bbox":[68,320,250,52]}
+{"kind":"textbox","id":"sh/vy9cfih0","slide":2,"text":"주제와 개요, 대상 사용자, 핵심 기능과 수행 흐름","textPreview":"주제와 개요, 대상 사용자, 핵심 기능과 수행 흐름","textChars":28,"textLines":1,"bbox":[330,320,865,86]}
+{"kind":"textbox","id":"sh/gvmd0ryp","slide":2,"text":"03  고도화 계획","textPreview":"03  고도화 계획","textChars":10,"textLines":1,"bbox":[68,418,250,52]}
+{"kind":"textbox","id":"sh/1wvutwza","slide":2,"text":"기존 개선점, 우선 기능, 적용 기술, 구현 범위","textPreview":"기존 개선점, 우선 기능, 적용 기술, 구현 범위","textChars":27,"textLines":1,"bbox":[330,418,865,86]}
+{"kind":"textbox","id":"sh/5sfi50ji","slide":2,"text":"04  수행 계획","textPreview":"04  수행 계획","textChars":9,"textLines":1,"bbox":[68,516,250,52]}
+{"kind":"textbox","id":"sh/4r6hwv2x","slide":2,"text":"스터디, 요소별 담당자, 개발 일정과 검증","textPreview":"스터디, 요소별 담당자, 개발 일정과 검증","textChars":23,"textLines":1,"bbox":[330,516,865,86]}
+{"kind":"notes","id":"nt/u6qq04","slide":2,"text":""}
+{"kind":"slide","id":"sl/8gckaj","slide":3,"title":"조 소개와 각오","textShapes":4}
+{"kind":"textbox","id":"sh/6pcb6xsn","slide":3,"text":"조 소개와 각오","textPreview":"조 소개와 각오","textChars":8,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/ts3u1sby","slide":3,"text":"Team Blackbox","textPreview":"Team Blackbox","textChars":13,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/8rud87ad","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/ylsb2dsb","slide":3,"text":"“학생 팀이 실제 과제 하나를 시작부터 제출까지\n운영할 수 있는 서비스를 완성하겠습니다.”","textPreview":"“학생 팀이 실제 과제 하나를 시작부터 제출까지 | 운영할 수 있는 서비스를 완성하겠습니다.”","textChars":50,"textLines":2,"bbox":[70,522,1120,93]}
+{"kind":"table","id":"tb/mtcr2dcv","slide":3,"name":"","rows":4,"cols":3,"preview":"구성 | 이름 | 이번 고도화의 주 역할 제안","bbox":[64,222,1152,260]}
+{"kind":"notes","id":"nt/8gckaj","slide":3,"text":"명단 및 팀장: 사용자 확정 정보. 세부 역할은 현재 3인 구성에 맞춘 배정 제안이며 팀 합의에 따라 조정합니다. 기존 4인 문서의 송병철 및 기여율을 사용하지 않습니다."}
+{"kind":"slide","id":"sl/6kf91q","slide":4,"title":"진출 목표 산업과 EXPO","textShapes":9}
+{"kind":"textbox","id":"sh/ixc3mpkr","slide":4,"text":"진출 목표 산업과 EXPO","textPreview":"진출 목표 산업과 EXPO","textChars":14,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/503mh432","slide":4,"text":"교육 소프트웨어와 협업 소프트웨어","textPreview":"교육 소프트웨어와 협업 소프트웨어","textChars":18,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/4zuloz2h","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/r2l4jel8","slide":4,"text":"목표 산업","textPreview":"목표 산업","textChars":5,"textLines":1,"bbox":[68,228,250,52]}
+{"kind":"textbox","id":"sh/q1c3q9kn","slide":4,"text":"EdTech 및 협업 SaaS\n수업 과제의 실행과 제출 과정을 지원","textPreview":"EdTech 및 협업 SaaS | 수업 과제의 실행과 제출 과정을 지원","textChars":37,"textLines":2,"bbox":[330,228,865,108]}
+{"kind":"textbox","id":"sh/donml43e","slide":4,"text":"첫 적용 대상","textPreview":"첫 적용 대상","textChars":7,"textLines":1,"bbox":[68,348,250,52]}
+{"kind":"textbox","id":"sh/snelsz2t","slide":4,"text":"공동 결과물을 제출하는 대학생 팀\n한 과목의 소수 팀부터 사용성을 검증","textPreview":"공동 결과물을 제출하는 대학생 팀 | 한 과목의 소수 팀부터 사용성을 검증","textChars":39,"textLines":2,"bbox":[330,348,865,108]}
+{"kind":"textbox","id":"sh/761k7al4","slide":4,"text":"신구 EXPO","textPreview":"신구 EXPO","textChars":7,"textLines":1,"bbox":[68,468,250,52]}
+{"kind":"textbox","id":"sh/65s3e5kj","slide":4,"text":"출품 희망 여부: 미정\n출품 시 초안 검토부터 제출까지 3분 시연","textPreview":"출품 희망 여부: 미정 | 출품 시 초안 검토부터 제출까지 3분 시연","textChars":36,"textLines":2,"bbox":[330,468,865,108]}
+{"kind":"notes","id":"nt/6kf91q","slide":4,"text":"목표 산업은 기획 방향입니다. 시장 규모, 고객 확보, 출품 의사는 확인되지 않았습니다. EXPO 희망 여부는 팀 합의 후 갱신합니다."}
+{"kind":"slide","id":"sl/3dw67q","slide":5,"title":"프로젝트 주제와 개요","textShapes":8}
+{"kind":"textbox","id":"sh/ojul0bi1","slide":5,"text":"프로젝트 주제와 개요","textPreview":"프로젝트 주제와 개요","textChars":11,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/nil4r61g","slide":5,"text":"SSAK-LOG: 제출물 중심의 대학생 팀 프로젝트 PMS","textPreview":"SSAK-LOG: 제출물 중심의 대학생 팀 프로젝트 PMS","textChars":32,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/mhs3y10v","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/1gjmpwjq","slide":5,"text":"공동 결과물을 만드는 팀이\n중간부터 검토하고 제출본을 확정하는 서비스","textPreview":"공동 결과물을 만드는 팀이 | 중간부터 검토하고 제출본을 확정하는 서비스","textChars":38,"textLines":2,"bbox":[68,238,1130,130]}
+{"kind":"textbox","id":"sh/0falwri5","slide":5,"text":"관리의 중심","textPreview":"관리의 중심","textChars":6,"textLines":1,"bbox":[68,416,250,52]}
+{"kind":"textbox","id":"sh/ze14nm1k","slide":5,"text":"최종 보고서·발표자료·작품 등 교수님께 낼 제출물","textPreview":"최종 보고서·발표자료·작품 등 교수님께 낼 제출물","textChars":27,"textLines":1,"bbox":[330,416,865,82]}
+{"kind":"textbox","id":"sh/eds3uh0z","slide":5,"text":"연결되는 기록","textPreview":"연결되는 기록","textChars":7,"textLines":1,"bbox":[68,510,250,52]}
+{"kind":"textbox","id":"sh/5cnm10zu","slide":5,"text":"요구사항, 업무, 결과 버전, 피드백, 제출 기록","textPreview":"요구사항, 업무, 결과 버전, 피드백, 제출 기록","textChars":27,"textLines":1,"bbox":[330,510,865,82]}
+{"kind":"notes","id":"nt/3dw67q","slide":5,"text":"기획 근거: docs/PMS_고도화_기획안_v2_사용자와수행흐름.md 1·4절. 고도화 목표를 설명하는 슬라이드입니다."}
+{"kind":"slide","id":"sl/bwi7z6","slide":6,"title":"대상 사용자","textShapes":10}
+{"kind":"textbox","id":"sh/zm1sjqt4","slide":6,"text":"대상 사용자","textPreview":"대상 사용자","textChars":6,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/knatcva9","slide":6,"text":"한 학기 동안 공동 결과물을 제출하는 3~6인 대학생 팀","textPreview":"한 학기 동안 공동 결과물을 제출하는 3~6인 대학생 팀","textChars":31,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/lojal0bu","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/mpsbe5sf","slide":6,"text":"팀장·제출 담당자","textPreview":"팀장·제출 담당자","textChars":9,"textLines":1,"bbox":[68,224,250,52]}
+{"kind":"textbox","id":"sh/7q1snat0","slide":6,"text":"빠진 요구사항과 늦어진 작업을 확인하고\n통합본과 실제 제출을 책임진다","textPreview":"빠진 요구사항과 늦어진 작업을 확인하고 | 통합본과 실제 제출을 책임진다","textChars":38,"textLines":2,"bbox":[330,224,865,114]}
+{"kind":"textbox","id":"sh/8ratgfal","slide":6,"text":"팀원·검토 담당자","textPreview":"팀원·검토 담당자","textChars":9,"textLines":1,"bbox":[68,350,250,52]}
+{"kind":"textbox","id":"sh/9s3apkb6","slide":6,"text":"자기 업무와 완료 기준을 확인하고\n초안을 공유하며 다른 팀원의 결과를 검토한다","textPreview":"자기 업무와 완료 기준을 확인하고 | 초안을 공유하며 다른 팀원의 결과를 검토한다","textChars":43,"textLines":2,"bbox":[330,350,865,114]}
+{"kind":"textbox","id":"sh/2t8r21cb","slide":6,"text":"교수자","textPreview":"교수자","textChars":3,"textLines":1,"bbox":[68,476,250,52]}
+{"kind":"textbox","id":"sh/nuhsb6tw","slide":6,"text":"기존 수업 채널로 결과물을 받고 피드백한다\n교수자 가입 없이 학생의 전체 흐름이 동작한다","textPreview":"기존 수업 채널로 결과물을 받고 피드백한다 | 교수자 가입 없이 학생의 전체 흐름이 동작한다","textChars":49,"textLines":2,"bbox":[330,476,865,114]}
+{"kind":"textbox","id":"sh/ba9wvyt4","slide":6,"text":"초기 범위: 수업 과제형 팀 프로젝트. 개인 과제·기업 프로젝트·연구실 운영은 제외","textPreview":"초기 범위: 수업 과제형 팀 프로젝트. 개인 과제·기업 프로젝트·연구실 운영은 제외","textChars":46,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"notes","id":"nt/bwi7z6","slide":6,"text":""}
+{"kind":"slide","id":"sl/lytp94","slide":7,"title":"전공이 달라도 같은 제출 흐름을 사용","textShapes":4}
+{"kind":"textbox","id":"sh/0felcfel","slide":7,"text":"전공이 달라도 같은 제출 흐름을 사용","textPreview":"전공이 달라도 같은 제출 흐름을 사용","textChars":20,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/ze543ad0","slide":7,"text":"작성 도구는 유지하고, 파일·링크·설명을 제출물에 연결합니다","textPreview":"작성 도구는 유지하고, 파일·링크·설명을 제출물에 연결합니다","textChars":33,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/ydw3a5wf","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/83elgzeh","slide":7,"text":"적용 예시이며 실제 사용 사례가 아닙니다. 전공별 전문 편집 도구는 구현 범위에서 제외합니다","textPreview":"적용 예시이며 실제 사용 사례가 아닙니다. 전공별 전문 편집 도구는 구현 범위에서 제외합니다","textChars":51,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"table","id":"tb/gv6t4net","slide":7,"name":"","rows":5,"cols":3,"preview":"과제 예시 | 제출물 | 중간 검토 기준 예시","bbox":[64,222,1152,362]}
+{"kind":"notes","id":"nt/lytp94","slide":7,"text":""}
+{"kind":"slide","id":"sl/945f2b","slide":8,"title":"기존 프로젝트의 개선점","textShapes":4}
+{"kind":"textbox","id":"sh/oful07qp","slide":8,"text":"기존 프로젝트의 개선점","textPreview":"기존 프로젝트의 개선점","textChars":12,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/3ulkr2p4","slide":8,"text":"기존 화면과 데이터 구조를 기준으로 도출했습니다","textPreview":"기존 화면과 데이터 구조를 기준으로 도출했습니다","textChars":26,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/2tc3yx8j","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/cjel4rql","slide":8,"text":"분석 범위: 저장소 코드와 문서. 실제 사용자 관찰 결과와 교수님 발언을 대신하지 않습니다","textPreview":"분석 범위: 저장소 코드와 문서. 실제 사용자 관찰 결과와 교수님 발언을 대신하지 않습니다","textChars":50,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"table","id":"tb/0bqx8za1","slide":8,"name":"","rows":5,"cols":3,"preview":"기존 구조 | 사용 흐름에서 생기는 문제 | 고도화 방향","bbox":[64,225,1152,362]}
+{"kind":"notes","id":"nt/945f2b","slide":8,"text":"근거: frontend/src/app/projects/[projectId]/page.tsx, backend/src/main/java/com/blackbox/service/MeetingService.java, entity/Task.java, entity/FileVault.java. 기존 회의에서 업무 생성은 이미 있으며 신규 기능으로 주장하지 않습니다."}
+{"kind":"slide","id":"sl/r6phvh","slide":9,"title":"고도화 기능의 우선 선정","textShapes":4}
+{"kind":"textbox","id":"sh/kv698jql","slide":9,"text":"고도화 기능의 우선 선정","textPreview":"고도화 기능의 우선 선정","textChars":13,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/zux8fep0","slide":9,"text":"제출 과정의 단절을 해결하고, 시연으로 검증할 수 있는 기능을 먼저 구현","textPreview":"제출 과정의 단절을 해결하고, 시연으로 검증할 수 있는 기능을 먼저 구현","textChars":40,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/ytor698f","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/8jq9cj6x","slide":9,"text":"차별화 방향: 대학 수업의 제출 주기에 맞춘 기본 흐름","textPreview":"차별화 방향: 대학 수업의 제출 주기에 맞춘 기본 흐름","textChars":30,"textLines":1,"bbox":[68,563,1120,50]}
+{"kind":"table","id":"tb/kf6hw32t","slide":9,"name":"","rows":4,"cols":3,"preview":"우선 기능 | 선정 이유 | 차별성·우수성의 검증 방향","bbox":[64,234,1152,302]}
+{"kind":"notes","id":"nt/r6phvh","slide":9,"text":"차별성 및 우수성은 개발 목표와 효과 가설입니다. 경쟁 제품 대비 독점 기능 또는 검증된 성능 우위를 주장하지 않습니다."}
+{"kind":"slide","id":"sl/f191mj","slide":10,"title":"핵심 기능과 프로젝트 수행 흐름","textShapes":3}
+{"kind":"textbox","id":"sh/m9wvytkz","slide":10,"text":"핵심 기능과 프로젝트 수행 흐름","textPreview":"핵심 기능과 프로젝트 수행 흐름","textChars":17,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/9cne98jq","slide":10,"text":"제출물이 여러 개여도 동일한 흐름을 반복합니다","textPreview":"제출물이 여러 개여도 동일한 흐름을 반복합니다","textChars":25,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/8bed0325","slide":10,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/ul4zitc7","slide":10,"name":"","rows":6,"cols":3,"preview":"순서 | 학생의 행동 | PMS의 동작","bbox":[64,212,1152,405]}
+{"kind":"notes","id":"nt/f191mj","slide":10,"text":""}
+{"kind":"slide","id":"sl/j6i0yq","slide":11,"title":"고도화 1. 제출물 기반 업무 관리","textShapes":10}
+{"kind":"textbox","id":"sh/n2l87ydg","slide":11,"text":"고도화 1. 제출물 기반 업무 관리","textPreview":"고도화 1. 제출물 기반 업무 관리","textChars":19,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/83u903u1","slide":11,"text":"누가 무엇을 끝내야 제출할 수 있는지 연결합니다","textPreview":"누가 무엇을 끝내야 제출할 수 있는지 연결합니다","textChars":26,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/943q98v6","slide":11,"text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/yxs7utcj","slide":11,"text":"기능 설명","textPreview":"기능 설명","textChars":5,"textLines":1,"bbox":[68,222,250,52]}
+{"kind":"textbox","id":"sh/zy183yd4","slide":11,"text":"제출물에 필수 요구사항을 등록하고 업무를 연결\n업무마다 책임자·마감일·완료 기준을 지정","textPreview":"제출물에 필수 요구사항을 등록하고 업무를 연결 | 업무마다 책임자·마감일·완료 기준을 지정","textChars":48,"textLines":2,"bbox":[330,222,865,114]}
+{"kind":"textbox","id":"sh/0zu9wjup","slide":11,"text":"적용 기술","textPreview":"적용 기술","textChars":5,"textLines":1,"bbox":[68,348,250,52]}
+{"kind":"textbox","id":"sh/l03q5ova","slide":11,"text":"Next.js 입력 화면, Spring Boot API\nPostgreSQL 관계 설계와 Flyway 마이그레이션","textPreview":"Next.js 입력 화면, Spring Boot API | PostgreSQL 관계 설계와 Flyway 마이그레이션","textChars":62,"textLines":2,"bbox":[330,348,865,114]}
+{"kind":"textbox","id":"sh/itwr6dc3","slide":11,"text":"차별성·우수성","textPreview":"차별성·우수성","textChars":7,"textLines":1,"bbox":[68,474,250,52]}
+{"kind":"textbox","id":"sh/ju58fido","slide":11,"text":"학과별 작업 방식이 달라도 같은 틀로 관리\n완료 업무 수와 제출 요구사항 충족도를 구분","textPreview":"학과별 작업 방식이 달라도 같은 틀로 관리 | 완료 업무 수와 제출 요구사항 충족도를 구분","textChars":48,"textLines":2,"bbox":[330,474,865,114]}
+{"kind":"textbox","id":"sh/7axcva94","slide":11,"text":"담당 제안: 송승준(제출물·DB), 손정협(업무 API), 손정효(화면)","textPreview":"담당 제안: 송승준(제출물·DB), 손정협(업무 API), 손정효(화면)","textChars":40,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"notes","id":"nt/j6i0yq","slide":11,"text":""}
+{"kind":"slide","id":"sl/y031l3","slide":12,"title":"고도화 2. 작업 중간부터 반복 검토","textShapes":10}
+{"kind":"textbox","id":"sh/e1kzexor","slide":12,"text":"고도화 2. 작업 중간부터 반복 검토","textPreview":"고도화 2. 작업 중간부터 반복 검토","textChars":20,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/14bi9cni","slide":12,"text":"진행 중인 초안에도 의견을 요청할 수 있습니다","textPreview":"진행 중인 초안에도 의견을 요청할 수 있습니다","textChars":25,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/032hg76x","slide":12,"text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/n6t0bm5o","slide":12,"text":"기능 설명","textPreview":"기능 설명","textChars":5,"textLines":1,"bbox":[68,222,250,52]}
+{"kind":"textbox","id":"sh/m5kziho3","slide":12,"text":"특정 버전에 중간 의견 또는 완료 검토 요청\n필수 수정에 담당자·기한·반영 결과를 연결","textPreview":"특정 버전에 중간 의견 또는 완료 검토 요청 | 필수 수정에 담당자·기한·반영 결과를 연결","textChars":48,"textLines":2,"bbox":[330,222,865,114]}
+{"kind":"textbox","id":"sh/9svidcne","slide":12,"text":"적용 기술","textPreview":"적용 기술","textChars":5,"textLines":1,"bbox":[68,348,250,52]}
+{"kind":"textbox","id":"sh/o7mhkr6t","slide":12,"text":"버전·검토·수정 항목 모델, 상태 전환 API\nSpring 트랜잭션과 역할 권한 검사","textPreview":"버전·검토·수정 항목 모델, 상태 전환 API | Spring 트랜잭션과 역할 권한 검사","textChars":47,"textLines":2,"bbox":[330,348,865,114]}
+{"kind":"textbox","id":"sh/3a9gzip4","slide":12,"text":"차별성·우수성","textPreview":"차별성·우수성","textChars":7,"textLines":1,"bbox":[68,474,250,52]}
+{"kind":"textbox","id":"sh/290z6doj","slide":12,"text":"피드백을 남기는 데서 끝나지 않고 반영까지 추적\n새 버전은 다시 검토하여 승인 대상을 명확히 함","textPreview":"피드백을 남기는 데서 끝나지 않고 반영까지 추적 | 새 버전은 다시 검토하여 승인 대상을 명확히 함","textChars":53,"textLines":2,"bbox":[330,474,865,114]}
+{"kind":"textbox","id":"sh/87exov6d","slide":12,"text":"담당 제안: 송승준(검토·버전), 손정협(수정 항목), 손정효(화면)","textPreview":"담당 제안: 송승준(검토·버전), 손정협(수정 항목), 손정효(화면)","textChars":38,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"notes","id":"nt/y031l3","slide":12,"text":""}
+{"kind":"slide","id":"sl/64ipkc","slide":13,"title":"중간 검토와 완료 검토의 차이","textShapes":4}
+{"kind":"textbox","id":"sh/pgzix0fi","slide":13,"text":"중간 검토와 완료 검토의 차이","textPreview":"중간 검토와 완료 검토의 차이","textChars":16,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/2dozm5gr","slide":13,"text":"검토는 프로젝트 전 과정에서 반복됩니다","textPreview":"검토는 프로젝트 전 과정에서 반복됩니다","textChars":21,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/3ex0vahc","slide":13,"text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/hcfit0z6","slide":13,"text":"교수 피드백도 후속 업무로 연결합니다. 학생이 옮겨 적은 의견과 교수자의 직접 승인을 구분합니다","textPreview":"교수 피드백도 후속 업무로 연결합니다. 학생이 옮겨 적은 의견과 교수자의 직접 승인을 구분합니다","textChars":53,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"table","id":"tb/1o3e1wvq","slide":13,"name":"","rows":5,"cols":3,"preview":"구분 | 중간 의견 요청 | 완료 검토 요청","bbox":[64,225,1152,334]}
+{"kind":"notes","id":"nt/64ipkc","slide":13,"text":""}
+{"kind":"slide","id":"sl/5441cc","slide":14,"title":"고도화 3. 통합본 검토와 최종 제출","textShapes":10}
+{"kind":"textbox","id":"sh/u90fuh8n","slide":14,"text":"고도화 3. 통합본 검토와 최종 제출","textPreview":"고도화 3. 통합본 검토와 최종 제출","textChars":20,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/hcry5wry","slide":14,"text":"개별 업무가 끝난 뒤, 통합된 결과물을 다시 확인합니다","textPreview":"개별 업무가 끝난 뒤, 통합된 결과물을 다시 확인합니다","textChars":30,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/wbixwrqt","slide":14,"text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/jytg7694","slide":14,"text":"기능 설명","textPreview":"기능 설명","textChars":5,"textLines":1,"bbox":[68,222,250,52]}
+{"kind":"textbox","id":"sh/id0fy18j","slide":14,"text":"제출 후보 버전 등록 후 필수 조건과 수정 항목 확인\n승인된 파일을 확정하고 실제 제출 기록을 연결","textPreview":"제출 후보 버전 등록 후 필수 조건과 수정 항목 확인 | 승인된 파일을 확정하고 실제 제출 기록을 연결","textChars":55,"textLines":2,"bbox":[330,222,865,114]}
+{"kind":"textbox","id":"sh/50by9wra","slide":14,"text":"적용 기술","textPreview":"적용 기술","textChars":5,"textLines":1,"bbox":[68,348,250,52]}
+{"kind":"textbox","id":"sh/4z2h0rqp","slide":14,"text":"기존 파일 저장소·SHA-256·ZIP 기능 확장\n제출 버전 스냅샷과 제출 차수 데이터 모델","textPreview":"기존 파일 저장소·SHA-256·ZIP 기능 확장 | 제출 버전 스냅샷과 제출 차수 데이터 모델","textChars":51,"textLines":2,"bbox":[330,348,865,114]}
+{"kind":"textbox","id":"sh/zipgv290","slide":14,"text":"차별성·우수성","textPreview":"차별성·우수성","textChars":7,"textLines":1,"bbox":[68,474,250,52]}
+{"kind":"textbox","id":"sh/yhgfmxsf","slide":14,"text":"어떤 파일을 검토하고 제출했는지 추적\n재제출해도 이전 제출 기록을 보존","textPreview":"어떤 파일을 검토하고 제출했는지 추적 | 재제출해도 이전 제출 기록을 보존","textChars":39,"textLines":2,"bbox":[330,474,865,114]}
+{"kind":"textbox","id":"sh/8j65oz61","slide":14,"text":"담당 제안: 송승준(확정·제출), 손정협(내보내기 연결), 손정효(제출 화면)","textPreview":"담당 제안: 송승준(확정·제출), 손정협(내보내기 연결), 손정효(제출 화면)","textChars":43,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"notes","id":"nt/5441cc","slide":14,"text":"기존 Hash Vault를 결과물과 제출 버전에 연결하는 고도화입니다. SHA-256은 저장 기준과 파일 변경을 비교하는 기술이며 절대적 위변조 불가나 작성 진실성을 보장한다고 주장하지 않습니다."}
+{"kind":"slide","id":"sl/aziav4","slide":15,"title":"업무 완료와 실제 제출은 별도 상태","textShapes":10}
+{"kind":"textbox","id":"sh/vyd0ryhg","slide":15,"text":"업무 완료와 실제 제출은 별도 상태","textPreview":"업무 완료와 실제 제출은 별도 상태","textChars":19,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/wzm10ji1","slide":15,"text":"다운로드만으로 제출 완료를 표시하지 않습니다","textPreview":"다운로드만으로 제출 완료를 표시하지 않습니다","textChars":24,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/x0fitozm","slide":15,"text":"15","textPreview":"15","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/i1oj2t0r","slide":15,"text":"업무 완료","textPreview":"업무 완료","textChars":5,"textLines":1,"bbox":[68,222,250,52]}
+{"kind":"textbox","id":"sh/j2x0vyhc","slide":15,"text":"지정 검토자가 개별 작업의 결과 버전을 승인","textPreview":"지정 검토자가 개별 작업의 결과 버전을 승인","textChars":24,"textLines":1,"bbox":[330,222,865,108]}
+{"kind":"textbox","id":"sh/436143ix","slide":15,"text":"제출 준비 완료","textPreview":"제출 준비 완료","textChars":8,"textLines":1,"bbox":[68,342,250,52]}
+{"kind":"textbox","id":"sh/54fix8zi","slide":15,"text":"통합본 승인과 필수 조건 확인을 마침\n확정 파일을 다운로드할 수 있음","textPreview":"통합본 승인과 필수 조건 확인을 마침 | 확정 파일을 다운로드할 수 있음","textChars":38,"textLines":2,"bbox":[330,342,865,108]}
+{"kind":"textbox","id":"sh/y5kzq90n","slide":15,"text":"제출 기록 완료","textPreview":"제출 기록 완료","textChars":8,"textLines":1,"bbox":[68,462,250,52]}
+{"kind":"textbox","id":"sh/z6t0jeh8","slide":15,"text":"담당자가 LMS·이메일 등으로 직접 제출\n제출 시각·경로·버전·확인 근거를 기록","textPreview":"담당자가 LMS·이메일 등으로 직접 제출 | 제출 시각·경로·버전·확인 근거를 기록","textChars":44,"textLines":2,"bbox":[330,462,865,108]}
+{"kind":"textbox","id":"sh/rmt0jyl4","slide":15,"text":"PMS의 담당자 제출 기록은 외부 시스템 접수 확인이나 교수자의 평가 승인을 뜻하지 않습니다","textPreview":"PMS의 담당자 제출 기록은 외부 시스템 접수 확인이나 교수자의 평가 승인을 뜻하지 않습니다","textChars":51,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"notes","id":"nt/aziav4","slide":15,"text":""}
+{"kind":"slide","id":"sl/4lndhr","slide":16,"title":"기존 기능의 재사용과 연결","textShapes":3}
+{"kind":"textbox","id":"sh/qd0jmxcv","slide":16,"text":"기존 기능의 재사용과 연결","textPreview":"기존 기능의 재사용과 연결","textChars":14,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/d0r2xcv6","slide":16,"text":"이미 구현된 자산을 전체 수행 흐름에 배치합니다","textPreview":"이미 구현된 자산을 전체 수행 흐름에 배치합니다","textChars":26,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/czi1o7u1","slide":16,"text":"16","textPreview":"16","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/a9kzydkr","slide":16,"name":"","rows":5,"cols":3,"preview":"기존 기능 | 고도화 설명 | 기술 및 담당 제안","bbox":[64,223,1152,365]}
+{"kind":"notes","id":"nt/4lndhr","slide":16,"text":"현재 참여도는 네 종류의 참여 여부 분류입니다. 근거: backend/src/main/java/com/blackbox/service/ScoreService.java 및 AlertService.java. 기존 발표 문서의 가중치 점수 설명을 현재 구현 사실로 재사용하지 않습니다."}
+{"kind":"slide","id":"sl/rdcs4y","slide":17,"title":"적용 기술과 기능: 화면·서버","textShapes":3}
+{"kind":"textbox","id":"sh/32t8vu9c","slide":17,"text":"적용 기술과 기능: 화면·서버","textPreview":"적용 기술과 기능: 화면·서버","textChars":16,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/43294zax","slide":17,"text":"기존 기술을 유지하고 데이터 관계와 상태 규칙을 고도화합니다","textPreview":"기존 기술을 유지하고 데이터 관계와 상태 규칙을 고도화합니다","textChars":33,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/p4bqx4ri","slide":17,"text":"17","textPreview":"17","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/3qhsrq5s","slide":17,"name":"","rows":6,"cols":3,"preview":"영역 | 언어·기술 | 적용 기능","bbox":[64,219,1152,400]}
+{"kind":"notes","id":"nt/rdcs4y","slide":17,"text":"기술 근거: frontend/package.json 및 backend/build.gradle. 현재 저장소 기술을 활용하는 계획이며 최신 버전 비교 자료가 아닙니다."}
+{"kind":"slide","id":"sl/6a9u6v","slide":18,"title":"적용 기술과 기능: 저장·개발·운영","textShapes":3}
+{"kind":"textbox","id":"sh/ryt4fipw","slide":18,"text":"적용 기술과 기능: 저장·개발·운영","textPreview":"적용 기술과 기능: 저장·개발·운영","textChars":19,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/cz2lonqh","slide":18,"text":"개발 도구와 서버 구성까지 기존 환경을 활용합니다","textPreview":"개발 도구와 서버 구성까지 기존 환경을 활용합니다","textChars":27,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/d0bmhs72","slide":18,"text":"18","textPreview":"18","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/ne1k3u5c","slide":18,"name":"","rows":6,"cols":3,"preview":"영역 | 적용 기술·도구 | 필요 기능","bbox":[64,219,1152,400]}
+{"kind":"notes","id":"nt/6a9u6v","slide":18,"text":"기술 근거: backend/build.gradle, docker-compose.yml 및 기존 코드 분석 문서. Notion·Discord·Google Calendar는 선택 연동으로 유지하며 첫 과제 시작의 필수 조건으로 두지 않습니다."}
+{"kind":"slide","id":"sl/5cv1kf","slide":19,"title":"구현 범위","textShapes":4}
+{"kind":"textbox","id":"sh/qx4fi5kz","slide":19,"text":"구현 범위","textPreview":"구현 범위","textChars":5,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/d0vedkjq","slide":19,"text":"첫 사용 검증에는 시작부터 제출까지의 필수 흐름을 완성합니다","textPreview":"첫 사용 검증에는 시작부터 제출까지의 필수 흐름을 완성합니다","textChars":33,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/czmxkf25","slide":19,"text":"19","textPreview":"19","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/29kfe5k3","slide":19,"text":"AI나 외부 연동 없이도 필수 흐름이 동작하도록 구현합니다","textPreview":"AI나 외부 연동 없이도 필수 흐름이 동작하도록 구현합니다","textChars":32,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"table","id":"tb/q50fydkj","slide":19,"name":"","rows":4,"cols":2,"preview":"구분 | 구현 대상","bbox":[64,220,1152,354]}
+{"kind":"notes","id":"nt/5cv1kf","slide":19,"text":""}
+{"kind":"slide","id":"sl/mxqu21","slide":20,"title":"예외 처리와 완료 기준","textShapes":3}
+{"kind":"textbox","id":"sh/wf6xwb2p","slide":20,"text":"예외 처리와 완료 기준","textPreview":"예외 처리와 완료 기준","textChars":12,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/bexwn6l4","slide":20,"text":"실제 작업에서 되돌아가는 상황도 흐름에 포함합니다","textPreview":"실제 작업에서 되돌아가는 상황도 흐름에 포함합니다","textChars":27,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/adofu1kj","slide":20,"text":"20","textPreview":"20","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/43ehc7q9","slide":20,"name":"","rows":6,"cols":2,"preview":"상황 | 처리 규칙","bbox":[64,220,1152,388]}
+{"kind":"notes","id":"nt/mxqu21","slide":20,"text":"승인 권한 및 프로젝트 경계는 서버에서 검사합니다. 통합본 최종 검토자는 제출 담당자와 다른 팀원을 기본으로 지정합니다. 외부 링크는 변경될 수 있으므로 확정 내용 고정이 필요한 자료는 파일로 남깁니다."}
+{"kind":"slide","id":"sl/70z0uy","slide":21,"title":"스터디 계획과 공유 방식","textShapes":4}
+{"kind":"textbox","id":"sh/nihcza10","slide":21,"text":"스터디 계획과 공유 방식","textPreview":"스터디 계획과 공유 방식","textChars":13,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/8jqtsfil","slide":21,"text":"고도화 프로젝트에도 필요한 지식을 식별해 구현과 함께 학습합니다","textPreview":"고도화 프로젝트에도 필요한 지식을 식별해 구현과 함께 학습합니다","textChars":35,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/9kzu1kj6","slide":21,"text":"21","textPreview":"21","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/zexsvq14","slide":21,"text":"매주 1회 학습 내용과 구현 예제를 공유하고, 다른 팀원이 실제 시나리오로 확인합니다","textPreview":"매주 1회 학습 내용과 구현 예제를 공유하고, 다른 팀원이 실제 시나리오로 확인합니다","textChars":47,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"table","id":"tb/bmlgnmxc","slide":21,"name":"","rows":4,"cols":3,"preview":"담당 제안 | 학습 요소 | 팀 공유 산출물","bbox":[64,219,1152,324]}
+{"kind":"notes","id":"nt/70z0uy","slide":21,"text":""}
+{"kind":"slide","id":"sl/4nte5m","slide":22,"title":"식별된 요소 및 요소별 담당자","textShapes":3}
+{"kind":"textbox","id":"sh/ba90zi9k","slide":22,"text":"식별된 요소 및 요소별 담당자","textPreview":"식별된 요소 및 요소별 담당자","textChars":16,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/wbihs3q5","slide":22,"text":"3인 팀 기준의 고도화 담당 배정안","textPreview":"3인 팀 기준의 고도화 담당 배정안","textChars":19,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/xcri18rq","slide":22,"text":"22","textPreview":"22","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/r258na50","slide":22,"name":"","rows":7,"cols":3,"preview":"구현 요소 | 주 담당 | 협업·검토","bbox":[64,220,1152,398]}
+{"kind":"notes","id":"nt/4nte5m","slide":22,"text":"명단과 팀장 정보는 사용자 확정 사항입니다. 요소별 배정은 본 기획의 제안이며 팀 합의에 따라 변경합니다. 서버 담당자도 자기 기능의 화면 데이터 연결을 분담하고 손정효가 공통 UI를 검토합니다."}
+{"kind":"slide","id":"sl/i4m9af","slide":23,"title":"개발 일정","textShapes":3}
+{"kind":"textbox","id":"sh/edobytsn","slide":23,"text":"개발 일정","textPreview":"개발 일정","textChars":5,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/10fut8be","slide":23,"text":"12주 계획안. 실제 학사 일정에 맞춰 조정합니다","textPreview":"12주 계획안. 실제 학사 일정에 맞춰 조정합니다","textChars":27,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/0z6t03at","slide":23,"text":"23","textPreview":"23","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/ml4r6x43","slide":23,"name":"","rows":7,"cols":3,"preview":"기간 | 핵심 작업 | 확인 가능한 결과","bbox":[64,217,1152,402]}
+{"kind":"notes","id":"nt/i4m9af","slide":23,"text":""}
+{"kind":"slide","id":"sl/236tqm","slide":24,"title":"검증 계획과 기대 효과","textShapes":4}
+{"kind":"textbox","id":"sh/fq5snqhk","slide":24,"text":"검증 계획과 기대 효과","textPreview":"검증 계획과 기대 효과","textChars":12,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/0re9gvy5","slide":24,"text":"수치는 검증 목표이며 아직 측정한 성과가 아닙니다","textPreview":"수치는 검증 목표이며 아직 측정한 성과가 아닙니다","textChars":27,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/1snapgza","slide":24,"text":"24","textPreview":"24","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/rm5sj6h8","slide":24,"text":"추가 검증: 승인 권한, 새 버전 충돌, 중복 제출 요청, 제출 후 재개, 기존 이력 보존","textPreview":"추가 검증: 승인 권한, 새 버전 충돌, 중복 제출 요청, 제출 후 재개, 기존 이력 보존","textChars":50,"textLines":1,"bbox":[66,622,1120,35]}
+{"kind":"table","id":"tb/net0rilg","slide":24,"name":"","rows":5,"cols":3,"preview":"검증 항목 | 방법 | 목표","bbox":[64,220,1152,335]}
+{"kind":"notes","id":"nt/236tqm","slide":24,"text":"파일럿 모집은 아직 확보되지 않았습니다. 과제 복잡도와 학습 효과를 기록하고 소규모 결과를 전체 대학생에게 일반화하지 않습니다."}
+{"kind":"slide","id":"sl/0mk6fn","slide":25,"title":"시연 시나리오","textShapes":3}
+{"kind":"textbox","id":"sh/of25kj2d","slide":25,"text":"시연 시나리오","textPreview":"시연 시나리오","textChars":7,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/3etobels","slide":25,"text":"가상 시장분석 과제로 한 흐름을 보여줍니다","textPreview":"가상 시장분석 과제로 한 흐름을 보여줍니다","textChars":23,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/2dknitk7","slide":25,"text":"25","textPreview":"25","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"table","id":"tb/cfuxkjuh","slide":25,"name":"","rows":6,"cols":3,"preview":"순서 | 시연 행동 | 확인할 가치","bbox":[64,218,1152,391]}
+{"kind":"notes","id":"nt/0mk6fn","slide":25,"text":""}
+{"kind":"slide","id":"sl/7eg6zi","slide":26,"title":"고도화의 목표","textShapes":5}
+{"kind":"textbox","id":"sh/yhsv2tgf","slide":26,"text":"고도화의 목표","textPreview":"고도화의 목표","textChars":7,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/lkjud8fq","slide":26,"text":"한 팀이 과제 하나를 처음부터 제출까지 완주","textPreview":"한 팀이 과제 하나를 처음부터 제출까지 완주","textChars":24,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/kjad43yl","slide":26,"text":"26","textPreview":"26","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/7m1cfyxw","slide":26,"text":"제출 조건에서 출발하고\n작업 중간에 계속 검토하며\n확정된 결과물을 제출합니다","textPreview":"제출 조건에서 출발하고 | 작업 중간에 계속 검토하며 | 확정된 결과물을 제출합니다","textChars":42,"textLines":3,"bbox":[70,250,1120,220]}
+{"kind":"textbox","id":"sh/mlsv6tgb","slide":26,"text":"Team Blackbox    송승준 · 손정협 · 손정효","textPreview":"Team Blackbox    송승준 · 손정협 · 손정효","textChars":32,"textLines":1,"bbox":[70,558,1100,45]}
+{"kind":"notes","id":"nt/7eg6zi","slide":26,"text":"요약: 첫 사용자 3~6인 수업 과제 팀, 제출물 중심 관계, 반복 검토, 실제 제출 기록. 향후 효과는 파일럿으로 검증합니다."}
+{"kind":"slide","id":"sl/vd7es8","slide":27,"title":"부록. 분석 근거와 기획 전제","textShapes":9}
+{"kind":"textbox","id":"sh/hcbe98ru","slide":27,"text":"부록. 분석 근거와 기획 전제","textPreview":"부록. 분석 근거와 기획 전제","textChars":16,"textLines":1,"bbox":[64,48,1152,100]}
+{"kind":"textbox","id":"sh/upkved83","slide":27,"text":"기존 구현과 이번 고도화 계획을 구분합니다","textPreview":"기존 구현과 이번 고도화 계획을 구분합니다","textChars":23,"textLines":1,"bbox":[66,145,1148,66]}
+{"kind":"textbox","id":"sh/vatw7i9o","slide":27,"text":"27","textPreview":"27","textChars":2,"textLines":1,"bbox":[1160,666,55,28]}
+{"kind":"textbox","id":"sh/4f2dknq5","slide":27,"text":"기존 구현 근거","textPreview":"기존 구현 근거","textChars":8,"textLines":1,"bbox":[68,220,250,52]}
+{"kind":"textbox","id":"sh/5gvedsrq","slide":27,"text":"Task·FileVault 모델, MeetingService\nScoreService·AlertService, 프로젝트 홈 코드","textPreview":"Task·FileVault 모델, MeetingService | ScoreService·AlertService, 프로젝트 홈 코드","textChars":70,"textLines":2,"bbox":[330,220,865,108]}
+{"kind":"textbox","id":"sh/idkvid8f","slide":27,"text":"기획 근거","textPreview":"기획 근거","textChars":5,"textLines":1,"bbox":[68,340,250,52]}
+{"kind":"textbox","id":"sh/jetwbi90","slide":27,"text":"PMS 고도화 기획안 v2\n대상 사용자·수행 흐름·검토·제출 규칙","textPreview":"PMS 고도화 기획안 v2 | 대상 사용자·수행 흐름·검토·제출 규칙","textChars":36,"textLines":2,"bbox":[330,340,865,108]}
+{"kind":"textbox","id":"sh/kjid83a1","slide":27,"text":"확정·미정 사항","textPreview":"확정·미정 사항","textChars":8,"textLines":1,"bbox":[68,460,250,52]}
+{"kind":"textbox","id":"sh/lkre1orm","slide":27,"text":"확정: 팀장 송승준, 팀원 손정협·손정효\n제안: 역할·12주 일정  /  미정: EXPO 출품 여부","textPreview":"확정: 팀장 송승준, 팀원 손정협·손정효 | 제안: 역할·12주 일정  /  미정: EXPO 출품 여부","textChars":55,"textLines":2,"bbox":[330,460,865,108]}
+{"kind":"notes","id":"nt/vd7es8","slide":27,"text":"로컬 출처: docs/PMS_고도화_기획안.md, docs/PMS_고도화_기획안_v2_사용자와수행흐름.md, frontend/package.json, backend/build.gradle, frontend/src/app/projects/[projectId]/page.tsx, backend/src/main/java/com/blackbox/entity/Task.java, entity/FileVault.java, service/MeetingService.java, service/ScoreService.java, service/AlertService.java. 현재 서비스 실행을 통한 사용성 평가는 실시하지 않았으며 코드 구조 분석입니다."}

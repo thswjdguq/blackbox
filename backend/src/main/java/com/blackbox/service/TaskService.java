@@ -31,6 +31,7 @@ public class TaskService {
     private final DiscordNotificationService discordService;
     private final ScoreService scoreService;
     private final EntityManager entityManager;
+    private final DeliverableService deliverableService;
 
     public TaskService(TaskRepository taskRepository,
                        TaskAssigneeRepository taskAssigneeRepository,
@@ -42,7 +43,8 @@ public class TaskService {
                        AlertService alertService,
                        DiscordNotificationService discordService,
                        ScoreService scoreService,
-                       EntityManager entityManager) {
+                       EntityManager entityManager,
+                       DeliverableService deliverableService) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -54,6 +56,7 @@ public class TaskService {
         this.discordService = discordService;
         this.scoreService = scoreService;
         this.entityManager = entityManager;
+        this.deliverableService = deliverableService;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -61,12 +64,14 @@ public class TaskService {
     @Transactional
     public TaskResponse createTask(UUID projectId, CreateTaskRequest req, User creator) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, creator);
+        accessChecker.requireContributor(project, creator);
 
         Task task = new Task();
         task.setProject(project);
         task.setTitle(req.title());
         task.setDescription(req.description());
+        applyDeliverable(task, project, req.deliverableId(), req.requirementId(), false, false);
+        task.setCompletionCriteria(req.completionCriteria());
         task.setStatus(req.status() != null ? req.status() : "TODO");
         task.setPriority(req.priority() != null ? req.priority() : "MEDIUM");
         task.setTag(req.tag());
@@ -115,8 +120,12 @@ public class TaskService {
     @Transactional
     public TaskResponse updateTask(UUID projectId, UUID taskId, UpdateTaskRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
+        accessChecker.requireContributor(project, user);
         Task task = findTask(taskId, project);
+
+        applyDeliverable(task, project, req.deliverableId(), req.requirementId(),
+                Boolean.TRUE.equals(req.clearDeliverable()), Boolean.TRUE.equals(req.clearRequirement()));
+        if (req.completionCriteria() != null) task.setCompletionCriteria(req.completionCriteria().trim());
 
         if (req.title() != null)       task.setTitle(req.title());
         if (req.description() != null) task.setDescription(req.description());
@@ -133,7 +142,7 @@ public class TaskService {
     @Transactional
     public void deleteTask(UUID projectId, UUID taskId, User user) {
         Project project = accessChecker.getProject(projectId);
-        ProjectMember member = accessChecker.requireMember(project, user);
+        ProjectMember member = accessChecker.requireContributor(project, user);
         Task task = findTask(taskId, project);
 
         // 본인 생성 또는 LEADER만 삭제 가능
@@ -153,7 +162,7 @@ public class TaskService {
     public TaskResponse updateStatus(UUID projectId, UUID taskId,
                                      UpdateTaskStatusRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
+        accessChecker.requireContributor(project, user);
         Task task = findTask(taskId, project);
 
         String oldStatus = task.getStatus();
@@ -191,7 +200,7 @@ public class TaskService {
     public TaskResponse setAssignees(UUID projectId, UUID taskId,
                                      AssignTaskRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
+        accessChecker.requireContributor(project, user);
         Task task = findTask(taskId, project);
 
         List<TaskAssignee> assignees = setAssigneesInternal(task, req.assigneeIds());
@@ -250,6 +259,7 @@ public class TaskService {
                 .map(uid -> {
                     User assignee = userRepository.findById(uid)
                             .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다: " + uid));
+                    accessChecker.requireContributor(task.getProject(), assignee);
                     TaskAssignee ta = new TaskAssignee();
                     ta.setTask(task);
                     ta.setUser(assignee);
@@ -259,6 +269,35 @@ public class TaskService {
 
         taskAssigneeRepository.flush();
         return result;
+    }
+
+    private void applyDeliverable(Task task, Project project, UUID deliverableId, UUID requirementId,
+                                  boolean clearDeliverable, boolean clearRequirement) {
+        if ((clearDeliverable && (deliverableId != null || requirementId != null))
+                || (clearRequirement && requirementId != null)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "연결과 연결 해제를 동시에 요청할 수 없습니다");
+        }
+        if (clearDeliverable) {
+            task.setDeliverable(null);
+            task.setRequirement(null);
+            return;
+        }
+        if (deliverableId != null) {
+            Deliverable next = deliverableService.find(project, deliverableId);
+            if (task.getDeliverable() == null || !next.getId().equals(task.getDeliverable().getId())) {
+                task.setRequirement(null);
+            }
+            task.setDeliverable(next);
+        }
+        if (clearRequirement) task.setRequirement(null);
+        if (requirementId != null) {
+            if (task.getDeliverable() == null) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, "요구사항을 연결할 제출물을 선택해주세요");
+            }
+            task.setRequirement(deliverableService.findRequirement(task.getDeliverable(), requirementId));
+        }
     }
 
     private String escapeJson(String s) {

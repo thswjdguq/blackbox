@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import Link from "next/link";
+import { Deliverable } from "@/types/deliverable";
+import { apiError } from "@/lib/apiError";
 import {
   DndContext,
   DragEndEvent,
@@ -57,11 +60,33 @@ export default function KanbanBoard({
 
   // Track new status during drag — avoids stale-closure bug in handleDragEnd
   const dragStatusRef = useRef<TaskStatus | null>(null);
+  const dragSnapshot = useRef<Task[]>([]);
 
   // Modal state
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
+  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [boardError, setBoardError] = useState("");
+  const openedTask = useRef<string | null>(null);
+
+  useEffect(() => {
+    api.get<Deliverable[]>(`/projects/${projectId}/deliverables`)
+      .then(({ data }) => setDeliverables(data))
+      .catch((err) => setBoardError(apiError(err, "제출물 목록을 불러오지 못했습니다. 새로고침해 주세요.")));
+  }, [projectId]);
+
+  useEffect(() => {
+    setTasks(initialTasks);
+    const id = new URLSearchParams(window.location.search).get("task");
+    const task = initialTasks.find((item) => item.id === id);
+    if (task && openedTask.current !== id) {
+      openedTask.current = id;
+      setEditingTask(task);
+      setModalMode("edit");
+    }
+  }, [initialTasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -83,6 +108,10 @@ export default function KanbanBoard({
   const tasksByStatus = useCallback(
     (status: TaskStatus) => {
       let filtered = tasks.filter((t) => t.status === status);
+      if (deliveryFilter) {
+        filtered = filtered.filter((t) => deliveryFilter === "unlinked"
+          ? !t.deliverableId : t.deliverableId === deliveryFilter);
+      }
       if (filter?.assigneeId) {
         filtered = filtered.filter((t) =>
           t.assignees.some((a) => a.userId === filter.assigneeId)
@@ -97,12 +126,14 @@ export default function KanbanBoard({
       }
       return filtered;
     },
-    [tasks, filter]
+    [tasks, filter, deliveryFilter]
   );
 
   // ── Drag handlers ──────────────────────────────────────────────────────
 
   function handleDragStart({ active }: DragStartEvent) {
+    dragSnapshot.current = tasks;
+    setBoardError("");
     const found = tasks.find((t) => t.id === active.id);
     if (found) {
       setActiveTask(found);
@@ -142,7 +173,10 @@ export default function KanbanBoard({
     const newStatus = dragStatusRef.current;
     dragStatusRef.current = null;
 
-    if (!over || newStatus === null) return;
+    if (!over || newStatus === null) {
+      setTasks(dragSnapshot.current);
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
@@ -164,10 +198,10 @@ export default function KanbanBoard({
         `/projects/${projectId}/tasks/${activeId}/status`,
         { status: newStatus }
       );
-      onTasksChange?.(tasks);
+      onTasksChange?.(tasks.map(t => t.id === activeId ? { ...t, status: newStatus } : t));
     } catch (err) {
-      console.error("Status update failed:", err);
-      setTasks(initialTasks);
+      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
+      setTasks(dragSnapshot.current);
     }
   }
 
@@ -198,10 +232,15 @@ export default function KanbanBoard({
 
   const handleUpdate = async (taskId: string, payload: Partial<CreateTaskPayload>) => {
     const original = tasks.find((t) => t.id === taskId);
+    const reflectSavedTask = (saved: Task) => {
+      setTasks(prev => prev.map(t => t.id === taskId ? saved : t));
+      onTasksChange?.(tasks.map(t => t.id === taskId ? saved : t));
+    };
 
     // 1) 기본 필드 업데이트 (title/description/priority/tag/dueDate)
     const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}`, payload);
     let finalTask = data;
+    reflectSavedTask(data);
 
     // 2) 담당자 변경 — 별도 PUT 엔드포인트 사용 (UpdateTaskRequest에 assigneeIds 없음)
     if (payload.assigneeIds !== undefined) {
@@ -210,6 +249,7 @@ export default function KanbanBoard({
         { assigneeIds: payload.assigneeIds }
       );
       finalTask = assigneeData;
+      reflectSavedTask(assigneeData);
     }
 
     // 3) 상태 변경 — 별도 PATCH 엔드포인트 사용 (UpdateTaskRequest에 status 없음)
@@ -222,12 +262,14 @@ export default function KanbanBoard({
     }
 
     setTasks((prev) => prev.map((t) => (t.id === taskId ? finalTask : t)));
+    onTasksChange?.(tasks.map((t) => t.id === taskId ? finalTask : t));
     closeModal();
   };
 
   const handleDelete = async (taskId: string) => {
     await api.delete(`/projects/${projectId}/tasks/${taskId}`);
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    onTasksChange?.(tasks.filter((t) => t.id !== taskId));
     closeModal();
   };
 
@@ -235,6 +277,7 @@ export default function KanbanBoard({
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
     const original = tasks.find((t) => t.id === taskId);
     if (!original || original.status === newStatus) return;
+    setBoardError("");
 
     // 낙관적 업데이트
     setTasks((prev) =>
@@ -243,8 +286,9 @@ export default function KanbanBoard({
 
     try {
       await api.patch(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
+      onTasksChange?.(tasks.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
     } catch (err) {
-      console.error("Task move failed:", err);
+      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
       // 실패 시 원상복구
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? original : t))
@@ -256,6 +300,15 @@ export default function KanbanBoard({
 
   return (
     <>
+      <div className="flex items-center gap-3 mb-4">
+        <select aria-label="제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
+          <option value="">전체 제출물</option>
+          <option value="unlinked">제출물 미연결</option>
+          {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select>
+        <Link href={`/projects/${projectId}/deliverables`} className="text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
+      </div>
+      {boardError && <p role="alert" className="mb-4 text-sm text-red-500">{boardError}</p>}
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
@@ -263,6 +316,7 @@ export default function KanbanBoard({
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => { setTasks(dragSnapshot.current); setActiveTask(null); dragStatusRef.current = null; }}
       >
         {tasks.length === 0 ? (
           /* 빈 상태 — 태스크가 하나도 없을 때 */
@@ -310,6 +364,7 @@ export default function KanbanBoard({
           mode={modalMode}
           task={editingTask}
           members={members}
+          deliverables={deliverables}
           defaultStatus={createStatus}
           onClose={closeModal}
           onCreate={handleCreate}

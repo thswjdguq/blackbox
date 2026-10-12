@@ -15,5 +15,8 @@ public record CreateTaskRequest(
         @Size(max = 30) String tag,
         LocalDate dueDate,
         List<UUID> assigneeIds,
-        @Pattern(regexp = "TODO|IN_PROGRESS|DONE") String status
+        @Pattern(regexp = "TODO|IN_PROGRESS|DONE") String status,
+        UUID deliverableId,
+        UUID requirementId,
+        @Size(max = 2000) String completionCriteria
 ) {}

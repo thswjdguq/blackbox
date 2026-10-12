@@ -419,6 +419,11 @@ export default function ProjectHomePage() {
             )}
           </div>
 
+          <Link href={`/projects/${projectId}/deliverables`} className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15">
+            <h2 className="font-semibold text-bb-text">제출물부터 계획하기</h2>
+            <p className="mt-2 text-sm text-bb-text2">제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요.</p>
+            <span className="mt-3 inline-block text-sm font-medium text-teal-500">제출물·요구사항 열기 →</span>
+          </Link>
           {/* ── 연동 온보딩 배너 ─────────────────────────────────────────── */}
           <OnboardingBanner projectId={projectId} />
 

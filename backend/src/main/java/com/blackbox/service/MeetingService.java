@@ -268,7 +268,8 @@ public class MeetingService {
                 + "\n[Action item from meeting: " + (meeting.getTitle() != null ? meeting.getTitle() : meeting.getId()) + "]";
 
         CreateTaskRequest enriched = new CreateTaskRequest(
-                req.title(), description, req.priority(), req.tag(), req.dueDate(), req.assigneeIds(), null
+                req.title(), description, req.priority(), req.tag(), req.dueDate(), req.assigneeIds(), null,
+                req.deliverableId(), req.requirementId(), req.completionCriteria()
         );
         return taskService.createTask(projectId, enriched, user);
     }

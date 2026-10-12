@@ -1,0 +1,94 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Serif+KR:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import 'tailwindcss';
+
+/* Notion 계열 톤: 따뜻한 회색 + 차분한 블루, 작은 라운드 */
+@theme {
+  --color-red-500: #E03E3E;
+  --color-red-600: #E03E3E;
+  --color-red-700: #C4302F;
+  --color-emerald-500: #0F7B6C;
+  --color-emerald-600: #0F7B6C;
+  --color-emerald-700: #0B5E53;
+  --color-amber-500: #DFAB01;
+  --color-slate-50: #F9F9F8;
+  --color-slate-100: #F1F1EF;
+  --color-slate-200: #E9E9E7;
+  --color-slate-300: #D3D1CB;
+  --color-slate-400: #A5A29A;
+  --color-slate-500: #787774;
+  --color-slate-600: #5F5E5B;
+  --color-slate-700: #454440;
+  --color-slate-800: #37352F;
+  --color-slate-900: #2C2B28;
+  --color-slate-950: #191917;
+  --color-blue-50: #EEF5FD;
+  --color-blue-100: #DCEBFB;
+  --color-blue-200: #B9D7F6;
+  --color-blue-300: #8BBDEF;
+  --color-blue-400: #5AA0E8;
+  --color-blue-500: #2383E2;
+  --color-blue-600: #1F6FC5;
+  --color-blue-700: #1A5DA6;
+  --color-blue-800: #164D88;
+  --color-blue-900: #133F6E;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --font-sans: 'Pretendard Variable', Pretendard, 'Inter', system-ui, sans-serif;
+  --font-serif: 'Noto Serif KR', Georgia, serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: #ffffff;
+    color: var(--color-slate-800);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.005em;
+  }
+}
+
+.font-display {
+  font-family: var(--font-sans);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+.font-page { font-family: var(--font-serif); letter-spacing: -0.01em; }
+::selection { background: rgba(35, 131, 226, 0.22); }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.18s ease-out both; }
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right { animation: slide-in-right 0.22s ease-out both; }
+
+.focus-ring:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.font-mono-data { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+@keyframes bb-slide-in { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } }
+.animate-slide-in { animation: bb-slide-in .22s ease-out; }
+
+@keyframes slide-in { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes slide-in-left { from { transform: translateX(-100%) } to { transform: none } }
+.animate-slide-in-left { animation: slide-in-left .2s ease-out both; }
+svg.lucide { stroke-width: 1.75; }

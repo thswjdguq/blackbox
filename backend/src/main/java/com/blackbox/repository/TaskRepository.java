@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface TaskRepository extends JpaRepository<Task, UUID> {
+    boolean existsByDeliverable(com.blackbox.entity.Deliverable deliverable);
+    boolean existsByRequirement(com.blackbox.entity.DeliverableRequirement requirement);
     List<Task> findByProjectOrderByCreatedAtDesc(Project project);
     List<Task> findByProjectAndStatusOrderByCreatedAtDesc(Project project, String status);
     Optional<Task> findByIdAndProject(UUID id, Project project);

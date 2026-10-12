@@ -1,0 +1,761 @@
+diff --git a/backend/src/main/java/com/blackbox/dto/CreateTaskRequest.java b/backend/src/main/java/com/blackbox/dto/CreateTaskRequest.java
+index 9f79cb9..ec400d3 100644
+--- a/backend/src/main/java/com/blackbox/dto/CreateTaskRequest.java
++++ b/backend/src/main/java/com/blackbox/dto/CreateTaskRequest.java
+@@ -15,5 +15,8 @@ public record CreateTaskRequest(
+         @Size(max = 30) String tag,
+         LocalDate dueDate,
+         List<UUID> assigneeIds,
+-        @Pattern(regexp = "TODO|IN_PROGRESS|DONE") String status
++        @Pattern(regexp = "TODO|IN_PROGRESS|DONE") String status,
++        UUID deliverableId,
++        UUID requirementId,
++        @Size(max = 2000) String completionCriteria
+ ) {}
+diff --git a/backend/src/main/java/com/blackbox/dto/TaskResponse.java b/backend/src/main/java/com/blackbox/dto/TaskResponse.java
+index 68199b6..36588a4 100644
+--- a/backend/src/main/java/com/blackbox/dto/TaskResponse.java
++++ b/backend/src/main/java/com/blackbox/dto/TaskResponse.java
+@@ -21,7 +21,12 @@ public record TaskResponse(
+         UUID createdBy,
+         OffsetDateTime createdAt,
+         OffsetDateTime updatedAt,
+-        List<AssigneeSummary> assignees
++        List<AssigneeSummary> assignees,
++        UUID deliverableId,
++        String deliverableTitle,
++        UUID requirementId,
++        String requirementContent,
++        String completionCriteria
+ ) {
+     public record AssigneeSummary(UUID userId, String name, String email) {}
+ 
+@@ -36,7 +41,12 @@ public record TaskResponse(
+                 t.getDueDate(), t.getCompletedAt(),
+                 t.getCreatedBy().getId(),
+                 t.getCreatedAt(), t.getUpdatedAt(),
+-                summaries
++                summaries,
++                t.getDeliverable() == null ? null : t.getDeliverable().getId(),
++                t.getDeliverable() == null ? null : t.getDeliverable().getTitle(),
++                t.getRequirement() == null ? null : t.getRequirement().getId(),
++                t.getRequirement() == null ? null : t.getRequirement().getContent(),
++                t.getCompletionCriteria()
+         );
+     }
+ }
+diff --git a/backend/src/main/java/com/blackbox/dto/UpdateTaskRequest.java b/backend/src/main/java/com/blackbox/dto/UpdateTaskRequest.java
+index 4c8d4de..8a78d5a 100644
+--- a/backend/src/main/java/com/blackbox/dto/UpdateTaskRequest.java
++++ b/backend/src/main/java/com/blackbox/dto/UpdateTaskRequest.java
+@@ -4,11 +4,17 @@ import jakarta.validation.constraints.Pattern;
+ import jakarta.validation.constraints.Size;
+ 
+ import java.time.LocalDate;
++import java.util.UUID;
+ 
+ public record UpdateTaskRequest(
+         @Size(max = 255) String title,
+         String description,
+         @Pattern(regexp = "LOW|MEDIUM|HIGH|URGENT") String priority,
+         @Size(max = 30) String tag,
+-        LocalDate dueDate
++        LocalDate dueDate,
++        UUID deliverableId,
++        UUID requirementId,
++        Boolean clearDeliverable,
++        Boolean clearRequirement,
++        @Size(max = 2000) String completionCriteria
+ ) {}
+diff --git a/backend/src/main/java/com/blackbox/entity/Task.java b/backend/src/main/java/com/blackbox/entity/Task.java
+index 68c0afa..3f556cf 100644
+--- a/backend/src/main/java/com/blackbox/entity/Task.java
++++ b/backend/src/main/java/com/blackbox/entity/Task.java
+@@ -31,6 +31,17 @@ public class Task {
+     @Column(columnDefinition = "TEXT")
+     private String description;
+ 
++    @ManyToOne(fetch = FetchType.LAZY)
++    @JoinColumn(name = "deliverable_id")
++    private Deliverable deliverable;
++
++    @ManyToOne(fetch = FetchType.LAZY)
++    @JoinColumn(name = "requirement_id")
++    private DeliverableRequirement requirement;
++
++    @Column(name = "completion_criteria", length = 2000)
++    private String completionCriteria;
++
+     // TODO | IN_PROGRESS | DONE
+     @Column(nullable = false, length = 20)
+     private String status;
+diff --git a/backend/src/main/java/com/blackbox/exception/GlobalExceptionHandler.java b/backend/src/main/java/com/blackbox/exception/GlobalExceptionHandler.java
+index f474fa0..8d6b33e 100644
+--- a/backend/src/main/java/com/blackbox/exception/GlobalExceptionHandler.java
++++ b/backend/src/main/java/com/blackbox/exception/GlobalExceptionHandler.java
+@@ -16,6 +16,18 @@ import java.util.stream.Collectors;
+ @RestControllerAdvice
+ public class GlobalExceptionHandler {
+ 
++    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
++    public ProblemDetail handleStatus(org.springframework.web.server.ResponseStatusException ex) {
++        return ProblemDetail.forStatusAndDetail(ex.getStatusCode(),
++                ex.getReason() == null ? "요청을 처리할 수 없습니다" : ex.getReason());
++    }
++
++    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
++    public ProblemDetail handleConflict(org.springframework.dao.DataIntegrityViolationException ex) {
++        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
++                "연결된 데이터가 변경되었습니다. 새로고침 후 연결 관계를 확인해주세요");
++    }
++
+     @ExceptionHandler(DuplicateEmailException.class)
+     public ProblemDetail handleDuplicateEmail(DuplicateEmailException ex) {
+         ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+diff --git a/backend/src/main/java/com/blackbox/repository/TaskRepository.java b/backend/src/main/java/com/blackbox/repository/TaskRepository.java
+index 30ebaf3..0d982cc 100644
+--- a/backend/src/main/java/com/blackbox/repository/TaskRepository.java
++++ b/backend/src/main/java/com/blackbox/repository/TaskRepository.java
+@@ -9,6 +9,8 @@ import java.util.Optional;
+ import java.util.UUID;
+ 
+ public interface TaskRepository extends JpaRepository<Task, UUID> {
++    boolean existsByDeliverable(com.blackbox.entity.Deliverable deliverable);
++    boolean existsByRequirement(com.blackbox.entity.DeliverableRequirement requirement);
+     List<Task> findByProjectOrderByCreatedAtDesc(Project project);
+     List<Task> findByProjectAndStatusOrderByCreatedAtDesc(Project project, String status);
+     Optional<Task> findByIdAndProject(UUID id, Project project);
+diff --git a/backend/src/main/java/com/blackbox/service/MeetingService.java b/backend/src/main/java/com/blackbox/service/MeetingService.java
+index 60717d0..f95310a 100644
+--- a/backend/src/main/java/com/blackbox/service/MeetingService.java
++++ b/backend/src/main/java/com/blackbox/service/MeetingService.java
+@@ -268,7 +268,8 @@ public class MeetingService {
+                 + "\n[Action item from meeting: " + (meeting.getTitle() != null ? meeting.getTitle() : meeting.getId()) + "]";
+ 
+         CreateTaskRequest enriched = new CreateTaskRequest(
+-                req.title(), description, req.priority(), req.tag(), req.dueDate(), req.assigneeIds(), null
++                req.title(), description, req.priority(), req.tag(), req.dueDate(), req.assigneeIds(), null,
++                req.deliverableId(), req.requirementId(), req.completionCriteria()
+         );
+         return taskService.createTask(projectId, enriched, user);
+     }
+diff --git a/backend/src/main/java/com/blackbox/service/ProjectAccessChecker.java b/backend/src/main/java/com/blackbox/service/ProjectAccessChecker.java
+index 34fba2d..5371697 100644
+--- a/backend/src/main/java/com/blackbox/service/ProjectAccessChecker.java
++++ b/backend/src/main/java/com/blackbox/service/ProjectAccessChecker.java
+@@ -35,6 +35,15 @@ public class ProjectAccessChecker {
+                 .orElseThrow(() -> new ForbiddenException("프로젝트 멤버가 아닙니다"));
+     }
+ 
++    /** 관찰자는 읽기만 허용한다. */
++    public ProjectMember requireContributor(Project project, User user) {
++        ProjectMember member = requireMember(project, user);
++        if (!"LEADER".equals(member.getRole()) && !"MEMBER".equals(member.getRole())) {
++            throw new ForbiddenException("관찰자는 프로젝트를 수정할 수 없습니다");
++        }
++        return member;
++    }
++
+     /** LEADER 권한 확인 */
+     public ProjectMember requireLeader(Project project, User user) {
+         ProjectMember member = requireMember(project, user);
+diff --git a/backend/src/main/java/com/blackbox/service/TaskService.java b/backend/src/main/java/com/blackbox/service/TaskService.java
+index 6e9d60c..6a4efba 100644
+--- a/backend/src/main/java/com/blackbox/service/TaskService.java
++++ b/backend/src/main/java/com/blackbox/service/TaskService.java
+@@ -31,6 +31,7 @@ public class TaskService {
+     private final DiscordNotificationService discordService;
+     private final ScoreService scoreService;
+     private final EntityManager entityManager;
++    private final DeliverableService deliverableService;
+ 
+     public TaskService(TaskRepository taskRepository,
+                        TaskAssigneeRepository taskAssigneeRepository,
+@@ -42,7 +43,8 @@ public class TaskService {
+                        AlertService alertService,
+                        DiscordNotificationService discordService,
+                        ScoreService scoreService,
+-                       EntityManager entityManager) {
++                       EntityManager entityManager,
++                       DeliverableService deliverableService) {
+         this.taskRepository = taskRepository;
+         this.taskAssigneeRepository = taskAssigneeRepository;
+         this.projectMemberRepository = projectMemberRepository;
+@@ -54,6 +56,7 @@ public class TaskService {
+         this.discordService = discordService;
+         this.scoreService = scoreService;
+         this.entityManager = entityManager;
++        this.deliverableService = deliverableService;
+     }
+ 
+     // ── CRUD ──────────────────────────────────────────────────────────────
+@@ -61,12 +64,14 @@ public class TaskService {
+     @Transactional
+     public TaskResponse createTask(UUID projectId, CreateTaskRequest req, User creator) {
+         Project project = accessChecker.getProject(projectId);
+-        accessChecker.requireMember(project, creator);
++        accessChecker.requireContributor(project, creator);
+ 
+         Task task = new Task();
+         task.setProject(project);
+         task.setTitle(req.title());
+         task.setDescription(req.description());
++        applyDeliverable(task, project, req.deliverableId(), req.requirementId(), false, false);
++        task.setCompletionCriteria(req.completionCriteria());
+         task.setStatus(req.status() != null ? req.status() : "TODO");
+         task.setPriority(req.priority() != null ? req.priority() : "MEDIUM");
+         task.setTag(req.tag());
+@@ -115,9 +120,13 @@ public class TaskService {
+     @Transactional
+     public TaskResponse updateTask(UUID projectId, UUID taskId, UpdateTaskRequest req, User user) {
+         Project project = accessChecker.getProject(projectId);
+-        accessChecker.requireMember(project, user);
++        accessChecker.requireContributor(project, user);
+         Task task = findTask(taskId, project);
+ 
++        applyDeliverable(task, project, req.deliverableId(), req.requirementId(),
++                Boolean.TRUE.equals(req.clearDeliverable()), Boolean.TRUE.equals(req.clearRequirement()));
++        if (req.completionCriteria() != null) task.setCompletionCriteria(req.completionCriteria().trim());
++
+         if (req.title() != null)       task.setTitle(req.title());
+         if (req.description() != null) task.setDescription(req.description());
+         if (req.priority() != null)    task.setPriority(req.priority());
+@@ -133,7 +142,7 @@ public class TaskService {
+     @Transactional
+     public void deleteTask(UUID projectId, UUID taskId, User user) {
+         Project project = accessChecker.getProject(projectId);
+-        ProjectMember member = accessChecker.requireMember(project, user);
++        ProjectMember member = accessChecker.requireContributor(project, user);
+         Task task = findTask(taskId, project);
+ 
+         // 본인 생성 또는 LEADER만 삭제 가능
+@@ -153,7 +162,7 @@ public class TaskService {
+     public TaskResponse updateStatus(UUID projectId, UUID taskId,
+                                      UpdateTaskStatusRequest req, User user) {
+         Project project = accessChecker.getProject(projectId);
+-        accessChecker.requireMember(project, user);
++        accessChecker.requireContributor(project, user);
+         Task task = findTask(taskId, project);
+ 
+         String oldStatus = task.getStatus();
+@@ -191,7 +200,7 @@ public class TaskService {
+     public TaskResponse setAssignees(UUID projectId, UUID taskId,
+                                      AssignTaskRequest req, User user) {
+         Project project = accessChecker.getProject(projectId);
+-        accessChecker.requireMember(project, user);
++        accessChecker.requireContributor(project, user);
+         Task task = findTask(taskId, project);
+ 
+         List<TaskAssignee> assignees = setAssigneesInternal(task, req.assigneeIds());
+@@ -250,6 +259,7 @@ public class TaskService {
+                 .map(uid -> {
+                     User assignee = userRepository.findById(uid)
+                             .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다: " + uid));
++                    accessChecker.requireContributor(task.getProject(), assignee);
+                     TaskAssignee ta = new TaskAssignee();
+                     ta.setTask(task);
+                     ta.setUser(assignee);
+@@ -261,6 +271,35 @@ public class TaskService {
+         return result;
+     }
+ 
++    private void applyDeliverable(Task task, Project project, UUID deliverableId, UUID requirementId,
++                                  boolean clearDeliverable, boolean clearRequirement) {
++        if ((clearDeliverable && (deliverableId != null || requirementId != null))
++                || (clearRequirement && requirementId != null)) {
++            throw new org.springframework.web.server.ResponseStatusException(
++                    org.springframework.http.HttpStatus.BAD_REQUEST, "연결과 연결 해제를 동시에 요청할 수 없습니다");
++        }
++        if (clearDeliverable) {
++            task.setDeliverable(null);
++            task.setRequirement(null);
++            return;
++        }
++        if (deliverableId != null) {
++            Deliverable next = deliverableService.find(project, deliverableId);
++            if (task.getDeliverable() == null || !next.getId().equals(task.getDeliverable().getId())) {
++                task.setRequirement(null);
++            }
++            task.setDeliverable(next);
++        }
++        if (clearRequirement) task.setRequirement(null);
++        if (requirementId != null) {
++            if (task.getDeliverable() == null) {
++                throw new org.springframework.web.server.ResponseStatusException(
++                        org.springframework.http.HttpStatus.BAD_REQUEST, "요구사항을 연결할 제출물을 선택해주세요");
++            }
++            task.setRequirement(deliverableService.findRequirement(task.getDeliverable(), requirementId));
++        }
++    }
++
+     private String escapeJson(String s) {
+         if (s == null) return "";
+         return s.replace("\\", "\\\\").replace("\"", "\\\"");
+diff --git a/backend/src/test/java/com/blackbox/service/TaskAssignmentRegressionTest.java b/backend/src/test/java/com/blackbox/service/TaskAssignmentRegressionTest.java
+index a660824..53dad96 100644
+--- a/backend/src/test/java/com/blackbox/service/TaskAssignmentRegressionTest.java
++++ b/backend/src/test/java/com/blackbox/service/TaskAssignmentRegressionTest.java
+@@ -3,6 +3,7 @@ package com.blackbox.service;
+ import com.blackbox.dto.*;
+ import com.blackbox.entity.*;
+ import com.blackbox.exception.ForbiddenException;
++import com.blackbox.exception.NotFoundException;
+ import com.blackbox.repository.*;
+ import jakarta.persistence.EntityManager;
+ import org.junit.jupiter.api.BeforeEach;
+@@ -102,4 +103,56 @@ class TaskAssignmentRegressionTest {
+         assertThrows(ForbiddenException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of()), actor));
+         verifyNoInteractions(assignees);
+     }
++    @Test void observerCannotCreateTask() {
++        grant(actor, "OBSERVER");
++        assertThrows(ForbiddenException.class, () -> service.createTask(project.getId(),
++                new CreateTaskRequest("조사", null, null, null, null, List.of(), null, null, null, null), actor));
++        verifyNoInteractions(tasks, assignees, discord);
++    }
++    @Test void outsiderCannotCreateTask() {
++        when(members.findByProjectAndUser(project, actor)).thenReturn(Optional.empty());
++        assertThrows(ForbiddenException.class, () -> service.createTask(project.getId(),
++                new CreateTaskRequest("조사", null, null, null, null, List.of(), null, null, null, null), actor));
++        verifyNoInteractions(tasks, assignees, discord);
++    }
++    @Test void observerCannotEditTask() {
++        grant(actor, "OBSERVER");
++        assertThrows(ForbiddenException.class, () -> service.updateTask(project.getId(), task.getId(), update(delivery.getId(), null, false), actor));
++        verifyNoInteractions(tasks, deliveries);
++    }
++    @Test void observerCannotChangeStatus() {
++        grant(actor, "OBSERVER");
++        assertThrows(ForbiddenException.class, () -> service.updateStatus(project.getId(), task.getId(), new UpdateTaskStatusRequest("DONE"), actor));
++        assertNull(task.getCompletedAt());
++        verifyNoInteractions(tasks, discord);
++    }
++    @Test void missingAssigneeIsRejectedWithoutAssignmentOrNotification() {
++        when(users.findById(candidate.getId())).thenReturn(Optional.empty());
++        assertThrows(NotFoundException.class, () -> service.setAssignees(project.getId(), task.getId(), new AssignTaskRequest(List.of(candidate.getId())), actor));
++        verify(assignees, never()).save(any());
++        verifyNoInteractions(discord);
++        // 실제 DB에서 기존 배정 삭제의 롤백 여부는 통합 테스트로 별도 검증한다.
++    }
++    @Test void memberCannotDeleteAnotherMembersTask() {
++        task.setCreatedBy(candidate);
++        assertThrows(ForbiddenException.class, () -> service.deleteTask(project.getId(), task.getId(), actor));
++        verify(tasks, never()).delete(any());
++        verifyNoInteractions(assignees);
++    }
++    @Test void creatorCanDeleteOwnTask() {
++        service.deleteTask(project.getId(), task.getId(), actor);
++        verify(assignees).deleteByTask(task);
++        verify(tasks).delete(task);
++    }
++    @Test void leaderCanDeleteAnotherMembersTask() {
++        grant(actor, "LEADER"); task.setCreatedBy(candidate);
++        service.deleteTask(project.getId(), task.getId(), actor);
++        verify(assignees).deleteByTask(task);
++        verify(tasks).delete(task);
++    }
++    @Test void observerCannotDeleteEvenOwnTask() {
++        grant(actor, "OBSERVER");
++        assertThrows(ForbiddenException.class, () -> service.deleteTask(project.getId(), task.getId(), actor));
++        verifyNoInteractions(tasks, assignees);
++    }
+ }
+diff --git a/frontend/src/app/layout.tsx b/frontend/src/app/layout.tsx
+index 34d180f..624e994 100644
+--- a/frontend/src/app/layout.tsx
++++ b/frontend/src/app/layout.tsx
+@@ -5,7 +5,7 @@ import PageProgress from "@/components/PageProgress";
+ 
+ export const metadata: Metadata = {
+   title: "Team Blackbox",
+-  description: "팀 프로젝트 기여도 자동 증빙 플랫폼",
++  description: "과제 시작부터 검토와 제출까지 연결하는 대학생 팀 프로젝트 PMS",
+   icons: { icon: "/favicon.svg" },
+ };
+ 
+diff --git a/frontend/src/app/projects/[projectId]/page.tsx b/frontend/src/app/projects/[projectId]/page.tsx
+index 9f047ae..372fce8 100644
+--- a/frontend/src/app/projects/[projectId]/page.tsx
++++ b/frontend/src/app/projects/[projectId]/page.tsx
+@@ -419,6 +419,11 @@ export default function ProjectHomePage() {
+             )}
+           </div>
+ 
++          <Link href={`/projects/${projectId}/deliverables`} className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15">
++            <h2 className="font-semibold text-bb-text">제출물부터 계획하기</h2>
++            <p className="mt-2 text-sm text-bb-text2">제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요.</p>
++            <span className="mt-3 inline-block text-sm font-medium text-teal-500">제출물·요구사항 열기 →</span>
++          </Link>
+           {/* ── 연동 온보딩 배너 ─────────────────────────────────────────── */}
+           <OnboardingBanner projectId={projectId} />
+ 
+diff --git a/frontend/src/components/Sidebar.tsx b/frontend/src/components/Sidebar.tsx
+index 21e0f76..dd15595 100644
+--- a/frontend/src/components/Sidebar.tsx
++++ b/frontend/src/components/Sidebar.tsx
+@@ -201,7 +201,8 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
+   const NAV_ITEMS = [
+     { href: "/dashboard",                                                                           icon: FolderKanban,    label: "내 프로젝트",   exactActive: false },
+     { href: currentProjectId ? `/projects/${currentProjectId}`            : "/dashboard",           icon: LayoutDashboard, label: "프로젝트 홈",  needsProject: true, exactActive: true },
+-    { href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "칸반 보드",    needsProject: true, exactActive: false },
++    { href: currentProjectId ? `/projects/${currentProjectId}/deliverables` : "/dashboard",         icon: Files,           label: "제출물·요구사항", needsProject: true, exactActive: false },
++    { href: currentProjectId ? `/projects/${currentProjectId}/board`      : "/board",               icon: Kanban,          label: "업무 보드",    needsProject: true, exactActive: false },
+     { href: currentProjectId ? `/projects/${currentProjectId}/schedule`   : "/schedule",            icon: CalendarClock,   label: "일정 조율",    needsProject: true, exactActive: false },
+     { href: currentProjectId ? `/projects/${currentProjectId}/meetings`   : "/meetings",            icon: FileText,        label: "회의록",       needsProject: true, exactActive: false },
+     { href: currentProjectId ? `/projects/${currentProjectId}/vault`      : "/vault",               icon: Files,           label: "Hash Vault",   needsProject: true, exactActive: false },
+diff --git a/frontend/src/components/kanban/KanbanBoard.tsx b/frontend/src/components/kanban/KanbanBoard.tsx
+index 94c4c82..6e8f1a3 100644
+--- a/frontend/src/components/kanban/KanbanBoard.tsx
++++ b/frontend/src/components/kanban/KanbanBoard.tsx
+@@ -1,6 +1,9 @@
+ "use client";
+ 
+-import { useState, useCallback, useRef } from "react";
++import { useState, useCallback, useRef, useEffect } from "react";
++import Link from "next/link";
++import { Deliverable } from "@/types/deliverable";
++import { apiError } from "@/lib/apiError";
+ import {
+   DndContext,
+   DragEndEvent,
+@@ -57,11 +60,33 @@ export default function KanbanBoard({
+ 
+   // Track new status during drag — avoids stale-closure bug in handleDragEnd
+   const dragStatusRef = useRef<TaskStatus | null>(null);
++  const dragSnapshot = useRef<Task[]>([]);
+ 
+   // Modal state
+   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
+   const [editingTask, setEditingTask] = useState<Task | null>(null);
+   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
++  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
++  const [deliveryFilter, setDeliveryFilter] = useState("");
++  const [boardError, setBoardError] = useState("");
++  const openedTask = useRef<string | null>(null);
++
++  useEffect(() => {
++    api.get<Deliverable[]>(`/projects/${projectId}/deliverables`)
++      .then(({ data }) => setDeliverables(data))
++      .catch((err) => setBoardError(apiError(err, "제출물 목록을 불러오지 못했습니다. 새로고침해 주세요.")));
++  }, [projectId]);
++
++  useEffect(() => {
++    setTasks(initialTasks);
++    const id = new URLSearchParams(window.location.search).get("task");
++    const task = initialTasks.find((item) => item.id === id);
++    if (task && openedTask.current !== id) {
++      openedTask.current = id;
++      setEditingTask(task);
++      setModalMode("edit");
++    }
++  }, [initialTasks]);
+ 
+   const sensors = useSensors(
+     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+@@ -83,6 +108,10 @@ export default function KanbanBoard({
+   const tasksByStatus = useCallback(
+     (status: TaskStatus) => {
+       let filtered = tasks.filter((t) => t.status === status);
++      if (deliveryFilter) {
++        filtered = filtered.filter((t) => deliveryFilter === "unlinked"
++          ? !t.deliverableId : t.deliverableId === deliveryFilter);
++      }
+       if (filter?.assigneeId) {
+         filtered = filtered.filter((t) =>
+           t.assignees.some((a) => a.userId === filter.assigneeId)
+@@ -97,12 +126,14 @@ export default function KanbanBoard({
+       }
+       return filtered;
+     },
+-    [tasks, filter]
++    [tasks, filter, deliveryFilter]
+   );
+ 
+   // ── Drag handlers ──────────────────────────────────────────────────────
+ 
+   function handleDragStart({ active }: DragStartEvent) {
++    dragSnapshot.current = tasks;
++    setBoardError("");
+     const found = tasks.find((t) => t.id === active.id);
+     if (found) {
+       setActiveTask(found);
+@@ -142,7 +173,10 @@ export default function KanbanBoard({
+     const newStatus = dragStatusRef.current;
+     dragStatusRef.current = null;
+ 
+-    if (!over || newStatus === null) return;
++    if (!over || newStatus === null) {
++      setTasks(dragSnapshot.current);
++      return;
++    }
+ 
+     const activeId = active.id as string;
+     const overId = over.id as string;
+@@ -164,10 +198,10 @@ export default function KanbanBoard({
+         `/projects/${projectId}/tasks/${activeId}/status`,
+         { status: newStatus }
+       );
+-      onTasksChange?.(tasks);
++      onTasksChange?.(tasks.map(t => t.id === activeId ? { ...t, status: newStatus } : t));
+     } catch (err) {
+-      console.error("Status update failed:", err);
+-      setTasks(initialTasks);
++      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
++      setTasks(dragSnapshot.current);
+     }
+   }
+ 
+@@ -198,10 +232,15 @@ export default function KanbanBoard({
+ 
+   const handleUpdate = async (taskId: string, payload: Partial<CreateTaskPayload>) => {
+     const original = tasks.find((t) => t.id === taskId);
++    const reflectSavedTask = (saved: Task) => {
++      setTasks(prev => prev.map(t => t.id === taskId ? saved : t));
++      onTasksChange?.(tasks.map(t => t.id === taskId ? saved : t));
++    };
+ 
+     // 1) 기본 필드 업데이트 (title/description/priority/tag/dueDate)
+     const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}`, payload);
+     let finalTask = data;
++    reflectSavedTask(data);
+ 
+     // 2) 담당자 변경 — 별도 PUT 엔드포인트 사용 (UpdateTaskRequest에 assigneeIds 없음)
+     if (payload.assigneeIds !== undefined) {
+@@ -210,6 +249,7 @@ export default function KanbanBoard({
+         { assigneeIds: payload.assigneeIds }
+       );
+       finalTask = assigneeData;
++      reflectSavedTask(assigneeData);
+     }
+ 
+     // 3) 상태 변경 — 별도 PATCH 엔드포인트 사용 (UpdateTaskRequest에 status 없음)
+@@ -222,12 +262,14 @@ export default function KanbanBoard({
+     }
+ 
+     setTasks((prev) => prev.map((t) => (t.id === taskId ? finalTask : t)));
++    onTasksChange?.(tasks.map((t) => t.id === taskId ? finalTask : t));
+     closeModal();
+   };
+ 
+   const handleDelete = async (taskId: string) => {
+     await api.delete(`/projects/${projectId}/tasks/${taskId}`);
+     setTasks((prev) => prev.filter((t) => t.id !== taskId));
++    onTasksChange?.(tasks.filter((t) => t.id !== taskId));
+     closeModal();
+   };
+ 
+@@ -235,6 +277,7 @@ export default function KanbanBoard({
+   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+     const original = tasks.find((t) => t.id === taskId);
+     if (!original || original.status === newStatus) return;
++    setBoardError("");
+ 
+     // 낙관적 업데이트
+     setTasks((prev) =>
+@@ -243,8 +286,9 @@ export default function KanbanBoard({
+ 
+     try {
+       await api.patch(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
++      onTasksChange?.(tasks.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
+     } catch (err) {
+-      console.error("Task move failed:", err);
++      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
+       // 실패 시 원상복구
+       setTasks((prev) =>
+         prev.map((t) => (t.id === taskId ? original : t))
+@@ -256,6 +300,15 @@ export default function KanbanBoard({
+ 
+   return (
+     <>
++      <div className="flex items-center gap-3 mb-4">
++        <select aria-label="제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
++          <option value="">전체 제출물</option>
++          <option value="unlinked">제출물 미연결</option>
++          {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
++        </select>
++        <Link href={`/projects/${projectId}/deliverables`} className="text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
++      </div>
++      {boardError && <p role="alert" className="mb-4 text-sm text-red-500">{boardError}</p>}
+       <DndContext
+         sensors={sensors}
+         collisionDetection={collisionDetection}
+@@ -263,6 +316,7 @@ export default function KanbanBoard({
+         onDragStart={handleDragStart}
+         onDragOver={handleDragOver}
+         onDragEnd={handleDragEnd}
++        onDragCancel={() => { setTasks(dragSnapshot.current); setActiveTask(null); dragStatusRef.current = null; }}
+       >
+         {tasks.length === 0 ? (
+           /* 빈 상태 — 태스크가 하나도 없을 때 */
+@@ -310,6 +364,7 @@ export default function KanbanBoard({
+           mode={modalMode}
+           task={editingTask}
+           members={members}
++          deliverables={deliverables}
+           defaultStatus={createStatus}
+           onClose={closeModal}
+           onCreate={handleCreate}
+diff --git a/frontend/src/components/kanban/TaskCard.tsx b/frontend/src/components/kanban/TaskCard.tsx
+index 808ec9a..3b9ac85 100644
+--- a/frontend/src/components/kanban/TaskCard.tsx
++++ b/frontend/src/components/kanban/TaskCard.tsx
+@@ -200,6 +200,9 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove }: TaskCardPro
+         )}
+       </div>
+ 
++      <p className="mb-2 text-xs text-teal-400 truncate" title={task.deliverableTitle ?? "제출물 미연결"}>
++        {task.deliverableTitle ? `제출물: ${task.deliverableTitle}` : "제출물 미연결"}
++      </p>
+       {/* Description preview */}
+       {task.description && (
+         <p className="text-xs text-slate-500 mb-3 line-clamp-2 leading-relaxed">
+diff --git a/frontend/src/components/kanban/TaskModal.tsx b/frontend/src/components/kanban/TaskModal.tsx
+index bf8a502..7a0f193 100644
+--- a/frontend/src/components/kanban/TaskModal.tsx
++++ b/frontend/src/components/kanban/TaskModal.tsx
+@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
+ import { Task, TaskPriority, TaskStatus, CreateTaskPayload, KANBAN_COLUMNS } from "@/types/task";
+ import { X, Trash2, Save, Plus } from "lucide-react";
+ import SmartDateInput from "@/components/SmartDateInput";
++import { Deliverable } from "@/types/deliverable";
++import { apiError } from "@/lib/apiError";
+ 
+ // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
+ interface Member {
+@@ -18,6 +20,9 @@ interface TaskModalProps {
+   task: Task | null;
+   members: Member[];
+   defaultStatus?: TaskStatus;
++  deliverables?: Deliverable[];
++  defaultDeliverableId?: string;
++  defaultRequirementId?: string;
+   onClose: () => void;
+   onCreate: (payload: CreateTaskPayload) => Promise<void>;
+   onUpdate: (taskId: string, payload: Partial<CreateTaskPayload>) => Promise<void>;
+@@ -44,12 +49,19 @@ export default function TaskModal({
+   task,
+   members,
+   defaultStatus = "TODO",
++  deliverables = [],
++  defaultDeliverableId = "",
++  defaultRequirementId = "",
+   onClose,
+   onCreate,
+   onUpdate,
+   onDelete,
+ }: TaskModalProps) {
+   const [title, setTitle]       = useState(task?.title ?? "");
++  const [deliverableId, setDeliverableId] = useState(task?.deliverableId ?? defaultDeliverableId);
++  const [requirementId, setRequirementId] = useState(task?.requirementId ?? defaultRequirementId);
++  const [completionCriteria, setCompletionCriteria] = useState(task?.completionCriteria ?? "");
++  const selectedDeliverable = deliverables.find(d => d.id === deliverableId);
+   const [description, setDescription] = useState(task?.description ?? "");
+   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "MEDIUM");
+   const [tag, setTag]           = useState(task?.tag ?? "");
+@@ -66,6 +78,9 @@ export default function TaskModal({
+   useEffect(() => {
+     if (!task) return;
+     setTitle(task.title);
++    setDeliverableId(task.deliverableId ?? "");
++    setRequirementId(task.requirementId ?? "");
++    setCompletionCriteria(task.completionCriteria ?? "");
+     setDescription(task.description ?? "");
+     setPriority(task.priority);
+     setStatus(task.status);
+@@ -96,14 +111,19 @@ export default function TaskModal({
+         dueDate:     dueDate || undefined,
+         assigneeIds: selectedAssignees,
+         status,
++        deliverableId: deliverableId || undefined,
++        requirementId: requirementId || undefined,
++        clearDeliverable: mode === "edit" && !deliverableId,
++        clearRequirement: mode === "edit" && !!deliverableId && !requirementId,
++        completionCriteria: completionCriteria.trim(),
+       };
+       if (mode === "create") {
+         await onCreate(payload);
+       } else if (task) {
+         await onUpdate(task.id, payload);
+       }
+-    } catch {
+-      setError("저장에 실패했습니다. 다시 시도해주세요.");
++    } catch (err) {
++      setError(apiError(err));
+     } finally {
+       setSubmitting(false);
+     }
+@@ -115,8 +135,8 @@ export default function TaskModal({
+     setSubmitting(true);
+     try {
+       await onDelete(task.id);
+-    } catch {
+-      setError("삭제에 실패했습니다.");
++    } catch (err) {
++      setError(apiError(err, "삭제에 실패했습니다."));
+       setSubmitting(false);
+     }
+   };
+@@ -164,12 +184,34 @@ export default function TaskModal({
+             <input
+               value={title}
+               onChange={(e) => setTitle(e.target.value)}
+-              placeholder="예: 로그인 API 연동"
++              placeholder="예: 인터뷰 결과 5건을 비교표로 정리"
+               className={INPUT_CLS}
+               maxLength={255}
+             />
+           </div>
+ 
++          <div>
++            <label htmlFor="task-deliverable" className="block text-xs font-medium text-slate-400 mb-1.5">연결할 제출물</label>
++            <select id="task-deliverable" className={INPUT_CLS} value={deliverableId}
++              onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
++              <option value="">제출물 미연결</option>
++              {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 제출물"}</option>}
++              {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
++            </select>
++            <p className="text-xs text-slate-400 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
++          </div>
++          {selectedDeliverable && <div>
++            <label htmlFor="task-requirement" className="block text-xs font-medium text-slate-400 mb-1.5">관련 요구사항 (선택)</label>
++            <select id="task-requirement" className={INPUT_CLS} value={requirementId} onChange={e => setRequirementId(e.target.value)}>
++              <option value="">제출물 전체 작업</option>
++              {selectedDeliverable.requirements.map(r => <option key={r.id} value={r.id}>{r.required ? "[필수] " : ""}{r.content}</option>)}
++            </select>
++          </div>}
++          <div>
++            <label htmlFor="completion-criteria" className="block text-xs font-medium text-slate-400 mb-1.5">완료 기준</label>
++            <textarea id="completion-criteria" value={completionCriteria} onChange={e => setCompletionCriteria(e.target.value)}
++              rows={2} maxLength={2000} className={`${INPUT_CLS} resize-none`} placeholder="예: 비교표에 공통 의견과 출처를 모두 포함" />
++          </div>
+           {/* 설명 */}
+           <div>
+             <label className="block text-xs font-medium text-slate-400 mb-1.5">설명</label>
+diff --git a/frontend/src/types/task.ts b/frontend/src/types/task.ts
+index aef60e4..df4e564 100644
+--- a/frontend/src/types/task.ts
++++ b/frontend/src/types/task.ts
+@@ -23,6 +23,11 @@ export interface Task {
+   createdAt: string;
+   updatedAt: string;
+   assignees: AssigneeSummary[];
++  deliverableId: string | null;
++  deliverableTitle: string | null;
++  requirementId: string | null;
++  requirementContent: string | null;
++  completionCriteria: string | null;
+ }
+ 
+ export interface ScoreMap {
+@@ -39,6 +44,11 @@ export interface CreateTaskPayload {
+   dueDate?: string; // "YYYY-MM-DD"
+   assigneeIds?: string[];
+   status?: TaskStatus;
++  deliverableId?: string;
++  requirementId?: string;
++  clearDeliverable?: boolean;
++  clearRequirement?: boolean;
++  completionCriteria?: string;
+ }
+ 
+ export interface UpdateTaskStatusPayload {

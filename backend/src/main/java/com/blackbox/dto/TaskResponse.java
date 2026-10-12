@@ -21,7 +21,12 @@ public record TaskResponse(
         UUID createdBy,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        List<AssigneeSummary> assignees
+        List<AssigneeSummary> assignees,
+        UUID deliverableId,
+        String deliverableTitle,
+        UUID requirementId,
+        String requirementContent,
+        String completionCriteria
 ) {
     public record AssigneeSummary(UUID userId, String name, String email) {}
 
@@ -36,7 +41,12 @@ public record TaskResponse(
                 t.getDueDate(), t.getCompletedAt(),
                 t.getCreatedBy().getId(),
                 t.getCreatedAt(), t.getUpdatedAt(),
-                summaries
+                summaries,
+                t.getDeliverable() == null ? null : t.getDeliverable().getId(),
+                t.getDeliverable() == null ? null : t.getDeliverable().getTitle(),
+                t.getRequirement() == null ? null : t.getRequirement().getId(),
+                t.getRequirement() == null ? null : t.getRequirement().getContent(),
+                t.getCompletionCriteria()
         );
     }
 }

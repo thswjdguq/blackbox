@@ -1,0 +1,92 @@
+{"kind":"deck","id":"pr/wseqpe","name":"Deck"}
+{"kind":"layout","layoutId":"e73ff86f-b61a-45f5-8e11-d71f217cef76","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"02a7b566-7efc-465b-b92d-102b43c63ece","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/ptl08v","slide":1,"title":"SSAK-LOG","textShapes":5}
+{"kind":"textbox","id":"sh/0bmho76d","slide":1,"text":"SSAK-LOG","textPreview":"SSAK-LOG","textChars":8,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/zad0v25s","slide":1,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/y94zmxo7","slide":1,"text":"대학생 팀 프로젝트 PMS\n고도화 기획","textPreview":"대학생 팀 프로젝트 PMS | 고도화 기획","textChars":21,"textLines":2,"bbox":[76,250,1130,165]}
+{"kind":"textbox","id":"sh/d8vitsnm","slide":1,"text":"Team Blackbox","textPreview":"Team Blackbox","textChars":13,"textLines":1,"bbox":[78,505,1100,46]}
+{"kind":"textbox","id":"sh/c7mhkn61","slide":1,"text":"팀장 송승준    팀원 손정협 · 손정효","textPreview":"팀장 송승준    팀원 손정협 · 손정효","textChars":22,"textLines":1,"bbox":[78,565,1100,46]}
+{"kind":"notes","id":"nt/ptl08v","slide":1,"text":""}
+{"kind":"slide","id":"sl/9r5mf8","slide":2,"title":"목차","textShapes":10}
+{"kind":"textbox","id":"sh/jepkjqtc","slide":2,"text":"목차","textPreview":"목차","textChars":2,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/kfy1svax","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/5g72l0bi","slide":2,"text":"조 소개","textPreview":"조 소개","textChars":4,"textLines":1,"bbox":[76,205,245,55]}
+{"kind":"textbox","id":"sh/a9wjm1sv","slide":2,"text":"조 이름 및 각오, 진출 목표 산업, EXPO 출품 여부","textPreview":"조 이름 및 각오, 진출 목표 산업, EXPO 출품 여부","textChars":31,"textLines":1,"bbox":[350,205,855,93]}
+{"kind":"textbox","id":"sh/va50f6tg","slide":2,"text":"프로젝트 소개","textPreview":"프로젝트 소개","textChars":7,"textLines":1,"bbox":[76,310,245,55]}
+{"kind":"textbox","id":"sh/wbe1oba1","slide":2,"text":"프로젝트 이름 및 개요, 핵심 기능","textPreview":"프로젝트 이름 및 개요, 핵심 기능","textChars":19,"textLines":1,"bbox":[350,310,855,93]}
+{"kind":"textbox","id":"sh/xcn2hgb6","slide":2,"text":"고도화 계획","textPreview":"고도화 계획","textChars":6,"textLines":1,"bbox":[76,415,245,55]}
+{"kind":"textbox","id":"sh/u50jy5sz","slide":2,"text":"적용 기술, 구현 범위, 개선점과 차별성","textPreview":"적용 기술, 구현 범위, 개선점과 차별성","textChars":22,"textLines":1,"bbox":[350,415,855,93]}
+{"kind":"textbox","id":"sh/f69kra9k","slide":2,"text":"스터디 계획","textPreview":"스터디 계획","textChars":6,"textLines":1,"bbox":[76,520,245,55]}
+{"kind":"textbox","id":"sh/z65obel8","slide":2,"text":"필요 지식, 공유 방식, 요소별 담당자","textPreview":"필요 지식, 공유 방식, 요소별 담당자","textChars":21,"textLines":1,"bbox":[350,520,855,93]}
+{"kind":"notes","id":"nt/9r5mf8","slide":2,"text":""}
+{"kind":"slide","id":"sl/j2eibg","slide":3,"title":"조 소개","textShapes":4}
+{"kind":"textbox","id":"sh/tof6t8ni","slide":3,"text":"조 소개","textPreview":"조 소개","textChars":4,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/6lonito7","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/kjm5gj61","slide":3,"text":"조 이름   Team Blackbox","textPreview":"조 이름   Team Blackbox","textChars":20,"textLines":1,"bbox":[78,462,1100,52]}
+{"kind":"textbox","id":"sh/lkfmponm","slide":3,"text":"각오   실제 팀 프로젝트를 시작부터 제출까지\n          끝낼 수 있는 PMS를 만들겠습니다.","textPreview":"각오   실제 팀 프로젝트를 시작부터 제출까지 |           끝낼 수 있는 PMS를 만들겠습니다.","textChars":56,"textLines":2,"bbox":[78,536,1120,88]}
+{"kind":"table","id":"tb/e5k7614v","slide":3,"name":"","rows":4,"cols":2,"preview":"구분 | 이름","bbox":[70,180,1140,245]}
+{"kind":"notes","id":"nt/j2eibg","slide":3,"text":""}
+{"kind":"slide","id":"sl/sa64o7","slide":4,"title":"진출 목표 산업 및 신구 EXPO","textShapes":8}
+{"kind":"textbox","id":"sh/2d836lcb","slide":4,"text":"진출 목표 산업 및 신구 EXPO","textPreview":"진출 목표 산업 및 신구 EXPO","textChars":18,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/p0jm10b2","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/ozal8vah","slide":4,"text":"진출 목표 산업","textPreview":"진출 목표 산업","textChars":8,"textLines":1,"bbox":[76,218,245,55]}
+{"kind":"textbox","id":"sh/b2143ats","slide":4,"text":"교육 소프트웨어(EdTech)\n팀 협업 소프트웨어(SaaS)","textPreview":"교육 소프트웨어(EdTech) | 팀 협업 소프트웨어(SaaS)","textChars":33,"textLines":2,"bbox":[350,218,855,116]}
+{"kind":"textbox","id":"sh/a1s3a5s7","slide":4,"text":"목표 사용자","textPreview":"목표 사용자","textChars":6,"textLines":1,"bbox":[76,346,245,55]}
+{"kind":"textbox","id":"sh/x4jm5kby","slide":4,"text":"한 학기 동안 공동 결과물을 제출하는\n3~6인 대학생 팀","textPreview":"한 학기 동안 공동 결과물을 제출하는 | 3~6인 대학생 팀","textChars":31,"textLines":2,"bbox":[350,346,855,116]}
+{"kind":"textbox","id":"sh/c3alcfad","slide":4,"text":"EXPO 출품 여부","textPreview":"EXPO 출품 여부","textChars":10,"textLines":1,"bbox":[76,474,245,55]}
+{"kind":"textbox","id":"sh/z6l47at4","slide":4,"text":"미정 · 팀 협의 후 결정","textPreview":"미정 · 팀 협의 후 결정","textChars":14,"textLines":1,"bbox":[350,474,855,116]}
+{"kind":"notes","id":"nt/sa64o7","slide":4,"text":""}
+{"kind":"slide","id":"sl/hbt6ve","slide":5,"title":"프로젝트 주제 및 개요","textShapes":8}
+{"kind":"textbox","id":"sh/hof2t83a","slide":5,"text":"프로젝트 주제 및 개요","textPreview":"프로젝트 주제 및 개요","textChars":12,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/u1ojytkj","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/v2xkryl4","slide":5,"text":"프로젝트 이름","textPreview":"프로젝트 이름","textChars":7,"textLines":1,"bbox":[76,207,245,55]}
+{"kind":"textbox","id":"sh/4rq14n21","slide":5,"text":"SSAK-LOG","textPreview":"SSAK-LOG","textChars":8,"textLines":1,"bbox":[350,207,855,117]}
+{"kind":"textbox","id":"sh/5sz2xsj6","slide":5,"text":"프로젝트 주제","textPreview":"프로젝트 주제","textChars":7,"textLines":1,"bbox":[76,336,245,55]}
+{"kind":"textbox","id":"sh/ip8j2dkv","slide":5,"text":"과제 시작부터 중간 검토와 최종 제출까지\n연결하는 대학생 팀 프로젝트 관리 시스템","textPreview":"과제 시작부터 중간 검토와 최종 제출까지 | 연결하는 대학생 팀 프로젝트 관리 시스템","textChars":45,"textLines":2,"bbox":[350,336,855,117]}
+{"kind":"textbox","id":"sh/3qhkvi1g","slide":5,"text":"필요성","textPreview":"필요성","textChars":3,"textLines":1,"bbox":[76,465,245,55]}
+{"kind":"textbox","id":"sh/kvm1sj2h","slide":5,"text":"분담한 업무와 결과물을 한곳에서 관리하고\n피드백의 반영 여부와 제출 준비 상태를 확인","textPreview":"분담한 업무와 결과물을 한곳에서 관리하고 | 피드백의 반영 여부와 제출 준비 상태를 확인","textChars":47,"textLines":2,"bbox":[350,465,855,117]}
+{"kind":"notes","id":"nt/hbt6ve","slide":5,"text":""}
+{"kind":"slide","id":"sl/8m8ny4","slide":6,"title":"핵심 기능: 팀 프로젝트 수행 흐름","textShapes":2}
+{"kind":"textbox","id":"sh/y9kbq187","slide":6,"text":"핵심 기능: 팀 프로젝트 수행 흐름","textPreview":"핵심 기능: 팀 프로젝트 수행 흐름","textChars":19,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/lcbu1wri","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"table","id":"tb/dgv6ps3u","slide":6,"name":"","rows":6,"cols":2,"preview":"단계 | 주요 기능","bbox":[70,185,1140,405]}
+{"kind":"notes","id":"nt/8m8ny4","slide":6,"text":""}
+{"kind":"slide","id":"sl/lr7lka","slide":7,"title":"핵심 기능: 반복 검토와 제출 관리","textShapes":8}
+{"kind":"textbox","id":"sh/hcr25cze","slide":7,"text":"핵심 기능: 반복 검토와 제출 관리","textPreview":"핵심 기능: 반복 검토와 제출 관리","textChars":19,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/u9gjux0n","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/vapk32h8","slide":7,"text":"중간 검토","textPreview":"중간 검토","textChars":5,"textLines":1,"bbox":[76,210,245,55]}
+{"kind":"textbox","id":"sh/4zi107ip","slide":7,"text":"진행 중에도 초안을 공유하고 검토 요청\n수정 사항에 담당자와 기한을 지정","textPreview":"진행 중에도 초안을 공유하고 검토 요청 | 수정 사항에 담당자와 기한을 지정","textChars":40,"textLines":2,"bbox":[350,210,855,120]}
+{"kind":"textbox","id":"sh/50r29cza","slide":7,"text":"최종 검토","textPreview":"최종 검토","textChars":5,"textLines":1,"bbox":[76,342,245,55]}
+{"kind":"textbox","id":"sh/ix0jyx0j","slide":7,"text":"개별 작업을 합친 최종본을 다시 확인\n필수 내용과 수정 반영 여부를 확인한 뒤 확정","textPreview":"개별 작업을 합친 최종본을 다시 확인 | 필수 내용과 수정 반영 여부를 확인한 뒤 확정","textChars":46,"textLines":2,"bbox":[350,342,855,120]}
+{"kind":"textbox","id":"sh/jy9k72h4","slide":7,"text":"제출 관리","textPreview":"제출 관리","textChars":5,"textLines":1,"bbox":[76,474,245,55]}
+{"kind":"textbox","id":"sh/k3e1onil","slide":7,"text":"확정본을 교수님께 지정 경로로 직접 제출\n제출 버전과 시각을 PMS에 기록","textPreview":"확정본을 교수님께 지정 경로로 직접 제출 | 제출 버전과 시각을 PMS에 기록","textChars":41,"textLines":2,"bbox":[350,474,855,120]}
+{"kind":"notes","id":"nt/lr7lka","slide":7,"text":""}
+{"kind":"slide","id":"sl/sfiewc","slide":8,"title":"적용 기술 및 기능","textShapes":2}
+{"kind":"textbox","id":"sh/1sz29sza","slide":8,"text":"적용 기술 및 기능","textPreview":"적용 기술 및 기능","textChars":10,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/ep83ex0j","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"table","id":"tb/uhgbu5g3","slide":8,"name":"","rows":6,"cols":3,"preview":"영역 | 적용 기술 계획 | 필요 기능","bbox":[70,190,1140,405]}
+{"kind":"notes","id":"nt/sfiewc","slide":8,"text":""}
+{"kind":"slide","id":"sl/zlbrn6","slide":9,"title":"구현 범위","textShapes":2}
+{"kind":"textbox","id":"sh/gfq5k76h","slide":9,"text":"구현 범위","textPreview":"구현 범위","textChars":5,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/vehor25w","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"table","id":"tb/f2pwrqp8","slide":9,"name":"","rows":6,"cols":2,"preview":"구분 | 구현 내용","bbox":[70,190,1140,405]}
+{"kind":"notes","id":"nt/zlbrn6","slide":9,"text":""}
+{"kind":"slide","id":"sl/pl0rue","slide":10,"title":"기존 개선점과 고도화 기능","textShapes":3}
+{"kind":"textbox","id":"sh/ehcrqlsn","slide":10,"text":"기존 개선점과 고도화 기능","textPreview":"기존 개선점과 고도화 기능","textChars":14,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/lknq10be","slide":10,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/nm583qt4","slide":10,"text":"우선 선정 기준: 실제 팀 프로젝트 흐름을 완성하는 기능","textPreview":"우선 선정 기준: 실제 팀 프로젝트 흐름을 완성하는 기능","textChars":31,"textLines":1,"bbox":[78,587,1120,45]}
+{"kind":"table","id":"tb/9cvehsbq","slide":10,"name":"","rows":4,"cols":4,"preview":"기존 개선점 | 고도화 기능 | 적용 기술 | 차별성·우수성","bbox":[70,210,1140,336]}
+{"kind":"notes","id":"nt/pl0rue","slide":10,"text":""}
+{"kind":"slide","id":"sl/6zyug6","slide":11,"title":"스터디 계획","textShapes":3}
+{"kind":"textbox","id":"sh/jmp8bitk","slide":11,"text":"스터디 계획","textPreview":"스터디 계획","textChars":6,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/knyp43u5","slide":11,"text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/ahg7ytc3","slide":11,"text":"담당 요소를 지속적으로 학습하고, 매주 팀원들과 공유합니다.","textPreview":"담당 요소를 지속적으로 학습하고, 매주 팀원들과 공유합니다.","textChars":33,"textLines":1,"bbox":[78,575,1120,58]}
+{"kind":"table","id":"tb/wvmdoba5","slide":11,"name":"","rows":4,"cols":3,"preview":"필요 지식 | 학습 내용 | 공유 방식","bbox":[70,210,1140,320]}
+{"kind":"notes","id":"nt/6zyug6","slide":11,"text":""}
+{"kind":"slide","id":"sl/kr5869","slide":12,"title":"식별된 요소 및 요소별 담당자","textShapes":3}
+{"kind":"textbox","id":"sh/9sn6t8bq","slide":12,"text":"식별된 요소 및 요소별 담당자","textPreview":"식별된 요소 및 요소별 담당자","textChars":16,"textLines":1,"bbox":[70,55,1140,90]}
+{"kind":"textbox","id":"sh/mpwnytcz","slide":12,"text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1160,665,50,26]}
+{"kind":"textbox","id":"sh/wfyp4nu1","slide":12,"text":"요소별 담당 배정안","textPreview":"요소별 담당 배정안","textChars":10,"textLines":1,"bbox":[78,614,1120,35]}
+{"kind":"table","id":"tb/itk7ytc7","slide":12,"name":"","rows":7,"cols":3,"preview":"식별된 요소 | 담당자 | 담당 내용","bbox":[70,190,1140,402]}
+{"kind":"notes","id":"nt/kr5869","slide":12,"text":""}
