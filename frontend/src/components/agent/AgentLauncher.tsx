@@ -6,7 +6,7 @@ import { useAgentStore } from "@/lib/store/agentStore";
 
 /**
  * AI 도우미 여는 버튼 (화면 문서 3.1). 큰 화면은 사이드바, 작은 화면은 상단 바에 둔다.
- * AI가 켜져 있을 때만 보인다. 꺼져 있거나 상태 조회가 실패하면 오류 없이 감춘다(2장 3번).
+ * AI가 켜져 있거나 대기 카드가 있을 때 보인다(4.1). 꺼져 있고 카드도 없거나 상태 조회가 실패하면 오류 없이 감춘다.
  * 사이드바는 화면마다 다시 그려지므로 버튼은 저장소의 값을 읽기만 한다.
  */
 export default function AgentLauncher({ projectId, compact = false }: { projectId: string; compact?: boolean }) {
@@ -21,7 +21,8 @@ export default function AgentLauncher({ projectId, compact = false }: { projectI
     loadStatus(projectId);
   }, [projectId, loadStatus]);
 
-  if (!status?.available) return null;
+  if (!status || (!status.available && status.pendingProposalCount === 0)) return null;
+  const count = status.pendingProposalCount;
 
   return (
     <button
@@ -29,7 +30,7 @@ export default function AgentLauncher({ projectId, compact = false }: { projectI
       data-agent-launcher
       onClick={() => setOpen(!open)}
       aria-expanded={open}
-      aria-label={compact ? `AI 도우미${running ? " (진행 중)" : ""}` : undefined}
+      aria-label={compact ? `AI 도우미${running ? " (진행 중)" : ""}${count > 0 ? `, 대기 제안 ${count}개` : ""}` : undefined}
       className={
         compact
           ? "ml-auto rounded-lg p-1.5 text-bb-primary hover:bg-bb-surface2"
@@ -41,6 +42,9 @@ export default function AgentLauncher({ projectId, compact = false }: { projectI
         <>
           AI 도우미
           {running && <span className="ml-auto text-[11px] text-bb-text2">진행 중</span>}
+          {!running && count > 0 && (
+            <span className="ml-auto rounded-full bg-bb-primary px-1.5 text-[10px] text-white" aria-label={`대기 제안 ${count}개`}>{count}</span>
+          )}
         </>
       )}
     </button>
