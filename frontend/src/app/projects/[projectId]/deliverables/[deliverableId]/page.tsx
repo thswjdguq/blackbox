@@ -10,6 +10,7 @@ import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
 import SubmitPanel from "@/components/deliverable/SubmitPanel";
 import AgentButton from "@/components/agent/AgentButton";
+import AiBadge, { useAiOrigins } from "@/components/agent/AiBadge";
 import { useAgentStore } from "@/lib/store/agentStore";
 import api from "@/lib/api";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
@@ -187,6 +188,7 @@ export default function DeliverableDetailPage() {
   const contributors = members.filter((m) => m.role !== "OBSERVER");
 
   const recordsVersion = useAgentStore((s) => s.recordsVersion);
+  const aiOrigins = useAiOrigins(projectId);
   const fetchAll = useCallback(async () => {
     setError("");
     try {
@@ -391,6 +393,7 @@ export default function DeliverableDetailPage() {
                 <h1 className="text-xl font-bold text-bb-text flex items-center gap-2 min-w-0 break-words">
                   <ClipboardList size={20} className="text-bb-primary shrink-0" />
                   {deliverable.title}
+                  {aiOrigins.deliverable.has(deliverable.id) && <AiBadge />}
                 </h1>
                 {editable && (
                   <div className="flex gap-2 shrink-0">
@@ -524,7 +527,10 @@ export default function DeliverableDetailPage() {
                               <span className={`shrink-0 mt-0.5 text-xs ${req.required ? "text-teal-400" : "text-bb-text2"}`}>
                                 {req.required ? "필수" : "선택"}
                               </span>
-                              <p className="flex-1 min-w-0 text-sm text-bb-text whitespace-pre-wrap break-words">{req.content}</p>
+                              <p className="flex-1 min-w-0 text-sm text-bb-text whitespace-pre-wrap break-words">
+                                {req.content}
+                                {aiOrigins.requirement.has(req.id) && <AiBadge className="ml-1.5 align-middle" />}
+                              </p>
                             </div>
 
                             <div className="mt-2 ml-[52px] flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -652,6 +658,7 @@ export default function DeliverableDetailPage() {
                             className="flex items-center gap-2 text-sm font-medium text-bb-text hover:text-bb-primary"
                           >
                             {t.title}
+                            {aiOrigins.task.has(t.id) && <AiBadge />}
                             <ArrowRight size={14} />
                           </Link>
                           <p className="mt-1 text-xs text-bb-text2">
