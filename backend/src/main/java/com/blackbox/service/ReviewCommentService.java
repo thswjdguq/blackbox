@@ -82,7 +82,7 @@ public class ReviewCommentService {
         // 승인과 코멘트 명령이 동일 제출물 잠금을 사용해야 검사와 저장 사이의 경쟁을 막는다.
         var view = reviews.lockForWrite(p, d, r);
         if ("APPROVED".equals(view.decision())) throw conflict("승인된 검토 회차는 변경할 수 없습니다");
-        if (Set.of("CONFIRMED", "SUBMITTED").contains(view.deliverableStatus())) throw conflict("확정된 제출물은 변경할 수 없습니다");
+        if (DeliverableStatusReader.isConfirmed(view.deliverableStatus())) throw conflict(DeliverableStatusReader.CONFIRMED_DETAIL);
         return view;
     }
 

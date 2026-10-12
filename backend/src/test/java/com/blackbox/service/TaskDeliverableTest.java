@@ -21,7 +21,7 @@ class TaskDeliverableTest {
     final TaskService service = new TaskService(tasks, assignees, mock(ProjectMemberRepository.class),
             mock(UserRepository.class), access, mock(ActivityLogService.class), mock(NotionService.class),
             mock(AlertService.class), mock(DiscordNotificationService.class), mock(ScoreService.class),
-            mock(EntityManager.class), deliveries, comments);
+            mock(EntityManager.class), deliveries, comments, mock(DeliverableStatusReader.class));
     final Project project = new Project();
     final User user = new User();
     final Task task = new Task();

@@ -31,6 +31,7 @@ class TaskListDatabaseTest {
     @MockBean DiscordNotificationService discord;
     @MockBean ScoreService scores;
     @MockBean DeliverableService deliverables;
+    @MockBean DeliverableStatusReader deliverableStatus;
 
     @Test void listLoadsDistinctDeliverablesRequirementsAndAssigneesWithFourQueries() {
         User leader = user("leader");
