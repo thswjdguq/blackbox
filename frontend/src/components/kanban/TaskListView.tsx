@@ -41,10 +41,12 @@ function compare(a: Task, b: Task, key: SortKey): number {
  * 업무 목록 보기 (C-50 6번, Flow 업무 목록 참고). 보드와 같은 필터를 거친 업무를 표로 보여 준다.
  * 열 이름을 누르면 정렬하고, 행을 누르거나 Enter를 누르면 업무 창이 열린다.
  */
-export default function TaskListView({ tasks, onEdit, readOnly }: {
+export default function TaskListView({ tasks, onEdit, readOnly, isLocked }: {
   tasks: Task[];
   onEdit: (task: Task) => void;
   readOnly?: boolean;
+  /** 확정·제출된 제출물의 업무인가 */
+  isLocked?: (task: Task) => boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("due");
   const [asc, setAsc] = useState(true);
@@ -84,6 +86,7 @@ export default function TaskListView({ tasks, onEdit, readOnly }: {
         <tbody>
           {sorted.map((t) => {
             const done = t.status === "DONE";
+            const locked = isLocked?.(t) ?? false;
             return (
               <tr
                 key={t.id}
@@ -91,7 +94,7 @@ export default function TaskListView({ tasks, onEdit, readOnly }: {
                 tabIndex={0}
                 onClick={() => onEdit(t)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(t); } }}
-                aria-label={`${t.title} ${readOnly ? "보기" : "열기"}`}
+                aria-label={`${t.title} ${readOnly || locked ? "보기" : "열기"}${locked ? " (확정된 제출물)" : ""}`}
                 className={`cursor-pointer border-b border-bb-border/60 last:border-0 hover:bg-bb-surface2 focus:outline-none focus-visible:bg-bb-surface2 ${done ? "opacity-60" : ""}`}
               >
                 <td className="px-3 py-2.5">
@@ -115,7 +118,10 @@ export default function TaskListView({ tasks, onEdit, readOnly }: {
                   )}
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className="block truncate text-bb-text2">{t.deliverableTitle ?? "제출물 미연결"}</span>
+                  <span className="block truncate text-bb-text2">
+                    {t.deliverableTitle ?? "제출물 미연결"}
+                    {locked && <span className="ml-1.5 rounded bg-bb-surface2 px-1 py-0.5 text-[10px]">확정됨</span>}
+                  </span>
                   {t.requirementContent && <span className="block truncate text-[11px] text-bb-text2/80">{t.requirementContent}</span>}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap text-bb-text2">{PRIORITY_TEXT[t.priority]}</td>

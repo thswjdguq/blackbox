@@ -29,6 +29,7 @@ import type {
   DeliverableProgress,
   SaveDeliverablePayload,
 } from "@/types/deliverable";
+import { isDeliverableLocked } from "@/types/deliverable";
 import type { CreateTaskPayload, Task } from "@/types/task";
 import {
   AlertCircle,
@@ -143,6 +144,11 @@ export default function DeliverableDetailPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeliverableProgress | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  // 프로젝트 홈의 "다음 할 일"이 ?tab=review·submit 으로 그 탭을 바로 연다
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "review" || tab === "submit") setActiveTab(tab);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [progressError, setProgressError] = useState(false);
@@ -168,7 +174,7 @@ export default function DeliverableDetailPage() {
   const myRole = members.find((m) => m.userId === myUserId)?.role ?? null;
   const canWrite = myRole === "LEADER" || myRole === "MEMBER";
   // 확정·제출 기록된 제출물은 정보·요구사항·충족 확인·업무 연결을 바꿀 수 없다 (K-20 4장, 서버도 409)
-  const locked = deliverable?.status === "CONFIRMED" || deliverable?.status === "SUBMITTED";
+  const locked = isDeliverableLocked(deliverable);
   const editable = canWrite && !locked;
   // K-14 §2: 문구(content)가 바뀌면 서버가 충족 확인을 푼다. 필수 여부만 바꾸면 유지된다
   const editingReq = deliverable?.requirements.find((r) => r.id === editingReqId) ?? null;

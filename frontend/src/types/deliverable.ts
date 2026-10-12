@@ -36,6 +36,11 @@ export interface Deliverable {
   latestDecision?: ReviewDecisionResult | null;
 }
 
+/** 확정·제출된 제출물은 내용과 연결 업무를 바꿀 수 없다 (K-20 4장). 서버도 409로 거절한다 */
+export function isDeliverableLocked(d?: Pick<Deliverable, "status"> | null): boolean {
+  return d?.status === "CONFIRMED" || d?.status === "SUBMITTED";
+}
+
 // ── 요청 페이로드 ─────────────────────────────────────────────────────────
 
 // 서버 PUT 은 전체 교체라 생성·수정 모두 모든 필드를 보낸다 (누락 시 null 로 저장됨)
