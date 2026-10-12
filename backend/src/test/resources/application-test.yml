@@ -9,6 +9,11 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:${BB_TEST_DB_PORT:25432}/bb_fresh}
     username: ${SPRING_DATASOURCE_USERNAME:blackbox_test}
     password: ${SPRING_DATASOURCE_PASSWORD:blackbox_test}
+    hikari:
+      # 테스트는 서버를 여러 벌 띄워 두고 다시 쓴다(컨텍스트 캐시). 쉬는 서버가 연결 10개씩을 쥐고 있으면
+      # PostgreSQL의 연결 한도(100)를 넘어 뒤의 테스트가 서버를 띄우지 못한다. 쉬는 동안에는 연결을 반납한다
+      minimum-idle: 0
+      idle-timeout: 10000
 
 app:
   jwt:
