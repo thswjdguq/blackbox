@@ -34,6 +34,7 @@ public class TaskService {
     private final EntityManager entityManager;
     private final DeliverableService deliverableService;
     private final ReviewCommentRepository reviewComments;
+    private final DeliverableStatusReader deliverableStatus;
 
     public TaskService(TaskRepository taskRepository,
                        TaskAssigneeRepository taskAssigneeRepository,
@@ -47,7 +48,8 @@ public class TaskService {
                        ScoreService scoreService,
                        EntityManager entityManager,
                        DeliverableService deliverableService,
-                       ReviewCommentRepository reviewComments) {
+                       ReviewCommentRepository reviewComments,
+                       DeliverableStatusReader deliverableStatus) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -61,6 +63,7 @@ public class TaskService {
         this.entityManager = entityManager;
         this.deliverableService = deliverableService;
         this.reviewComments = reviewComments;
+        this.deliverableStatus = deliverableStatus;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -69,6 +72,7 @@ public class TaskService {
     public TaskResponse createTask(UUID projectId, CreateTaskRequest req, User creator) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, creator);
+        requireEditableDeliverable(projectId, req.deliverableId());
 
         Task task = new Task();
         task.setProject(project);
@@ -131,6 +135,7 @@ public class TaskService {
         accessChecker.requireContributor(project, user);
         Task task = findTask(taskId, project);
 
+        lockEditableTask(projectId, task, req.deliverableId());
         applyDeliverable(task, project, req.deliverableId(), req.requirementId(),
                 Boolean.TRUE.equals(req.clearDeliverable()), Boolean.TRUE.equals(req.clearRequirement()));
         if (req.completionCriteria() != null) task.setCompletionCriteria(req.completionCriteria().trim());
@@ -160,6 +165,7 @@ public class TaskService {
             throw new ForbiddenException("태스크를 삭제할 권한이 없습니다");
         }
 
+        lockEditableTask(projectId, task, null);
         taskAssigneeRepository.deleteByTask(task);
         taskRepository.delete(task);
     }
@@ -173,6 +179,7 @@ public class TaskService {
         accessChecker.requireContributor(project, user);
         Task task = findTask(taskId, project);
 
+        lockEditableTask(projectId, task, null);
         String oldStatus = task.getStatus();
         task.setStatus(req.status());
 
@@ -211,6 +218,7 @@ public class TaskService {
         accessChecker.requireContributor(project, user);
         Task task = findTask(taskId, project);
 
+        lockEditableTask(projectId, task, null);
         List<TaskAssignee> assignees = setAssigneesInternal(task, req.assigneeIds());
         entityManager.flush();
         entityManager.refresh(task);
@@ -248,6 +256,34 @@ public class TaskService {
     }
 
     // ── internal ──────────────────────────────────────────────────────────
+
+    /**
+     * 확정과 쓰기는 같은 제출물 잠금을 사용한다. 이동은 양쪽 ID 순으로 잠가 서로 반대 이동의 교착을 막는다.
+     * 그 다음 업무를 잠그고 다시 읽는다. 기다리는 사이 연결이 바뀌었다면 새 제출물 잠금을 뒤늦게
+     * 추가하지 않고 409로 재시도를 요청해 잠금 순서와 확정 후 불변성을 함께 유지한다.
+     */
+    private void lockEditableTask(UUID projectId, Task task, UUID nextDeliverableId) {
+        UUID previous = task.getDeliverable() == null ? null : task.getDeliverable().getId();
+        java.util.stream.Stream.of(previous, nextDeliverableId).filter(java.util.Objects::nonNull)
+                .distinct().sorted().forEach(id -> requireEditableDeliverable(projectId, id));
+        try {
+            entityManager.refresh(task, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        } catch (jakarta.persistence.EntityNotFoundException missing) {
+            throw new NotFoundException("태스크를 찾을 수 없습니다");
+        }
+        UUID current = task.getDeliverable() == null ? null : task.getDeliverable().getId();
+        if (!java.util.Objects.equals(previous, current)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "업무의 제출물 연결이 바뀌었습니다. 새로고침 후 다시 시도해주세요");
+        }
+    }
+
+    private void requireEditableDeliverable(UUID projectId, UUID deliverableId) {
+        if (deliverableId != null && DeliverableStatusReader.isConfirmed(deliverableStatus.lockForWrite(projectId, deliverableId))) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    DeliverableStatusReader.CONFIRMED_DETAIL);
+        }
+    }
 
     private Task findTask(UUID taskId, Project project) {
         return taskRepository.findByIdAndProject(taskId, project)
