@@ -207,6 +207,8 @@ export default function ProjectHomePage() {
   // null: 제출물 목록을 못 불러옴 → 다음 할 일 카드를 숨긴다 (잘못된 안내보다 낫다)
   const [deliverables, setDeliverables] = useState<Deliverable[] | null>(null);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  // 팀장·팀원만 쓰기. 관찰자에게는 할 일을 시키지 않는다(다음 할 일, 기여도 안내)
+  const canWrite = ["LEADER", "MEMBER"].includes(members.find((m) => m.userId === myUserId)?.role ?? "");
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState("");
 
@@ -437,7 +439,7 @@ export default function ProjectHomePage() {
               projectId={projectId}
               deliverables={deliverables}
               tasks={tasks}
-              canWrite={["LEADER", "MEMBER"].includes(members.find((m) => m.userId === myUserId)?.role ?? "")}
+              canWrite={canWrite}
             />
           )}
           {/* ── 연동 온보딩 배너 ─────────────────────────────────────────── */}
@@ -470,7 +472,7 @@ export default function ProjectHomePage() {
               icon={BarChart2}
               label="전체 참여"
               value={scores.length > 0 ? `${fullCount}명` : "-"}
-              sub={scores.length > 0 ? `${scores.length}명 중 전체참여` : "재계산 필요"}
+              sub={scores.length > 0 ? `${scores.length}명 중 전체참여` : canWrite ? "재계산 필요" : "계산 전"}
               color="bg-amber-500/10 text-amber-400"
             />
           </div>
@@ -585,7 +587,9 @@ export default function ProjectHomePage() {
 
             {scores.length === 0 ? (
               <p className="text-xs text-bb-text2 text-center py-4">
-                아직 참여 데이터가 없습니다. 태스크 완료·회의 체크인 후 재계산하세요.
+                {canWrite
+                  ? "아직 참여 데이터가 없습니다. 업무 완료·회의 체크인 후 재계산하세요."
+                  : "아직 참여 데이터가 없습니다. 팀장·팀원이 계산하면 여기에 표시됩니다."}
               </p>
             ) : (
               <div className="space-y-2">

@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { apiError, blobApiError } from "@/lib/apiError";
 import { downloadFile } from "@/lib/download";
+import { useMyRole } from "@/hooks/useMyRole";
 import { FileRecord, FileUploadResult } from "@/types/vault";
 import {
   Files,
@@ -368,6 +369,9 @@ export default function VaultPage() {
   const [error, setError] = useState("");
   // 업로드 직후 변조 감지 알림
   const [tamperAlert, setTamperAlert] = useState<string | null>(null);
+  // 관찰자의 업로드는 서버가 403으로 거절한다. 업로드 칸을 감추고 볼 수만 있다고 알린다
+  const role = useMyRole(projectId);
+  const readOnly = role === "OBSERVER";
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
@@ -495,14 +499,20 @@ export default function VaultPage() {
         </div>
 
         {/* 업로드 영역 */}
-        <UploadZone projectId={projectId} onUploaded={handleUploaded} />
+        {readOnly ? (
+          <p className="mb-6 text-xs text-bb-text2">관찰자는 파일을 볼 수만 있습니다. 내려받기와 변경 내역 확인은 할 수 있습니다.</p>
+        ) : (
+          <UploadZone projectId={projectId} onUploaded={handleUploaded} />
+        )}
 
         {/* 파일 목록 */}
         {uniqueFiles === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <span className="text-5xl mb-4">🔐</span>
             <p className="text-sm font-semibold text-bb-text mb-1.5">업로드된 파일이 없어요</p>
-            <p className="text-xs text-bb-text2">파일을 업로드하면 SHA-256 해시로 자동 고정됩니다</p>
+            <p className="text-xs text-bb-text2">
+              {readOnly ? "팀원이 파일을 올리면 여기서 버전과 변경 내역을 볼 수 있습니다" : "파일을 업로드하면 SHA-256 해시로 자동 고정됩니다"}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
