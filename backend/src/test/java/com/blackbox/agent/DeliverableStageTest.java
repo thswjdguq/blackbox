@@ -58,7 +58,7 @@ class DeliverableStageTest {
 
     private static DeliverableDtos.Response deliverable(List<RequirementResponse> requirements) {
         return new DeliverableDtos.Response(DELIVERABLE, UUID.randomUUID(), "제출물", null, LocalDate.of(2026, 10, 18),
-                null, null, null, requirements);
+                null, null, null, requirements, "DRAFT", null);
     }
 
     private static TaskResponse task(UUID deliverableId, UUID requirementId, String status) {
