@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Deliverable } from "@/types/deliverable";
+import { Deliverable, isDeliverableLocked } from "@/types/deliverable";
 import { apiError, PartialSaveError } from "@/lib/apiError";
 import {
   DndContext,
@@ -103,6 +103,29 @@ export default function KanbanBoard({
   useEffect(() => {
     loadDeliverables();
   }, [loadDeliverables]);
+
+  // 확정·제출된 제출물의 업무는 서버가 쓰기를 409로 거절한다(K-20 4장). 그 업무만 읽기 전용으로 둔다
+  const lockedIds = useMemo(
+    () => new Set(deliverables.filter((d) => isDeliverableLocked(d)).map((d) => d.id)),
+    [deliverables]
+  );
+  const isLocked = useCallback(
+    (task: Task) => !!task.deliverableId && lockedIds.has(task.deliverableId),
+    [lockedIds]
+  );
+  // 보드를 연 뒤 다른 사람이 확정했으면 409가 온다. 제출물을 다시 읽어 잠금을 화면에 반영한다
+  const refreshIfConflict = (err: unknown) => {
+    if ((err as { response?: { status?: number } })?.response?.status === 409) loadDeliverables();
+  };
+  const withConflictRefresh = <A extends unknown[]>(write: (...args: A) => Promise<void>) =>
+    async (...args: A) => {
+      try {
+        await write(...args);
+      } catch (err) {
+        refreshIfConflict(err);
+        throw err;
+      }
+    };
 
   useEffect(() => {
     setTasks(initialTasks);
@@ -221,6 +244,7 @@ export default function KanbanBoard({
     } catch (err) {
       setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
       setTasks(dragSnapshot.current);
+      refreshIfConflict(err);
     }
   }
 
@@ -321,6 +345,7 @@ export default function KanbanBoard({
       onTasksChange?.(tasks.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
     } catch (err) {
       setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
+      refreshIfConflict(err);
       // 실패 시 원상복구
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? original : t))
@@ -369,7 +394,7 @@ export default function KanbanBoard({
               </button>
             </div>
           )}
-          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} />
+          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} isLocked={isLocked} />
         </>
       ) : (
       <DndContext
@@ -413,6 +438,7 @@ export default function KanbanBoard({
                 onEditTask={openEdit}
                 onMoveTask={handleMoveTask}
                 readOnly={readOnly}
+                isLocked={isLocked}
               />
             ))}
           </div>
@@ -438,10 +464,15 @@ export default function KanbanBoard({
           deliverables={deliverables}
           defaultStatus={createStatus}
           onClose={closeModal}
-          onCreate={handleCreate}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-          readOnly={readOnly}
+          onCreate={withConflictRefresh(handleCreate)}
+          onUpdate={withConflictRefresh(handleUpdate)}
+          onDelete={withConflictRefresh(handleDelete)}
+          readOnly={readOnly || (!!editingTask && isLocked(editingTask))}
+          readOnlyNote={
+            !readOnly && editingTask && isLocked(editingTask)
+              ? `확정된 제출물 "${editingTask.deliverableTitle ?? ""}"의 업무라 바꿀 수 없습니다.`
+              : undefined
+          }
         />
       )}
     </>

@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Task, TaskPriority, TaskStatus, CreateTaskPayload, KANBAN_COLUMNS } from "@/types/task";
 import { X, Trash2, Save, Plus } from "lucide-react";
 import SmartDateInput from "@/components/SmartDateInput";
-import { Deliverable } from "@/types/deliverable";
+import { Deliverable, isDeliverableLocked } from "@/types/deliverable";
 import { apiError } from "@/lib/apiError";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
@@ -27,8 +27,10 @@ interface TaskModalProps {
   onCreate: (payload: CreateTaskPayload) => Promise<void>;
   onUpdate: (taskId: string, payload: Partial<CreateTaskPayload>) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
-  /** 관찰자: 내용만 보여주고 저장·삭제를 숨긴다 */
+  /** 관찰자, 확정된 제출물의 업무: 내용만 보여주고 저장·삭제를 숨긴다 */
   readOnly?: boolean;
+  /** 읽기 전용인 이유. 없으면 관찰자 안내 */
+  readOnlyNote?: string;
 }
 
 // ── 우선순위 선택지 ───────────────────────────────────────────────────
@@ -59,6 +61,7 @@ export default function TaskModal({
   onUpdate,
   onDelete,
   readOnly = false,
+  readOnlyNote = "관찰자는 업무를 볼 수만 있습니다.",
 }: TaskModalProps) {
   const [title, setTitle]       = useState(task?.title ?? "");
   const [deliverableId, setDeliverableId] = useState(task?.deliverableId ?? defaultDeliverableId);
@@ -230,7 +233,7 @@ export default function TaskModal({
           )}
 
           {readOnly && (
-            <p className="text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다.</p>
+            <p data-testid="task-readonly-note" className="text-xs text-bb-text2">{readOnlyNote}</p>
           )}
 
           <fieldset disabled={readOnly} className="space-y-4 min-w-0 border-0 p-0 m-0">
@@ -254,9 +257,15 @@ export default function TaskModal({
               onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
               <option value="">제출물 미연결</option>
               {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 제출물"}</option>}
-              {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+              {/* 확정·제출된 제출물에는 업무를 새로 연결할 수 없다(서버 409). 이미 연결된 업무는 창이 읽기 전용이다 */}
+              {deliverables.filter(d => d.id === deliverableId || !isDeliverableLocked(d)).map(d => (
+                <option key={d.id} value={d.id}>{d.title}</option>
+              ))}
             </select>
-            <p className="text-xs text-bb-text2 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
+            <p className="text-xs text-bb-text2 mt-1">
+              이 업무가 어떤 제출물을 완성하는지 연결하세요.
+              {!readOnly && deliverables.some(isDeliverableLocked) && " 확정된 제출물은 목록에 없습니다."}
+            </p>
           </div>
           {selectedDeliverable && <div>
             <label htmlFor="task-requirement" className="block text-xs font-medium text-bb-text2 mb-1.5">관련 요구사항 (선택)</label>
