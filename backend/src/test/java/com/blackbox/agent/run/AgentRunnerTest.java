@@ -184,6 +184,25 @@ class AgentRunnerTest {
                 .filter(r -> r.getProject().getId().equals(project.getId())).findFirst().orElseThrow().getStatus());
     }
 
+    /**
+     * 시간 상한은 실행이 흐른 시간(System.nanoTime)으로만 잰다. 시작 시각과 현재 시각의 차이로 재면 서버의 시각이
+     * 뒤로 맞춰졌을 때 상한을 넘긴 답이 저장된다. 여기서는 기록의 시작 시각은 방금인데 흐른 시간은 상한을 넘긴 실행을 만들어 본다
+     */
+    @Test void aLateAnswerIsNotSavedWhateverTheWallClockSays() throws Exception {
+        AgentRunner.Prepared started = prepare(member, AskSkill.NAME, "{\"question\":\"상태\"}");
+        long overTheLimit = properties.getRunTimeLimit().toNanos() + 1_000_000;
+        AgentRunner.Prepared late = new AgentRunner.Prepared(started.run(), started.skill(), started.contributor(),
+                started.input(), started.material(), System.nanoTime() - overTheLimit);
+        answers.add("늦게 온 답");
+        Recorder events = new Recorder();
+
+        runner.execute(late, events);
+
+        assertEquals("error AI 응답을 받지 못했습니다. 다시 시도해주세요", events.seen.get(events.seen.size() - 1));
+        assertTrue(events.seen.stream().noneMatch(e -> e.startsWith("text")), "늦은 답은 내보내지 않는다: " + events.seen);
+        assertEquals(AgentRun.Status.FAILED, runs.findById(started.run().getId()).orElseThrow().getStatus());
+    }
+
     @Test void tasksAreTiedToTheChosenDeliverable() throws Exception {
         // 모델이 제출물 id를 빠뜨려도 서버가 고른 제출물로 채운다
         answers.add("{\"text\":\"\",\"proposals\":[{\"kind\":\"TASKS\",\"title\":\"업무 초안\",\"rationale\":\"요구사항에서\",\"content\":"
