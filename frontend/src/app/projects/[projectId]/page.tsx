@@ -585,7 +585,7 @@ export default function ProjectHomePage() {
 
             {scores.length === 0 ? (
               <p className="text-xs text-bb-text2 text-center py-4">
-                아직 참여 데이터가 없습니다. 태스크 완료·회의 체크인 후 재계산하세요.
+                아직 참여 데이터가 없습니다. 업무 완료·회의 체크인 후 재계산하세요.
               </p>
             ) : (
               <div className="space-y-2">

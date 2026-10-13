@@ -794,7 +794,7 @@ export default function MeetingDetailPage() {
             </div>
 
             <p className="text-xs text-bb-text2 mb-4">
-              액션 아이템은 칸반 보드의 태스크로 즉시 생성됩니다.
+              액션 아이템은 업무 보드의 업무로 즉시 생성됩니다.
             </p>
 
             {/* AI 추출 결과 */}

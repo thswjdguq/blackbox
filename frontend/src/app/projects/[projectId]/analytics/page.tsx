@@ -495,12 +495,12 @@ export default function AnalyticsPage() {
               </section>
             )}
 
-            {/* ── 팀원별 TDL 완료 현황 ───────────────────────────────── */}
+            {/* ── 팀원별 업무 완료 현황 ───────────────────────────────── */}
             {tasks.length > 0 && scores.length > 0 && (
               <section className="mb-8">
                 <SectionTitle>
                   <CheckSquare size={14} className="text-indigo-400" />
-                  팀원별 TDL 완료 현황
+                  팀원별 업무 완료 현황
                 </SectionTitle>
                 <div className="space-y-4">
                   {scores.map((member) => {
