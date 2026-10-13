@@ -19,10 +19,6 @@ services:
       # 브라우저가 접속하는 주소(예: https://blackbox.example.com). 비어 있으면 뜨지 않는다.
       # 이 주소가 아닌 출처에서 온 요청은 403이 된다
       APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:?.env의 APP_CORS_ORIGINS에 접속 주소를 적는다}
-      # AI 에이전트를 Bedrock으로 쓸 때(SPRING_AI_MODEL_CHAT=bedrock-converse)의 리전과 모델.
-      # 자격 증명은 EC2 인스턴스 프로필에서 받으므로 키를 적지 않는다
-      SPRING_AI_BEDROCK_AWS_REGION: ${BEDROCK_REGION:-us-east-1}
-      SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MODEL: ${BEDROCK_MODEL:-}
 
   frontend:
     image: blackbox-frontend:${IMAGE_TAG:-latest}
