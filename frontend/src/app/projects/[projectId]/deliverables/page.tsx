@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
+import AgentButton from "@/components/agent/AgentButton";
+import AiBadge, { useAiOrigins } from "@/components/agent/AiBadge";
+import { useAgentStore } from "@/lib/store/agentStore";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import DeliverableTimeline from "@/components/deliverable/DeliverableTimeline";
@@ -43,6 +46,8 @@ function SkeletonCard() {
 export default function DeliverablesPage() {
   const params = useParams();
   const projectId = params?.projectId as string;
+  const aiOrigins = useAiOrigins(projectId);
+  const recordsVersion = useAgentStore(s => s.recordsVersion);
 
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -94,7 +99,7 @@ export default function DeliverablesPage() {
 
   useEffect(() => {
     fetchAll();
-  }, [fetchAll]);
+  }, [fetchAll, recordsVersion]);
 
   const handleCreate = async (payload: SaveDeliverablePayload) => {
     await createDeliverable(projectId, payload);
@@ -131,6 +136,8 @@ export default function DeliverablesPage() {
             <p className="mt-1 text-sm text-bb-text2">무엇을 제출할지 정하고, 필요한 작업을 팀원에게 나누세요.</p>
           </div>
           {canWrite && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
             <button
               onClick={() => setShowForm(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
@@ -138,6 +145,7 @@ export default function DeliverablesPage() {
               <Plus size={15} />
               제출물 추가
             </button>
+            </div>
           )}
         </div>
 
@@ -188,6 +196,7 @@ export default function DeliverablesPage() {
             ) : (
               <p className="text-xs text-bb-text2">팀원이 제출물을 등록하면 여기서 확인할 수 있습니다.</p>
             )}
+            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
           </div>
         )}
 
@@ -223,7 +232,7 @@ export default function DeliverablesPage() {
                   <div className="flex items-start justify-between gap-4">
                     <Link href={`/projects/${projectId}/deliverables/${d.id}`} className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-bb-text group-hover:text-bb-primary transition-colors truncate">
-                        {d.title}
+                        {d.title} {aiOrigins.deliverable.has(d.id) && <AiBadge />}
                       </p>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-bb-text2">
                         <span className="flex items-center gap-1">

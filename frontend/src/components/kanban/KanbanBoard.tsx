@@ -2,6 +2,10 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import AgentButton from "@/components/agent/AgentButton";
+import { useAiOrigins } from "@/components/agent/AiBadge";
+import { useAgentStore } from "@/lib/store/agentStore";
 import { Deliverable } from "@/types/deliverable";
 import { apiError, PartialSaveError } from "@/lib/apiError";
 import {
@@ -61,6 +65,11 @@ export default function KanbanBoard({
   readOnly = false,
 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const searchParams = useSearchParams();
+  const taskParam = searchParams.get("task");
+  const deliverableParam = searchParams.get("deliverable");
+  const aiOrigins = useAiOrigins(projectId);
+  const recordsVersion = useAgentStore(s => s.recordsVersion);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // Track new status during drag — avoids stale-closure bug in handleDragEnd
@@ -87,9 +96,8 @@ export default function KanbanBoard({
 
   // 제출물 상세의 "보드에서 이 제출물 업무 보기"가 ?deliverable=<id> 로 연다
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("deliverable");
-    if (id) setDeliveryFilter(id);
-  }, []);
+    setDeliveryFilter(deliverableParam ?? "");
+  }, [deliverableParam]);
 
   const [deliverablesError, setDeliverablesError] = useState("");
 
@@ -102,18 +110,30 @@ export default function KanbanBoard({
 
   useEffect(() => {
     loadDeliverables();
-  }, [loadDeliverables]);
+  }, [loadDeliverables, recordsVersion]);
+  useEffect(() => {
+    if (recordsVersion === 0) return;
+    let active = true;
+    api.get<Task[]>(`/projects/${projectId}/tasks`).then(({data}) => {
+      if (!active) return;
+      setTasks(data); onTasksChange?.(data);
+    }).catch(e => { if(active) setBoardError(apiError(e,"채택한 업무 목록을 다시 읽지 못했습니다.")); });
+    return () => {active=false;};
+  }, [projectId,recordsVersion,onTasksChange]);
 
   useEffect(() => {
     setTasks(initialTasks);
-    const id = new URLSearchParams(window.location.search).get("task");
+  }, [initialTasks]);
+  useEffect(() => {
+    const id = taskParam;
+    if (!id) {openedTask.current=null; return;}
     const task = initialTasks.find((item) => item.id === id);
     if (task && openedTask.current !== id) {
       openedTask.current = id;
       setEditingTask(task);
       setModalMode("edit");
     }
-  }, [initialTasks]);
+  }, [initialTasks,taskParam]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -348,6 +368,7 @@ export default function KanbanBoard({
           {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
         <Link href={`/projects/${projectId}/deliverables`} className="whitespace-nowrap text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
+        <AgentButton projectId={projectId} skill="STATUS_BRIEF" />
         <div role="group" aria-label="업무 보기 방식" className="ml-auto flex rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
           {([["board", "보드", Columns3], ["list", "목록", List]] as const).map(([v, label, Icon]) => (
             <button
@@ -378,7 +399,7 @@ export default function KanbanBoard({
               </button>
             </div>
           )}
-          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} />
+          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} aiIds={aiOrigins.task} />
         </>
       ) : (
       <DndContext
@@ -422,6 +443,7 @@ export default function KanbanBoard({
                 onEditTask={openEdit}
                 onMoveTask={handleMoveTask}
                 readOnly={readOnly}
+                aiIds={aiOrigins.task}
               />
             ))}
           </div>

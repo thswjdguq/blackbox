@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, TaskStatus, ScoreMap } from "@/types/task";
+import AiBadge from "@/components/agent/AiBadge";
 import { daysLeft, dueLabel, shortDate } from "@/lib/due";
 import {
   GripVertical,
@@ -24,6 +25,7 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onMove?: (taskId: string, newStatus: TaskStatus) => void;
   readOnly?: boolean;
+  isAi?: boolean;
 }
 
 const PRIORITY_CONFIG = {
@@ -88,7 +90,7 @@ function ScoreChip({ score }: { score: number }) {
   );
 }
 
-export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false }: TaskCardProps) {
+export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false, isAi = false }: TaskCardProps) {
   const [isMoving, setIsMoving] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -194,7 +196,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
                        ${isDone
                          ? "line-through text-bb-text2"
                          : "text-bb-text"}`}>
-          {task.title}
+          {task.title} {isAi && <AiBadge />}
         </p>
 
         {/* Priority badge */}

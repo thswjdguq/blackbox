@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 큰 화면에서 공통 AI 창의 자리만 확보한다. 업무 상세 창은 기존 z-50으로 그 위에 열린다. */
+@media (min-width: 1280px) {
+  html[data-agent-open] main { margin-right: 420px; }
+}
+
 /* ─── Design Tokens (CSS Custom Properties) ─────────────────────────── */
 :root {
   /* Light mode palette */

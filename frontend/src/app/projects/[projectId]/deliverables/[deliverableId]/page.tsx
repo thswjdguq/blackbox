@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
+import AgentButton from "@/components/agent/AgentButton";
+import AiBadge, { useAiOrigins } from "@/components/agent/AiBadge";
+import { useAgentStore } from "@/lib/store/agentStore";
 import TaskModal from "@/components/kanban/TaskModal";
 import TaskFilesPanel from "@/components/deliverable/TaskFilesPanel";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
@@ -137,6 +140,8 @@ export default function DeliverableDetailPage() {
   const router = useRouter();
   const projectId = params?.projectId as string;
   const deliverableId = params?.deliverableId as string;
+  const aiOrigins = useAiOrigins(projectId);
+  const recordsVersion = useAgentStore(s => s.recordsVersion);
 
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -214,7 +219,7 @@ export default function DeliverableDetailPage() {
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, recordsVersion]);
 
   const replaceRequirement = (updated: DeliverableRequirement) =>
     setDeliverable((prev) =>
@@ -380,7 +385,7 @@ export default function DeliverableDetailPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <h1 className="text-xl font-bold text-bb-text flex items-center gap-2 min-w-0 break-words">
                   <ClipboardList size={20} className="text-bb-primary shrink-0" />
-                  {deliverable.title}
+                  {deliverable.title} {aiOrigins.deliverable.has(deliverable.id) && <AiBadge />}
                 </h1>
                 {canWrite && (
                   <div className="flex gap-2 shrink-0">
@@ -514,7 +519,7 @@ export default function DeliverableDetailPage() {
                               <span className={`shrink-0 mt-0.5 text-xs ${req.required ? "text-teal-400" : "text-bb-text2"}`}>
                                 {req.required ? "필수" : "선택"}
                               </span>
-                              <p className="flex-1 min-w-0 text-sm text-bb-text whitespace-pre-wrap break-words">{req.content}</p>
+                              <p className="flex-1 min-w-0 text-sm text-bb-text whitespace-pre-wrap break-words">{req.content} {aiOrigins.requirement.has(req.id) && <AiBadge />}</p>
                             </div>
 
                             <div className="mt-2 ml-[52px] flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -605,6 +610,7 @@ export default function DeliverableDetailPage() {
                 <section className="bg-bb-surface border border-bb-border rounded-xl p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-sm font-semibold text-bb-text">연결 업무 {linkedTasks.length}개</h2>
+                    {deliverable.requirements.length > 0 && deliverable.status !== "CONFIRMED" && deliverable.status !== "SUBMITTED" && <AgentButton projectId={projectId} skill="BREAK_DOWN_TASKS" input={{deliverableId}} titleExtra={deliverable.title} />}
                     <div className="flex items-center gap-3">
                       <Link
                         href={`/projects/${projectId}/board?deliverable=${deliverableId}`}
@@ -637,7 +643,7 @@ export default function DeliverableDetailPage() {
                             onClick={() => setSelectedTask(t)}
                             className="flex items-center gap-2 text-sm font-medium text-bb-text hover:text-bb-primary"
                           >
-                            {t.title}
+                            {t.title} {aiOrigins.task.has(t.id) && <AiBadge />}
                             <ArrowRight size={14} />
                           </button>
                           <p className="mt-1 text-xs text-bb-text2">

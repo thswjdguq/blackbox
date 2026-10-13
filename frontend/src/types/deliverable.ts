@@ -21,6 +21,8 @@ export interface DeliverableRequirement {
 export interface Deliverable {
   id: string;
   projectId: string;
+  /** K-20 응답이 없는 기존 UI 서버와 호환한다. 확정 이후 AI 업무 생성 진입점은 숨긴다. */
+  status?: "DRAFT" | "IN_REVIEW" | "CONFIRMED" | "SUBMITTED";
   title: string;
   description: string | null;
   dueDate: string;             // "YYYY-MM-DD" — due_at 으로 임의 변경 금지

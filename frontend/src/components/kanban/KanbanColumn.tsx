@@ -14,6 +14,7 @@ interface KanbanColumnProps {
   onEditTask: (task: Task) => void;
   onMoveTask: (taskId: string, newStatus: TaskStatus) => void;
   readOnly?: boolean;
+  aiIds?: Set<string>;
 }
 
 export default function KanbanColumn({
@@ -24,6 +25,7 @@ export default function KanbanColumn({
   onEditTask,
   onMoveTask,
   readOnly = false,
+  aiIds,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, disabled: readOnly || column.id === "DONE" });
   const isTodo = column.id === "TODO";
@@ -75,6 +77,7 @@ export default function KanbanColumn({
               onEdit={onEditTask}
               onMove={onMoveTask}
               readOnly={readOnly}
+              isAi={aiIds?.has(task.id)}
             />
           ))}
         </SortableContext>

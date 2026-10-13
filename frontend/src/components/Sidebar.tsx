@@ -20,6 +20,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useMyRole } from "@/hooks/useMyRole";
 import SidebarNavigation from "@/components/project/SidebarNavigation";
+import AgentLauncher from "@/components/agent/AgentLauncher";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
 import { Alert } from "@/types/vault";
@@ -277,6 +278,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           <Shield size={16} className="text-bb-primary" />
           <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
         </button>
+        {currentProjectId && <AgentLauncher projectId={currentProjectId} compact />}
       </header>
 
       {mobileOpen && (
@@ -316,6 +318,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
         </div>
 
         {currentProjectId && <ProjectSwitcher currentProjectId={currentProjectId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />}
+        {currentProjectId && <AgentLauncher projectId={currentProjectId} />}
 
         <SidebarNavigation projectId={currentProjectId} onNavigate={() => setMobileOpen(false)} />
 

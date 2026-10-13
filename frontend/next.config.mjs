@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  // AI 실행 사이의 긴 대기 때문에 개발 프록시가 응답을 먼저 끊지 않도록 한다(K-30).
+  experimental: { proxyTimeout: 150_000 },
 
   // 로컬 개발 전용 API 프록시
   // NEXT_DEV_BACKEND 환경변수가 설정된 경우 /api/* → 백엔드로 전달

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import AiBadge from "@/components/agent/AiBadge";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { PRIORITY_TEXT, TASK_STATUS_TEXT, type Task, type TaskPriority, type TaskStatus } from "@/types/task";
@@ -41,10 +42,11 @@ function compare(a: Task, b: Task, key: SortKey): number {
  * 업무 목록 보기 (C-50 6번, Flow 업무 목록 참고). 보드와 같은 필터를 거친 업무를 표로 보여 준다.
  * 열 이름을 누르면 정렬하고, 행을 누르거나 Enter를 누르면 업무 창이 열린다.
  */
-export default function TaskListView({ tasks, onEdit, readOnly }: {
+export default function TaskListView({ tasks, onEdit, readOnly, aiIds }: {
   tasks: Task[];
   onEdit: (task: Task) => void;
   readOnly?: boolean;
+  aiIds?: Set<string>;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("due");
   const [asc, setAsc] = useState(true);
@@ -95,7 +97,7 @@ export default function TaskListView({ tasks, onEdit, readOnly }: {
                 className={`cursor-pointer border-b border-bb-border/60 last:border-0 hover:bg-bb-surface2 focus:outline-none focus-visible:bg-bb-surface2 ${done ? "opacity-60" : ""}`}
               >
                 <td className="px-3 py-2.5">
-                  <span className={`block truncate text-bb-text ${done ? "line-through" : ""}`}>{t.title}</span>
+                  <span className={`block truncate text-bb-text ${done ? "line-through" : ""}`}>{t.title} {aiIds?.has(t.id) && <AiBadge />}</span>
                   {t.tag && <span className="block truncate text-[11px] text-bb-text2">#{t.tag}</span>}
                 </td>
                 <td className="px-3 py-2.5">

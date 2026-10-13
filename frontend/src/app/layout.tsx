@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
 import PageProgress from "@/components/PageProgress";
+import AgentDock from "@/components/agent/AgentDock";
 
 export const metadata: Metadata = {
   title: "Team Blackbox",
@@ -29,7 +30,7 @@ export default function RootLayout({
       </head>
       <body className="bg-bb-bg text-bb-text">
         <PageProgress />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>{children}<AgentDock /></AuthProvider>
       </body>
     </html>
   );

@@ -11,6 +11,7 @@ import { getDeliverables } from "@/lib/api/deliverable";
 import type { Deliverable } from "@/types/deliverable";
 import ProjectWorkflow from "@/components/project/ProjectWorkflow";
 import NextStepCard from "@/components/project/NextStepCard";
+import { useAgentStore } from "@/lib/store/agentStore";
 import { roleLabel } from "@/lib/roleLabel";
 import { Task } from "@/types/task";
 import { Meeting } from "@/types/meeting";
@@ -184,7 +185,8 @@ export default function ProjectHomePage() {
     }
   }, [projectId, router]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  const recordsVersion = useAgentStore(s => s.recordsVersion);
+  useEffect(() => { fetchAll(); }, [fetchAll, recordsVersion]);
 
   const downloadEvidencePackage = async () => {
     if (downloading) return;

@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import AgentButton from "@/components/agent/AgentButton";
+import { useAgentStore } from "@/lib/store/agentStore";
+import { suggestFor } from "@/lib/agent/skills";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
@@ -119,10 +123,13 @@ export default function NextStepCard({
   tasks: Task[];
   canWrite: boolean;
 }) {
+  const agentStatus = useAgentStore(s => s.status[projectId]);
+  const loadAgentStatus = useAgentStore(s => s.loadStatus);
+  useEffect(() => { loadAgentStatus(projectId); }, [projectId,loadAgentStatus]);
+  const help = agentStatus?.available ? suggestFor(agentStatus) : null;
   if (deliverables.length === 0) {
     return (
-      <Link
-        href={`/projects/${projectId}/deliverables`}
+      <section
         className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15"
       >
         <p className="text-xs font-semibold text-teal-500">다음 할 일</p>
@@ -132,8 +139,8 @@ export default function NextStepCard({
             ? "제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요."
             : "팀원이 제출물을 등록하면 여기에 다음 할 일이 표시됩니다."}
         </p>
-        <span className="mt-3 inline-block text-sm font-medium text-teal-500">{canWrite ? "제출물 열기" : "제출물 목록 보기"} →</span>
-      </Link>
+        <div className="mt-3 flex flex-wrap gap-3"><Link href={`/projects/${projectId}/deliverables`} className="text-sm font-medium text-teal-500">{canWrite ? "제출물 열기" : "제출물 목록 보기"} →</Link><AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" /></div>
+      </section>
     );
   }
 
@@ -167,6 +174,7 @@ export default function NextStepCard({
             다른 제출물 {sorted.length - 1}개 보기
           </Link>
         )}
+        {help && <AgentButton projectId={projectId} skill={help.skill} input={help.skill === "BREAK_DOWN_TASKS" ? help.input : undefined} titleExtra={help.deliverable?.title} />}
       </div>
     </section>
   );
