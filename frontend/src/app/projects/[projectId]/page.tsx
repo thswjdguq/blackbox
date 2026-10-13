@@ -449,7 +449,7 @@ export default function ProjectHomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <KpiCard
               icon={Kanban}
-              label="태스크 완료율"
+              label="업무 완료율"
               value={`${doneRate}%`}
               sub={`${doneCount} / ${totalTasks}개 완료`}
               color="bg-indigo-500/10 text-indigo-400"
@@ -483,7 +483,7 @@ export default function ProjectHomePage() {
             {/* 태스크 현황 */}
             <div className="bg-bb-surface border border-bb-border rounded-xl p-5">
               <SectionHeader
-                title="태스크 현황"
+                title="업무 현황"
                 icon={Kanban}
                 href={`/projects/${projectId}/board`}
               />
@@ -507,7 +507,7 @@ export default function ProjectHomePage() {
 
               {/* 최근 태스크 */}
               {recentTasks.length === 0 ? (
-                <p className="text-xs text-bb-text2 text-center py-4">등록된 태스크가 없습니다</p>
+                <p className="text-xs text-bb-text2 text-center py-4">등록된 업무가 없습니다</p>
               ) : (
                 <div className="space-y-2">
                   {recentTasks.map((t) => (

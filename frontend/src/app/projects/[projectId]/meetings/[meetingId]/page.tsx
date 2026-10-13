@@ -429,7 +429,7 @@ export default function MeetingDetailPage() {
             );
           }),
       );
-      showToast(`${checkedAiItems.size}개 태스크가 생성되었습니다`);
+      showToast(`${checkedAiItems.size}개 업무가 생성되었습니다`);
       setAiItems(null);
       setCheckedAiItems(new Set());
       setAiItemAssignees({});
@@ -829,7 +829,7 @@ export default function MeetingDetailPage() {
                       <p className="text-xs text-bb-text2 py-2">추출된 액션아이템이 없습니다.</p>
                     ) : (
                       <>
-                        <p className="text-xs text-bb-text2 pb-1">담당자를 선택하면 칸반 태스크에 자동 배정됩니다.</p>
+                        <p className="text-xs text-bb-text2 pb-1">담당자를 선택하면 업무 보드의 업무에 자동 배정됩니다.</p>
                         {aiItems.map((item, i) => (
                           <div
                             key={i}
@@ -901,7 +901,7 @@ export default function MeetingDetailPage() {
                           {addingAiItems
                             ? <Loader2 size={12} className="animate-spin" />
                             : <Plus size={12} />}
-                          {checkedAiItems.size}개 칸반에 추가
+                          {checkedAiItems.size}개 업무로 추가
                         </button>
                       </div>
                     )}
@@ -915,7 +915,7 @@ export default function MeetingDetailPage() {
               <form onSubmit={handleAddAction} className="bg-bb-bg rounded-xl p-4 space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-bb-text2 mb-1.5">
-                    태스크 제목 <span className="text-red-400">*</span>
+                    업무 제목 <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={actionTitle}
