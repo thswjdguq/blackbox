@@ -10,13 +10,15 @@
 | DB | 같은 인스턴스의 PostgreSQL 컨테이너 | 이 계정의 RDS는 퍼블릭 액세스로만 만들 수 있어 DB가 인터넷에 열린다 |
 | 업로드 파일 | 인스턴스의 Docker 볼륨 | S3로 옮기려면 서버 코드를 바꿔야 한다 |
 | 주소 | 무료 DDNS 이름(DuckDNS) + Let's Encrypt 인증서 | 3장 |
-| AI 도우미 | Bedrock(us-east-1), 자격 증명은 인스턴스 프로필 | 액세스 키를 발급할 수 없다. 9장 |
+| AI 기능 | 학교가 준 LLM API(주소와 키) | 관리자가 Bedrock 대신 준 것이다. 9장 |
 | 이미지 | PC에서 빌드해 SSH로 보낸다 | 인스턴스가 작아 빌드하기 어렵고, 액세스 키가 없어 밖에서 AWS의 레지스트리로 올릴 수 없다 |
 
 ## 2. 계정의 제약(학교 안내)
 
-- 리전은 서울(ap-northeast-2). Bedrock만 us 리전
-- EC2는 t3.nano~t3.small(안내 표에는 t3.medium까지로 적혀 있다. 만들 때 되는 쪽을 확인한다)
+- 리전은 서울(ap-northeast-2)
+- EC2는 t3.small까지. 쓰다가 CPU나 메모리가 모자라면 관리자가 확인하고 t3.medium으로 올려 준다
+- Elastic IP는 직접 만들 수 없다. 인스턴스를 만든 뒤 관리자에게 요청하면 붙여 준다
+- 인스턴스 메타데이터의 응답 홉 제한은 기본이 2다. 바꾸지 않는다
 - 인스턴스를 만든 뒤 인스턴스 프로필을 `SafeInstanceProfile-blackbox`로 바꾼다
 - 보안 그룹은 먼저 만들고, 태그가 자동으로 붙은 뒤에 인바운드 규칙을 편집한다
 - 액세스 키는 발급할 수 없다. 내가 만든 리소스만 중지·시작·삭제할 수 있다
@@ -28,7 +30,7 @@ QR에는 `https://<이름>.duckdns.org`를 넣는다.
 - 인스턴스를 중지했다 켜면 공인 IP가 바뀌므로 IP를 QR에 넣을 수 없다
 - 이 계정으로는 도메인을 살 수 없다. DuckDNS는 무료로 이름 하나를 주고, 서버가 켜질 때 지금 IP를 알려 주면 그 이름이 새 IP를 가리킨다
 - 이름이 있어야 Let's Encrypt 인증서를 받을 수 있다. 인증서가 없으면 관람객의 휴대폰에 경고 화면이 먼저 뜬다
-- Elastic IP를 만들 수 있으면 하나 만들어 인스턴스에 붙인다. IP가 바뀌지 않아 이름이 새 IP를 가리킬 때까지 기다릴 일이 없다. 없어도 아래 절차는 같다
+- Elastic IP는 인스턴스를 만든 뒤 관리자에게 요청해 붙인다(2장). 붙으면 중지했다 켜도 IP가 그대로라 이름이 새 IP를 가리킬 때까지 기다릴 일이 없다. 인증서를 받으려면 이름은 그대로 필요하다
 
 QR을 인쇄하기 전에 휴대폰의 모바일 데이터로 그 주소가 열리는지 확인한다.
 
@@ -37,13 +39,12 @@ QR을 인쇄하기 전에 휴대폰의 모바일 데이터로 그 주소가 열�
 1. 보안 그룹을 만든다(이름과 설명 입력). 태그가 붙으면 인바운드 규칙에 22(개발자의 SSH), 80·443(사용자의 접속)을 Anywhere-IPv4로 추가한다. DB 포트(5432)는 추가하지 않는다
 2. 인스턴스를 만든다
    - AMI: Ubuntu Server 24.04 LTS
-   - 타입: t3.small(되면 t3.medium)
+   - 타입: t3.small
    - 키 페어: 새로 만들어 `.pem` 파일을 PC에 둔다. 저장소에 넣지 않는다
    - 보안 그룹: 1에서 만든 것
    - 스토리지: 20GB (기본 8GB는 이미지와 DB를 담기에 모자란다)
-   - 고급 세부 정보 → 메타데이터 응답 홉 제한: 2 (컨테이너 안의 서버가 인스턴스 프로필의 자격 증명을 받으려면 필요하다)
-3. 만든 뒤 작업 → 보안 → IAM 역할 수정에서 `SafeInstanceProfile-blackbox`를 고른다. 이 역할은 서버가 AWS의 서비스(Bedrock 등)를 부를 때 쓰는 것이고, 밖에서 서버로 들어오는 길은 보안 그룹과 키 페어가 정한다
-4. (되면) Elastic IP를 할당해 인스턴스에 연결한다
+3. 만든 뒤 작업 → 보안 → IAM 역할 수정에서 `SafeInstanceProfile-blackbox`를 고른다. 이 역할은 서버가 AWS의 서비스를 부를 때 쓰는 것이고, 밖에서 서버로 들어오는 길은 보안 그룹과 키 페어가 정한다
+4. 관리자에게 Elastic IP를 요청한다(요청 양식에 인스턴스 ID를 적는다)
 
 ## 5. 처음 한 번: 서버 준비(SSH)
 
@@ -138,7 +139,7 @@ psql -h localhost -p 15432 -U blackbox blackbox_db       # 다른 창에서
 
 ## 7. 배포와 갱신
 
-PC에서 올릴 브랜치를 받아 이미지를 만들어 보낸다(압축해서 약 250MB). 태그는 어느 브랜치의 것인지 알 수 있게 붙인다.
+PC에서 올릴 브랜치를 받아 이미지를 만들어 보낸다(압축해서 약 250MB). 태그에는 브랜치와 커밋을 적는다(예: `expo-91d6bbb`). 서버에서 `docker ps`만 봐도 어느 코드가 떠 있는지 알 수 있다.
 
 ```bash
 git switch <올릴 브랜치> && git pull
@@ -175,19 +176,34 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 열리지 않으면 `docker compose ps`와 `docker compose logs backend --tail 50`을 본다.
 
-## 9. AI 도우미(Bedrock)
+## 9. AI 기능(학교가 준 LLM API)
 
-`.env`에 아래를 넣고 backend를 다시 띄운다. 키는 적지 않는다.
+관리자가 Bedrock 대신 OpenAI 호환 API의 주소(BASE_URL)와 키를 준다. 키는 서버의 `.env`에만 적고 저장소, PR, 메신저에 올리지 않는다.
+
+`.env`에 아래를 적고 backend를 다시 띄운다. 회의록 요약·액션 아이템 추출과 AI 도우미가 같은 키, 주소, 모델을 쓴다.
 
 ```bash
-SPRING_AI_MODEL_CHAT=bedrock-converse
-BEDROCK_MODEL=<Bedrock 콘솔(us-east-1)에서 이 계정이 쓸 수 있는 모델 또는 추론 프로파일의 ID>
-# BEDROCK_REGION=us-east-1   # 기본값. 다른 us 리전을 쓸 때만 적는다
+OPENAI_API_KEY=<받은 키>
+LLM_BASE_URL=<받은 BASE_URL. 끝에 /v1을 붙이지 않는다>
+LLM_MODEL=bedrock-haiku
+SPRING_AI_MODEL_CHAT=openai     # AI 도우미를 켠다. none이면 도우미만 꺼진다
 ```
 
-- 화면에서 "지금 상태 살펴보기"를 눌러 답이 오는지 본다
-- "AI 응답을 받지 못했습니다"가 나오면 `docker compose logs backend | grep -i -E "credentials|AccessDenied|ValidationException"`으로 원인을 본다. 자격 증명을 못 받으면 4장의 홉 제한과 인스턴스 프로필을, 권한이나 모델 오류면 모델 ID와 리전을 확인한다
-- 해결되지 않으면 `SPRING_AI_MODEL_CHAT=none`으로 둔다. AI 도우미만 꺼지고 나머지는 그대로 동작한다
+- `CLAUDE_API_KEY`는 비워 둔다. 값이 있으면 회의록 요약이 그쪽으로 간다
+- `SPRING_AI_MODEL_CHAT=openai`인데 `OPENAI_API_KEY`가 비어 있으면 서버가 뜨지 않는다
+- 모델은 별칭으로만 부른다: `bedrock-haiku`(Claude Haiku 4.5), `bedrock-sonnet`(Claude 3.5 Sonnet v2), `bedrock-gpt-5.6-luna`. 쓸 수 있는 별칭은 `curl -s "$LLM_BASE_URL/v1/models" -H "Authorization: Bearer $OPENAI_API_KEY"`로 본다
+- 키마다 사용 한도가 있어 넘으면 호출이 막히고("Budget has been exceeded"), 짧은 시간에 몰리면 429가 난다
+- 요청 내용은 게이트웨이의 로그에 남고, 개인정보를 프롬프트에 넣지 말라는 것이 사용 조건이다. 시연에서는 준비한 테스트용 프로젝트와 회의록으로만 AI 기능을 보여 준다
+- 호출이 실패하면 AI 기능만 오류가 나고 나머지는 그대로 동작한다
+
+AI 도우미의 질문 세트(`AgentQuestionSetLiveTest`, 21항목)를 이 API로 한 번씩 돌린 결과(2026-10):
+
+| 모델 | 통과 | 틀린 것 | 호출 하나에 걸린 시간 |
+| --- | --- | --- | --- |
+| `bedrock-haiku` | 18 | 업무로 나누기에서 카드 한 장이 아니라 요구사항마다 한 장씩 냈다(내용은 맞음) | 3~13초 |
+| `bedrock-sonnet` | 19 | 필수 요구사항 수를 묻는 질문, 상태 요약에서 경보 전달 | 4~32초 |
+
+모델의 답은 돌릴 때마다 달라진다. 모델을 바꾸면 같은 테스트를 다시 돌려 본다.
 
 ## 10. 확인한 것과 확인하지 못한 것
 
@@ -199,12 +215,12 @@ PC에서 같은 compose 파일로 띄워 확인한 것:
 - 유휴 메모리 약 490MB(backend 387, db 55, frontend 34, nginx 10)
 - 서버에 없는 태그로 띄우면 빌드하지 않고 오류로 멈춤
 - DB 포트가 127.0.0.1에서만 열리고 거기서 접속됨
-- Bedrock을 고르면 서버가 뜨고, 자격 증명이 없을 때는 실행이 오류 문장으로 끝남
+- 학교가 준 LLM API로 회의록 요약과 액션 아이템 추출이 됨(실제 호출. 시연 이미지는 mock 서버로 요청의 주소·모델·키만 확인)
+- 같은 API로 AI 도우미가 도구를 부르고 답함(9장의 질문 세트)
 
 AWS에서만 볼 수 있어 확인하지 못한 것:
 
-- 4~8장의 콘솔·서버 명령 전체(인스턴스 타입, Elastic IP 가능 여부, DuckDNS, Let's Encrypt 발급)
-- Bedrock 호출(이 계정이 쓸 수 있는 모델, 컨테이너에서 자격 증명 받기, 응답 품질과 속도)
+- 4~8장의 콘솔·서버 명령 전체(DuckDNS, Let's Encrypt 발급, 중지했다 켰을 때의 동작)
 - t3.small에서의 실제 응답 속도
 
 ## 11. 하지 않은 것
@@ -214,4 +230,4 @@ AWS에서만 볼 수 있어 확인하지 못한 것:
 
 ## 12. 지우기
 
-시연이 모두 끝나면 인스턴스를 종료하고, Elastic IP를 만들었으면 릴리스한다. 보안 그룹과 키 페어, DuckDNS 이름도 지운다.
+시연이 모두 끝나면 인스턴스를 종료하고, Elastic IP는 관리자에게 반납을 알린다. 보안 그룹과 키 페어, DuckDNS 이름도 지운다.
