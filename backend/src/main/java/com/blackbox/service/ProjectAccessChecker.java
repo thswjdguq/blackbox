@@ -36,6 +36,11 @@ public class ProjectAccessChecker {
     }
 
     /** 관찰자는 읽기만 허용한다. */
+    public static boolean canContribute(ProjectMember member) {
+        return "LEADER".equals(member.getRole()) || "MEMBER".equals(member.getRole());
+    }
+
+    /** 관찰자는 읽기만 허용한다. */
     public ProjectMember requireContributor(Project project, User user) {
         ProjectMember member = requireMember(project, user);
         if (!"LEADER".equals(member.getRole()) && !"MEMBER".equals(member.getRole())) {

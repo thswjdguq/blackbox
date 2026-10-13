@@ -8,6 +8,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.time.Duration;
 
 /**
  * OpenAI API 연동 서비스.
@@ -37,6 +39,16 @@ public class OpenAiService extends AbstractLlmClient {
     @Override
     public boolean isConfigured() {
         return apiKey != null && !apiKey.isBlank();
+    }
+
+    /** 에이전트의 읽기 도구 호출도 기존 키·모델·HTTP 클라이언트를 사용한다. 원문/키는 로그에 남기지 않는다. */
+    public Map<?, ?> agentChat(List<Map<String, Object>> messages, List<Map<String, Object>> tools, Duration timeout) {
+        if (!isConfigured()) throw new IllegalStateException("OpenAI 연결이 설정되지 않았습니다.");
+        Map<String,Object> body = new LinkedHashMap<>();
+        body.put("model",model); body.put("messages",messages); body.put("max_tokens",2000);
+        if (!tools.isEmpty()) { body.put("tools",tools); body.put("tool_choice","auto"); body.put("parallel_tool_calls",false); }
+        return webClient.post().uri("/v1/chat/completions").header("Authorization","Bearer "+apiKey)
+                .bodyValue(body).retrieve().bodyToMono(Map.class).block(timeout);
     }
 
     // ── provider 구현 (Template method) ─────────────────────────────────
