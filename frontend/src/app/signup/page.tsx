@@ -102,11 +102,13 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="signup-name" className="block text-sm font-medium text-bb-text2 mb-1.5">
               이름
             </label>
             <input
               type="text"
+              id="signup-name"
+              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="홍길동"
@@ -118,11 +120,13 @@ export default function SignupPage() {
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="signup-email" className="block text-sm font-medium text-bb-text2 mb-1.5">
               이메일
             </label>
             <input
               type="email"
+              id="signup-email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
@@ -133,12 +137,14 @@ export default function SignupPage() {
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="signup-password" className="block text-sm font-medium text-bb-text2 mb-1.5">
               비밀번호
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                id="signup-password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="8자 이상 입력"
@@ -159,32 +165,34 @@ export default function SignupPage() {
 
           {/* Role */}
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <p id="signup-role" className="block text-sm font-medium text-bb-text2 mb-1.5">
               역할
-            </label>
-            <div className="grid grid-cols-2 gap-2">
+            </p>
+            <div role="group" aria-labelledby="signup-role" className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setRole("STUDENT")}
+                aria-pressed={role === "STUDENT"}
                 className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
                   role === "STUDENT"
                     ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
                     : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
                 }`}
               >
-                <Users size={16} />
+                <Users size={16} aria-hidden="true" />
                 학생
               </button>
               <button
                 type="button"
                 onClick={() => setRole("PROFESSOR")}
+                aria-pressed={role === "PROFESSOR"}
                 className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
                   role === "PROFESSOR"
                     ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
                     : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
                 }`}
               >
-                <GraduationCap size={16} />
+                <GraduationCap size={16} aria-hidden="true" />
                 교수
               </button>
             </div>
