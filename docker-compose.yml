@@ -1,3 +1,6 @@
+# 컨테이너 이름과 포트(80, 443)가 고정이라 한 PC에 이 파일만으로 두 벌을 띄울 수 없다.
+# 다른 브랜치를 함께 띄울 때는 옆 폴더에 받아 docker-compose.second.yml을 붙인다(README 6장).
+# 배포할 때는 docker-compose.prod.yml을 붙인다(docs/deploy-aws.md)
 services:
 
   # ─────────────────────────────────────────
@@ -98,7 +101,6 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - uploads:/data/uploads:ro
     networks:
       - blackbox_net
     depends_on:
