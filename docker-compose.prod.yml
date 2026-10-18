@@ -84,7 +84,6 @@ services:
       - ./nginx/nginx-ssl.conf:/etc/nginx/nginx.conf:ro
       - ./ssl/server.crt:/etc/nginx/ssl/server.crt:ro
       - ./ssl/server.key:/etc/nginx/ssl/server.key:ro
-      - uploads:/data/uploads:ro
     networks:
       - blackbox_net
     depends_on:
