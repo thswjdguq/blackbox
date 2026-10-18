@@ -32,6 +32,7 @@ class TaskListDatabaseTest {
     @MockBean ScoreService scores;
     @MockBean DeliverableService deliverables;
     @MockBean TaskWorkflowService workflow;
+    @MockBean NotificationService notifications;
 
     @Test void databaseRejectsNewDoneWithoutApproval() {
         User leader = user("approval-constraint");

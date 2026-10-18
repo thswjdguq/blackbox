@@ -25,10 +25,13 @@ public class TaskFileService {
     private final FileVaultService storage;
     private final ReviewRoundService reviews;
     private final TaskWorkflowService workflow;
+    private final NotificationService notifications;
     public TaskFileService(TaskRepository tasks, TaskFileRepository links, FileVaultRepository files,
-            DeliverableRepository deliverables, ProjectAccessChecker access, FileVaultService storage, ReviewRoundService reviews, TaskWorkflowService workflow) {
+            DeliverableRepository deliverables, ProjectAccessChecker access, FileVaultService storage, ReviewRoundService reviews,
+            TaskWorkflowService workflow, NotificationService notifications) {
         this.tasks = tasks; this.links = links; this.files = files; this.deliverables = deliverables;
         this.access = access; this.storage = storage; this.reviews = reviews; this.workflow = workflow;
+        this.notifications = notifications;
     }
     @Transactional(readOnly = true)
     public List<Resource> list(UUID projectId, UUID taskId, User user) {
@@ -53,6 +56,7 @@ public class TaskFileService {
                 .orElseThrow(() -> new NotFoundException("등록한 파일을 찾을 수 없습니다."));
         TaskFile link = new TaskFile(); link.setProject(project); link.setTask(task); link.setFile(stored);
         link.setLinkedBy(user); link.setCreatedAt(OffsetDateTime.now()); links.save(link);
+        notifications.fileUploaded(task, stored, user);
         return response(link);
     }
     @Transactional

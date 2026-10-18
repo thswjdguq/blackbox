@@ -13,8 +13,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -35,6 +37,7 @@ public class TaskService {
     private final DeliverableService deliverableService;
     private final ReviewCommentRepository reviewComments;
     private final TaskWorkflowService workflow;
+    private final NotificationService notifications;
 
     public TaskService(TaskRepository taskRepository,
                        TaskAssigneeRepository taskAssigneeRepository,
@@ -48,7 +51,8 @@ public class TaskService {
                        ScoreService scoreService,
                        EntityManager entityManager,
                        DeliverableService deliverableService,
-                       ReviewCommentRepository reviewComments, TaskWorkflowService workflow) {
+                       ReviewCommentRepository reviewComments, TaskWorkflowService workflow,
+                       NotificationService notifications) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -63,9 +67,18 @@ public class TaskService {
         this.deliverableService = deliverableService;
         this.reviewComments = reviewComments;
         this.workflow = workflow;
+        this.notifications = notifications;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
+
+    /** 업무 생성으로 이어지는 호출도 제출물보다 프로젝트를 먼저 잠근다. 호출자의 트랜잭션 안에서 사용한다. */
+    public void lockProject(Project project) { workflow.lock(project); }
+    public void lockProject(UUID projectId,User user) {
+        Project project=accessChecker.getProject(projectId);
+        accessChecker.requireContributor(project,user);
+        lockProject(project);
+    }
 
     @Transactional
     public TaskResponse createTask(UUID projectId, CreateTaskRequest req, User creator) {
@@ -99,6 +112,7 @@ public class TaskService {
         if (!assignees.isEmpty()) {
             discordService.notifyTaskAssigned(task,
                     assignees.stream().map(TaskAssignee::getUser).toList(), project);
+            notifications.assigned(task, assignees.stream().map(TaskAssignee::getUser).toList(), creator);
         }
 
         return TaskResponse.from(task, assignees);
@@ -205,9 +219,14 @@ public class TaskService {
         Task task = findTask(taskId, project);
         workflow.requireEditable(task);
 
+        Set<UUID> before = new HashSet<>();
+        taskAssigneeRepository.findByTask(task).forEach(a -> before.add(a.getUser().getId()));
         List<TaskAssignee> assignees = setAssigneesInternal(task, req.assigneeIds());
         entityManager.flush();
         entityManager.refresh(task);
+        // 앱 안 개인 알림은 새로 추가된 사람에게만 보낸다. 같은 목록 재저장으로 기존 담당자에게 다시 알리지 않는다.
+        notifications.assigned(task, assignees.stream().map(TaskAssignee::getUser)
+                .filter(u -> !before.contains(u.getId())).toList(), user);
 
         // 담당자 변경 알림 (명시적 배정 액션)
         if (!assignees.isEmpty()) {
@@ -308,6 +327,7 @@ public class TaskService {
         }
         if (deliverableId != null) {
             Deliverable next = deliverableService.find(project, deliverableId);
+            workflow.requireDeliverableEditable(next);
             if (task.getDeliverable() == null || !next.getId().equals(task.getDeliverable().getId())) {
                 task.setRequirement(null);
             }

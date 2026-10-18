@@ -26,6 +26,7 @@ public class ReviewCommentTaskService {
         Project project=access.getProject(projectId);
         access.requireContributor(project,user);
         String title=text(request.title(),255,true), criteria=text(request.completionCriteria(),2000,false);
+        taskService.lockProject(project);
         var view=reviews.lockForWrite(projectId,deliverableId,reviewId);
         ReviewComment c=comments.findByIdAndProjectIdAndDeliverableIdAndReviewId(commentId,projectId,deliverableId,reviewId)
                 .orElseThrow(()->new NotFoundException("피드백을 찾을 수 없습니다"));

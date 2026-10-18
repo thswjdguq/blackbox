@@ -5,6 +5,7 @@ import com.blackbox.dto.FileUploadResponse;
 import com.blackbox.entity.User;
 import com.blackbox.service.FileVaultService;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -61,9 +63,11 @@ public class FileVaultController {
             @PathVariable UUID fileId,
             @AuthenticationPrincipal User user) {
         FileVaultService.DownloadResult result = fileVaultService.download(fileId, user);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(result.fileName(), StandardCharsets.UTF_8)
+                .build();
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + result.fileName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(result.fileSize()))
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(result.resource());

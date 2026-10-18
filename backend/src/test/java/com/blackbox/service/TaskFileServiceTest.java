@@ -22,7 +22,7 @@ class TaskFileServiceTest {
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
     final FileVaultService storage = mock(FileVaultService.class);
     final ReviewRoundService reviews = mock(ReviewRoundService.class);
-    final TaskFileService service = new TaskFileService(tasks, links, files, deliverables, new ProjectAccessChecker(projects, members), storage, reviews, mock(TaskWorkflowService.class));
+    final TaskFileService service = new TaskFileService(tasks, links, files, deliverables, new ProjectAccessChecker(projects, members), storage, reviews, mock(TaskWorkflowService.class), mock(NotificationService.class));
     final Project project = new Project(); final User user = new User(); final Task task = new Task(); final FileVault file = new FileVault(); final ProjectMember member = new ProjectMember();
     @BeforeEach void setup() {
         project.setId(UUID.randomUUID()); user.setId(UUID.randomUUID()); task.setId(UUID.randomUUID()); task.setProject(project); task.setTitle("조사");

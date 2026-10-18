@@ -27,14 +27,18 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final ZoneId REPORT_ZONE = ZoneId.of("Asia/Seoul");
 
     // ── 한글 폰트 (NanumGothic, classpath 임베드) ─────────────────────────────
     private static final BaseFont NANUM;
@@ -91,10 +95,17 @@ public class ReportService {
         List<ProjectMember>      members = memberRepo.findByProject(project);
         List<Task>               tasks   = taskRepo.findByProjectOrderByCreatedAtDesc(project);
         List<FileVault>          vaults  = vaultRepo.findByProjectOrderByUploadedAtDesc(project);
-        List<ContributionScore>  scores  = scoreRepo.findByProjectOrderByTotalScoreDesc(project);
-        List<Alert>              alerts  = alertRepo.findByProjectOrderByCreatedAtDesc(project);
+        // 참여 집계와 참여 알림은 화면(AlertService)과 같이 현재 팀장·팀원만 대상으로 한다. 원본 행은 보존한다.
+        Set<UUID> contributors = members.stream().filter(ProjectAccessChecker::canContribute)
+                .map(m -> m.getUser().getId()).collect(Collectors.toSet());
+        List<ContributionScore>  scores  = scoreRepo.findByProjectOrderByTotalScoreDesc(project).stream()
+                .filter(s -> contributors.contains(s.getUser().getId())).toList();
+        List<Alert>              alerts  = alertRepo.findByProjectOrderByCreatedAtDesc(project).stream()
+                .filter(a -> !AlertService.PARTICIPATION_TYPES.contains(a.getAlertType())
+                        || (a.getUser() != null && contributors.contains(a.getUser().getId())))
+                .toList();
 
-        String generatedAt = OffsetDateTime.now().format(FMT);
+        String generatedAt = OffsetDateTime.now(REPORT_ZONE).format(FMT) + " KST";
         String reportHash  = computeReportHash(project, scores, tasks, vaults, generatedAt);
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -103,7 +114,7 @@ public class ReportService {
             writer.setPageEvent(new PageFooter(reportHash));
             doc.open();
 
-            addCoverSection(doc, project, requester, generatedAt, reportHash, members.size());
+            addCoverSection(doc, project, requester, generatedAt, reportHash, contributors.size());
             addScoreSection(doc, scores);
             addTaskSection(doc, tasks);
             addVaultSection(doc, vaults);
@@ -197,7 +208,7 @@ public class ReportService {
     private static final Color YELLOW      = new Color(234, 179,  8);
 
     private void addScoreSection(Document doc, List<ContributionScore> scores) throws DocumentException {
-        doc.add(sectionTitle("팀원별 참여 여부 (역할 수행)"));
+        doc.add(sectionTitle("팀원별 자동 집계 활동 기록"));
 
         if (scores.isEmpty()) {
             doc.add(emptyNote("아직 참여 데이터가 없습니다."));
@@ -221,10 +232,10 @@ public class ReportService {
             Color rowBg = "FULL".equals(s.getParticipationLevel()) ? GREEN_LIGHT : WHITE;
 
             table.addCell(dataCell(s.getUser().getName(), rowBg, Font.BOLD));
-            table.addCell(dataCell(s.isTaskParticipated()    ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
-            table.addCell(dataCell(s.isMeetingParticipated() ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
-            table.addCell(dataCell(s.isFileParticipated()    ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
-            table.addCell(dataCell(s.isActionParticipated()  ? "✓ 참여" : "✗ 미참여", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.isTaskParticipated()    ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.isMeetingParticipated() ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.isFileParticipated()    ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.isActionParticipated()  ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
 
             PdfPCell levelCell = new PdfPCell(new Phrase(levelKo(s.getParticipationLevel()), font(8, WHITE, Font.BOLD)));
             levelCell.setBackgroundColor(levelColor);
@@ -233,13 +244,13 @@ public class ReportService {
             levelCell.setBorderWidth(0.3f);
             table.addCell(levelCell);
 
-            table.addCell(dataCell(s.getCalculatedAt() != null ? s.getCalculatedAt().format(FMT) : "-", rowBg, Font.NORMAL));
+            table.addCell(dataCell(s.getCalculatedAt() != null ? s.getCalculatedAt().atZoneSameInstant(REPORT_ZONE).format(FMT) : "-", rowBg, Font.NORMAL));
         }
         doc.add(table);
         doc.add(spacer(6));
         doc.add(para("* 태스크: 담당 태스크 1개↑ 완료 / 회의: 전체 50%↑ 체크인 / 파일: 1개↑ 업로드 / 액션아이템: 담당 1개↑ 완료",
                 font(7, GRAY_MID, Font.ITALIC)));
-        doc.add(para("* 전체참여(4개 모두) / 부분참여(2~3개) / 미참여(0~1개)",
+        doc.add(para("* 전체참여(4개 모두) / 부분참여(2~3개) / 집계 기록 적음(0~1개). 검토·답변 등은 자동 집계에 빠질 수 있으며 평가·감점 기준이 아닙니다.",
                 font(7, GRAY_MID, Font.ITALIC)));
         doc.add(spacer(12));
     }
@@ -308,9 +319,9 @@ public class ReportService {
     private void addAlertSection(Document doc, List<Alert> alerts) throws DocumentException {
         doc.add(sectionTitle("경보 현황"));
 
-        List<Alert> active = alerts.stream().filter(a -> !a.isRead()).toList();
+        List<Alert> active = alerts.stream().filter(a -> !a.isRead() && a.getResolvedAt() == null).toList();
         if (active.isEmpty()) {
-            doc.add(emptyNote("활성 경보 없음 — 팀 기여도가 균형 잡혀 있습니다."));
+            doc.add(emptyNote("표시할 미읽음·미해결 알림이 없습니다. 모든 기여가 집계되었다는 뜻은 아닙니다."));
             doc.add(spacer(8));
             return;
         }
@@ -325,7 +336,9 @@ public class ReportService {
         for (Alert a : active) {
             table.addCell(dataCell(alertTypeKo(a.getAlertType()), WHITE, Font.BOLD));
             table.addCell(dataCell(a.getSeverity(), WHITE, Font.NORMAL));
-            table.addCell(dataCell(a.getMessage(),  WHITE, Font.NORMAL));
+            // 과거 FREE_RIDE 행의 실명 문구 대신 화면과 같은 중립 안내를 쓴다.
+            String message = "FREE_RIDE".equals(a.getAlertType()) ? AlertService.PARTICIPATION_NOTICE : a.getMessage();
+            table.addCell(dataCell(message, WHITE, Font.NORMAL));
         }
         doc.add(table);
         doc.add(spacer(8));
@@ -452,9 +465,9 @@ public class ReportService {
 
     private String alertTypeKo(String t) {
         return switch (t) {
-            case "FREE_RIDE" -> "무임승차";
-            case "OVERLOAD"  -> "과부하";
-            case "DROPOUT"   -> "이탈";
+            case "FREE_RIDE" -> "참여 기록 확인";
+            case "OVERLOAD"  -> "과부하 위험";
+            case "DROPOUT"   -> "이탈 감지";
             case "TAMPER"    -> "변조";
             default          -> t;
         };
@@ -464,7 +477,7 @@ public class ReportService {
         return switch (level) {
             case "FULL"    -> "전체참여";
             case "PARTIAL" -> "부분참여";
-            default        -> "미참여";
+            default        -> "집계 기록 적음";
         };
     }
 

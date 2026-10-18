@@ -17,6 +17,7 @@ public class TaskWorkflowController {
     public TaskWorkflowController(TaskWorkflowService service) { this.service=service; }
     @GetMapping("/completion") public TaskWorkflowService.Completion view(@PathVariable UUID projectId,@PathVariable UUID taskId,@AuthenticationPrincipal User user) { return service.view(projectId,taskId,user); }
     @PostMapping("/completion-request") public TaskResponse request(@PathVariable UUID projectId,@PathVariable UUID taskId,@AuthenticationPrincipal User user) { return service.request(projectId,taskId,user); }
+    @PostMapping("/completion-cancel") public TaskResponse cancel(@PathVariable UUID projectId,@PathVariable UUID taskId,@Valid @RequestBody Reopen req,@AuthenticationPrincipal User user) { return service.cancel(projectId,taskId,req.reason(),user); }
     @PutMapping("/completion-decision") public TaskResponse decide(@PathVariable UUID projectId,@PathVariable UUID taskId,@Valid @RequestBody Decision req,@AuthenticationPrincipal User user) {
         return service.decide(projectId,taskId,req.approved(),Boolean.TRUE.equals(req.criteriaConfirmed()),req.reason(),user);
     }

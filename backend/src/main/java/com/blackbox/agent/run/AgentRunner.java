@@ -73,7 +73,8 @@ public class AgentRunner {
     public Collection<AgentSkill> skills() { return skills.values(); }
 
     /** contributor는 요청한 사람이 기록을 만들 수 있는 역할(팀장·팀원)인가다 */
-    public record Prepared(AgentRun run, AgentSkill skill, boolean contributor, JsonNode input, String material) {}
+    /** startedNanos는 시간 상한을 재는 기준이다(System.nanoTime). 기록에 남는 시작 시각(run.startedAt)과 따로 둔다 */
+    public record Prepared(AgentRun run, AgentSkill skill, boolean contributor, JsonNode input, String material, long startedNanos) {}
 
     @Transactional
     public Prepared prepare(UUID projectId, User user, String skillName, JsonNode input) {
@@ -98,7 +99,7 @@ public class AgentRunner {
         if (runs.countByProjectAndStartedAtAfter(project, now.minusHours(1)) >= properties.getRunsPerHour()) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "잠시 뒤 다시 시도해주세요");
         }
-        return new Prepared(runs.save(AgentRun.start(project, user, skill.name(), now)), skill, contributor, given, material);
+        return new Prepared(runs.save(AgentRun.start(project, user, skill.name(), now)), skill, contributor, given, material, System.nanoTime());
     }
 
     public void execute(Prepared prepared, AgentEvents events) {
@@ -124,9 +125,14 @@ public class AgentRunner {
         runs.save(prepared.run());
     }
 
-    /** 시간 상한을 넘긴 실행은 더 저장하지 않고 실패로 끝낸다. 모델이 답을 돌려줄 때마다 본다 */
-    private void requireInTime(AgentRun run) {
-        if (OffsetDateTime.now().isAfter(run.getStartedAt().plus(properties.getRunTimeLimit()))) {
+    /**
+     * 시간 상한을 넘긴 실행은 더 저장하지 않고 실패로 끝낸다. 모델이 답을 돌려줄 때마다 본다.
+     * 흐른 시간은 System.nanoTime()으로 잰다. 현재 시각(OffsetDateTime.now())은 운영체제가 시간을 동기화하면서 뒤로 맞출 수 있어,
+     * 두 시각의 차이로 재면 상한이 지났는데도 안 지난 것으로 나올 수 있다. 화면에 상한을 알리는 타이머(AgentRunLauncher)는
+     * 시각이 바뀌어도 영향을 받지 않으므로, 그때는 화면은 실패를 받았는데 여기서는 답을 저장하게 된다
+     */
+    private void requireInTime(Prepared p) {
+        if (System.nanoTime() - p.startedNanos() > properties.getRunTimeLimit().toNanos()) {
             throw new IllegalStateException("시간 상한을 넘겼습니다");
         }
     }
@@ -141,7 +147,7 @@ public class AgentRunner {
         String material = instructions.material(p.material());
 
         String answer = model.generate(guide, material, toolbox.bind(projectId, user, p.skill().tools(), events::step));
-        requireInTime(p.run());
+        requireInTime(p);
         if (allowedKinds.isEmpty()) {
             events.text(answer);
             return List.of();
@@ -151,7 +157,7 @@ public class AgentRunner {
         if (!read.problems().isEmpty()) {
             // 한 번만 다시 요청한다(K-30 6장). 기록은 다시 조회하지 않고 형식만 고치게 한다
             read = read(model.generate(guide, instructions.repair(material, answer, read.problems()), List.of()), p, allowedKinds);
-            requireInTime(p.run());
+            requireInTime(p);
             if (!read.problems().isEmpty()) throw new IllegalStateException("형식에 맞지 않는 응답: " + read.problems());
         }
         if (!read.text().isBlank()) events.text(read.text());

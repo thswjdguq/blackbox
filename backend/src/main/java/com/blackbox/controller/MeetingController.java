@@ -115,7 +115,7 @@ public class MeetingController {
             @PathVariable UUID meetingId,
             @AuthenticationPrincipal User user) {
         MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
-        List<ActionItemDto> items = aiService.extractStructuredActionItems(meeting.notes(), meeting.decisions());
+        List<ActionItemDto> items = aiService.extractStructuredActionItems(meeting.notes(), meeting.decisions(), meeting.meetingDate());
         return ResponseEntity.ok(new AiActionItemsResponse(items));
     }
 

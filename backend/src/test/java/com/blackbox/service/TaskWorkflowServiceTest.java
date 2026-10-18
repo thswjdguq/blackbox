@@ -23,13 +23,16 @@ class TaskWorkflowServiceTest {
     final ActivityLogService logs=mock(ActivityLogService.class);
     final EntityManager em=mock(EntityManager.class);
     final ProjectAccessChecker access=new ProjectAccessChecker(projects,members);
-    final TaskWorkflowService workflow=new TaskWorkflowService(tasks,assignees,files,access,logs,mock(AlertService.class),mock(DiscordNotificationService.class),mock(ScoreService.class),em,new ObjectMapper());
-    final TaskService service=new TaskService(tasks,assignees,members,mock(UserRepository.class),access,logs,mock(NotionService.class),mock(AlertService.class),mock(DiscordNotificationService.class),mock(ScoreService.class),em,mock(DeliverableService.class),mock(ReviewCommentRepository.class),workflow);
+    final NotificationService notifications=mock(NotificationService.class);
+    final TaskWorkflowService workflow=new TaskWorkflowService(tasks,assignees,files,access,logs,mock(AlertService.class),mock(DiscordNotificationService.class),mock(ScoreService.class),em,new ObjectMapper(),notifications);
+    final TaskService service=new TaskService(tasks,assignees,members,mock(UserRepository.class),access,logs,mock(NotionService.class),mock(AlertService.class),mock(DiscordNotificationService.class),mock(ScoreService.class),em,mock(DeliverableService.class),mock(ReviewCommentRepository.class),workflow,mock(NotificationService.class));
     final Project project=new Project(); final User user=new User(); final User leader=new User(); final Task task=new Task();
     final ProjectMember member=new ProjectMember();
     @BeforeEach void setup() {
         project.setId(UUID.randomUUID());user.setId(UUID.randomUUID());user.setName("팀원");leader.setId(UUID.randomUUID());leader.setName("팀장");
         task.setId(UUID.randomUUID());task.setProject(project);task.setCreatedBy(user);task.setTitle("자료 조사");task.setStatus("IN_PROGRESS");task.setCompletionCriteria("출처를 포함한 비교표");
+        var peer=new User();peer.setId(UUID.randomUUID());
+        when(notifications.contributors(project)).thenReturn(List.of(user,leader,peer));
         member.setRole("MEMBER");var manager=new ProjectMember();manager.setRole("LEADER");
         when(projects.findById(project.getId())).thenReturn(Optional.of(project));
         when(members.findByProjectAndUser(project,user)).thenReturn(Optional.of(member));
@@ -151,5 +154,41 @@ class TaskWorkflowServiceTest {
     }
     @Test void referencedPredecessorCannotBeDeleted() {
         when(tasks.existsByPredecessor(task)).thenReturn(true);assertThrows(ResponseStatusException.class,()->service.deleteTask(project.getId(),task.getId(),user));verify(tasks,never()).delete(any());
+    }
+    @Test void reviewerDependsOnRequesterAndUnassignedCreatorIsPerformer() {
+        when(notifications.contributors(project)).thenReturn(List.of(user,leader));
+        when(assignees.findByTask(task)).thenReturn(List.of());
+        assertTrue(workflow.view(project.getId(),task.getId(),user).canRequest());
+        assertFalse(workflow.view(project.getId(),task.getId(),leader).canRequest());
+        assertEquals(409,assertThrows(ResponseStatusException.class,()->workflow.request(project.getId(),task.getId(),leader)).getStatusCode().value());
+        assertNull(task.getCompletionRequestedAt());
+    }
+    @Test void cancelKeepsEvidenceAndAuditsOriginalRequestBeforeRetry() {
+        var first=workflow.request(project.getId(),task.getId(),user);
+        assertTrue(workflow.view(project.getId(),task.getId(),user).canCancel());
+        assertTrue(workflow.view(project.getId(),task.getId(),leader).canCancel());
+        var result=workflow.cancel(project.getId(),task.getId(),"담당자 조정",user);
+        assertEquals("IN_PROGRESS",result.status()); assertNull(result.completionRequestedAt());
+        assertEquals("출처를 포함한 비교표",task.getCompletionCriteria());
+        workflow.requireEditable(task);
+        verify(logs).record(eq(project),eq(user),eq("TASK_COMPLETION_CANCEL"),argThat(m->m.contains(user.getId().toString())&&m.contains(first.completionRequestedAt().toString())&&m.contains("담당자 조정")));
+        verify(files,never()).delete(any()); verify(assignees,never()).delete(any());
+        assertNotNull(workflow.request(project.getId(),task.getId(),user).completionRequestedAt());
+    }
+    @Test void cancellationValidatesPermissionReasonPendingAndConfirmedState() {
+        workflow.request(project.getId(),task.getId(),user);
+        var peer=new User();peer.setId(UUID.randomUUID());when(members.findByProjectAndUser(project,peer)).thenReturn(Optional.of(member));
+        assertFalse(workflow.view(project.getId(),task.getId(),peer).canCancel());
+        assertThrows(ForbiddenException.class,()->workflow.cancel(project.getId(),task.getId(),"수정",peer));
+        assertEquals(400,assertThrows(ResponseStatusException.class,()->workflow.cancel(project.getId(),task.getId()," ",user)).getStatusCode().value());
+        assertEquals(400,assertThrows(ResponseStatusException.class,()->workflow.cancel(project.getId(),task.getId(),"x".repeat(2001),user)).getStatusCode().value());
+        member.setRole("OBSERVER");assertThrows(ForbiddenException.class,()->workflow.cancel(project.getId(),task.getId(),"수정",user));member.setRole("MEMBER");
+        var deliverable=new Deliverable();deliverable.setId(UUID.randomUUID());task.setDeliverable(deliverable);
+        when(em.find(DeliverableConfirmation.class,deliverable.getId())).thenReturn(mock(DeliverableConfirmation.class));
+        assertFalse(workflow.view(project.getId(),task.getId(),leader).canCancel());
+        assertEquals(409,assertThrows(ResponseStatusException.class,()->workflow.cancel(project.getId(),task.getId(),"수정",leader)).getStatusCode().value());
+        task.setDeliverable(null);workflow.cancel(project.getId(),task.getId(),"수정",leader);
+        assertEquals(409,assertThrows(ResponseStatusException.class,()->workflow.cancel(project.getId(),task.getId(),"수정",leader)).getStatusCode().value());
+        assertThrows(NotFoundException.class,()->workflow.cancel(project.getId(),UUID.randomUUID(),"수정",leader));
     }
 }

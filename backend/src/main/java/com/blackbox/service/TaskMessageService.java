@@ -30,11 +30,13 @@ public class TaskMessageService {
     private final TaskFileRepository links;
     private final ProjectAccessChecker access;
     private final EntityManager em;
+    private final NotificationService notifications;
 
     public TaskMessageService(TaskRepository tasks, TaskAssigneeRepository assignees, TaskMessageRepository messages,
-                              ProjectMemberRepository members, TaskFileRepository links, ProjectAccessChecker access, EntityManager em) {
+                              ProjectMemberRepository members, TaskFileRepository links, ProjectAccessChecker access, EntityManager em,
+                              NotificationService notifications) {
         this.tasks=tasks; this.assignees=assignees; this.messages=messages; this.members=members;
-        this.links=links; this.access=access; this.em=em;
+        this.links=links; this.access=access; this.em=em; this.notifications=notifications;
     }
 
     @Transactional(readOnly=true)
@@ -89,6 +91,9 @@ public class TaskMessageService {
             message.setFile(file);
         }
         messages.saveAndFlush(message);
+        // 일반 댓글은 알리지 않는다(K-54 후속 범위). 요청과 답글만 받는 사람이 명확하다.
+        if ("REQUEST".equals(message.getKind())) notifications.opinionRequested(message);
+        if ("REPLY".equals(message.getKind())) notifications.opinionReplied(message);
         return response(message);
     }
 

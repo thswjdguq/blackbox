@@ -71,6 +71,7 @@ public class DeliverablePlanKind implements ProposalKind {
     }
 
     @Override public List<AgentProposal.Result> accept(UUID projectId, User user, JsonNode content) {
+        tasks.lockProject(projectId,user);
         Content c = json.convertValue(content, Content.class);
         List<AgentProposal.Result> created = new ArrayList<>();
         UUID deliverableId = deliverables.save(projectId, null, c.deliverable().toRequest(), user).id();
