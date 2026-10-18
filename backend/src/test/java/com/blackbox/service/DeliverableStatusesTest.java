@@ -65,7 +65,7 @@ class DeliverableStatusesTest {
         var statistics = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
         statistics.clear();
         assertEquals(byId, statuses.of(project, expected.keySet()));
-        assertEquals(3, statistics.getPrepareStatementCount(), "제출물 수만큼 조회가 늘면 안 된다");
+        assertEquals(4, statistics.getPrepareStatementCount(), "제출물 수만큼 조회가 늘면 안 된다");
         assertEquals(Map.of(foreign.getId(), new Status("CONFIRMED", "APPROVED")), statuses.of(other, List.of(foreign)));
     }
 

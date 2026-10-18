@@ -38,6 +38,7 @@ public class DeliverableConfirmationService {
     private final DeliverableConfirmationRepository confirmations;
     private final DeliverableSubmissionRepository submissions;
     private final DeliverableStatuses statuses;
+    private final DeliverableConfirmationCancellationRepository cancellations;
 
     // ── 조회와 명령 ───────────────────────────────────────────────────────
 
@@ -71,6 +72,29 @@ public class DeliverableConfirmationService {
         return response(d);
     }
 
+    /**
+     * 팀장이 사유를 남기고 확정을 취소한다(K-20 0.3). 확정 기록은 취소 기록으로 옮기고 지운다.
+     * 제출을 기록한 뒤에는 취소할 수 없다. 취소한 회차로는 다시 확정할 수 없어 새 회차의 승인이 필요하다.
+     */
+    public Response cancel(UUID projectId, UUID deliverableId, UUID reviewId, String reason, User user) {
+        Project project = access.getProject(projectId);
+        if (!"LEADER".equals(access.requireMember(project, user).getRole()))
+            throw new ForbiddenException("확정 취소는 팀장만 할 수 있습니다");
+        Deliverable d = lock(project, deliverableId);
+        requireRoundOf(d, reviewId);
+        // 같은 회차로 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다. 처음 사유가 남는다
+        if (cancellations.existsByReviewId(reviewId)) return response(d);
+        DeliverableConfirmation confirmation = confirmations.findById(d.getId())
+                .orElseThrow(() -> conflict("확정되지 않은 제출물입니다"));
+        if (submissions.existsById(d.getId())) throw conflict("제출을 기록한 제출물은 확정을 취소할 수 없습니다");
+        // 그 사이 다른 사람이 취소하고 다시 확정했다면 화면이 보여 준 확정과 다르다
+        if (!confirmation.getReview().getId().equals(reviewId))
+            throw conflict("취소하려는 확정이 바뀌었습니다. 새로고침해 다시 확인해주세요");
+        cancellations.save(DeliverableConfirmationCancellation.of(confirmation, user, reason, OffsetDateTime.now()));
+        confirmations.delete(confirmation);
+        return response(d);
+    }
+
     /** 학교 시스템 등에 낸 사실을 남긴다. 확정된 제출물에 한 번이고 고치는 명령은 없다. */
     public Response submit(UUID projectId, UUID deliverableId, SubmitRequest req, User user) {
         Project project = access.getProject(projectId);
@@ -99,16 +123,18 @@ public class DeliverableConfirmationService {
         String status = statuses.of(d, latest).status();
         boolean sole = soleContributor(d.getProject());
         Optional<DeliverableConfirmation> confirmed = confirmations.findById(d.getId());
+        List<Cancellation> cancelled = cancellations.findByDeliverableOrderByCancelledAtAsc(d).stream()
+                .map(Cancellation::from).toList();
         if (confirmed.isEmpty()) {
             Readiness readiness = readiness(d, latest);
             Candidate candidate = readiness.candidate() == null ? null : Candidate.of(readiness.candidate());
-            return Response.pending(status, readiness.checks(), candidate, sole);
+            return Response.pending(status, readiness.checks(), candidate, sole, cancelled);
         }
         DeliverableConfirmation confirmation = confirmed.get();
         // 확정 뒤에 내용이 다른 새 버전이 올라왔는지만 알린다. 확정본은 회차가 가리키는 버전 그대로다
         boolean fileStillLatest = reviews.basisOf(confirmation.getReview()) == Basis.CURRENT;
         return Response.confirmed(status, sole, Confirmation.from(confirmation, fileStillLatest),
-                submissions.findById(d.getId()).map(Submission::from).orElse(null));
+                submissions.findById(d.getId()).map(Submission::from).orElse(null), cancelled);
     }
 
     /** 팀장·팀원이 한 명뿐이면 올린 사람이 자기 파일을 승인할 수 없어 확정 조건을 채울 수 없다(K-20 5장). */
@@ -146,6 +172,7 @@ public class DeliverableConfirmationService {
             case CURRENT -> round + "에서 " + latest.getFile().getFileName() + " " + latest.getFile().getVersion() + "버전이 승인됐습니다";
             case UNDECIDED -> round + "가 결정 전입니다. 승인을 받아주세요";
             case CHANGES_REQUESTED -> round + "에서 수정 요청을 받았습니다. 보완한 뒤 새 회차를 열어주세요";
+            case CANCELLED -> round + "의 확정을 취소했습니다. 고친 파일로 새 회차를 열어주세요";
             case NO_FILE -> round + "는 파일 없는 회차입니다. 파일을 골라 새 회차를 열어주세요";
             case NEWER_CONTENT -> round + "에서 승인된 파일이 같은 이름의 최신 버전과 내용이 다릅니다. 최신 버전으로 새 회차를 열어주세요";
         };

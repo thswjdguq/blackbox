@@ -22,6 +22,7 @@ public class ReviewRoundService implements ReviewRoundReader {
     // 형식으로만 주입받는다. 구현이 없거나 둘이면 서버가 뜨지 않아야 한다(K-10 5장)
     private final UnresolvedCommentCounter unresolvedComments;
     private final DeliverableStatuses statuses;
+    private final DeliverableConfirmationCancellationRepository cancellations;
 
     @Transactional(readOnly = true)
     public ListResponse list(UUID projectId, UUID deliverableId, User user) {
@@ -86,18 +87,21 @@ public class ReviewRoundService implements ReviewRoundReader {
                 r == all.get(0), r.getDecision(), status(d, all));
     }
 
-    // 회차는 저장하지 않은 값 두 가지를 함께 내보낸다: 최신 회차인가, 이 승인이 지금 확정 근거인가
+    // 회차는 저장하지 않은 값 세 가지를 함께 내보낸다: 최신 회차인가, 이 승인이 지금 확정 근거인가, 이 회차의 확정을 취소했는가
     private Round round(ReviewRound r, boolean latest) {
-        return Round.from(r, latest, latest && basisOf(r) == Basis.CURRENT);
+        boolean cancelled = "APPROVED".equals(r.getDecision()) && cancellations.existsByReviewId(r.getId());
+        return Round.from(r, latest, latest && basisOf(r) == Basis.CURRENT, cancelled);
     }
 
     /** 회차의 승인이 확정 근거가 되는지, 안 되면 왜인지(K-10 3장·7장). CURRENT만 근거다. */
-    public enum Basis { CURRENT, UNDECIDED, CHANGES_REQUESTED, NO_FILE, NEWER_CONTENT }
+    public enum Basis { CURRENT, UNDECIDED, CHANGES_REQUESTED, CANCELLED, NO_FILE, NEWER_CONTENT }
 
     /** 최신 회차가 CURRENT이면 지금 확정 근거다. 확정(K-20)도 이 판정을 쓴다. */
     public Basis basisOf(ReviewRound r) {
         if (r.getDecision() == null) return Basis.UNDECIDED;
         if (!"APPROVED".equals(r.getDecision())) return Basis.CHANGES_REQUESTED;
+        // 확정을 취소한 회차의 승인은 되살아나지 않는다. 다시 확정하려면 새 회차의 승인이 필요하다(K-20 2장)
+        if (cancellations.existsByReviewId(r.getId())) return Basis.CANCELLED;
         if (r.getFile() == null) return Basis.NO_FILE;
         // 같은 내용을 다시 올려도 버전은 올라가므로 버전 번호가 아니라 해시로 비교한다
         boolean newest = files.findTopByProjectAndFileNameOrderByVersionDesc(r.getProject(), r.getFile().getFileName())
