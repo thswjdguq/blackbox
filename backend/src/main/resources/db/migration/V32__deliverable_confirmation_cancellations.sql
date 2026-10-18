@@ -1,6 +1,6 @@
 -- K-20 0.3 확정 취소. 취소한 확정은 deliverable_confirmations에서 이 표로 옮긴다.
 -- 확정했던 회차·사람·시각을 그대로 남기고 취소한 사람·시각·사유를 더한다. 이 표의 줄은 고치거나 지우지 않는다.
--- V26~V30은 시연 브랜치의 마이그레이션을 main으로 옮길 때 쓴다. 이 파일은 그 통합 뒤에 병합한다.
+-- V26~V31은 시연 브랜치의 마이그레이션을 main으로 옮길 때 쓴다. 이 파일은 그 통합 뒤에 병합한다.
 
 CREATE TABLE deliverable_confirmation_cancellations (
     id             UUID PRIMARY KEY,

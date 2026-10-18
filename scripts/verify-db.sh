@@ -261,7 +261,7 @@ ok "확정된 제출물에 제출 기록 성공"
 expect_reject "$UPGRADE_DB" "INSERT INTO deliverable_submissions (deliverable_id, submitted_at, recorded_by, recorded_at) VALUES ('$D5', NOW(), '$U1', NOW())" "같은 제출물에 제출 기록 두 번"
 expect_reject "$UPGRADE_DB" "DELETE FROM deliverable_confirmations WHERE deliverable_id = '$D5'" "제출 기록이 있는 확정 삭제"
 
-# ── 7. 확정 취소 기록 제약 (K-20 0.3, V31) ───────────────────────────────
+# ── 7. 확정 취소 기록 제약 (K-20 0.3, V32) ───────────────────────────────
 step "7. 확정 취소 기록 제약 동작 확인"
 CANCEL_COLS="id, deliverable_id, project_id, review_id, confirmed_by, confirmed_at, cancelled_by, cancelled_at, reason"
 psql_run "$UPGRADE_DB" -c "INSERT INTO deliverable_confirmation_cancellations ($CANCEL_COLS) VALUES (gen_random_uuid(), '$D3', '$P1', '$V1', '$U1', NOW(), '$U1', NOW(), '표지 오타')" >/dev/null
