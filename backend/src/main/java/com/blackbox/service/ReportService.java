@@ -31,7 +31,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -70,19 +73,34 @@ public class ReportService {
     private final FileVaultRepository     vaultRepo;
     private final ContributionScoreRepository scoreRepo;
     private final AlertRepository         alertRepo;
+    private final DeliverableRepository   deliverableRepo;
+    private final ReviewRoundRepository   roundRepo;
+    private final ReviewCommentRepository commentRepo;
+    private final DeliverableConfirmationRepository confirmationRepo;
+    private final DeliverableSubmissionRepository   submissionRepo;
 
     public ReportService(ProjectAccessChecker accessChecker,
                          ProjectMemberRepository memberRepo,
                          TaskRepository taskRepo,
                          FileVaultRepository vaultRepo,
                          ContributionScoreRepository scoreRepo,
-                         AlertRepository alertRepo) {
+                         AlertRepository alertRepo,
+                         DeliverableRepository deliverableRepo,
+                         ReviewRoundRepository roundRepo,
+                         ReviewCommentRepository commentRepo,
+                         DeliverableConfirmationRepository confirmationRepo,
+                         DeliverableSubmissionRepository submissionRepo) {
         this.accessChecker = accessChecker;
         this.memberRepo    = memberRepo;
         this.taskRepo      = taskRepo;
         this.vaultRepo     = vaultRepo;
         this.scoreRepo     = scoreRepo;
         this.alertRepo     = alertRepo;
+        this.deliverableRepo  = deliverableRepo;
+        this.roundRepo        = roundRepo;
+        this.commentRepo      = commentRepo;
+        this.confirmationRepo = confirmationRepo;
+        this.submissionRepo   = submissionRepo;
     }
 
     // ── 공개 API ─────────────────────────────────────────────────────────────
@@ -97,9 +115,10 @@ public class ReportService {
         List<FileVault>          vaults  = vaultRepo.findByProjectOrderByUploadedAtDesc(project);
         List<ContributionScore>  scores  = scoreRepo.findByProjectOrderByTotalScoreDesc(project);
         List<Alert>              alerts  = alertRepo.findByProjectOrderByCreatedAtDesc(project);
+        DeliverableRecords       records = loadDeliverableRecords(project);
 
         String generatedAt = OffsetDateTime.now().format(FMT);
-        String reportHash  = computeReportHash(project.getId(), scores, tasks, vaults, alerts);
+        String reportHash  = computeReportHash(project.getId(), scores, tasks, vaults, alerts, records);
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Document doc = new Document(PageSize.A4, 50, 50, 60, 60);
@@ -109,6 +128,7 @@ public class ReportService {
 
             addCoverSection(doc, project, requester, generatedAt, reportHash, members.size());
             addScoreSection(doc, scores);
+            addDeliverableSection(doc, records);
             addTaskSection(doc, tasks);
             addVaultSection(doc, vaults);
             addAlertSection(doc, alerts);
@@ -178,7 +198,7 @@ public class ReportService {
         doc.add(hashBox);
 
         doc.add(spacer(8));
-        doc.add(para("같은 기록으로 다시 만들면 같은 해시가 나옵니다. 리포트를 다시 받아 해시를 비교하면 그사이 점수·업무·파일·경보 기록이 바뀌었는지 알 수 있습니다. 만든 시각과 점수의 계산 시각은 해시에 넣지 않습니다.",
+        doc.add(para("같은 기록으로 다시 만들면 같은 해시가 나옵니다. 리포트를 다시 받아 해시를 비교하면 그사이 점수·제출물·업무·파일·경보 기록이 바뀌었는지 알 수 있습니다. 만든 시각과 점수의 계산 시각은 해시에 넣지 않습니다.",
                 font(8, GRAY_MID, Font.ITALIC)));
 
         // 구분선
@@ -246,6 +266,90 @@ public class ReportService {
         doc.add(para("* 전체참여(4개 모두) / 부분참여(2~3개) / 미참여(0~1개)",
                 font(7, GRAY_MID, Font.ITALIC)));
         doc.add(spacer(12));
+    }
+
+    // ── 제출물 기록 섹션 ─────────────────────────────────────────────────────
+
+    /** 제출물 쪽 기록. PDF의 "제출물 기록"과 해시가 같은 자료를 쓴다. feedbackByRound는 회차 id별 피드백 수다 */
+    record DeliverableRecords(List<Deliverable> deliverables, List<ReviewRound> rounds, Map<UUID, Integer> feedbackByRound,
+                              List<DeliverableConfirmation> confirmations, List<DeliverableSubmission> submissions) {
+        List<String> hashLines() {
+            List<String> lines = new ArrayList<>();
+            deliverables.forEach(d -> lines.add("deliverable|" + d.getId() + "|" + d.getTitle() + "|" + d.getDueDate()));
+            rounds.forEach(r -> lines.add("round|" + r.getId() + "|" + r.getDecision() + "|" + r.getDecidedAt()
+                    + "|" + feedbackByRound.getOrDefault(r.getId(), 0)));
+            confirmations.forEach(c -> lines.add("confirm|" + c.getDeliverable().getId() + "|" + c.getReview().getId()
+                    + "|" + c.getConfirmedAt()));
+            submissions.forEach(s -> lines.add("submit|" + s.getConfirmation().getDeliverable().getId() + "|" + s.getSubmittedAt()
+                    + "|" + s.getChannel() + "|" + s.getNote()));
+            return lines;
+        }
+    }
+
+    private DeliverableRecords loadDeliverableRecords(Project project) {
+        List<ReviewRound> rounds = roundRepo.findByProjectOrderByRoundNoAsc(project);
+        // ponytail: 회차마다 피드백을 한 번씩 읽어 센다. 회차가 수백 개가 되면 ReviewCommentRepository에 묶어 세는 쿼리를 둔다
+        Map<UUID, Integer> feedback = new HashMap<>();
+        rounds.forEach(r -> feedback.put(r.getId(), commentRepo
+                .findByProjectIdAndDeliverableIdAndReviewIdOrderByCreatedAtAscIdAsc(project.getId(), r.getDeliverable().getId(), r.getId())
+                .size()));
+        return new DeliverableRecords(deliverableRepo.findByProjectOrderByDueDateAscCreatedAtAsc(project), rounds, feedback,
+                confirmationRepo.findByProject(project), submissionRepo.findByConfirmationProject(project));
+    }
+
+    record Event(OffsetDateTime at, String what, User who) {}
+
+    /** 제출물 하나의 회차 열림·결정·확정·제출 기록을 시각 순으로 */
+    static List<Event> events(Deliverable d, DeliverableRecords records) {
+        List<Event> events = new ArrayList<>();
+        for (ReviewRound r : records.rounds()) {
+            if (!r.getDeliverable().getId().equals(d.getId())) continue;
+            String file = r.getFile() != null ? r.getFile().getFileName() + " v" + r.getFile().getVersion() : "파일 없음";
+            events.add(new Event(r.getOpenedAt(), "검토 " + r.getRoundNo() + "회차 열림 — " + file
+                    + " · 피드백 " + records.feedbackByRound().getOrDefault(r.getId(), 0) + "건", r.getOpenedBy()));
+            if (r.getDecidedAt() != null)
+                events.add(new Event(r.getDecidedAt(), "검토 " + r.getRoundNo() + "회차 " + decisionKo(r.getDecision()), r.getDecidedBy()));
+        }
+        records.confirmations().stream().filter(c -> c.getDeliverable().getId().equals(d.getId())).forEach(c ->
+                events.add(new Event(c.getConfirmedAt(), "최종 확정 — " + c.getReview().getRoundNo() + "회차 승인본", c.getConfirmedBy())));
+        records.submissions().stream().filter(s -> s.getConfirmation().getDeliverable().getId().equals(d.getId())).forEach(s ->
+                events.add(new Event(s.getRecordedAt(), "제출 기록 — " + (s.getChannel() != null ? s.getChannel() + ", " : "")
+                        + "낸 시각 " + s.getSubmittedAt().format(FMT) + (s.getNote() != null ? ", " + s.getNote() : ""), s.getRecordedBy())));
+        events.sort(Comparator.comparing(Event::at));
+        return events;
+    }
+
+    private void addDeliverableSection(Document doc, DeliverableRecords records) throws DocumentException {
+        doc.add(sectionTitle("제출물 기록"));
+
+        if (records.deliverables().isEmpty()) {
+            doc.add(emptyNote("등록된 제출물이 없습니다."));
+            doc.add(spacer(8));
+            return;
+        }
+
+        for (Deliverable d : records.deliverables()) {
+            doc.add(para(d.getTitle() + "  ·  기한 " + d.getDueDate(), font(9, GRAY_DARK, Font.BOLD)));
+            List<Event> events = events(d, records);
+            if (events.isEmpty()) {
+                doc.add(emptyNote("검토를 시작하지 않았습니다."));
+                doc.add(spacer(6));
+                continue;
+            }
+            PdfPTable table = new PdfPTable(new float[]{18f, 62f, 20f});
+            table.setWidthPercentage(100);
+            for (String h : new String[]{"일시", "기록", "누가"}) {
+                table.addCell(headerCell(h, INDIGO));
+            }
+            for (Event e : events) {
+                table.addCell(dataCell(e.at().format(FMT), WHITE, Font.NORMAL));
+                table.addCell(dataCell(e.what(), WHITE, Font.NORMAL));
+                table.addCell(dataCell(e.who() != null ? e.who().getName() : "-", WHITE, Font.NORMAL));
+            }
+            doc.add(table);
+            doc.add(spacer(6));
+        }
+        doc.add(spacer(6));
     }
 
     // ── 태스크 섹션 ───────────────────────────────────────────────────────────
@@ -369,13 +473,14 @@ public class ReportService {
      * 조회 순서(점수는 모두 같은 값으로 정렬돼 순서가 정해지지 않는다)에 기대지 않게 줄을 정렬한다
      */
     static String computeReportHash(UUID projectId, List<ContributionScore> scores, List<Task> tasks, List<FileVault> vaults,
-                                    List<Alert> alerts) {
+                                    List<Alert> alerts, DeliverableRecords records) {
         List<String> lines = new ArrayList<>();
         scores.forEach(s -> lines.add("score|" + s.getUser().getId() + "|" + s.isTaskParticipated() + "|" + s.isMeetingParticipated()
                 + "|" + s.isFileParticipated() + "|" + s.isActionParticipated() + "|" + s.getParticipationLevel()));
         tasks.forEach(t -> lines.add("task|" + t.getId() + "|" + t.getStatus() + "|" + t.getUpdatedAt()));
         vaults.forEach(v -> lines.add("file|" + v.getId() + "|" + v.getFileHash() + "|" + v.getUploadedAt()));
         alerts.forEach(a -> lines.add("alert|" + a.getId() + "|" + a.getResolvedAt()));
+        lines.addAll(records.hashLines());
         Collections.sort(lines);
         return sha256(projectId + "\n" + String.join("\n", lines));
     }
@@ -481,6 +586,14 @@ public class ReportService {
             case "HIGH"   -> "높음";
             case "URGENT" -> "긴급";
             default       -> p;
+        };
+    }
+
+    private static String decisionKo(String d) {
+        return switch (d) {
+            case "APPROVED"          -> "승인";
+            case "CHANGES_REQUESTED" -> "수정 요청";
+            default                  -> d;
         };
     }
 
