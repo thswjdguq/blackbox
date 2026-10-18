@@ -41,6 +41,10 @@ export default function DeliverableFormModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !dueDate) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || dueDate < "0001-01-01") {
+      setError("제출 기한의 연도를 네 자리로 입력해 주세요.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -98,7 +102,7 @@ export default function DeliverableFormModal({
 
         <label className="block text-sm text-bb-text">
           제출 기한 *
-          <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={FIELD} />
+          <input type="date" required min="0001-01-01" max="9999-12-31" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={FIELD} />
         </label>
 
         <label className="block text-sm text-bb-text">

@@ -9,7 +9,6 @@ import {
   LogOut,
   Sun,
   Moon,
-  UserCircle,
   Bell,
   AlertTriangle,
   Zap,
@@ -23,6 +22,8 @@ import SidebarNavigation from "@/components/project/SidebarNavigation";
 import AgentLauncher from "@/components/agent/AgentLauncher";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
+import AccountIdentity from "@/components/AccountIdentity";
+import { ALERT_TONE } from "@/lib/alertTone";
 import { Alert } from "@/types/vault";
 
 // ── 알림 유틸 ──────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ function timeAgo(iso: string): string {
 }
 
 const ALERT_CFG = {
-  FREE_RIDE: { label: "무임승차",  color: "text-amber-400",  bg: "bg-amber-500/15",  Icon: TrendingDown  },
+  FREE_RIDE: { label: "참여 기록 확인",  color: "text-amber-400",  bg: "bg-amber-500/15",  Icon: TrendingDown  },
   OVERLOAD:  { label: "과부하",    color: "text-orange-400", bg: "bg-orange-500/15", Icon: Zap           },
   DROPOUT:   { label: "이탈 감지", color: "text-red-400",    bg: "bg-red-500/15",    Icon: AlertTriangle },
   TAMPER:    { label: "파일 변조", color: "text-purple-400", bg: "bg-purple-500/15", Icon: ShieldAlert   },
@@ -106,7 +107,7 @@ function NotificationBell({ projectId }: { projectId: string }) {
       <button
         onClick={() => setOpen(v => !v)}
         className="relative p-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2 transition-colors"
-        aria-label="알림"
+        aria-label="팀 위험 알림"
       >
         <Bell size={15} />
         {unread > 0 && (
@@ -125,7 +126,7 @@ function NotificationBell({ projectId }: { projectId: string }) {
                         shadow-2xl z-50 overflow-hidden">
           {/* 헤더 */}
           <div className="px-4 py-3 border-b border-bb-border flex items-center justify-between">
-            <span className="text-sm font-semibold text-bb-text">알림</span>
+            <span className="text-sm font-semibold text-bb-text">팀 위험 알림</span>
             {unread > 0 && (
               <span className="text-xs text-bb-text2">{unread}개 읽지 않음</span>
             )}
@@ -150,6 +151,7 @@ function NotificationBell({ projectId }: { projectId: string }) {
             ) : (
               displayed.map((alert) => {
                 const cfg = ALERT_CFG[alert.alertType as keyof typeof ALERT_CFG] ?? ALERT_CFG.FREE_RIDE;
+                const tone = ALERT_TONE[alert.severity] ?? ALERT_TONE.LOW;
                 return (
                   <button
                     key={alert.id}
@@ -163,8 +165,8 @@ function NotificationBell({ projectId }: { projectId: string }) {
                       {/* 타입 배지 */}
                       <span className={`mt-0.5 shrink-0 text-[10px] font-semibold
                                         px-1.5 py-0.5 rounded
-                                        ${cfg.color} ${cfg.bg}`}>
-                        {cfg.label}
+                                        ${tone.color} ${tone.bg} border`}>
+                        {tone.label} · {cfg.label}
                       </span>
                       {/* 메시지 + 시간 */}
                       <div className="flex-1 min-w-0">
@@ -279,6 +281,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
           <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
         </button>
         {currentProjectId && <AgentLauncher projectId={currentProjectId} compact />}
+        <AccountIdentity compact active={pathname === "/profile/settings"} />
       </header>
 
       {mobileOpen && (
@@ -332,18 +335,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
             {isDark ? "라이트 모드" : "다크 모드"}
           </button>
-          <Link
-            href="/profile/settings"
-            onClick={() => setMobileOpen(false)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              pathname === "/profile/settings"
-                ? "bg-bb-primary/10 text-bb-primary font-medium"
-                : "text-bb-text2 hover:text-bb-text hover:bg-bb-surface2"
-            }`}
-          >
-            <UserCircle size={16} className={pathname === "/profile/settings" ? "text-bb-primary" : "text-bb-text2"} />
-            프로필 설정
-          </Link>
+          <AccountIdentity active={pathname === "/profile/settings"} onNavigate={() => setMobileOpen(false)} />
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm

@@ -42,13 +42,22 @@ export interface Suggestion {
   input: object;
 }
 
+export function canBreakDown(stage: string) {
+  return stage !== "NO_REQUIREMENT" && stage !== "CONFIRMED" && stage !== "SUBMITTED";
+}
+
+export function breakDownUnavailableReason(stage: string) {
+  return stage === "CONFIRMED" ? "최종본 확정됨" : stage === "SUBMITTED" ? "제출 기록 완료" : stage === "NO_REQUIREMENT" ? "요구사항 없음" : "";
+}
+
 /**
  * "지금 단계에 맞는 도움" (화면 문서 4.9의 표). 기한이 가장 빠른 제출물의 단계로 고른다.
  * 4단계의 화면마다의 버튼도 이 규칙을 같이 쓴다. 맞는 실행이 없거나 허용되지 않으면 null.
  */
 export function suggestFor(status: AgentStatus): Suggestion | null {
-  const first = status.stages[0];
+  const first = status.stages.find(s => s.stage !== "CONFIRMED" && s.stage !== "SUBMITTED");
   if (!first) {
+    if (status.stages.length) return null;
     return allowed(status, "PLAN_FROM_BRIEF")
       ? { deliverable: null, sentence: "아직 제출물이 없습니다", skill: "PLAN_FROM_BRIEF", input: {} }
       : null;
@@ -63,6 +72,12 @@ export function suggestFor(status: AgentStatus): Suggestion | null {
       return pick("BREAK_DOWN_TASKS", "업무가 없는 필수 요구사항이 있습니다", { deliverableId: first.deliverableId });
     case "TASKS_IN_PROGRESS":
       return pick("STATUS_BRIEF", "업무가 진행 중입니다", {});
+    case "IN_REVIEW":
+      return pick("STATUS_BRIEF", "팀원의 최종 파일 검토를 기다리고 있습니다", {});
+    case "CHANGES_REQUESTED":
+      return pick("STATUS_BRIEF", "검토 의견을 반영할 차례입니다", {});
+    case "APPROVED":
+      return pick("STATUS_BRIEF", "검토가 끝나 팀장의 최종본 확정을 기다리고 있습니다", {});
     default:
       // NO_REQUIREMENT, UNCHECKED_REQUIREMENT, READY_FOR_REVIEW, 모르는 값: 맞는 실행이 없다(11장)
       return null;

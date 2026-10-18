@@ -10,8 +10,6 @@ import {
   Eye,
   EyeOff,
   UserPlus,
-  Users,
-  GraduationCap,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -21,7 +19,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"STUDENT" | "PROFESSOR">("STUDENT");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -157,38 +154,7 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Role */}
-          <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
-              역할
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRole("STUDENT")}
-                className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                  role === "STUDENT"
-                    ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
-                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
-                }`}
-              >
-                <Users size={16} />
-                학생
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("PROFESSOR")}
-                className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                  role === "PROFESSOR"
-                    ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
-                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
-                }`}
-              >
-                <GraduationCap size={16} />
-                교수
-              </button>
-            </div>
-          </div>
+          <p className="text-xs text-bb-text2">프로젝트를 만들거나 초대를 받아 참여할 수 있습니다. 팀장·팀원·관찰자 권한은 프로젝트별로 정해집니다.</p>
 
           <button
             type="submit"

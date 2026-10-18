@@ -396,7 +396,11 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
       : null;
   // YYYY.MM.DD 포맷
   const createdAtLabel = project.createdAt
-    ? project.createdAt.slice(0, 10).replace(/-/g, ".")
+    ? (() => {
+        const date = new Date(project.createdAt);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
+      })()
     : null;
 
   return (

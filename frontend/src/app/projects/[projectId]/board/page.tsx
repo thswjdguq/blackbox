@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
+import DeadlineNotice from "@/components/kanban/DeadlineNotice";
 import { Task, ScoreMap } from "@/types/task";
 import api from "@/lib/api";
 import {
@@ -66,7 +67,8 @@ export default function BoardPage() {
   // 동기화 실패는 보드 전체 오류(error)와 분리한다. 실패해도 보드는 그대로 보여야 한다
   const [myUserId, setMyUserId] = useState<string | null>(null);
   // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
-  const readOnly = members.find((m) => m.userId === myUserId)?.role === "OBSERVER";
+  const myRole = members.find((m) => m.userId === myUserId)?.role ?? "OBSERVER";
+  const readOnly = myRole === "OBSERVER";
 
   // ── 필터 ──────────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<KanbanFilter>({ assigneeId: null, priority: null, tag: "" });
@@ -244,6 +246,8 @@ export default function BoardPage() {
           <p className="mx-8 mt-4 text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다. 업무를 클릭하면 내용을 확인할 수 있습니다.</p>
         )}
 
+        <div className="px-4 md:px-8 py-4"><DeadlineNotice tasks={tasks} /></div>
+
         {/* ── 필터 바 ──────────────────────────────────────────────────────── */}
         <div className="px-8 py-3 border-b border-bb-border flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-bb-text2 shrink-0">
@@ -310,9 +314,14 @@ export default function BoardPage() {
 
         {/* Board area */}
         <div className="flex-1 p-4 md:p-8 md:overflow-x-auto">
-          <div className="md:min-w-[900px]">
+          <div>
             <KanbanBoard
+              key={`${projectId}:${myUserId}:${myRole}`}
               projectId={projectId}
+              userId={myUserId ?? ""}
+              role={myRole}
+              onClearAssignee={() => setFilter(f => ({ ...f, assigneeId: null }))}
+              onResetFilters={clearFilter}
               initialTasks={tasks}
               // 서버는 관찰자를 업무 담당자로 받지 않는다
               members={members

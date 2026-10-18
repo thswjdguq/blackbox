@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import BeginnerGuide from "@/components/BeginnerGuide";
 import api from "@/lib/api";
+import { useProfileStore } from "@/lib/store/profileStore";
+import { sessionGeneration } from "@/lib/sessionCache";
 import {
   UserCircle,
   Mail,
@@ -111,8 +113,11 @@ function ProfileSettingsContent() {
     if (!nameEdit.trim()) return;
     setSavingName(true);
     setNameMsg(null);
+    const generation = sessionGeneration();
     try {
       const { data } = await api.put<Profile>("/auth/profile", { name: nameEdit.trim() });
+      if (generation !== sessionGeneration()) return;
+      useProfileStore.getState().update(data);
       setProfile(data);
       setNameMsg({ ok: true, text: "이름이 변경되었습니다" });
     } catch {

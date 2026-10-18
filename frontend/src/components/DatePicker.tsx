@@ -108,7 +108,7 @@ export default function DatePicker({
       <div
         className="flex items-center gap-1 w-full bg-bb-surface border border-bb-border rounded-lg px-3 py-2
                    focus-within:border-bb-primary transition-colors cursor-text"
-        onClick={() => yearRef.current?.focus()}
+        onClick={(e) => { if (e.target === e.currentTarget) yearRef.current?.focus(); }}
       >
         <input
           ref={yearRef}

@@ -27,6 +27,11 @@ assert.equal(link(`/projects/${project}/board?task=${task}`).href,`/projects/${p
 for(const href of ['https://example.com','javascript:alert(1)',`/projects/${project}/../../profile`,`/projects/${task}/board`])assert.equal(typeof link(href),'string');
 
 const status={available:true,unavailableReason:null,skills:[{skill:'ASK',label:'물어보기',allowed:true},{skill:'STATUS_BRIEF',label:'지금 상태 살펴보기',allowed:true}],canDecide:false,stages:[],pendingProposalCount:0};
+const skillsModule=loader()('@/lib/agent/skills');
+assert.equal(skillsModule.canBreakDown('CONFIRMED'),false);assert.equal(skillsModule.canBreakDown('SUBMITTED'),false);
+assert.equal(skillsModule.canBreakDown('NO_REQUIREMENT'),false);assert.equal(skillsModule.canBreakDown('NO_TASK'),true);
+const mixed={...status,stages:[{deliverableId:'closed',title:'완료',stage:'SUBMITTED',dueDate:'2026-10-01'},{deliverableId:'open',title:'진행',stage:'TASKS_IN_PROGRESS',dueDate:'2026-10-23'}]};
+assert.equal(skillsModule.suggestFor(mixed).deliverable.id,'open');assert.equal(skillsModule.suggestFor({...status,stages:[mixed.stages[0]]}),null);
 let remote=status,release;const apiMocks={
  getAgentStatus:async()=>({data:remote}),getAgentOrigins:async()=>({data:{deliverableIds:[],requirementIds:[],taskIds:[]}}),getProposals:async()=>({data:[]})
 };

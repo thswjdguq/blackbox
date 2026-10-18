@@ -27,6 +27,14 @@ export default function TaskDiscussion({ task, members, files, readOnly, focusMe
   const input = useRef<HTMLTextAreaElement>(null);
   const sequence = useRef(0);
   const focused = useRef<string | null>(null);
+  const focusedMessage = useRef<HTMLLIElement>(null);
+  const scrolledMessage = useRef<string | null>(null);
+  useEffect(() => {
+    if (focusMessageId && focusedMessage.current && scrolledMessage.current !== focusMessageId) {
+      scrolledMessage.current = focusMessageId;
+      focusedMessage.current.scrollIntoView({ block: "center" });
+    }
+  }, [focusMessageId, messages]);
   useEffect(() => { onDraftChange?.(!!body.trim()); }, [body,onDraftChange]);
   const load = useCallback(async (olderPage = 0) => {
     const request = ++sequence.current;
@@ -80,7 +88,8 @@ export default function TaskDiscussion({ task, members, files, readOnly, focusMe
       <Link href={`/projects/${task.projectId}/feedback`} className="text-xs text-bb-primary">피드백함 보기 →</Link></div>
     {loading ? <p className="text-sm text-bb-text2">대화를 불러오는 중…</p> : !messages.length && <p className="text-sm text-bb-text2">질문이나 의견을 여기에 남겨주세요.</p>}
     {hasMore && <button type="button" onClick={() => load(page+1)} disabled={busy} className="text-xs underline text-bb-text2">이전 대화 보기</button>}
-    <ol className="space-y-3">{messages.map(m => <li id={`message-${m.id}`} key={m.id} className={`rounded-xl border p-3 ${m.kind === "REQUEST" ? "border-bb-primary/25 bg-bb-primary/5" : "border-bb-border bg-bb-surface"}`}>
+    <ol className="space-y-3">{messages.map(m => <li id={`message-${m.id}`} key={m.id} ref={m.id === focusMessageId ? focusedMessage : undefined} className={`rounded-xl border p-3 ${m.id === focusMessageId ? "border-bb-primary bg-bb-primary/10" : m.kind === "REQUEST" ? "border-bb-primary/25 bg-bb-primary/5" : "border-bb-border bg-bb-surface"}`}>
+      {m.id === focusMessageId && <p className="mb-2 text-xs text-bb-primary">알림·요청에 연결된 대화</p>}
       <div className="flex flex-wrap gap-2 items-center text-xs"><strong>{m.authorName}</strong><time className="text-bb-text2">{new Date(m.createdAt).toLocaleString("ko-KR")}</time>
         {m.kind === "REQUEST" && <span className="text-bb-primary">{m.recipientName}님에게 의견 요청 · {m.answeredAt ? "응답 완료" : "답변 대기"}</span>}
         {m.kind === "REPLY" && <span className="text-bb-text2">{messages.find(p => p.id === m.parentId)?.authorName ?? "의견 요청"}에 대한 답글</span>}</div>

@@ -130,7 +130,7 @@ export default function MyTasks({ projects }: { projects: ProjectRef[] }) {
             const shown = showAll ? list : list.slice(0, PREVIEW);
             return (
               <div key={g.key} className="px-4 py-3" data-testid={`my-tasks-${g.key}`}>
-                <p className={`mb-2 text-xs font-semibold ${g.key === "overdue" ? "text-red-400" : g.key === "today" ? "text-orange-400" : "text-bb-text2"}`}>
+                <p className={`mb-2 text-xs font-semibold ${g.key === "overdue" ? "text-red-400" : g.key === "today" ? "text-red-400" : "text-bb-text2"}`}>
                   {g.label} <span className="font-normal">{list.length}</span>
                 </p>
                 <ul className="space-y-1">

@@ -19,12 +19,12 @@ export function daysLeft(ymd: string, now: Date = new Date()): number {
   return Math.round((parseLocalDate(ymd).getTime() - today.getTime()) / 86_400_000);
 }
 
-/** "오늘 마감" / "D-3" / "2일 지남" */
+/** 날짜 단위 계약이므로 초과 시간을 추정하지 않는다. */
 export function dueLabel(ymd: string, now?: Date): string {
   const d = daysLeft(ymd, now);
-  if (d < 0) return `${-d}일 지남`;
+  if (d < 0) return `${-d}일 초과`;
   if (d === 0) return "오늘 마감";
-  return `D-${d}`;
+  return `${d <= 3 ? "임박" : "여유"} · D-${d}`;
 }
 
 export type DueTone = "overdue" | "today" | "soon" | "later";
@@ -40,10 +40,21 @@ export function dueTone(ymd: string, soonDays = 3, now?: Date): DueTone {
 
 /** 글자 색 (Tailwind) */
 export const DUE_TEXT: Record<DueTone, string> = {
-  overdue: "text-red-400",
-  today:   "text-orange-400",
-  soon:    "text-yellow-400",
-  later:   "text-bb-text2",
+  overdue: "text-red-700 dark:text-red-300",
+  today:   "text-red-700 dark:text-red-300",
+  soon:    "text-yellow-800 dark:text-yellow-300",
+  later:   "text-blue-700 dark:text-blue-300",
+};
+
+export const DUE_BADGE: Record<DueTone, string> = {
+  overdue: `${DUE_TEXT.overdue} bg-red-500/10 border-red-500/30`,
+  today: `${DUE_TEXT.today} bg-red-500/10 border-red-500/30`,
+  soon: `${DUE_TEXT.soon} bg-yellow-500/10 border-yellow-500/30`,
+  later: `${DUE_TEXT.later} bg-blue-500/10 border-blue-500/30`,
+};
+
+export const DUE_BAR: Record<DueTone, string> = {
+  overdue: "bg-red-500", today: "bg-red-500", soon: "bg-yellow-500", later: "bg-blue-500",
 };
 
 /** "10월 20일" */

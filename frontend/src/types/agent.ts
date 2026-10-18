@@ -6,7 +6,8 @@ export interface UserRef { userId: string; name: string }
 
 export type Stage =
   | "NO_REQUIREMENT" | "NO_TASK" | "UNCOVERED_REQUIREMENT"
-  | "TASKS_IN_PROGRESS" | "UNCHECKED_REQUIREMENT" | "READY_FOR_REVIEW";
+  | "TASKS_IN_PROGRESS" | "UNCHECKED_REQUIREMENT" | "READY_FOR_REVIEW"
+  | "IN_REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "CONFIRMED" | "SUBMITTED";
 
 export interface AgentStatus {
   available: boolean;

@@ -1,25 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import TaskStatusControl from "./TaskStatusControl";
 import AiBadge from "@/components/agent/AiBadge";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
-import { PRIORITY_TEXT, TASK_STATUS_TEXT, type Task, type TaskPriority, type TaskStatus } from "@/types/task";
+import { PRIORITY_TEXT, type Task, type TaskPriority, type TaskStatus } from "@/types/task";
 
 type SortKey = "title" | "status" | "assignee" | "due" | "deliverable" | "priority";
 
 const STATUS_ORDER: Record<TaskStatus, number> = { TODO: 0, IN_PROGRESS: 1, DONE: 2 };
 const PRIORITY_ORDER: Record<TaskPriority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 
-const STATUS_CLS: Record<TaskStatus, string> = {
-  TODO: "bg-bb-surface2 text-bb-text2",
-  IN_PROGRESS: "bg-indigo-500/15 text-indigo-400",
-  DONE: "bg-teal-400/15 text-teal-400",
-};
-
 const COLUMNS: { key: SortKey; label: string; cls: string }[] = [
-  { key: "title",       label: "업무",       cls: "w-[32%]" },
-  { key: "status",      label: "상태",       cls: "w-[10%]" },
+  { key: "title",       label: "업무",       cls: "w-[26%]" },
+  { key: "status",      label: "상태",       cls: "w-[16%]" },
   { key: "assignee",    label: "담당자",     cls: "w-[14%]" },
   { key: "due",         label: "마감",       cls: "w-[16%]" },
   { key: "deliverable", label: "제출물·요구사항", cls: "w-[20%]" },
@@ -42,10 +37,12 @@ function compare(a: Task, b: Task, key: SortKey): number {
  * 업무 목록 보기 (C-50 6번, Flow 업무 목록 참고). 보드와 같은 필터를 거친 업무를 표로 보여 준다.
  * 열 이름을 누르면 정렬하고, 행을 누르거나 Enter를 누르면 업무 창이 열린다.
  */
-export default function TaskListView({ tasks, onEdit, readOnly, aiIds }: {
+export default function TaskListView({ tasks, onEdit, onMove, busy, readOnly, aiIds }: {
   tasks: Task[];
   onEdit: (task: Task) => void;
   readOnly?: boolean;
+  busy?: boolean;
+  onMove: (id: string, status: TaskStatus) => Promise<void>;
   aiIds?: Set<string>;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("due");
@@ -92,7 +89,7 @@ export default function TaskListView({ tasks, onEdit, readOnly, aiIds }: {
                 data-testid={`task-row-${t.id}`}
                 tabIndex={0}
                 onClick={() => onEdit(t)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(t); } }}
+                onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onEdit(t); } }}
                 aria-label={`${t.title} ${readOnly ? "보기" : "열기"}`}
                 className={`cursor-pointer border-b border-bb-border/60 last:border-0 hover:bg-bb-surface2 focus:outline-none focus-visible:bg-bb-surface2 ${done ? "opacity-60" : ""}`}
               >
@@ -101,7 +98,7 @@ export default function TaskListView({ tasks, onEdit, readOnly, aiIds }: {
                   {t.tag && <span className="block truncate text-[11px] text-bb-text2">#{t.tag}</span>}
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] ${STATUS_CLS[t.status]}`}>{t.completionRequestedAt ? "승인 대기" : TASK_STATUS_TEXT[t.status]}</span>
+                  <TaskStatusControl task={t} onMove={onMove} onEdit={onEdit} busy={busy} readOnly={readOnly} />
                 </td>
                 <td className="px-3 py-2.5 truncate text-bb-text2">
                   {t.assignees.length === 0 ? "미배정" : t.assignees.map((a) => a.name).join(", ")}

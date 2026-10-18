@@ -10,8 +10,8 @@ export interface TaskResource { taskId: string; taskTitle: string; file: {
   id: string; fileName: string; version: number; fileSize: number; uploaderName: string; uploadedAt: string;
 } }
 
-export default function TaskResources({ task, readOnly, uploadLocked = false, onBusy, onUploaded, onFilesChanged }: {
-  task: Task; readOnly: boolean; uploadLocked?: boolean; onBusy: (busy: boolean) => void; onUploaded: () => void; onFilesChanged?: (files: TaskResource[]) => void;
+export default function TaskResources({ task, readOnly, uploadLocked = false, onBusy, onUploaded, onFilesChanged, focusFileId }: {
+  task: Task; readOnly: boolean; uploadLocked?: boolean; onBusy: (busy: boolean) => void; onUploaded: () => void; onFilesChanged?: (files: TaskResource[]) => void; focusFileId?: string | null;
 }) {
   const path = `/projects/${task.projectId}/tasks/${task.id}`;
   const [files, setFiles] = useState<TaskResource[]>([]);
@@ -20,6 +20,13 @@ export default function TaskResources({ task, readOnly, uploadLocked = false, on
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const focusedFile = useRef<HTMLLIElement>(null);
+  const didFocus = useRef<string | null>(null);
+  useEffect(() => {
+    if (focusFileId && focusedFile.current && didFocus.current !== focusFileId) {
+      didFocus.current = focusFileId; focusedFile.current.scrollIntoView({ block: "center" });
+    }
+  }, [focusFileId, files]);
   const load = useCallback(async () => {
     try { const { data } = await api.get<TaskResource[]>(`${path}/files`); setFiles(data); setError(""); }
     catch (e) { setError(apiError(e, "결과 파일을 불러오지 못했습니다.")); }
@@ -46,7 +53,8 @@ export default function TaskResources({ task, readOnly, uploadLocked = false, on
     {error && <p role="alert" className="text-sm text-red-600">{error} <button type="button" disabled={busy} onClick={load} className="underline">다시 조회</button></p>}
     {notice && <p role="status" className="text-sm text-bb-primary">{notice}</p>}
     {loading ? <p className="text-sm text-bb-text2">파일을 불러오는 중…</p> : !files.length ? <p className="text-sm text-bb-text2">등록된 결과 파일이 없습니다.</p> :
-      <ul className="space-y-2">{files.map(({ file }) => <li key={file.id} className="border border-bb-border rounded-lg p-3">
+      <ul className="space-y-2">{files.map(({ file }) => <li key={file.id} ref={file.id === focusFileId ? focusedFile : undefined} className={`border rounded-lg p-3 ${file.id === focusFileId ? "border-bb-primary bg-bb-primary/5" : "border-bb-border"}`}>
+        {file.id === focusFileId && <p className="mb-1 text-xs text-bb-primary">알림에 연결된 버전</p>}
         <a href={`/api/files/${file.id}/download`} className="text-sm text-bb-primary break-all underline">{file.fileName}</a>
         <p className="text-xs text-bb-text2 mt-1">버전 {file.version} · {file.uploaderName} · {new Date(file.uploadedAt).toLocaleString("ko-KR")}</p>
       </li>)}</ul>}

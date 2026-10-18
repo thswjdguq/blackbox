@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Send, Sparkles, X } from "lucide-react";
 import { useAgentStore } from "@/lib/store/agentStore";
-import { BRIEF_MAX, buttonSkills, canAsk, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
+import { BRIEF_MAX, buttonSkills, canAsk, canBreakDown, breakDownUnavailableReason, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
 import { shortDate } from "@/lib/due";
 import RunEntryView from "./RunEntryView";
 import ProposalList from "./ProposalList";
@@ -109,7 +109,7 @@ export default function AgentDock() {
     if (!pendingInput || pendingInput.projectId !== projectId || !status) return;
     if (pendingInput.skill === "PLAN_FROM_BRIEF") setPending({ skill: "PLAN_FROM_BRIEF" });
     if (pendingInput.skill === "BREAK_DOWN_TASKS") {
-      setPickedDeliverable(status.stages.find((s) => s.stage !== "NO_REQUIREMENT")?.deliverableId ?? "");
+      setPickedDeliverable(status.stages.find((s) => canBreakDown(s.stage))?.deliverableId ?? "");
       setPending({ skill: "BREAK_DOWN_TASKS" });
     }
     clearPendingInput();
@@ -155,7 +155,7 @@ export default function AgentDock() {
       return;
     }
     if (kind === "deliverable" && !input) {
-      setPickedDeliverable(status.stages.find((s) => s.stage !== "NO_REQUIREMENT")?.deliverableId ?? "");
+      setPickedDeliverable(status.stages.find((s) => canBreakDown(s.stage))?.deliverableId ?? "");
       setPending({ skill: "BREAK_DOWN_TASKS" });
       return;
     }
@@ -201,7 +201,7 @@ export default function AgentDock() {
           onSubmit={(e) => {
             e.preventDefault();
             const d = status.stages.find((s) => s.deliverableId === pickedDeliverable);
-            if (!d || d.stage === "NO_REQUIREMENT" || running) return;
+            if (!d || !canBreakDown(d.stage) || running) return;
             start("BREAK_DOWN_TASKS", { deliverableId: d.deliverableId }, d.title);
           }}
           className="mt-2 space-y-2"
@@ -213,10 +213,10 @@ export default function AgentDock() {
             onChange={(e) => setPickedDeliverable(e.target.value)}
             className="w-full rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm text-bb-text focus:border-bb-primary focus:outline-none"
           >
-            {status.stages.length === 0 && <option value="">제출물이 없습니다</option>}
+            <option value="">{status.stages.some(s => canBreakDown(s.stage)) ? "제출물을 선택하세요" : "업무를 나눌 수 있는 제출물이 없습니다"}</option>
             {status.stages.map((s) => (
-              <option key={s.deliverableId} value={s.deliverableId} disabled={s.stage === "NO_REQUIREMENT"}>
-                {s.title} · 기한 {shortDate(s.dueDate)}{s.stage === "NO_REQUIREMENT" ? " (요구사항이 없습니다)" : ""}
+              <option key={s.deliverableId} value={s.deliverableId} disabled={!canBreakDown(s.stage)}>
+                {s.title} · 기한 {shortDate(s.dueDate)}{breakDownUnavailableReason(s.stage) ? ` (${breakDownUnavailableReason(s.stage)})` : ""}
               </option>
             ))}
           </select>
@@ -224,7 +224,7 @@ export default function AgentDock() {
             <button type="button" onClick={() => setPending(null)} className="px-2 py-1.5 text-xs text-bb-text2 hover:text-bb-text">취소</button>
             <button
               type="submit"
-              disabled={running || !status.stages.some((s) => s.deliverableId === pickedDeliverable && s.stage !== "NO_REQUIREMENT")}
+              disabled={running || !status.stages.some((s) => s.deliverableId === pickedDeliverable && canBreakDown(s.stage))}
               className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-bb-primary-h disabled:opacity-50"
             >
               업무로 나누기

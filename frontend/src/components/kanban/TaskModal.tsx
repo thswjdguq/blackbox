@@ -10,6 +10,7 @@ import TaskResources from "./TaskResources";
 import TaskCompletionPanel from "./TaskCompletionPanel";
 import TaskSteps from "./TaskSteps";
 import TaskDiscussion from "./TaskDiscussion";
+import { DUE_BADGE, dueLabel, dueTone } from "@/lib/due";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
 interface Member {
@@ -37,6 +38,7 @@ interface TaskModalProps {
   onWorkflowChanged?: (task: Task) => void;
   workOnly?: boolean;
   focusMessageId?: string | null;
+  focusFileId?: string | null;
 }
 
 // ── 우선순위 선택지 ───────────────────────────────────────────────────
@@ -71,6 +73,7 @@ export default function TaskModal({
   onWorkflowChanged,
   workOnly = false,
   focusMessageId,
+  focusFileId,
 }: TaskModalProps) {
   const [title, setTitle]       = useState(task?.title ?? "");
   const [deliverableId, setDeliverableId] = useState(task?.deliverableId ?? defaultDeliverableId);
@@ -97,6 +100,10 @@ export default function TaskModal({
   const [filesRevision, setFilesRevision] = useState(0);
   const [discussionFiles, setDiscussionFiles] = useState<import("./TaskResources").TaskResource[]>([]);
   const [discussionDirty, setDiscussionDirty] = useState(false);
+  const [completionDirty, setCompletionDirty] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const completionRef = useRef<HTMLDivElement>(null);
+  const discussionRef = useRef<HTMLDivElement>(null);
   const [newStep, setNewStep] = useState("");
 
   // 배경을 잘못 눌러 작성 중인 내용을 잃지 않도록, 처음 값과 달라졌는지 비교한다
@@ -111,7 +118,7 @@ export default function TaskModal({
   const dirty = !readOnly && (initialForm !== currentForm || !!newStep.trim());
 
   // 닫기는 한 곳으로: 배경·닫기(X)·취소·Escape 모두 작성 중이면 먼저 묻는다
-  const requestClose = () => { if (resourceBusy || submitting) return; dirty || discussionDirty ? setConfirmClose(true) : onClose(); };
+  const requestClose = () => { if (resourceBusy || submitting) return; dirty || discussionDirty || completionDirty ? setConfirmClose(true) : onClose(); };
 
   // 열리면 초점을 패널로 옮기고(그려지기 전에), 닫히면 열기 전 자리(업무 카드 등)로 돌려준다
   const panelRef = useRef<HTMLDivElement>(null);
@@ -249,17 +256,32 @@ export default function TaskModal({
           <button type="button" role="tab" aria-selected={tab === "resources"} disabled={submitting} onClick={() => setTab("resources")} className={`text-sm px-3 py-2 rounded ${tab === "resources" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>수행 · 결과 확인</button>
           {!workOnly && <button type="button" role="tab" aria-selected={tab === "info"} disabled={resourceBusy} onClick={() => setTab("info")} className={`text-sm px-3 py-2 rounded ${tab === "info" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>업무 설정</button>}
         </div>}
+        {task && tab === "resources" && <nav aria-label="업무 안에서 바로 이동" className="flex flex-wrap gap-2 border-b border-bb-border px-6 py-2">
+          {[
+            { label: "결과 파일", ref: resultsRef },
+            { label: task.status === "DONE" ? "확인 기록" : task.completionRequestedAt ? "결과 확인하기" : "완료 확인 요청", ref: completionRef },
+            { label: "대화·피드백", ref: discussionRef },
+          ].map(({ label, ref }) => <button key={label} type="button" onClick={() => { ref.current?.scrollIntoView({ block: "start" }); ref.current?.focus({ preventScroll: true }); }} className="rounded-lg border border-bb-border px-3 py-2 text-xs text-bb-text hover:bg-bb-surface2">{label}</button>)}
+        </nav>}
         {task && <div className={`${tab === "resources" ? "flex-1 overflow-y-auto" : "hidden"} px-6 py-5 space-y-6`}>
-          <div><p className="text-xs text-bb-text2 mb-1">{task.deliverableTitle ?? "프로젝트 업무"}</p><h3 className="text-xl font-semibold break-words">{task.title}</h3><p className="mt-2 text-xs text-bb-text2">{task.assignees.map(a => a.name).join(", ") || "담당자 미지정"}{task.dueDate ? ` · ${task.dueDate}까지` : ""}</p></div>
+          <div><p className="text-xs text-bb-text2 mb-1">{task.deliverableTitle ?? "프로젝트 업무"}</p><h3 className="text-xl font-semibold break-words">{task.title}</h3><p className="mt-2 text-xs text-bb-text2">{task.assignees.map(a => a.name).join(", ") || "담당자 미지정"}{task.dueDate ? ` · ${task.dueDate}까지` : ""}</p>
+            {task.dueDate && task.status !== "DONE" && <span className={`mt-2 inline-block rounded border px-2 py-0.5 text-xs font-semibold ${DUE_BADGE[dueTone(task.dueDate)]}`}>{dueLabel(task.dueDate)}</span>}
+          </div>
           <ol aria-label="업무 진행 흐름" className="flex gap-2 text-xs">{["수행", "팀원 확인", "완료"].map((label, index) => <li key={label} className={`flex-1 rounded-lg px-2 py-2 text-center ${(task.status === "DONE" ? 2 : task.completionRequestedAt ? 1 : 0) === index ? "bg-bb-primary text-white" : "bg-bb-bg text-bb-text2"}`}>{index + 1}. {label}</li>)}</ol>
           {dirty && <p className="text-sm text-amber-700">수정한 업무 설정을 먼저 저장하세요. <button type="button" onClick={() => setTab("info")} className="underline">설정으로 이동</button></p>}
           <section className="rounded-xl border border-bb-border p-4"><h3 className="text-sm font-semibold mb-2">이 결과가 갖춰야 할 것</h3><p className="text-sm whitespace-pre-wrap">{task.completionCriteria || "완료 기준을 업무 설정에서 작성해 주세요."}</p></section>
           <TaskSteps task={task} disabled={readOnly || dirty || locked || resourceBusy} onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} />
-          <TaskResources task={task} readOnly={readOnly || dirty || resourceBusy} uploadLocked={locked} onBusy={setResourceBusy} onFilesChanged={setDiscussionFiles} onUploaded={() => setFilesRevision(v => v + 1)} />
-          <TaskDiscussion task={task} members={members} files={discussionFiles} readOnly={readOnly} focusMessageId={focusMessageId} onDraftChange={setDiscussionDirty} onBusy={setResourceBusy} />
+          <div ref={resultsRef} tabIndex={-1} role="group" aria-label="결과 파일" className="scroll-mt-4">
+          <TaskResources task={task} focusFileId={focusFileId} readOnly={readOnly || dirty || resourceBusy} uploadLocked={locked} onBusy={setResourceBusy} onFilesChanged={setDiscussionFiles} onUploaded={() => setFilesRevision(v => v + 1)} />
+          </div>
+          <div ref={completionRef} tabIndex={-1} role="group" aria-label="결과 확인" className="scroll-mt-4">
           <TaskCompletionPanel task={task} disabled={readOnly || dirty || submitting || resourceBusy} refreshKey={filesRevision}
             onSnapshot={updated => { if (!dirty && !resourceBusy && !submitting && JSON.stringify(updated) !== JSON.stringify(task)) onWorkflowChanged?.(updated); }}
-            onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} />
+            onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} onDraftChange={setCompletionDirty} />
+          </div>
+          <div ref={discussionRef} tabIndex={-1} role="group" aria-label="업무 대화와 피드백" className="scroll-mt-4">
+          <TaskDiscussion task={task} members={members} files={discussionFiles} readOnly={readOnly} focusMessageId={focusMessageId} onDraftChange={setDiscussionDirty} onBusy={setResourceBusy} />
+          </div>
         </div>}
         {/* 자료·검토 영역은 폼 밖에 둬 검토 입력 폼과 업무 저장 폼이 중첩되지 않게 한다. */}
         <form onSubmit={handleSubmit} className={`${tab === "resources" ? "hidden" : "flex-1 overflow-y-auto"} px-6 pt-5 space-y-4`}>
@@ -287,116 +309,6 @@ export default function TaskModal({
               placeholder="예: 인터뷰 결과 5건을 비교표로 정리"
               className={INPUT_CLS}
               maxLength={255}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="task-deliverable" className="block text-xs font-medium text-bb-text2 mb-1.5">연결할 제출물</label>
-            <select id="task-deliverable" className={INPUT_CLS} value={deliverableId}
-              onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
-              <option value="">제출물 미연결</option>
-              {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 제출물"}</option>}
-              {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
-            </select>
-            <p className="text-xs text-bb-text2 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
-          </div>
-          {selectedDeliverable && <div>
-            <label htmlFor="task-requirement" className="block text-xs font-medium text-bb-text2 mb-1.5">관련 요구사항 (선택)</label>
-            <select id="task-requirement" className={INPUT_CLS} value={requirementId} onChange={e => setRequirementId(e.target.value)}>
-              <option value="">제출물 전체 작업</option>
-              {selectedDeliverable.requirements.map(r => <option key={r.id} value={r.id}>{r.required ? "[필수] " : ""}{r.content}</option>)}
-            </select>
-          </div>}
-          <div>
-            <label htmlFor="completion-criteria" className="block text-xs font-medium text-bb-text2 mb-1.5">완료 조건 (완료 요청 전 필수)</label>
-            <textarea id="completion-criteria" value={completionCriteria} onChange={e => setCompletionCriteria(e.target.value)}
-              rows={2} maxLength={2000} className={`${INPUT_CLS} resize-none`} placeholder="예: 비교표에 공통 의견과 출처를 모두 포함" />
-          </div>
-          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={attachmentRequired} onChange={e => setAttachmentRequired(e.target.checked)} />완료 요청 전에 이 업무에 파일을 첨부해야 합니다.</label>
-          <div><label htmlFor="task-predecessor" className="block text-xs text-bb-text2 mb-1.5">먼저 승인 완료되어야 하는 업무</label>
-            <select id="task-predecessor" value={predecessorId} onChange={e => setPredecessorId(e.target.value)} className={INPUT_CLS}>
-              <option value="">선행 업무 없음 · 병렬 진행 가능</option>
-              {availableTasks.filter(t => t.id !== task?.id).map(t => <option key={t.id} value={t.id}>{t.title}{t.completionApprovedAt ? " (승인 완료)" : ""}</option>)}
-            </select><p className="text-xs text-bb-text2 mt-1">선행 업무의 결과 확인이 끝나야 이 업무를 시작할 수 있습니다.</p>
-          </div>
-          {/* 설명 */}
-          <div>
-            <label className="block text-xs font-medium text-bb-text2 mb-1.5">설명</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="작업 설명과 참고할 내용을 적어주세요"
-              rows={3}
-              className={`${INPUT_CLS} resize-none`}
-            />
-            <div className="flex gap-2 mt-2"><input aria-label="작은 수행 단계" value={newStep} onChange={e => setNewStep(e.target.value)} maxLength={200} className={INPUT_CLS} placeholder="작은 단계 추가 · 예: 자료 3개 수집" />
-              <button type="button" disabled={!newStep.trim()} onClick={() => { setDescription(value => `${value.trimEnd()}${value.trim() ? "\n" : ""}- [ ] ${newStep.trim()}`); setNewStep(""); }} className="shrink-0 px-3 border border-bb-border rounded-lg text-sm disabled:opacity-40">추가</button></div>
-            <p className="text-xs text-bb-text2 mt-1">작은 준비 사항은 체크리스트로 묶고, 결과 전체를 한 번에 확인받으세요.</p>
-          </div>
-
-          {/* 상태 선택 (편집 모드) */}
-          {mode === "edit" && (
-            <div>
-              <label className="block text-xs font-medium text-bb-text2 mb-1.5">상태</label>
-              <div className="flex gap-2">
-                {KANBAN_COLUMNS.map((col) => {
-                  const isActive = status === col.id;
-                  const colorMap: Record<string, string> = {
-                    TODO:        isActive ? "border-slate-400 bg-bb-surface2 text-bb-text" : "border-bb-border text-bb-text2 hover:border-bb-text2/50 hover:text-bb-text",
-                    IN_PROGRESS: isActive ? "border-indigo-500 bg-indigo-500/20 text-indigo-300" : "border-bb-border text-bb-text2 hover:border-indigo-500/40 hover:text-indigo-400",
-                    DONE:        isActive ? "border-teal-500 bg-teal-500/20 text-teal-300" : "border-bb-border text-bb-text2 hover:border-teal-500/40 hover:text-teal-400",
-                  };
-                  return (
-                    <button
-                      key={col.id}
-                      type="button"
-                      disabled={col.id === "DONE"}
-                      onClick={() => setStatus(col.id)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${colorMap[col.id]}`}
-                    >
-                      {col.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 우선순위 + 태그 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-bb-text2 mb-1.5">우선순위</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className={INPUT_CLS}
-              >
-                {PRIORITY_OPTIONS.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-bb-text2 mb-1.5">
-                태그 <span className="text-bb-text2/70">(최대 30자)</span>
-              </label>
-              <input
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-                placeholder="예: FE, 백엔드"
-                className={INPUT_CLS}
-                maxLength={30}
-              />
-            </div>
-          </div>
-
-          {/* 마감일 */}
-          <div>
-            <label className="block text-xs font-medium text-bb-text2 mb-1.5">마감일</label>
-            <SmartDateInput
-              value={dueDate}
-              onChange={setDueDate}
-              className="w-full"
             />
           </div>
 
@@ -438,7 +350,127 @@ export default function TaskModal({
                 <span className="text-xs text-bb-text2/70">멤버가 없습니다</span>
               )}
             </div>
+            {members.length > 1 && members.every(m => selectedAssignees.includes(m.userId)) && <p role="status" className="mt-2 text-xs text-amber-700">팀원 전원을 담당자로 지정하면 결과를 확인할 다른 팀원이 없습니다. 업무를 나누고 확인할 팀원을 남겨주세요.</p>}
           </div>
+
+          {/* 마감일 */}
+          <div>
+            <label className="block text-xs font-medium text-bb-text2 mb-1.5">마감일</label>
+            <SmartDateInput
+              value={dueDate}
+              onChange={setDueDate}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="completion-criteria" className="block text-xs font-medium text-bb-text2 mb-1.5">어떤 결과면 끝인가요? <span className="font-normal">(나중에 작성 가능)</span></label>
+            <textarea id="completion-criteria" value={completionCriteria} onChange={e => setCompletionCriteria(e.target.value)}
+              rows={2} maxLength={2000} className={`${INPUT_CLS} resize-none`} placeholder="예: 비교표에 공통 의견과 출처를 모두 포함" />
+            <p className="mt-1 text-xs text-bb-text2">지금은 제목만으로 만들 수 있습니다. 팀원에게 완료 확인을 요청하기 전에는 결과 기준을 적어주세요.</p>
+          </div>
+          <details className="rounded-xl border border-bb-border p-4">
+            <summary className="text-sm font-medium text-bb-text">추가 설정 (선택)
+              <span className="ml-2 text-xs font-normal text-bb-text2">{[selectedDeliverable?.title ?? (deliverableId ? task?.deliverableTitle : null), attachmentRequired ? "파일 첨부 필수" : null, predecessorId ? "선행 업무 있음" : null].filter(Boolean).join(" · ") || "설명 · 제출물 연결 · 우선순위 등"}</span>
+            </summary>
+            <div className="mt-4 space-y-4">
+          {/* 설명 */}
+          <div>
+            <label className="block text-xs font-medium text-bb-text2 mb-1.5">설명</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="작업 설명과 참고할 내용을 적어주세요"
+              rows={3}
+              className={`${INPUT_CLS} resize-none`}
+            />
+            <div className="flex gap-2 mt-2"><input aria-label="작은 수행 단계" value={newStep} onChange={e => setNewStep(e.target.value)} maxLength={200} className={INPUT_CLS} placeholder="작은 단계 추가 · 예: 자료 3개 수집" />
+              <button type="button" disabled={!newStep.trim()} onClick={() => { setDescription(value => `${value.trimEnd()}${value.trim() ? "\n" : ""}- [ ] ${newStep.trim()}`); setNewStep(""); }} className="shrink-0 px-3 border border-bb-border rounded-lg text-sm disabled:opacity-40">추가</button></div>
+            <p className="text-xs text-bb-text2 mt-1">작은 준비 사항은 체크리스트로 묶고, 결과 전체를 한 번에 확인받으세요.</p>
+          </div>
+
+          <div>
+            <label htmlFor="task-deliverable" className="block text-xs font-medium text-bb-text2 mb-1.5">연결할 제출물</label>
+            <select id="task-deliverable" className={INPUT_CLS} value={deliverableId}
+              onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
+              <option value="">제출물 미연결</option>
+              {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 제출물"}</option>}
+              {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+            </select>
+            <p className="text-xs text-bb-text2 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
+          </div>
+          {selectedDeliverable && <div>
+            <label htmlFor="task-requirement" className="block text-xs font-medium text-bb-text2 mb-1.5">관련 요구사항 (선택)</label>
+            <select id="task-requirement" className={INPUT_CLS} value={requirementId} onChange={e => setRequirementId(e.target.value)}>
+              <option value="">제출물 전체 작업</option>
+              {selectedDeliverable.requirements.map(r => <option key={r.id} value={r.id}>{r.required ? "[필수] " : ""}{r.content}</option>)}
+            </select>
+          </div>}
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={attachmentRequired} onChange={e => setAttachmentRequired(e.target.checked)} />완료 요청 전에 이 업무에 파일을 첨부해야 합니다.</label>
+          <div><label htmlFor="task-predecessor" className="block text-xs text-bb-text2 mb-1.5">먼저 승인 완료되어야 하는 업무</label>
+            <select id="task-predecessor" value={predecessorId} onChange={e => setPredecessorId(e.target.value)} className={INPUT_CLS}>
+              <option value="">선행 업무 없음 · 병렬 진행 가능</option>
+              {availableTasks.filter(t => t.id !== task?.id).map(t => <option key={t.id} value={t.id}>{t.title}{t.completionApprovedAt ? " (승인 완료)" : ""}</option>)}
+            </select><p className="text-xs text-bb-text2 mt-1">선행 업무의 결과 확인이 끝나야 이 업무를 시작할 수 있습니다.</p>
+          </div>
+          {/* 우선순위 + 태그 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-bb-text2 mb-1.5">우선순위</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                className={INPUT_CLS}
+              >
+                {PRIORITY_OPTIONS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-bb-text2 mb-1.5">
+                태그 <span className="text-bb-text2/70">(최대 30자)</span>
+              </label>
+              <input
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                placeholder="예: FE, 백엔드"
+                className={INPUT_CLS}
+                maxLength={30}
+              />
+            </div>
+          </div>
+
+          {/* 상태 선택 (편집 모드) */}
+          {mode === "edit" && (
+            <div>
+              <label className="block text-xs font-medium text-bb-text2 mb-1.5">상태</label>
+              <div className="flex gap-2">
+                {KANBAN_COLUMNS.map((col) => {
+                  const isActive = status === col.id;
+                  const colorMap: Record<string, string> = {
+                    TODO:        isActive ? "border-slate-400 bg-bb-surface2 text-bb-text" : "border-bb-border text-bb-text2 hover:border-bb-text2/50 hover:text-bb-text",
+                    IN_PROGRESS: isActive ? "border-indigo-500 bg-indigo-500/20 text-indigo-300" : "border-bb-border text-bb-text2 hover:border-indigo-500/40 hover:text-indigo-400",
+                    DONE:        isActive ? "border-teal-500 bg-teal-500/20 text-teal-300" : "border-bb-border text-bb-text2 hover:border-teal-500/40 hover:text-teal-400",
+                  };
+                  return (
+                    <button
+                      key={col.id}
+                      type="button"
+                      disabled={col.id === "DONE"}
+                      onClick={() => setStatus(col.id)}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${colorMap[col.id]}`}
+                    >
+                      {col.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+            </div>
+          </details>
 
           </fieldset>
           {dirty && task && <p className="text-xs text-amber-700">업무 정보와 완료 조건을 먼저 저장한 뒤 완료를 요청하세요.</p>}

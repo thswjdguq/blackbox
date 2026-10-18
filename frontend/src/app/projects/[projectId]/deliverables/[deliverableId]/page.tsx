@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
@@ -13,6 +13,7 @@ import TaskFilesPanel from "@/components/deliverable/TaskFilesPanel";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
+import FinalSubmissionPanel from "@/components/deliverable/FinalSubmissionPanel";
 import api from "@/lib/api";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
@@ -60,7 +61,7 @@ type Tab = "overview" | "review" | "submit";
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "overview", label: "요구사항·업무", implemented: true },
   { id: "review", label: "검토", implemented: true },
-  { id: "submit", label: "최종 제출", implemented: false },
+  { id: "submit", label: "최종본·제출 기록", implemented: true },
 ];
 
 const TASK_STATUS_LABEL: Record<Task["status"], string> = {
@@ -149,6 +150,10 @@ export default function DeliverableDetailPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeliverableProgress | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [submissionDirty, setSubmissionDirty] = useState(false);
+  const desiredTab = useSearchParams()?.get("tab");
+  useEffect(() => { if (desiredTab === "overview" || desiredTab === "review" || desiredTab === "submit") setActiveTab(desiredTab); }, [desiredTab, deliverableId]);
+  const changeTab = (next: Tab) => { if (submissionDirty && !window.confirm("저장하지 않은 제출 기록이 있습니다. 이동할까요?")) return; setActiveTab(next); };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [progressError, setProgressError] = useState(false);
@@ -173,7 +178,9 @@ export default function DeliverableDetailPage() {
 
   // 역할은 멤버 목록에서 내 항목으로 판단한다. GET /projects/{id} 응답의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
   const myRole = members.find((m) => m.userId === myUserId)?.role ?? null;
-  const canWrite = myRole === "LEADER" || myRole === "MEMBER";
+  const canContribute = myRole === "LEADER" || myRole === "MEMBER";
+  const locked = deliverable?.status === "CONFIRMED" || deliverable?.status === "SUBMITTED";
+  const canWrite = canContribute && !locked;
   // K-14 §2: 문구(content)가 바뀌면 서버가 충족 확인을 푼다. 필수 여부만 바꾸면 유지된다
   const editingReq = deliverable?.requirements.find((r) => r.id === editingReqId) ?? null;
   const assessmentWillReset =
@@ -433,7 +440,7 @@ export default function DeliverableDetailPage() {
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => tab.implemented && setActiveTab(tab.id)}
+                  onClick={() => tab.implemented && changeTab(tab.id)}
                   className={`shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
                     !tab.implemented
                       ? "opacity-40 cursor-not-allowed text-bb-text2"
@@ -484,7 +491,7 @@ export default function DeliverableDetailPage() {
                     과제 안내의 필수 내용과 형식을 적으세요. 업무 완료와 요구사항 충족은 따로 확인합니다.
                   </p>
                   {!canWrite && (
-                    <p className="mt-1 text-xs text-bb-text2">관찰자는 충족 여부를 확인할 수 없습니다.</p>
+                    <p className="mt-1 text-xs text-bb-text2">{locked ? "최종본이 확정되어 요구사항과 충족 여부를 바꿀 수 없습니다." : "관찰자는 충족 여부를 확인할 수 없습니다."}</p>
                   )}
 
                   {deliverable.requirements.length === 0 ? (
@@ -698,8 +705,12 @@ export default function DeliverableDetailPage() {
                 myUserId={myUserId}
                 tasks={tasks}
                 onTasksChanged={refresh}
+                onFinal={() => changeTab("submit")}
               />
             )}
+            {activeTab === "submit" && <FinalSubmissionPanel key={deliverableId} projectId={projectId} deliverableId={deliverableId}
+              isLeader={myRole === "LEADER"} canWrite={canContribute} submissionMethod={deliverable.submissionMethod}
+              onChanged={refresh} onReview={() => changeTab("review")} onOverview={() => changeTab("overview")} onDirty={setSubmissionDirty} />}
           </>
         )}
       </main>

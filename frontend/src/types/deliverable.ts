@@ -19,6 +19,7 @@ export interface DeliverableRequirement {
 // ── 제출물 ────────────────────────────────────────────────────────────────
 
 export interface Deliverable {
+  latestDecision?: "APPROVED" | "CHANGES_REQUESTED" | null;
   id: string;
   projectId: string;
   /** K-20 응답이 없는 기존 UI 서버와 호환한다. 확정 이후 AI 업무 생성 진입점은 숨긴다. */

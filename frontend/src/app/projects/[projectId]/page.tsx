@@ -10,6 +10,7 @@ import { blobApiError } from "@/lib/apiError";
 import { getDeliverables } from "@/lib/api/deliverable";
 import type { Deliverable } from "@/types/deliverable";
 import ProjectWorkflow from "@/components/project/ProjectWorkflow";
+import { ALERT_TONE } from "@/lib/alertTone";
 import NextStepCard from "@/components/project/NextStepCard";
 import { useAgentStore } from "@/lib/store/agentStore";
 import { roleLabel } from "@/lib/roleLabel";
@@ -279,7 +280,7 @@ export default function ProjectHomePage() {
   const activeAlerts   = alerts.filter((a) => !a.isRead);
 
   const ALERT_LABEL: Record<string, string> = {
-    FREE_RIDE: "무임승차 의심",
+    FREE_RIDE: "참여 기록 확인",
     OVERLOAD:  "과부하 위험",
     DROPOUT:   "이탈 감지",
     TAMPER:    "파일 변조",
@@ -529,10 +530,11 @@ export default function ProjectHomePage() {
               <div className="space-y-2">
                 {scores.map((s) => {
                   const memberAlert = activeAlerts.find((a) => a.userId === s.userId);
+                  const alertTone = ALERT_TONE[memberAlert?.severity ?? "LOW"] ?? ALERT_TONE.LOW;
                   const levelCfg = {
                     FULL:    { label: "전체 참여", cls: "text-teal-400 bg-teal-500/10 border-teal-500/25" },
                     PARTIAL: { label: "부분 참여", cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/25" },
-                    NONE:    { label: "미참여",    cls: "text-red-400 bg-red-500/10 border-red-500/25" },
+                    NONE:    { label: "집계 기록 적음",    cls: "text-red-400 bg-red-500/10 border-red-500/25" },
                   }[s.participationLevel];
                   return (
                     <div key={s.userId} className="flex items-center gap-3 p-2 rounded-lg bg-bb-bg/40">
@@ -540,10 +542,9 @@ export default function ProjectHomePage() {
                       <span className="text-xs font-medium text-bb-text flex-1 truncate">{s.name}</span>
                       <div className="flex items-center gap-2 shrink-0">
                         {memberAlert && (
-                          <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10
-                                           border border-amber-500/20 px-2 py-0.5 rounded-full">
+                          <span className={`flex items-center gap-1 text-[10px] border px-2 py-0.5 rounded-full ${alertTone.color} ${alertTone.bg}`}>
                             <AlertTriangle size={9} />
-                            {ALERT_LABEL[memberAlert.alertType] ?? memberAlert.alertType}
+                            {alertTone.label} · {ALERT_LABEL[memberAlert.alertType] ?? memberAlert.alertType}
                           </span>
                         )}
                         <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${levelCfg.cls}`}>

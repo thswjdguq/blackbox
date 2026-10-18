@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ArrowLeft, ChevronDown, ClipboardList, FileText, Files, FolderKanban, Kanban, LayoutDashboard, Settings, BarChart2, MessageSquare } from "lucide-react";
 import { useFeedbackInbox } from "@/hooks/useFeedbackInbox";
 import { projectNavigation, projectSection } from "@/lib/projectNavigation";
+import NotificationLink from "./NotificationLink";
 
 const icons = { home: LayoutDashboard, deliverables: ClipboardList, board: Kanban, feedback: MessageSquare, meetings: FileText, vault: Files, analytics: BarChart2, settings: Settings };
 
@@ -32,6 +33,7 @@ export default function SidebarNavigation({ projectId, onNavigate }: { projectId
       {projectId ? <ArrowLeft size={16} /> : <FolderKanban size={17} />}{projectId ? "전체 프로젝트" : "내 프로젝트"}
     </Link>
     {projectId ? <>
+      <NotificationLink key={projectId} projectId={projectId} onNavigate={onNavigate} />
       <div className="mt-4 space-y-1">{projectNavigation.filter(item => item.primary).map(renderItem)}</div>
       <div className="border-t border-bb-border mt-5 pt-3">
         <button type="button" onClick={() => setMore(v => !v)} aria-expanded={more} aria-controls={moreId}

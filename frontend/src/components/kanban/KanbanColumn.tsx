@@ -1,7 +1,5 @@
 "use client";
 
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Task, TaskStatus, KanbanColumn as ColumnMeta, ScoreMap } from "@/types/task";
 import TaskCard from "./TaskCard";
 import { Plus } from "lucide-react";
@@ -12,7 +10,8 @@ interface KanbanColumnProps {
   scoreMap: ScoreMap;
   onAddTask: (status: TaskStatus) => void;
   onEditTask: (task: Task) => void;
-  onMoveTask: (taskId: string, newStatus: TaskStatus) => void;
+  onMoveTask: (taskId: string, newStatus: TaskStatus) => Promise<void>;
+  busy?: boolean;
   readOnly?: boolean;
   aiIds?: Set<string>;
 }
@@ -26,8 +25,8 @@ export default function KanbanColumn({
   onMoveTask,
   readOnly = false,
   aiIds,
+  busy,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id, disabled: readOnly || column.id === "DONE" });
   const isTodo = column.id === "TODO";
   const canAdd = isTodo && !readOnly;
 
@@ -58,17 +57,7 @@ export default function KanbanColumn({
         )}
       </div>
 
-      {/* Drop zone */}
-      <div
-        ref={setNodeRef}
-        className={`flex-1 flex flex-col gap-3 rounded-xl p-3 min-h-[120px]
-                    transition-colors duration-200
-                    ${isOver
-                      ? "bg-indigo-500/8 border-2 border-dashed border-indigo-500/50"
-                      : "bg-bb-bg/40 border-2 border-transparent"
-                    }`}
-      >
-        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <div className="flex-1 flex flex-col gap-3 rounded-xl p-3 min-h-[120px] bg-bb-bg/40">
           {tasks.map((task) => (
             <TaskCard
               key={task.id}
@@ -77,10 +66,10 @@ export default function KanbanColumn({
               onEdit={onEditTask}
               onMove={onMoveTask}
               readOnly={readOnly}
+              busy={busy}
               isAi={aiIds?.has(task.id)}
             />
           ))}
-        </SortableContext>
 
         {/* 빈 상태 */}
         {tasks.length === 0 && (
@@ -104,7 +93,7 @@ export default function KanbanColumn({
               <div className="w-8 h-8 rounded-lg border border-dashed border-bb-border flex items-center justify-center mb-2">
                 <Plus size={14} className="text-bb-text2/70" />
               </div>
-              {column.id === "DONE" ? "팀원이 결과를 확인하면 이곳에 표시됩니다." : "드래그하여 이동"}
+              {column.id === "DONE" ? "팀원이 결과를 확인하면 이곳에 표시됩니다." : "업무 상태를 ‘진행 중’으로 변경하면 표시됩니다."}
             </div>
           )
         )}

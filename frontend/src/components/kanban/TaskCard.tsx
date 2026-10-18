@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import TaskStatusControl from "./TaskStatusControl";
 import { Task, TaskStatus, ScoreMap } from "@/types/task";
 import AiBadge from "@/components/agent/AiBadge";
-import { daysLeft, dueLabel, shortDate } from "@/lib/due";
+import { DUE_BADGE, DUE_BAR, DUE_TEXT, dueTone, dueLabel, shortDate } from "@/lib/due";
 import {
-  GripVertical,
   Calendar,
   Tag,
   ChevronUp,
@@ -16,14 +13,14 @@ import {
   ChevronsUp,
   Star,
   Check,
-  ArrowRight,
 } from "lucide-react";
 
 interface TaskCardProps {
   task: Task;
   scoreMap: ScoreMap;
   onEdit: (task: Task) => void;
-  onMove?: (taskId: string, newStatus: TaskStatus) => void;
+  onMove: (taskId: string, newStatus: TaskStatus) => Promise<void>;
+  busy?: boolean;
   readOnly?: boolean;
   isAi?: boolean;
 }
@@ -35,31 +32,15 @@ const PRIORITY_CONFIG = {
   LOW:    { icon: ChevronDown, label: "낮음", cls: "text-bb-text2 bg-bb-surface2" },
 };
 
-function formatDue(dueDate: string | null): { label: string; cls: string } | null {
+function formatDue(dueDate: string | null, isDone: boolean): { label: string; cls: string } | null {
   if (!dueDate) return null;
-  const diff = daysLeft(dueDate);
-  const label = shortDate(dueDate);
-  if (diff < 0)  return { label, cls: "text-rose-400" };
-  if (diff <= 2) return { label, cls: "text-orange-400" };
-  return { label, cls: "text-bb-text2" };
+  return { label: shortDate(dueDate), cls: isDone ? "text-bb-text2" : DUE_TEXT[dueTone(dueDate)] };
 }
 
-// 마감일 경고 배지 + 카드 좌측 강조선. 문구는 모든 화면 공통(lib/due)
 function getDueWarning(dueDate: string | null, isDone: boolean): { label: string; badgeCls: string; barCls: string } | null {
   if (!dueDate || isDone) return null;
-  const diff = daysLeft(dueDate);
-  const label = dueLabel(dueDate);
-
-  if (diff < 0) {
-    return { label, badgeCls: "text-red-400 bg-red-400/10 border border-red-400/20", barCls: "bg-red-500" };
-  }
-  if (diff === 0) {
-    return { label, badgeCls: "text-orange-400 bg-orange-400/10 border border-orange-400/20", barCls: "bg-orange-500" };
-  }
-  if (diff <= 3) {
-    return { label, badgeCls: "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20", barCls: "bg-yellow-500" };
-  }
-  return null;
+  const tone = dueTone(dueDate);
+  return { label: dueLabel(dueDate), badgeCls: "border " + DUE_BADGE[tone], barCls: DUE_BAR[tone] };
 }
 
 function Avatar({ name }: { name: string }) {
@@ -90,66 +71,20 @@ function ScoreChip({ score }: { score: number }) {
   );
 }
 
-export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false, isAi = false }: TaskCardProps) {
-  const [isMoving, setIsMoving] = useState(false);
-
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id, disabled: readOnly || task.status === "DONE" || !!task.completionRequestedAt });
-
-  // 카드 전체에 drag listeners 적용 — 어디서든 드래그 가능
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : isMoving ? 0.6 : 1,
-  };
-
+export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false, isAi = false, busy }: TaskCardProps) {
   const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
   const PriorityIcon = priority.icon;
-  const dueInfo = formatDue(task.dueDate);
+  const dueInfo = formatDue(task.dueDate, task.status === "DONE");
   const dueWarning = getDueWarning(task.dueDate, task.status === "DONE");
   const representativeScore =
     task.assignees.length > 0 ? scoreMap[task.assignees[0].userId] : undefined;
   const isDone = task.status === "DONE";
 
-  // 버튼 클릭 → 이동 트리거 (drag와 분리)
-  const triggerMove = async (e: React.MouseEvent, newStatus: TaskStatus) => {
-    e.stopPropagation();       // 카드 onClick(모달) 방지
-    if (isMoving || !onMove) return;
-    setIsMoving(true);
-    try { await onMove(task.id, newStatus); } finally { setIsMoving(false); }
-  };
-
-  // 버튼에서 포인터 다운 시 drag 시작 방지
-  const stopPointer = (e: React.PointerEvent) => e.stopPropagation();
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      // 카드 전체에 drag listeners 부착 (grip 아이콘 외에도 드래그 가능).
-      // 읽기 전용이면 끌기 속성(aria-disabled 포함)을 붙이지 않는다. 붙이면 '업무 보기'로 여는 카드가
-      // 보조기기에 비활성으로 읽히고 키보드로 열 수 없다
-      {...(readOnly || task.status === "DONE" || task.completionRequestedAt
-        ? {
-            role: "button",
-            tabIndex: 0,
-            "aria-label": `${task.title} 보기`,
-            onKeyDown: (e: React.KeyboardEvent) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onEdit(task);
-              }
-            },
-          }
-        : { ...attributes, ...listeners })}
-      onClick={() => !isMoving && onEdit(task)}
-      className={`group relative bg-bb-surface border rounded-xl p-4 ${readOnly || task.status === "DONE" || task.completionRequestedAt ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}
-                  transition-colors duration-200 select-none overflow-hidden
-                  ${isDone
-                    ? "border-bb-border/40 opacity-60"
-                    : "border-bb-border/60 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5"
-                  }`}
-    >
+    <div role="button" tabIndex={0} aria-label={`${task.title} 보기`}
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onEdit(task); } }}
+      onClick={() => onEdit(task)}
+      className={`group relative cursor-pointer bg-bb-surface border rounded-xl p-4 overflow-hidden ${isDone ? "border-bb-border/40 opacity-60" : "border-bb-border/60 hover:border-indigo-500/50"}`}>
       {/* 마감일 경고 강조선 */}
       {dueWarning && (
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${dueWarning.barCls}`} />
@@ -158,37 +93,12 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
       {/* Top Row */}
       <div className="flex items-start gap-2 mb-3">
 
-        {/* TODO 체크박스 — 클릭 시 In Progress 이동 */}
-        {task.status === "TODO" && !readOnly && (
-          <button
-            onPointerDown={stopPointer}   // drag 시작 방지
-            onClick={(e) => triggerMove(e, "IN_PROGRESS")}
-            className="mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 border-indigo-500/40
-                       hover:border-indigo-500 hover:bg-indigo-500/20
-                       flex items-center justify-center transition-all duration-150 group/cb"
-            aria-label="진행 중으로 이동"
-          >
-            <Check
-              size={10}
-              className="text-indigo-500 opacity-0 group-hover/cb:opacity-100 transition-opacity duration-100"
-            />
-          </button>
-        )}
-
         {/* DONE 완료 표시 */}
         {task.status === "DONE" && (
           <div className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-teal-500/20 border-2 border-teal-500/60
                           flex items-center justify-center">
             <Check size={10} className="text-teal-400" />
           </div>
-        )}
-
-        {/* 드래그 핸들 (시각 힌트) */}
-        {!readOnly && (
-          <GripVertical
-            size={14}
-            className="mt-0.5 text-bb-text2/70 group-hover:text-bb-text2 transition-colors shrink-0"
-          />
         )}
 
         {/* Title */}
@@ -233,6 +143,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
         </div>
       )}
 
+      <TaskStatusControl task={task} onEdit={onEdit} onMove={onMove} readOnly={readOnly} busy={busy} />
       {/* Bottom Row */}
       {task.completionRequestedAt && <p className="text-xs text-bb-primary mt-2">팀원 확인 대기</p>}
       {task.completionRejectionReason && <p className="text-xs text-amber-700 mt-2">보완 요청 · 업무를 열어 확인하세요.</p>}
@@ -267,20 +178,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
             </span>
           )}
 
-          {task.status === "IN_PROGRESS" && !readOnly && !task.completionRequestedAt && (
-            <button
-              onPointerDown={stopPointer}   // drag 시작 방지
-              onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold
-                         text-teal-400 bg-teal-400/10 border border-teal-400/20
-                         hover:bg-teal-400/20 hover:border-teal-400/50
-                         transition-all duration-150"
-              aria-label="완료 조건 확인 후 요청"
-            >
-              <ArrowRight size={9} />
-              완료 요청
-            </button>
-          )}
+
         </div>
       </div>
     </div>

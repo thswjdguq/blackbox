@@ -4,10 +4,11 @@ import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
 import type { Task } from "@/types/task";
 import { useMyRole } from "@/hooks/useMyRole";
+import { sessionGeneration } from "@/lib/sessionCache";
 
-interface Completion { task: Task; checks: { code: string; label: string; passed: boolean }[]; canRequest: boolean; canApprove: boolean; canReview: boolean }
-export default function TaskCompletionPanel({ task: initialTask, disabled, onChanged, onSnapshot, onBusy, refreshKey = 0 }: {
-  task: Task; disabled: boolean; onChanged: (task: Task) => void; onSnapshot?: (task: Task) => void; onBusy: (busy: boolean) => void; refreshKey?: number;
+interface Completion { task: Task; checks: { code: string; label: string; passed: boolean }[]; canRequest: boolean; canApprove: boolean; canReview: boolean; canCancel?: boolean }
+export default function TaskCompletionPanel({ task: initialTask, disabled, onChanged, onSnapshot, onBusy, onDraftChange, refreshKey = 0 }: {
+  task: Task; disabled: boolean; onChanged: (task: Task) => void; onSnapshot?: (task: Task) => void; onBusy: (busy: boolean) => void; onDraftChange?: (dirty: boolean) => void; refreshKey?: number;
 }) {
   const path = `/projects/${initialTask.projectId}/tasks/${initialTask.id}`;
   const role = useMyRole(initialTask.projectId);
@@ -16,17 +17,23 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
   const [busy, setBusy] = useState(false);
   const [returning, setReturning] = useState(false);
   const [reason, setReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const mutationPending = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => { onDraftChange?.(!!reason.trim() || !!cancelReason.trim()); }, [reason, cancelReason, onDraftChange]);
   const snapshot = useRef(onSnapshot); snapshot.current = onSnapshot;
   const sequence = useRef(0);
   const load = useCallback(async () => {
     const request = ++sequence.current;
+    const generation = sessionGeneration();
     try { const { data } = await api.get<Completion>(`${path}/completion`);
-      if (request !== sequence.current) return;
+      if (request !== sequence.current || generation !== sessionGeneration() || !alive.current) return;
       setView(data); setError(""); snapshot.current?.(data.task);
     }
-    catch(e) { if (request === sequence.current) setError(apiError(e, "결과 확인 조건을 불러오지 못했습니다.")); }
+    catch(e) { if (request === sequence.current && generation === sessionGeneration() && alive.current) setError(apiError(e, "결과 확인 조건을 불러오지 못했습니다.")); }
   }, [path]);
-  useEffect(() => { load(); return () => { sequence.current++; }; }, [load, initialTask.updatedAt, initialTask.completionRequestedAt, initialTask.completionApprovedAt, refreshKey]);
+  useEffect(() => { alive.current = true; load(); return () => { alive.current = false; sequence.current++; }; }, [load, initialTask.updatedAt, initialTask.completionRequestedAt, initialTask.completionApprovedAt, refreshKey]);
   useEffect(() => {
     const refresh = () => { if (!document.hidden && !busy) load(); };
     window.addEventListener("focus", refresh);
@@ -36,10 +43,13 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
   // 권한과 요청 상태는 같은 서버 응답으로 판정한다. 오래 열린 보드의 task prop으로 버튼을 숨기지 않는다.
   const task = view?.task.id === initialTask.id ? view.task : initialTask;
   const run = async (request: () => Promise<{ data: Task }>) => {
+    if (disabled || mutationPending.current) return;
+    mutationPending.current = true;
+    const generation = sessionGeneration();
     setBusy(true); onBusy(true); setError("");
-    try { const { data } = await request(); sequence.current++; setView(null); onChanged(data); setReason(""); setReturning(false); window.dispatchEvent(new Event("task-feedback-changed")); await load(); }
-    catch(e) { setError(apiError(e, "요청을 처리하지 못했습니다.")); }
-    finally { setBusy(false); onBusy(false); }
+    try { const { data } = await request(); if (!alive.current || generation !== sessionGeneration()) return; sequence.current++; setView(null); onChanged(data); setReason(""); setReturning(false); setCancelReason(""); setCancelling(false); window.dispatchEvent(new Event("task-feedback-changed")); await load(); }
+    catch(e) { if (alive.current && generation === sessionGeneration()) setError(apiError(e, "요청을 처리하지 못했습니다.")); }
+    finally { mutationPending.current = false; if (alive.current && generation === sessionGeneration()) { setBusy(false); onBusy(false); } }
   };
   const pending = !!task.completionRequestedAt;
   const missing = view?.checks.filter(c => !c.passed) ?? [];
@@ -52,9 +62,16 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
     {pending && <p role="status" className="text-sm text-bb-text2">{task.completionRequestedByName}님이 결과 확인을 요청했습니다. 담당자와 요청자를 제외한 팀원 한 명이 확인하면 완료됩니다.</p>}
     {pending && view && !view.canReview && <p className="text-xs text-bb-text2">{role === "OBSERVER" ? "관찰자는 결과를 확인하거나 보완을 요청할 수 없습니다." : "담당자와 요청자는 본인 결과를 완료 처리할 수 없습니다. 다른 팀원의 확인을 기다리고 있습니다."}</p>}
     {task.status === "DONE" && <p role="status" className="text-sm text-bb-primary">{task.completionApprovedAt ? `${task.completionApprovedByName}님이 결과를 확인했습니다.` : "이전 완료 기록 · 확인자 기록 없음"}</p>}
+    {pending && view?.canCancel && <div className="space-y-2 border-t border-bb-border pt-3">
+      <button type="button" disabled={disabled || busy} onClick={() => setCancelling(v => !v)} className="text-sm text-bb-text2 underline">확인 요청 취소·작업 계속하기</button>
+      {cancelling && <><p className="text-xs text-bb-text2">등록한 파일과 대화는 보존됩니다. 취소 후 담당자나 결과를 수정하고 다시 요청할 수 있습니다.</p>
+        <textarea aria-label="확인 요청 취소 사유" maxLength={2000} disabled={disabled || busy} value={cancelReason} onChange={e => setCancelReason(e.target.value)} placeholder="예: 담당자를 조정한 뒤 다시 확인받겠습니다" className="w-full min-h-20 rounded-lg border border-bb-border bg-bb-surface p-3 text-sm" />
+        <button type="button" disabled={disabled || busy || !cancelReason.trim()} onClick={() => run(() => api.post<Task>(`${path}/completion-cancel`, { reason: cancelReason.trim() }))} className="rounded-lg border border-bb-border px-3 py-2 text-sm disabled:opacity-40">확인 요청 취소</button>
+      </>}
+    </div>}
     {!pending && task.status === "IN_PROGRESS" && role !== "OBSERVER" && <>
       <p className="text-xs text-bb-text2">완료 기준에 맞게 작성했는지 팀원에게 확인받습니다.</p>
-      <button type="button" disabled={disabled || busy || !view?.canRequest} onClick={() => run(() => api.post<Task>(`${path}/completion-request`))} className="w-full px-3 py-3 rounded-lg bg-bb-primary text-white text-sm font-medium disabled:opacity-40">결과 제출하고 확인 요청</button>
+      <button type="button" disabled={disabled || busy || !view?.canRequest} onClick={() => run(() => api.post<Task>(`${path}/completion-request`))} className="w-full px-3 py-3 rounded-lg bg-bb-primary text-white text-sm font-medium disabled:opacity-40">등록한 결과 확인 요청</button>
       {view && !view.canRequest && !missing.length && <p className="text-xs text-bb-text2">담당자 또는 팀장이 결과 확인을 요청할 수 있습니다.</p>}
     </>}
     {view?.canReview && pending && <>
