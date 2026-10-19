@@ -1,9 +1,9 @@
 import { create } from "zustand";
-import { getAgentStatus, getProposals } from "@/lib/api/agent";
+import { getAgentOrigins, getAgentStatus, getProposals } from "@/lib/api/agent";
 import { getDeliverables } from "@/lib/api/deliverable";
 import { AgentRunError, runAgent } from "@/lib/agent/run";
 import { onSessionReset, sessionGeneration } from "@/lib/sessionCache";
-import type { AgentStatus, Proposal } from "@/types/agent";
+import type { AgentOrigins, AgentStatus, Proposal } from "@/types/agent";
 import type { Deliverable } from "@/types/deliverable";
 
 /**
@@ -52,6 +52,8 @@ interface AgentState {
   deliverables: Record<string, Deliverable[] | undefined>;
   /** 채택할 때마다 1씩 는다. 뒤 화면이 이 값을 보고 다시 읽는다(4.11) */
   recordsVersion: number;
+  /** 채택으로 만들어진 기록의 id (GET /origins). 화면들이 같이 쓴다. AI가 꺼져 있어도 온다(4.10) */
+  origins: Record<string, AgentOrigins | undefined>;
   /** 화면마다의 버튼이 연 입력 칸(입력이 필요한 실행). 창이 읽고 비운다 */
   pendingInput: { projectId: string; skill: string } | null;
 
@@ -65,6 +67,7 @@ interface AgentState {
   /** 화면마다의 버튼이 부른다(4.9). 창을 열고, 입력이 다 있으면 실행까지 한다 */
   openWith(projectId: string, skill: string, input?: object, titleExtra?: string): void;
   clearPendingInput(): void;
+  loadOrigins(projectId: string): Promise<void>;
   loadStatus(projectId: string, force?: boolean): Promise<void>;
   run(projectId: string, skill: string, input: object, title: string): Promise<void>;
 }
@@ -84,6 +87,7 @@ const empty = {
   deliverables: {},
   recordsVersion: 0,
   pendingInput: null,
+  origins: {},
 };
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -140,6 +144,20 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }
   },
   clearPendingInput: () => set({ pendingInput: null }),
+
+  loadOrigins: async (projectId) => {
+    const gen = sessionGeneration();
+    try {
+      const { data } = await getAgentOrigins(projectId);
+      if (gen !== sessionGeneration()) return;
+      set((s) => ({ origins: { ...s.origins, [projectId]: data } }));
+    } catch {
+      // 실패하면 표시 없이 그린다(4.10). 앞에서 받아 둔 표시도 남기지 않고, 오류는 띄우지 않는다.
+      // 앞 세션의 늦은 실패가 새 세션의 표시를 지우지 않게 세대를 본다
+      if (gen !== sessionGeneration()) return;
+      set((s) => ({ origins: { ...s.origins, [projectId]: undefined } }));
+    }
+  },
 
   // 채택으로 제출물·요구사항이 생기므로 요구사항 이름 캐시도 비운다
   bumpRecords: () => set((s) => ({ recordsVersion: s.recordsVersion + 1, deliverables: {} })),

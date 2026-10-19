@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AgentButton from "@/components/agent/AgentButton";
+import { useAiOrigins } from "@/components/agent/AiBadge";
 import { useAgentStore } from "@/lib/store/agentStore";
 import { Deliverable, isDeliverableLocked } from "@/types/deliverable";
 import { apiError, PartialSaveError } from "@/lib/apiError";
@@ -121,6 +122,9 @@ export default function KanbanBoard({
     (task: Task) => !!task.deliverableId && lockedIds.has(task.deliverableId),
     [lockedIds]
   );
+  // AI 제안을 채택해 만든 업무에 "AI 제안" 표시(4.10)
+  const aiOrigins = useAiOrigins(projectId);
+  const isAi = useCallback((task: Task) => aiOrigins.task.has(task.id), [aiOrigins]);
   // 보드를 연 뒤 다른 사람이 확정했으면 409가 온다. 제출물을 다시 읽어 잠금을 화면에 반영한다
   const refreshIfConflict = (err: unknown) => {
     if ((err as { response?: { status?: number } })?.response?.status === 409) loadDeliverables();
@@ -407,7 +411,7 @@ export default function KanbanBoard({
               </button>
             </div>
           )}
-          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} isLocked={isLocked} />
+          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} isLocked={isLocked} isAi={isAi} />
         </>
       ) : (
       <DndContext
@@ -452,6 +456,7 @@ export default function KanbanBoard({
                 onMoveTask={handleMoveTask}
                 readOnly={readOnly}
                 isLocked={isLocked}
+                isAi={isAi}
               />
             ))}
           </div>
