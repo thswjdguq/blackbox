@@ -37,6 +37,8 @@ function keepFocusInside(e: KeyboardEvent, dock: HTMLElement) {
   const last = items[items.length - 1];
   if (!first || !last) return;
   const active = document.activeElement;
+  // 이 창 위에 다른 대화 상자(업무 창 등)가 열려 초점이 그 안에 있으면 그 창에 맡긴다
+  if (active instanceof HTMLElement && !dock.contains(active) && active.closest('[aria-modal="true"]')) return;
   const inside = active instanceof HTMLElement && items.includes(active);
   if (e.shiftKey && (!inside || active === first)) {
     e.preventDefault();
@@ -219,7 +221,10 @@ export default function AgentDock() {
             onChange={(e) => setPickedDeliverable(e.target.value)}
             className="w-full rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm text-bb-text focus:border-bb-primary focus:outline-none"
           >
-            {status.stages.length === 0 && <option value="">제출물이 없습니다</option>}
+            {/* 고를 수 있는 것이 없으면 꺼진 첫 줄이 고른 것처럼 보이지 않게 안내 줄을 둔다 */}
+            {!status.stages.some((s) => !breakDownBlocked(s.stage)) && (
+              <option value="">{status.stages.length === 0 ? "제출물이 없습니다" : "업무로 나눌 수 있는 제출물이 없습니다"}</option>
+            )}
             {status.stages.map((s) => (
               <option key={s.deliverableId} value={s.deliverableId} disabled={!!breakDownBlocked(s.stage)}>
                 {s.title} · 기한 {shortDate(s.dueDate)}{breakDownBlocked(s.stage) ? ` (${breakDownBlocked(s.stage)})` : ""}

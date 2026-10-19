@@ -49,7 +49,26 @@ class DeliverableStageTest {
         }
         assertTrue(count > 1000, "기준표를 읽지 못했다: " + count);
         assertEquals(List.of(), different);
-        assertEquals(EnumSet.allOf(DeliverableStage.class), seen, "여섯 단계가 모두 나온다");
+        assertEquals(EnumSet.range(DeliverableStage.NO_REQUIREMENT, DeliverableStage.READY_FOR_REVIEW), seen, "검토 전의 여섯 단계가 모두 나온다");
+    }
+
+    /** 검토가 시작된 뒤에는 업무가 남아 있어도 제출물의 상태로 판정한다(NextStepCard와 같은 순서) */
+    @Test void afterReviewStartsTheDeliverableStatusDecides() {
+        UUID requirement = UUID.randomUUID();
+        List<RequirementResponse> unchecked = List.of(new RequirementResponse(requirement, "요구사항", true, null));
+        List<TaskResponse> openTask = List.of(task(DELIVERABLE, requirement, "TODO"));
+        String[][] cases = {
+                {"IN_REVIEW", null, "IN_REVIEW"},
+                {"IN_REVIEW", "APPROVED", "APPROVED"},
+                {"DRAFT", "CHANGES_REQUESTED", "CHANGES_REQUESTED"},
+                {"CONFIRMED", "APPROVED", "CONFIRMED"},
+                {"SUBMITTED", "APPROVED", "SUBMITTED"},
+                {"DRAFT", null, "TASKS_IN_PROGRESS"},   // 검토 전이면 예전처럼 업무로
+        };
+        for (String[] c : cases) {
+            assertEquals(DeliverableStage.valueOf(c[2]), DeliverableStage.of(deliverable(unchecked, c[0], c[1]), openTask),
+                    c[0] + "/" + c[1]);
+        }
     }
 
     private static List<String> codes(String part) {
@@ -57,8 +76,12 @@ class DeliverableStageTest {
     }
 
     private static DeliverableDtos.Response deliverable(List<RequirementResponse> requirements) {
+        return deliverable(requirements, "DRAFT", null);
+    }
+
+    private static DeliverableDtos.Response deliverable(List<RequirementResponse> requirements, String status, String latestDecision) {
         return new DeliverableDtos.Response(DELIVERABLE, UUID.randomUUID(), "제출물", null, LocalDate.of(2026, 10, 18),
-                null, null, null, requirements, "DRAFT", null);
+                null, null, null, requirements, status, latestDecision);
     }
 
     private static TaskResponse task(UUID deliverableId, UUID requirementId, String status) {

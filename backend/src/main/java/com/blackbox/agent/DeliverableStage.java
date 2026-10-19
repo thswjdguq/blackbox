@@ -8,7 +8,8 @@ import java.util.List;
 
 /**
  * 제출물이 지금 어느 단계인지(K-30 3장). 프로젝트 홈의 "다음 할 일" 카드(frontend NextStepCard)와 같은 순서로 판정한다.
- * 위에서부터 먼저 맞는 것이 단계다. 단계를 더할 때는 값과 of의 한 줄을 더한다.
+ * 검토가 시작된 뒤에는 제출물의 상태(K-20 2장의 status·latestDecision)로, 그 전에는 요구사항과 업무로 판정한다.
+ * 단계를 더할 때는 값과 of의 한 줄을 더한다.
  */
 public enum DeliverableStage {
     NO_REQUIREMENT("요구사항이 없다"),
@@ -16,7 +17,12 @@ public enum DeliverableStage {
     UNCOVERED_REQUIREMENT("아직 확인 전인 필수 요구사항 중 업무가 없는 것이 있다"),
     TASKS_IN_PROGRESS("끝나지 않은 연결 업무가 있다"),
     UNCHECKED_REQUIREMENT("업무는 끝났고 확인하지 않은 필수 요구사항이 있다"),
-    READY_FOR_REVIEW("업무와 필수 요구사항 확인이 끝났다");
+    READY_FOR_REVIEW("업무와 필수 요구사항 확인이 끝났다"),
+    IN_REVIEW("검토가 진행 중이다"),
+    CHANGES_REQUESTED("검토에서 수정 요청을 받아 보완 중이다"),
+    APPROVED("검토에서 승인됐고 확정을 기다린다"),
+    CONFIRMED("최종본을 확정했고 제출 기록을 기다린다"),
+    SUBMITTED("제출을 기록했다");
 
     private final String meaning;
 
@@ -26,6 +32,12 @@ public enum DeliverableStage {
 
     /** projectTasks는 프로젝트의 업무 전부여도 된다. 이 제출물에 연결된 것만 본다 */
     public static DeliverableStage of(DeliverableDtos.Response deliverable, List<TaskResponse> projectTasks) {
+        if ("SUBMITTED".equals(deliverable.status())) return SUBMITTED;
+        if ("CONFIRMED".equals(deliverable.status())) return CONFIRMED;
+        // 수정 요청을 받으면 status는 DRAFT(보완 중)로 돌아가므로 결정으로 고른다
+        if ("CHANGES_REQUESTED".equals(deliverable.latestDecision())) return CHANGES_REQUESTED;
+        if ("IN_REVIEW".equals(deliverable.status())) return "APPROVED".equals(deliverable.latestDecision()) ? APPROVED : IN_REVIEW;
+
         List<TaskResponse> linked = projectTasks.stream().filter(t -> deliverable.id().equals(t.deliverableId())).toList();
         List<RequirementResponse> required = deliverable.requirements().stream().filter(RequirementResponse::required).toList();
         List<RequirementResponse> unchecked = required.stream().filter(r -> r.assessment() == null).toList();

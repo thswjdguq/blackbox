@@ -4,8 +4,10 @@ import com.blackbox.agent.proposal.TasksKind;
 import com.blackbox.agent.tool.GetProjectTool;
 import com.blackbox.agent.tool.ListDeliverablesTool;
 import com.blackbox.agent.tool.ListTasksTool;
+import com.blackbox.dto.DeliverableDtos;
 import com.blackbox.entity.User;
 import com.blackbox.service.DeliverableService;
+import com.blackbox.service.DeliverableStatusReader;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +39,10 @@ public class BreakDownTasksSkill implements AgentSkill {
             throw AgentSkill.badInput("제출물을 골라주세요");
         }
         // 다른 프로젝트의 제출물이면 여기서 404가 된다
-        return "업무로 나눌 제출물: id " + id + ", 제목 \"" + deliverables.get(projectId, id, user).title() + "\"";
+        DeliverableDtos.Response deliverable = deliverables.get(projectId, id, user);
+        // 확정·제출된 제출물에는 업무를 더할 수 없어 채택이 409가 된다. 모델을 부르기 전에 막는다
+        if (DeliverableStatusReader.isConfirmed(deliverable.status())) throw AgentSkill.badInput("확정된 제출물에는 업무를 더할 수 없습니다");
+        return "업무로 나눌 제출물: id " + id + ", 제목 \"" + deliverable.title() + "\"";
     }
 
     @Override public void complete(ObjectNode content, JsonNode input) {
