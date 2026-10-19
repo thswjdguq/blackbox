@@ -128,7 +128,51 @@ psql -h localhost -p 15432 -U blackbox blackbox_db       # 다른 창에서
 
 ## 7. 배포와 갱신
 
+배포 설정(compose, nginx, 스크립트)과 이미지는 따로 움직인다. 서버의 저장소는 늘 배포 설정이 있는 브랜치(`.env`의 `CONFIG_BRANCH`, 기본 main)를 받아 두고, 어느 브랜치의 코드를 띄울지는 이미지 태그로 고른다. 서버 저장소를 시연 브랜치로 바꾸면 그 브랜치의 옛 compose가 읽혀 다음 `up`에서 서비스가 깨진다.
+
+### 자동 갱신(서버)
+
+GitHub Actions(`.github/workflows/images.yml`)가 이미지를 만들어 GitHub 레지스트리에 올리고, 서버의 타이머가 받아 간다. GitHub가 서버에 들어오지 않으므로 서버 키를 GitHub에 두지 않는다.
+
+| 언제 | 무엇을 |
+| --- | --- |
+| main에서 CI가 성공했을 때 | `main`과 `main-<커밋>` 이미지를 만든다 |
+| 30분마다(일정) | `SCHEDULED_BRANCHES`의 브랜치(지금은 `shinguexpo`)에 새 커밋이 있으면 만든다 |
+| 손으로(Actions 화면의 Run workflow) | 고른 브랜치를 만든다 |
+| 서버: 매일 06:00(한국 시간), 켜진 지 2분 뒤, 손으로 실행할 때 | `scripts/ec2-update.sh`가 설정을 받고, 새 이미지가 있으면 DB를 백업하고 띄운 뒤 상태를 본다. 상태가 나쁘면 이전 이미지로 되돌린다 |
+
+서버 `.env`로 정한다.
+
+```bash
+IMAGE_REPO=ghcr.io/thswjdguq/   # 비우면 레지스트리에서 받지 않는다(PC에서 보낸 이미지를 씀)
+IMAGE_TAG=shinguexpo            # 브랜치 이름이면 새 이미지를 따라간다. shinguexpo-1a2b3c4처럼 커밋을 붙이면 고정된다
+CONFIG_BRANCH=main
+COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml   # 서버 전용 override가 있으면 :로 이어 붙인다
+```
+
+`COMPOSE_FILE`이 없는 `.env`(서버 준비 스크립트로 이 줄이 생기기 전에 만든 서버)에는 위 줄을 더한다. 자동 갱신 스크립트는 이 값이 없으면 같은 두 파일을 쓴다.
+
+- 처음 한 번 레지스트리의 패키지를 공개로 바꾼다(저장소 관리자: GitHub의 Packages → 패키지 설정 → Change visibility). 비공개로 두면 서버가 받지 못한다
+- **시연 기간에는 커밋이 붙은 태그로 고정한다**(예: `IMAGE_TAG=shinguexpo-e6e9ec1`). 확인을 마친 새 커밋을 반영할 때만 태그를 그 커밋으로 바꾸고 `sudo systemctl start blackbox-update`를 실행한다. 브랜치 이름으로 두면 그 브랜치의 모든 커밋이 다음 06:00이나 서버를 켤 때 그대로 반영된다
+- 시연 브랜치에서 main으로 바꿀 때는 `IMAGE_TAG=main`, `COMPOSE_PROJECT_NAME=blackbox`(새 DB. 시연 DB는 마이그레이션 이력이 달라 이어 쓸 수 없다)로 고치고 `bash scripts/ec2-update.sh`를 한 번 돌린다. 시연 DB의 볼륨은 남는다
+- 자동 백업은 `~/blackbox-backups/auto-*.dump`에 최근 10개를 둔다
+- 되돌릴 때 이미지만 되돌리고 DB는 되돌리지 않는다. 새 이미지가 마이그레이션을 먼저 적용했다면 옛 이미지가 새 스키마에서 돈다. 문제가 있으면 바꾸기 직전의 자동 백업(`auto-*.dump` 가운데 가장 최근 것)으로 8장의 복원 절차를 따른다
+- 교체했다가 상태가 나빠 되돌린 이미지는 `~/blackbox-backups/.failed-images`에 적어 두고, 같은 이미지가 다시 오면 건너뛴다. 새 커밋의 이미지가 오면 다시 시도한다
+- 설정 브랜치를 받았는데 배포용 설정이 아니면(compose가 고른 이미지가 `.env`와 다르면) 받기 전으로 돌려놓고 아무것도 바꾸지 않는다
+- 바로 반영하려면: 브랜치에 push한 뒤 GitHub의 Actions → 이미지 → Run workflow로 빌드하고(또는 30분 안에 일정이 빌드), 끝나면 서버에서 `sudo systemctl start blackbox-update`를 실행한다
+- 기록: `journalctl -u blackbox-update --since today`. 다음 실행: `systemctl list-timers blackbox-update.timer`
+- 시각을 바꾸려면 `scripts/systemd/blackbox-update.timer`의 `OnCalendar`를 고친다. 끄려면 `sudo systemctl disable --now blackbox-update.timer`
+
+처음 한 번 타이머를 설치한다(서버 준비 스크립트도 설치한다).
+
+```bash
+cd ~/blackbox && sudo cp scripts/systemd/blackbox-update.service scripts/systemd/blackbox-update.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now blackbox-update.timer
+```
+
 ### 이미지 만들고 보내기(PC)
+
+레지스트리를 쓰지 않을 때의 방법이다(`IMAGE_REPO`가 빈 서버).
 
 올릴 브랜치를 옆 폴더에 받아 빌드한다(README 6장). 지금 작업 중인 폴더의 브랜치는 건드리지 않는다. 태그에는 브랜치와 커밋을 적는다(예: `expo-db84780`). 서버에서 `docker ps`만 봐도 어느 코드가 떠 있는지 알 수 있다.
 
@@ -271,7 +315,6 @@ AWS에서 확인한 것(2026-10-13~18):
 
 ## 12. 하지 않은 것
 
-- main에 병합되면 자동으로 배포하는 것. 지금은 7장을 손으로 한다
 - 인증서 자동 갱신. 계속 운영하려면 nginx가 인증 경로(`/.well-known/acme-challenge/`)를 https로 넘기지 않게 열어 줘야 한다
 - 백업 자동화와 서버 감시
 

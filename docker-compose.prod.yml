@@ -11,8 +11,9 @@ services:
 
   backend:
     # 어느 브랜치로 만든 이미지를 띄울지는 태그로 고른다(.env의 IMAGE_TAG).
+    # 레지스트리에서 받을 때는 .env의 IMAGE_REPO에 주소를 적는다(예: ghcr.io/thswjdguq/). 비우면 PC에서 보낸 이미지를 쓴다.
     # 서버에서는 빌드하지 않는다. 이미지가 없을 때 서버에 받아 둔 소스로 조용히 빌드해 다른 코드를 띄우는 일을 막는다
-    image: blackbox-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPO:-}blackbox-backend:${IMAGE_TAG:-latest}
     build: !reset null
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -21,11 +22,11 @@ services:
       APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:?.env의 APP_CORS_ORIGINS에 접속 주소를 적는다}
 
   frontend:
-    image: blackbox-frontend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPO:-}blackbox-frontend:${IMAGE_TAG:-latest}
     build: !reset null
 
   nginx:
-    image: blackbox-nginx:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPO:-}blackbox-nginx:${IMAGE_TAG:-latest}
     build: !reset null
     volumes:
       # 같은 자리(/etc/nginx/nginx.conf)라 개발용 설정을 대신한다
