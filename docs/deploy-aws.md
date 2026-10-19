@@ -147,11 +147,16 @@ GitHub Actions(`.github/workflows/images.yml`)가 이미지를 만들어 GitHub 
 IMAGE_REPO=ghcr.io/thswjdguq/   # 비우면 레지스트리에서 받지 않는다(PC에서 보낸 이미지를 씀)
 IMAGE_TAG=shinguexpo            # 브랜치 이름이면 새 이미지를 따라간다. shinguexpo-1a2b3c4처럼 커밋을 붙이면 고정된다
 CONFIG_BRANCH=main
+COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml   # 서버 전용 override가 있으면 :로 이어 붙인다
 ```
 
+`COMPOSE_FILE`이 없는 `.env`(서버 준비 스크립트로 이 줄이 생기기 전에 만든 서버)에는 위 줄을 더한다. 자동 갱신 스크립트는 이 값이 없으면 같은 두 파일을 쓴다.
+
 - 처음 한 번 레지스트리의 패키지를 공개로 바꾼다(저장소 관리자: GitHub의 Packages → 패키지 설정 → Change visibility). 비공개로 두면 서버가 받지 못한다
+- **시연 기간에는 커밋이 붙은 태그로 고정한다**(예: `IMAGE_TAG=shinguexpo-e6e9ec1`). 확인을 마친 새 커밋을 반영할 때만 태그를 그 커밋으로 바꾸고 `sudo systemctl start blackbox-update`를 실행한다. 브랜치 이름으로 두면 그 브랜치의 모든 커밋이 다음 06:00이나 서버를 켤 때 그대로 반영된다
 - 시연 브랜치에서 main으로 바꿀 때는 `IMAGE_TAG=main`, `COMPOSE_PROJECT_NAME=blackbox`(새 DB. 시연 DB는 마이그레이션 이력이 달라 이어 쓸 수 없다)로 고치고 `bash scripts/ec2-update.sh`를 한 번 돌린다. 시연 DB의 볼륨은 남는다
 - 자동 백업은 `~/blackbox-backups/auto-*.dump`에 최근 10개를 둔다
+- 되돌릴 때 이미지만 되돌리고 DB는 되돌리지 않는다. 새 이미지가 마이그레이션을 먼저 적용했다면 옛 이미지가 새 스키마에서 돈다. 문제가 있으면 바꾸기 직전의 자동 백업(`auto-*.dump` 가운데 가장 최근 것)으로 8장의 복원 절차를 따른다
 - 교체했다가 상태가 나빠 되돌린 이미지는 `~/blackbox-backups/.failed-images`에 적어 두고, 같은 이미지가 다시 오면 건너뛴다. 새 커밋의 이미지가 오면 다시 시도한다
 - 설정 브랜치를 받았는데 배포용 설정이 아니면(compose가 고른 이미지가 `.env`와 다르면) 받기 전으로 돌려놓고 아무것도 바꾸지 않는다
 - 바로 반영하려면: 브랜치에 push한 뒤 GitHub의 Actions → 이미지 → Run workflow로 빌드하고(또는 30분 안에 일정이 빌드), 끝나면 서버에서 `sudo systemctl start blackbox-update`를 실행한다
