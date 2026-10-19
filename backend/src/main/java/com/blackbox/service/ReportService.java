@@ -27,14 +27,18 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class ReportService {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    // DB에서 읽은 시각은 UTC로 온다. 리포트의 모든 시각을 한국 시간으로 적는다
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("Asia/Seoul"));
 
     // ── 한글 폰트 (NanumGothic, classpath 임베드) ─────────────────────────────
     private static final BaseFont NANUM;
@@ -95,7 +99,7 @@ public class ReportService {
         List<Alert>              alerts  = alertRepo.findByProjectOrderByCreatedAtDesc(project);
 
         String generatedAt = OffsetDateTime.now().format(FMT);
-        String reportHash  = computeReportHash(project, scores, tasks, vaults, generatedAt);
+        String reportHash  = computeReportHash(project.getId(), scores, tasks, vaults, alerts);
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Document doc = new Document(PageSize.A4, 50, 50, 60, 60);
@@ -174,7 +178,7 @@ public class ReportService {
         doc.add(hashBox);
 
         doc.add(spacer(8));
-        doc.add(para("이 해시값은 리포트 데이터의 무결성을 보장합니다. 동일한 데이터로 재생성하면 동일한 해시가 출력됩니다.",
+        doc.add(para("같은 기록으로 다시 만들면 같은 해시가 나옵니다. 리포트를 다시 받아 해시를 비교하면 그사이 점수·업무·파일·경보 기록이 바뀌었는지 알 수 있습니다. 만든 시각과 점수의 계산 시각은 해시에 넣지 않습니다.",
                 font(8, GRAY_MID, Font.ITALIC)));
 
         // 구분선
@@ -308,10 +312,11 @@ public class ReportService {
     private void addAlertSection(Document doc, List<Alert> alerts) throws DocumentException {
         doc.add(sectionTitle("경보 현황"));
 
-        List<Alert> active = alerts.stream().filter(a -> !a.isRead()).toList();
+        List<Alert> active = activeAlerts(alerts);
         if (active.isEmpty()) {
             doc.add(emptyNote("활성 경보 없음 — 팀 기여도가 균형 잡혀 있습니다."));
             doc.add(spacer(8));
+            addResolvedAlerts(doc, alerts);
             return;
         }
 
@@ -329,21 +334,50 @@ public class ReportService {
         }
         doc.add(table);
         doc.add(spacer(8));
+        addResolvedAlerts(doc, alerts);
+    }
+
+    /** 해제된 경보와 그 사유. 경보가 언제 어떻게 풀렸는지도 기록이다 */
+    private void addResolvedAlerts(Document doc, List<Alert> alerts) throws DocumentException {
+        List<Alert> resolved = alerts.stream().filter(Alert::isResolved).toList();
+        if (resolved.isEmpty()) return;
+        doc.add(para("해제된 경보", font(9, GRAY_DARK, Font.BOLD)));
+        PdfPTable table = new PdfPTable(new float[]{16f, 40f, 18f, 26f});
+        table.setWidthPercentage(100);
+        for (String h : new String[]{"유형", "메시지", "해제 일시", "해제 사유"}) {
+            table.addCell(headerCell(h, GRAY_MID));
+        }
+        for (Alert a : resolved) {
+            table.addCell(dataCell(alertTypeKo(a.getAlertType()), WHITE, Font.NORMAL));
+            table.addCell(dataCell(a.getMessage(), WHITE, Font.NORMAL));
+            table.addCell(dataCell(a.getResolvedAt().format(FMT), WHITE, Font.NORMAL));
+            table.addCell(dataCell(a.getResolveReason() != null ? a.getResolveReason() : "-", WHITE, Font.NORMAL));
+        }
+        doc.add(table);
+        doc.add(spacer(8));
+    }
+
+    /** 해제되지 않은 경보가 활성 경보다(기여도 화면과 같은 기준). 읽음 표시는 당사자도 누를 수 있어 기준이 되지 않는다 */
+    static List<Alert> activeAlerts(List<Alert> alerts) {
+        return alerts.stream().filter(a -> !a.isResolved()).toList();
     }
 
     // ── 리포트 해시 ───────────────────────────────────────────────────────────
 
-    private String computeReportHash(Project project, List<ContributionScore> scores,
-                                     List<Task> tasks, List<FileVault> vaults, String ts) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(project.getId()).append("|").append(ts).append("\n");
-        scores.forEach(s -> sb.append(s.getUser().getId()).append("|")
-                .append(s.getTotalScore()).append("|").append(s.getCalculatedAt()).append("\n"));
-        tasks.forEach(t -> sb.append(t.getId()).append("|")
-                .append(t.getStatus()).append("|").append(t.getUpdatedAt()).append("\n"));
-        vaults.forEach(v -> sb.append(v.getFileHash()).append("|")
-                .append(v.getUploadedAt()).append("\n"));
-        return sha256(sb.toString());
+    /**
+     * 기록이 같으면 언제 다시 만들어도 같은 값이 나온다. 그래서 만든 시각과 점수의 계산 시각(스케줄러가 30분마다 다시 쓴다)은 넣지 않고,
+     * 조회 순서(점수는 모두 같은 값으로 정렬돼 순서가 정해지지 않는다)에 기대지 않게 줄을 정렬한다
+     */
+    static String computeReportHash(UUID projectId, List<ContributionScore> scores, List<Task> tasks, List<FileVault> vaults,
+                                    List<Alert> alerts) {
+        List<String> lines = new ArrayList<>();
+        scores.forEach(s -> lines.add("score|" + s.getUser().getId() + "|" + s.isTaskParticipated() + "|" + s.isMeetingParticipated()
+                + "|" + s.isFileParticipated() + "|" + s.isActionParticipated() + "|" + s.getParticipationLevel()));
+        tasks.forEach(t -> lines.add("task|" + t.getId() + "|" + t.getStatus() + "|" + t.getUpdatedAt()));
+        vaults.forEach(v -> lines.add("file|" + v.getId() + "|" + v.getFileHash() + "|" + v.getUploadedAt()));
+        alerts.forEach(a -> lines.add("alert|" + a.getId() + "|" + a.getResolvedAt()));
+        Collections.sort(lines);
+        return sha256(projectId + "\n" + String.join("\n", lines));
     }
 
     // ── PDF 헬퍼 ─────────────────────────────────────────────────────────────
@@ -413,7 +447,7 @@ public class ReportService {
 
     // ── 암호화 ────────────────────────────────────────────────────────────────
 
-    private String sha256(String input) {
+    private static String sha256(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] bytes = md.digest(input.getBytes(StandardCharsets.UTF_8));
