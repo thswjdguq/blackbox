@@ -84,10 +84,22 @@ jobs:
           SLUG: ${{ steps.tag.outputs.slug }}
           FIXED: ${{ steps.tag.outputs.fixed }}
         run: |
+          # source 라벨로 패키지를 이 저장소에 잇는다. 이어져야 워크플로의 토큰이 다음 실행에서도 같은 패키지에 올릴 수 있다
           for s in backend frontend nginx; do
-            docker build -t "$REPO/blackbox-$s:$FIXED" -t "$REPO/blackbox-$s:$SLUG" "$s"
+            docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" -t "$REPO/blackbox-$s:$FIXED" "$s"
           done
+          for s in backend frontend nginx; do docker push -q "$REPO/blackbox-$s:$FIXED"; done
+          echo "올림: $REPO/blackbox-{backend,frontend,nginx}:$FIXED" >> "$GITHUB_STEP_SUMMARY"
+
+      # 서버가 따라가는 태그(<브랜치>)는 세 이미지가 모두 올라간 뒤에만, 그리고 건너뛴 실행에서도 커밋 태그에 맞춘다.
+      # 앞선 실행이 중간에 실패해 세 태그가 서로 다른 커밋을 가리키는 일을 다음 실행이 바로잡는다. 다시 빌드하지 않는다
+      - name: 따라가는 태그 맞추기
+        env:
+          REPO: ${{ steps.tag.outputs.repo }}
+          SLUG: ${{ steps.tag.outputs.slug }}
+          FIXED: ${{ steps.tag.outputs.fixed }}
+        run: |
           for s in backend frontend nginx; do
-            docker push -q "$REPO/blackbox-$s:$FIXED" && docker push -q "$REPO/blackbox-$s:$SLUG"
+            docker buildx imagetools create -t "$REPO/blackbox-$s:$SLUG" "$REPO/blackbox-$s:$FIXED"
           done
-          echo "올림: $REPO/blackbox-{backend,frontend,nginx}:$FIXED (그리고 :$SLUG)" >> "$GITHUB_STEP_SUMMARY"
+          echo "$REPO/blackbox-*:$SLUG → $FIXED" >> "$GITHUB_STEP_SUMMARY"
