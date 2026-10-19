@@ -15,7 +15,7 @@ import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
 import FinalSubmissionPanel from "@/components/deliverable/FinalSubmissionPanel";
 import api from "@/lib/api";
-import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
+import { deliverableDue, dueLabel, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import {
   getDeliverable,
@@ -418,7 +418,7 @@ export default function DeliverableDetailPage() {
                   <dt className="text-xs text-bb-text2">제출 기한</dt>
                   <dd className="mt-0.5 text-bb-text">
                     {deliverable.dueDate}{" "}
-                    <span className={`text-xs font-medium ${DUE_TEXT[dueTone(deliverable.dueDate)]}`}>{dueLabel(deliverable.dueDate)}</span>
+                    <span className={`text-xs font-medium ${deliverableDue(deliverable).cls}`}>{deliverableDue(deliverable).label}</span>
                   </dd>
                 </div>
                 <div>

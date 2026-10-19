@@ -46,6 +46,13 @@ export const DUE_TEXT: Record<DueTone, string> = {
   later:   "text-blue-700 dark:text-blue-300",
 };
 
+/** 최종 제출물의 기한 표시. 확정·제출을 기록했으면 기한이 지나도 "초과"가 아니라 그 상태를 보인다 */
+export function deliverableDue(d: { dueDate: string; status?: string | null }): { label: string; cls: string } {
+  if (d.status === "SUBMITTED") return { label: "제출 기록됨", cls: "text-bb-text2" };
+  if (d.status === "CONFIRMED") return { label: "확정됨", cls: "text-bb-text2" };
+  return { label: dueLabel(d.dueDate), cls: DUE_TEXT[dueTone(d.dueDate)] };
+}
+
 export const DUE_BADGE: Record<DueTone, string> = {
   overdue: `${DUE_TEXT.overdue} bg-red-500/10 border-red-500/30`,
   today: `${DUE_TEXT.today} bg-red-500/10 border-red-500/30`,

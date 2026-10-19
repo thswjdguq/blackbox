@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { daysLeft, dueLabel, parseLocalDate, shortDate, DUE_TEXT, dueTone } from "@/lib/due";
+import { daysLeft, deliverableDue, parseLocalDate, shortDate } from "@/lib/due";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
 
@@ -31,6 +31,7 @@ interface Row {
   title: string;
   href: string | null;
   due: string | null;
+  status?: Deliverable["status"];
   tasks: Task[];
   undated: number;
 }
@@ -61,7 +62,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
     .map((d) => {
       const linked = tasks.filter((t) => t.deliverableId === d.id);
       return {
-        key: d.id, title: d.title, href: `/projects/${projectId}/deliverables/${d.id}`, due: d.dueDate,
+        key: d.id, title: d.title, href: `/projects/${projectId}/deliverables/${d.id}`, due: d.dueDate, status: d.status,
         tasks: linked.filter((t) => t.dueDate), undated: linked.filter((t) => !t.dueDate).length,
       };
     });
@@ -128,7 +129,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
                   <span className="truncate text-sm text-bb-text2">{r.title}</span>
                 )}
                 <span className="truncate text-[11px] text-bb-text2">
-                  {r.due && <span className={DUE_TEXT[dueTone(r.due)]}>{dueLabel(r.due)}</span>}
+                  {r.due && <span className={deliverableDue({ dueDate: r.due, status: r.status }).cls}>{deliverableDue({ dueDate: r.due, status: r.status }).label}</span>}
                   {r.due && " · "}업무 {r.tasks.length + r.undated}개{r.undated > 0 && ` (기한 없음 ${r.undated})`}
                 </span>
               </div>
@@ -137,7 +138,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
                   <span
                     role="img"
                     aria-label={`${r.title} 제출 기한 ${shortDate(r.due)}`}
-                    title={`제출 기한 ${shortDate(r.due)} (${dueLabel(r.due)})`}
+                    title={`제출 기한 ${shortDate(r.due)} (${deliverableDue({ dueDate: r.due, status: r.status }).label})`}
                     className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-amber-400"
                     style={{ left: x(r.due) }}
                   />

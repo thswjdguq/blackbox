@@ -12,7 +12,7 @@ import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal"
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import DeliverableTimeline from "@/components/deliverable/DeliverableTimeline";
 import api from "@/lib/api";
-import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
+import { deliverableDue, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import { getDeliverables, createDeliverable, deleteDeliverable } from "@/lib/api/deliverable";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
@@ -224,6 +224,7 @@ export default function DeliverablesPage() {
             {deliverables.map((d) => {
               const requiredCount = d.requirements.filter((r) => r.required).length;
               const taskCount = tasks.filter((t) => t.deliverableId === d.id).length;
+              const due = deliverableDue(d);
               return (
                 <div
                   key={d.id}
@@ -238,7 +239,7 @@ export default function DeliverablesPage() {
                         <span className="flex items-center gap-1">
                           <CalendarDays size={12} />
                           제출일 {shortDate(d.dueDate)}
-                          <span className={`font-medium ${DUE_TEXT[dueTone(d.dueDate)]}`}>· {dueLabel(d.dueDate)}</span>
+                          <span className={`font-medium ${due.cls}`}>· {due.label}</span>
                         </span>
                         <span className="flex items-center gap-1">
                           <User size={12} />
