@@ -8,6 +8,8 @@ import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal"
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import DeliverableTimeline from "@/components/deliverable/DeliverableTimeline";
 import DeliverableStatusBadge from "@/components/deliverable/DeliverableStatusBadge";
+import AgentButton from "@/components/agent/AgentButton";
+import { useAgentStore } from "@/lib/store/agentStore";
 import api from "@/lib/api";
 import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
@@ -93,9 +95,11 @@ export default function DeliverablesPage() {
     }
   }, [projectId]);
 
+  // AI 제안을 채택하면 기록이 바뀐 횟수가 올라간다. 창 뒤의 목록을 다시 읽는다(화면 문서 4.11)
+  const recordsVersion = useAgentStore((s) => s.recordsVersion);
   useEffect(() => {
     fetchAll();
-  }, [fetchAll]);
+  }, [fetchAll, recordsVersion]);
 
   const handleCreate = async (payload: SaveDeliverablePayload) => {
     await createDeliverable(projectId, payload);
@@ -133,13 +137,16 @@ export default function DeliverablesPage() {
             <p className="mt-1 text-sm text-bb-text2">무엇을 제출할지 정하고, 필요한 작업을 팀원에게 나누세요.</p>
           </div>
           {canWrite && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
-            >
-              <Plus size={15} />
-              제출물 추가
-            </button>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
+              >
+                <Plus size={15} />
+                제출물 추가
+              </button>
+            </div>
           )}
         </div>
 
@@ -180,13 +187,16 @@ export default function DeliverablesPage() {
             <p className="text-sm font-medium text-bb-text">첫 제출물을 등록하세요</p>
             <p className="text-xs text-bb-text2">예: 중간발표 자료, 조사 보고서, 최종 작품 설명서</p>
             {canWrite ? (
-              <button
-                onClick={() => setShowForm(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
-              >
-                <Plus size={14} />
-                제출물 등록하기
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
+                >
+                  <Plus size={14} />
+                  제출물 등록하기
+                </button>
+                <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
+              </div>
             ) : (
               <p className="text-xs text-bb-text2">팀원이 제출물을 등록하면 여기서 확인할 수 있습니다.</p>
             )}

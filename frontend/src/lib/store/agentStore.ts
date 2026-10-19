@@ -52,6 +52,8 @@ interface AgentState {
   deliverables: Record<string, Deliverable[] | undefined>;
   /** 채택할 때마다 1씩 는다. 뒤 화면이 이 값을 보고 다시 읽는다(4.11) */
   recordsVersion: number;
+  /** 화면마다의 버튼이 연 입력 칸(입력이 필요한 실행). 창이 읽고 비운다 */
+  pendingInput: { projectId: string; skill: string } | null;
 
   setOpen(open: boolean): void;
   setTab(tab: "assistant" | "proposals"): void;
@@ -60,6 +62,9 @@ interface AgentState {
   /** 수정·채택·거절의 응답으로 받은 카드를 넣는다. 화면은 카드 내용을 따로 들고 있지 않는다(2장 9번) */
   putProposal(p: Proposal): void;
   bumpRecords(): void;
+  /** 화면마다의 버튼이 부른다(4.9). 창을 열고, 입력이 다 있으면 실행까지 한다 */
+  openWith(projectId: string, skill: string, input?: object, titleExtra?: string): void;
+  clearPendingInput(): void;
   loadStatus(projectId: string, force?: boolean): Promise<void>;
   run(projectId: string, skill: string, input: object, title: string): Promise<void>;
 }
@@ -78,6 +83,7 @@ const empty = {
   proposalLists: {},
   deliverables: {},
   recordsVersion: 0,
+  pendingInput: null,
 };
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -122,6 +128,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   putProposal: (p) => set((s) => ({ proposals: { ...s.proposals, [p.id]: p } })),
+
+  openWith: (projectId, skill, input, titleExtra) => {
+    const status = get().status[projectId];
+    const label = status?.skills.find((s) => s.skill === skill)?.label ?? skill;
+    set({ open: true, tab: "assistant" });
+    if (input) {
+      get().run(projectId, skill, input, titleExtra ? `${label} · ${titleExtra}` : label);
+    } else {
+      set({ pendingInput: { projectId, skill } });
+    }
+  },
+  clearPendingInput: () => set({ pendingInput: null }),
 
   // 채택으로 제출물·요구사항이 생기므로 요구사항 이름 캐시도 비운다
   bumpRecords: () => set((s) => ({ recordsVersion: s.recordsVersion + 1, deliverables: {} })),

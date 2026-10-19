@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import AgentButton from "@/components/agent/AgentButton";
+import { useAgentStore } from "@/lib/store/agentStore";
 import { Deliverable, isDeliverableLocked } from "@/types/deliverable";
 import { apiError, PartialSaveError } from "@/lib/apiError";
 import {
@@ -85,11 +88,14 @@ export default function KanbanBoard({
   };
   const openedTask = useRef<string | null>(null);
 
-  // 제출물 상세의 "보드에서 이 제출물 업무 보기"가 ?deliverable=<id> 로 연다
+  // 제출물 상세의 "보드에서 이 제출물 업무 보기"와 AI 도우미 창의 링크가 ?deliverable=·?task= 로 연다.
+  // 보드를 보고 있을 때 창의 링크를 누르면 주소만 바뀌므로, 처음 한 번이 아니라 주소가 바뀔 때마다 읽는다(화면 문서 4.11)
+  const searchParams = useSearchParams();
+  const queryDeliverable = searchParams?.get("deliverable") ?? null;
+  const queryTask = searchParams?.get("task") ?? null;
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("deliverable");
-    if (id) setDeliveryFilter(id);
-  }, []);
+    if (queryDeliverable) setDeliveryFilter(queryDeliverable);
+  }, [queryDeliverable]);
 
   const [deliverablesError, setDeliverablesError] = useState("");
 
@@ -100,9 +106,11 @@ export default function KanbanBoard({
       .catch((err) => setDeliverablesError(apiError(err, "제출물 목록을 불러오지 못했습니다.")));
   }, [projectId]);
 
+  // AI 제안을 채택하면 새 제출물이 생길 수 있어 필터 목록과 잠금을 다시 읽는다
+  const recordsVersion = useAgentStore((s) => s.recordsVersion);
   useEffect(() => {
     loadDeliverables();
-  }, [loadDeliverables]);
+  }, [loadDeliverables, recordsVersion]);
 
   // 확정·제출된 제출물의 업무는 서버가 쓰기를 409로 거절한다(K-20 4장). 그 업무만 읽기 전용으로 둔다
   const lockedIds = useMemo(
@@ -129,14 +137,16 @@ export default function KanbanBoard({
 
   useEffect(() => {
     setTasks(initialTasks);
-    const id = new URLSearchParams(window.location.search).get("task");
-    const task = initialTasks.find((item) => item.id === id);
-    if (task && openedTask.current !== id) {
-      openedTask.current = id;
+  }, [initialTasks]);
+
+  useEffect(() => {
+    const task = initialTasks.find((item) => item.id === queryTask);
+    if (queryTask && task && openedTask.current !== queryTask) {
+      openedTask.current = queryTask;
       setEditingTask(task);
       setModalMode("edit");
     }
-  }, [initialTasks]);
+  }, [initialTasks, queryTask]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -364,7 +374,9 @@ export default function KanbanBoard({
           {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
         <Link href={`/projects/${projectId}/deliverables`} className="whitespace-nowrap text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
-        <div role="group" aria-label="업무 보기 방식" className="ml-auto flex rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+        <AgentButton projectId={projectId} skill="STATUS_BRIEF" input={{}} />
+        <div role="group" aria-label="업무 보기 방식" className="flex rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
           {([["board", "보드", Columns3], ["list", "목록", List]] as const).map(([v, label, Icon]) => (
             <button
               key={v}
@@ -376,6 +388,7 @@ export default function KanbanBoard({
               {label}
             </button>
           ))}
+        </div>
         </div>
       </div>
       {deliverablesError && (

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
+import { useAgentStore } from "@/lib/store/agentStore";
 import { Task, ScoreMap } from "@/types/task";
 import api from "@/lib/api";
 import {
@@ -71,6 +72,15 @@ export default function BoardPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
   const readOnly = members.find((m) => m.userId === myUserId)?.role === "OBSERVER";
+
+  // AI 제안을 채택해 업무가 생기면 창 뒤의 보드도 업무만 다시 읽는다(화면 문서 4.11). 처음 값은 건너뛴다
+  const recordsVersion = useAgentStore((s) => s.recordsVersion);
+  const seenRecords = useRef(recordsVersion);
+  useEffect(() => {
+    if (seenRecords.current === recordsVersion) return;
+    seenRecords.current = recordsVersion;
+    api.get<Task[]>(`/projects/${projectId}/tasks`).then(({ data }) => setTasks(data)).catch(() => {});
+  }, [recordsVersion, projectId]);
 
   // ── 필터 ──────────────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<KanbanFilter>({ assigneeId: null, priority: null, tag: "" });

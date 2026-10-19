@@ -5,6 +5,8 @@ import { ArrowRight, ClipboardList } from "lucide-react";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
 import { daysLeft, dueLabel } from "@/lib/due";
+import { useAgentStore } from "@/lib/store/agentStore";
+import AgentButton from "@/components/agent/AgentButton";
 
 interface Step {
   title: string;
@@ -183,21 +185,26 @@ export default function NextStepCard({
   tasks: Task[];
   canWrite: boolean;
 }) {
+  // AI 버튼은 서버가 준 단계(stages)로 고른다(화면 문서 4.9). 카드의 문구와 기존 링크는 그대로 둔다
+  const stages = useAgentStore((s) => s.status[projectId]?.stages);
+
   if (deliverables.length === 0) {
     return (
-      <Link
-        href={`/projects/${projectId}/deliverables`}
-        className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15"
-      >
+      <section className="mb-6 rounded-xl border border-teal-500/40 bg-teal-500/10 p-5" aria-labelledby="next-step-title">
         <p className="text-xs font-semibold text-teal-500">다음 할 일</p>
-        <h2 className="mt-1 font-semibold text-bb-text">{canWrite ? "제출물부터 계획하기" : "아직 제출물이 없습니다"}</h2>
+        <h2 id="next-step-title" className="mt-1 font-semibold text-bb-text">{canWrite ? "제출물부터 계획하기" : "아직 제출물이 없습니다"}</h2>
         <p className="mt-2 text-sm text-bb-text2">
           {canWrite
             ? "제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요."
             : "팀원이 제출물을 등록하면 여기에 다음 할 일이 표시됩니다."}
         </p>
-        <span className="mt-3 inline-block text-sm font-medium text-teal-500">{canWrite ? "제출물 열기" : "제출물 목록 보기"} →</span>
-      </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <Link href={`/projects/${projectId}/deliverables`} className="text-sm font-medium text-teal-500 hover:underline">
+            {canWrite ? "제출물 열기" : "제출물 목록 보기"} →
+          </Link>
+          <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
+        </div>
+      </section>
     );
   }
 
@@ -223,6 +230,13 @@ export default function NextStepCard({
   const target = sorted[0];
   const step = nextStepFor(projectId, target, tasks, canWrite);
   const overdue = daysLeft(target.dueDate) < 0;
+  const stage = stages?.find((s) => s.deliverableId === target.id)?.stage;
+  const ai =
+    stage === "NO_TASK" || stage === "UNCOVERED_REQUIREMENT"
+      ? { skill: "BREAK_DOWN_TASKS", input: { deliverableId: target.id }, titleExtra: target.title }
+      : stage === "TASKS_IN_PROGRESS"
+        ? { skill: "STATUS_BRIEF", input: {} }
+        : null;
 
   return (
     <section className="mb-6 rounded-xl border border-teal-500/40 bg-teal-500/10 p-5" aria-labelledby="next-step-title">
@@ -243,6 +257,7 @@ export default function NextStepCard({
           {step.action}
           <ArrowRight size={14} />
         </Link>
+        {ai && <AgentButton projectId={projectId} skill={ai.skill} input={ai.input} titleExtra={ai.titleExtra} />}
         {deliverables.length > 1 && (
           <Link href={`/projects/${projectId}/deliverables`} className="text-xs text-bb-text2 hover:text-bb-text">
             다른 제출물 {deliverables.length - 1}개 보기

@@ -75,6 +75,8 @@ export default function AgentDock() {
   const proposals = useAgentStore((s) => s.proposals);
   const run = useAgentStore((s) => s.run);
   const loadStatus = useAgentStore((s) => s.loadStatus);
+  const pendingInput = useAgentStore((s) => s.pendingInput);
+  const clearPendingInput = useAgentStore((s) => s.clearPendingInput);
   const small = useSmallScreen();
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState<Pending>(null);
@@ -118,6 +120,17 @@ export default function AgentDock() {
   useEffect(() => {
     setPending(null);
   }, [projectId]);
+
+  // 화면마다의 버튼(4.9)이 입력이 필요한 실행을 골랐으면 입력 칸을 연다
+  useEffect(() => {
+    if (!pendingInput || pendingInput.projectId !== projectId || !status) return;
+    if (pendingInput.skill === "PLAN_FROM_BRIEF") setPending({ skill: "PLAN_FROM_BRIEF" });
+    if (pendingInput.skill === "BREAK_DOWN_TASKS") {
+      setPickedDeliverable(status.stages.find((s) => !breakDownBlocked(s.stage))?.deliverableId ?? "");
+      setPending({ skill: "BREAK_DOWN_TASKS" });
+    }
+    clearPendingInput();
+  }, [pendingInput, projectId, status, clearPendingInput]);
 
   if (!visible || !projectId || !status) return null;
 
