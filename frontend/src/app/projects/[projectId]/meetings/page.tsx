@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import SmartDateInput from "@/components/SmartDateInput";
+import { useMyRole } from "@/hooks/useMyRole";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
 function formatDate(iso: string | null): string {
@@ -759,6 +760,9 @@ export default function MeetingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  // 회의 만들기는 지금 서버가 팀장만 받는다(MeetingService.createMeeting, #115). 팀원·관찰자에게는 버튼 대신 안내
+  const role = useMyRole(projectId);
+  const canCreate = role === "LEADER";
 
   const fetchMeetings = useCallback(async () => {
     setLoading(true);
@@ -815,14 +819,16 @@ export default function MeetingsPage() {
             <h1 className="text-2xl font-bold text-bb-text">회의록</h1>
             <p className="text-sm text-bb-text2 mt-1">총 {meetings.length}개의 회의</p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
-                       text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            <Plus size={15} />
-            새 회의
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
+                         text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Plus size={15} />
+              새 회의
+            </button>
+          )}
         </div>
 
         {/* 에러 */}
@@ -844,15 +850,23 @@ export default function MeetingsPage() {
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <span className="text-5xl mb-4">📅</span>
             <p className="text-sm font-semibold text-bb-text mb-1.5">아직 회의가 없어요</p>
-            <p className="text-xs text-bb-text2 mb-6">팀원들과 첫 회의를 만들어보세요</p>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500
-                         text-white text-sm font-medium rounded-lg transition-all"
-            >
-              <Plus size={14} />
-              새 회의
-            </button>
+            {canCreate ? (
+              <>
+                <p className="text-xs text-bb-text2 mb-6">첫 회의를 만들고 체크인 코드로 팀원의 출석을 남기세요</p>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500
+                             text-white text-sm font-medium rounded-lg transition-all"
+                >
+                  <Plus size={14} />
+                  새 회의
+                </button>
+              </>
+            ) : role === "MEMBER" ? (
+              <p className="text-xs text-bb-text2">회의는 팀장이 만듭니다. 회의가 생기면 여기서 회의록을 쓰고 출석 체크인을 할 수 있습니다.</p>
+            ) : role === "OBSERVER" ? (
+              <p className="text-xs text-bb-text2">팀장이 회의를 만들면 여기서 회의록을 볼 수 있습니다.</p>
+            ) : null}
           </div>
         )}
 

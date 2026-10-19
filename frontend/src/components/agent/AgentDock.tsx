@@ -24,6 +24,29 @@ function useSmallScreen() {
   return small;
 }
 
+const FOCUSABLE = 'a[href], button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), summary, [tabindex="0"]';
+
+/**
+ * 작은 화면의 대화 상자(aria-modal)에서 Tab·Shift+Tab이 창 밖으로 나가지 않게 끝에서 처음으로 돌린다(8장).
+ * 실행을 시작하면 입력 칸이 꺼져 초점이 body로 빠지므로, 창 밖에 있을 때도 창 안으로 데려온다.
+ * 닫힌 details 안처럼 보이지 않는 것은 건너뛴다.
+ */
+function keepFocusInside(e: KeyboardEvent, dock: HTMLElement) {
+  const items = Array.from(dock.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.getClientRects().length > 0);
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!first || !last) return;
+  const active = document.activeElement;
+  const inside = active instanceof HTMLElement && items.includes(active);
+  if (e.shiftKey && (!inside || active === first)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (!inside || active === last)) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 /** 보이는 여는 버튼(사이드바 또는 작은 화면 상단 바)으로 초점을 돌려준다 */
 function focusLauncher() {
   const buttons = Array.from(document.querySelectorAll<HTMLElement>("[data-agent-launcher]"));
@@ -56,6 +79,7 @@ export default function AgentDock() {
   const [brief, setBrief] = useState("");
   const [pickedDeliverable, setPickedDeliverable] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const dockRef = useRef<HTMLElement>(null);
 
   const usable = !!status && (status.available || status.pendingProposalCount > 0);
   const visible = open && !!projectId && usable;
@@ -72,6 +96,16 @@ export default function AgentDock() {
   useEffect(() => {
     if (open && projectId) loadStatus(projectId, true);
   }, [open, projectId, loadStatus]);
+
+  // 작은 화면에서는 초점을 창 안에 가둔다. 큰 화면의 옆 칸은 본문과 함께 쓰므로 가두지 않는다
+  useEffect(() => {
+    if (!small || !visible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Tab" && dockRef.current) keepFocusInside(e, dockRef.current);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [small, visible]);
 
   // 창이 보이게 되면 초점을 창 안으로 옮긴다(8장)
   useLayoutEffect(() => {
@@ -259,6 +293,7 @@ export default function AgentDock() {
 
   return (
     <aside
+      ref={dockRef}
       aria-label="AI 도우미"
       {...(small ? { role: "dialog", "aria-modal": true } : {})}
       data-testid="agent-dock"
