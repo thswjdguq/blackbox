@@ -17,7 +17,7 @@ COMPOSE_FILE=$(envval COMPOSE_FILE); export COMPOSE_FILE=${COMPOSE_FILE:-docker-
 CONFIG_BRANCH=$(envval CONFIG_BRANCH); CONFIG_BRANCH=${CONFIG_BRANCH:-main}
 IMAGE_REPO=$(envval IMAGE_REPO)
 IMAGE_TAG=$(envval IMAGE_TAG); IMAGE_TAG=${IMAGE_TAG:-latest}
-HEALTH_URL=$(envval HEALTH_URL); HEALTH_URL=${HEALTH_URL:-https://localhost/api/auth/profile}
+SITE_URL=$(envval SITE_URL); SITE_URL=${SITE_URL:-https://localhost}   # 상태 확인에 쓰는 nginx 주소. 서버 안에서 본다
 BACKUP_DIR=$(envval BACKUP_DIR); BACKUP_DIR=${BACKUP_DIR:-$HOME/blackbox-backups}
 SERVICES="backend frontend nginx"
 FAILED="$BACKUP_DIR/.failed-images"   # 교체했다가 상태가 나빠 되돌린 이미지. 같은 이미지가 다시 오면 건너뛴다
@@ -64,8 +64,11 @@ for s in $SERVICES; do
   fi
 done
 if [ -n "$IMAGE_REPO" ]; then
+  # 일부만 받고 실패하면 서비스마다 다른 커밋이 섞여 뜰 수 있다. 다 받지 못했으면 이름을 지금 이미지로 되돌리고 바꾸지 않는다
   if ! out=$(docker compose pull -q $SERVICES 2>&1); then
-    log "이미지를 받지 못했다. 서버에 있는 이미지로 띄운다: $(echo "$out" | grep -v -E 'Pull(ing|ed)' | tail -3 | tr '\n' ' ')"
+    for s in $SERVICES; do [ -n "${before[$s]}" ] && docker tag "blackbox-$s:previous" "${IMAGE_REPO}blackbox-$s:$IMAGE_TAG"; done
+    log "이미지를 다 받지 못해 바꾸지 않는다: $(echo "$out" | grep -v -E 'Pull(ing|ed)' | tail -3 | tr '\n' ' ')"
+    exit 1
   fi
 fi
 
@@ -95,13 +98,16 @@ fi
 docker compose up -d --remove-orphans 2>&1 | grep -v -E "Running$" || true
 [ "$ids_before" = "$(docker compose ps -q | sort)" ] && { log "바뀐 것이 없다"; exit 0; }
 # nginx는 backend·frontend의 주소를 뜰 때 한 번만 찾는다. 그쪽만 새로 떴으면 IP가 바뀌었을 수 있으니 설정을 다시 읽게 한다(끊김 없음)
-reload_nginx() { docker compose exec -T nginx nginx -s reload >/dev/null 2>&1 || log "nginx 설정을 다시 읽지 못했다"; }
+reload_nginx() { docker compose exec -T nginx nginx -s reload >/dev/null 2>&1 || log "nginx 설정을 다시 읽지 못했다(떠 있지 않은 서비스가 있으면 그 이름을 찾지 못한다). nginx는 앞 설정으로 계속 돈다"; }
 reload_nginx
 
+# 네 서비스가 모두 떠 있고(재시작 반복 아님), nginx를 거쳐 서버(로그인 전 401)와 화면(/login 200)이 모두 답해야 정상이다.
 # 나쁘면 요청마다 5초 제한까지 기다리므로 최대 약 5분 본다
+up_all() { [ "$(docker compose ps --status running -q db backend frontend nginx | wc -l)" = 4 ]; }
 healthy() {
   for _ in $(seq 1 30); do
-    [ "$(curl -sk -m 5 -o /dev/null -w '%{http_code}' "$HEALTH_URL")" = 401 ] && return 0
+    up_all && [ "$(curl -sk -m 5 -o /dev/null -w '%{http_code}' "$SITE_URL/api/auth/profile")" = 401 ] \
+      && [ "$(curl -sk -m 5 -o /dev/null -w '%{http_code}' "$SITE_URL/login")" = 200 ] && return 0
     sleep 5
   done
   return 1
@@ -111,7 +117,7 @@ if healthy; then
   docker image prune -f >/dev/null   # 이름 없는 옛 이미지를 지운다. 바로 앞 이미지는 blackbox-*:previous로 남는다
   exit 0
 fi
-log "상태 확인 실패($HEALTH_URL). 이전 이미지로 되돌린다:$changed"
+log "상태 확인 실패(서비스 $(docker compose ps --status running -q | wc -l)/4개 실행 중, API $(curl -sk -m 5 -o /dev/null -w '%{http_code}' "$SITE_URL/api/auth/profile"), 화면 $(curl -sk -m 5 -o /dev/null -w '%{http_code}' "$SITE_URL/login")). 이전 이미지로 되돌린다:$changed"
 mkdir -p "$BACKUP_DIR"; for s in $changed; do echo "$s ${want[$s]}" >> "$FAILED"; done
 for s in $changed; do
   [ -n "${before[$s]}" ] && docker tag "blackbox-$s:previous" "${IMAGE_REPO}blackbox-$s:$IMAGE_TAG" && log "$s → ${before[$s]:7:12}"
