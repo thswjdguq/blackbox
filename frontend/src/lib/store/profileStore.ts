@@ -2,7 +2,7 @@ import { create } from "zustand";
 import api from "@/lib/api";
 import { onSessionReset } from "@/lib/sessionCache";
 
-export interface CurrentProfile { id: string; name: string; email: string; role: string }
+export interface CurrentProfile { id: string; name: string; email: string; role: string; affiliation?: {source:"CATALOG"|"SELF_REPORTED";schoolId:string|null;departmentId:string|null;schoolName:string;departmentName:string;catalogYear:number|null}|null }
 interface ProfileState {
   profile: CurrentProfile | null;
   loading: boolean;

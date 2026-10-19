@@ -7,6 +7,8 @@ import BeginnerGuide from "@/components/BeginnerGuide";
 import api from "@/lib/api";
 import { useProfileStore } from "@/lib/store/profileStore";
 import { sessionGeneration } from "@/lib/sessionCache";
+import ProfileAffiliation from "@/components/auth/ProfileAffiliation";
+import type {CurrentProfile} from "@/lib/store/profileStore";
 import {
   UserCircle,
   Mail,
@@ -24,7 +26,7 @@ import {
 
 const GOOGLE_BLUE = "#4285F4";
 
-interface Profile { id: string; name: string; email: string; role: string; }
+type Profile = CurrentProfile;
 interface CalendarStatus { connected: boolean; members: { userId: string; name: string; email: string; connected: boolean }[] }
 
 const INPUT_CLS =
@@ -257,6 +259,7 @@ function ProfileSettingsContent() {
             </div>
           </Section>
 
+          {profile&&<Section title="소속 대학교·학과"><ProfileAffiliation profile={profile} onSaved={updated=>{setProfile(updated);useProfileStore.getState().update(updated);}}/></Section>}
           {/* ② 보안 */}
           <Section title="보안">
             <div className="space-y-3">

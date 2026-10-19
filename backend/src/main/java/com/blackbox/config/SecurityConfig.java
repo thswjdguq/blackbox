@@ -49,6 +49,7 @@ public class SecurityConfig {
                 // 이미 인증/권한 검사를 통과한 SSE 응답의 비동기 재디스패치다. 최초 요청은 아래 인증 규칙을 따른다.
                 .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC).permitAll()
                 .requestMatchers("/api/health").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET,"/api/auth/affiliation/schools","/api/auth/affiliation/schools/*/departments").permitAll()
                 .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/google/callback").permitAll()
                 .anyRequest().authenticated()
             )

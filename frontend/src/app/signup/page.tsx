@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
+import AffiliationFields, { affiliationPayload, affiliationReady, emptyAffiliation } from "@/components/auth/AffiliationFields";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isDark, setIsDark] = useState(false);
+  const [affiliation,setAffiliation] = useState(emptyAffiliation);
   const setTokens = useAuthStore((s) => s.setTokens);
 
   useEffect(() => {
@@ -40,11 +42,12 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(!affiliationReady(affiliation)){setError("소속 학교와 학과를 선택하거나 직접 입력해 주세요.");return;}
     setLoading(true);
     setError("");
 
     try {
-      await api.post("/auth/signup", { email, name, password });
+      await api.post("/auth/signup", { email, name, password, affiliation:affiliationPayload(affiliation) });
       setTokens();
       router.replace("/dashboard");
     } catch (err) {
@@ -154,6 +157,7 @@ export default function SignupPage() {
             </div>
           </div>
 
+          <AffiliationFields value={affiliation} onChange={setAffiliation} disabled={loading}/>
           <p className="text-xs text-bb-text2">프로젝트를 만들거나 초대를 받아 참여할 수 있습니다. 팀장·팀원·관찰자 권한은 프로젝트별로 정해집니다.</p>
 
           <button

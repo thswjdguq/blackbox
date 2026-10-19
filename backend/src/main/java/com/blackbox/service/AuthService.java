@@ -19,15 +19,17 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
+    private final UniversityCatalogService catalog;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       JwtProperties jwtProperties) {
+                       JwtProperties jwtProperties, UniversityCatalogService catalog) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
+        this.catalog = catalog;
     }
 
     @Transactional
@@ -40,6 +42,7 @@ public class AuthService {
         user.setName(req.name());
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole("STUDENT");
+        catalog.apply(user,req.affiliation());
         userRepository.save(user);
         return issueTokenPair(user.getEmail());
     }
@@ -71,6 +74,7 @@ public class AuthService {
     @Transactional
     public ProfileResponse updateProfile(User user, ProfileUpdateRequest req) {
         user.setName(req.name().trim());
+        if(req.affiliation()!=null) catalog.apply(user,req.affiliation());
         userRepository.save(user);
         return ProfileResponse.from(user);
     }
