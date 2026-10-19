@@ -12,6 +12,8 @@ flock -n 9 || { echo "다른 갱신이 돌고 있어 끝낸다"; exit 0; }
 
 log() { echo "[갱신] $*"; }
 envval() { grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2-; }
+# -f 없이 부르는 docker compose가 배포용 설정을 읽게 한다. .env에 적었으면(엑스포용 override를 붙인 서버 등) 그 값을 쓴다
+COMPOSE_FILE=$(envval COMPOSE_FILE); export COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.yml:docker-compose.prod.yml}
 CONFIG_BRANCH=$(envval CONFIG_BRANCH); CONFIG_BRANCH=${CONFIG_BRANCH:-main}
 IMAGE_REPO=$(envval IMAGE_REPO)
 IMAGE_TAG=$(envval IMAGE_TAG); IMAGE_TAG=${IMAGE_TAG:-latest}

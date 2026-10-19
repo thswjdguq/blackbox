@@ -51,6 +51,8 @@ IMAGE_REPO=
 IMAGE_TAG=
 # 배포 설정(compose, nginx)을 받을 브랜치. 이미지를 어느 브랜치로 만들었든 설정은 여기서 받는다
 CONFIG_BRANCH=main
+# 서버에서 -f 없이 docker compose를 쓰면 이 파일들을 읽는다. 서버 전용 override를 더할 때는 :로 이어 붙인다
+COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
 # AI 기능. 키는 여기에만 적는다(docs/deploy-aws.md 10장)
 OPENAI_API_KEY=
 LLM_BASE_URL=
