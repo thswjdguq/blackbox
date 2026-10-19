@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import { useMyRole } from "@/hooks/useMyRole";
 import { Meeting, Attendee, UpdateMeetingPayload } from "@/types/meeting";
 import { CreateTaskPayload, TaskPriority } from "@/types/task";
 
@@ -160,6 +161,10 @@ export default function MeetingDetailPage() {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
+
+  // 관찰자는 회의를 볼 수만 있다(CONTRACTS 1장). 서버가 아직 회의록 수정을 막지 않아(#115) 화면에서 쓰기 버튼을 감춘다
+  const role = useMyRole(projectId);
+  const readOnly = role === "OBSERVER";
 
   // 프로젝트 멤버 (역할 배정용)
   const [members, setMembers] = useState<{ userId: string; name: string; email: string }[]>([]);
@@ -424,7 +429,7 @@ export default function MeetingDetailPage() {
             );
           }),
       );
-      showToast(`${checkedAiItems.size}개 태스크가 생성되었습니다`);
+      showToast(`${checkedAiItems.size}개 업무가 생성되었습니다`);
       setAiItems(null);
       setCheckedAiItems(new Set());
       setAiItemAssignees({});
@@ -508,7 +513,7 @@ export default function MeetingDetailPage() {
             <div className="flex items-start justify-between gap-4">
               <h1 className="text-2xl font-bold text-bb-text mb-3">{meeting.title}</h1>
               {/* Notion 캘린더에 추가 버튼 */}
-              <button
+              {!readOnly && <button
                 onClick={handleCalendarSync}
                 disabled={calendarSyncing}
                 className="shrink-0 flex items-center gap-1.5 text-xs text-bb-text2
@@ -519,7 +524,7 @@ export default function MeetingDetailPage() {
                   ? <Loader2 size={12} className="animate-spin" />
                   : <span className="text-[10px] font-bold bg-white text-[#191919] px-1 rounded">N</span>}
                 {calendarSyncing ? "추가 중..." : "캘린더에 추가"}
-              </button>
+              </button>}
             </div>
             <div className="flex flex-wrap items-center gap-4 text-sm text-bb-text2">
               <span className="flex items-center gap-1.5">
@@ -571,7 +576,9 @@ export default function MeetingDetailPage() {
               )}
             </div>
 
-            {isCreator ? (
+            {readOnly ? (
+              <p className="text-sm text-bb-text2">관찰자는 출석 체크인을 하지 않습니다. 참석한 팀원은 아래 목록에서 볼 수 있습니다.</p>
+            ) : isCreator ? (
               /* 방장: 코드 대형 표시 + 본인 체크인 버튼 */
               <div className="space-y-3">
                 <div className="bg-bb-bg rounded-xl p-6 text-center">
@@ -661,7 +668,8 @@ export default function MeetingDetailPage() {
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="회의 내용을 자유롭게 기록하세요..."
+                  readOnly={readOnly}
+                  placeholder={readOnly ? "아직 기록된 내용이 없습니다" : "회의 내용을 자유롭게 기록하세요..."}
                   rows={8}
                   className={TEXTAREA_CLS}
                 />
@@ -671,7 +679,8 @@ export default function MeetingDetailPage() {
                 <textarea
                   value={editDecisions}
                   onChange={(e) => setEditDecisions(e.target.value)}
-                  placeholder="회의에서 결정된 사항을 기록하세요..."
+                  readOnly={readOnly}
+                  placeholder={readOnly ? "아직 기록된 결정사항이 없습니다" : "회의에서 결정된 사항을 기록하세요..."}
                   rows={4}
                   className={TEXTAREA_CLS}
                 />
@@ -701,7 +710,7 @@ export default function MeetingDetailPage() {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              {!readOnly && <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                 {/* 왼쪽: AI 요약 + Notion 버튼 */}
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -746,7 +755,7 @@ export default function MeetingDetailPage() {
                   )}
                   {saveSuccess ? "저장됨" : "저장"}
                 </button>
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -757,7 +766,7 @@ export default function MeetingDetailPage() {
                 <ClipboardList size={16} className="text-bb-accent" />
                 액션 아이템
               </h2>
-              <div className="flex items-center gap-2">
+              {!readOnly && <div className="flex items-center gap-2">
                 {/* AI 자동 추출 버튼 */}
                 <div className="relative group">
                   <button
@@ -790,11 +799,13 @@ export default function MeetingDetailPage() {
                   <Plus size={12} />
                   직접 추가
                 </button>
-              </div>
+              </div>}
             </div>
 
             <p className="text-xs text-bb-text2 mb-4">
-              액션 아이템은 칸반 보드의 태스크로 즉시 생성됩니다.
+              {readOnly
+                ? "회의에서 나온 할 일은 업무 보드의 업무로 만들어집니다. 업무 보드에서 볼 수 있습니다."
+                : "액션 아이템은 업무 보드의 업무로 바로 만들어집니다."}
             </p>
 
             {/* AI 추출 결과 */}
@@ -818,7 +829,7 @@ export default function MeetingDetailPage() {
                       <p className="text-xs text-bb-text2 py-2">추출된 액션아이템이 없습니다.</p>
                     ) : (
                       <>
-                        <p className="text-xs text-bb-text2 pb-1">담당자를 선택하면 칸반 태스크에 자동 배정됩니다.</p>
+                        <p className="text-xs text-bb-text2 pb-1">담당자를 선택하면 업무 보드의 업무에 자동 배정됩니다.</p>
                         {aiItems.map((item, i) => (
                           <div
                             key={i}
@@ -890,7 +901,7 @@ export default function MeetingDetailPage() {
                           {addingAiItems
                             ? <Loader2 size={12} className="animate-spin" />
                             : <Plus size={12} />}
-                          {checkedAiItems.size}개 칸반에 추가
+                          {checkedAiItems.size}개 업무로 추가
                         </button>
                       </div>
                     )}
@@ -904,7 +915,7 @@ export default function MeetingDetailPage() {
               <form onSubmit={handleAddAction} className="bg-bb-bg rounded-xl p-4 space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-bb-text2 mb-1.5">
-                    태스크 제목 <span className="text-red-400">*</span>
+                    업무 제목 <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={actionTitle}

@@ -85,11 +85,13 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="login-email" className="block text-sm font-medium text-bb-text2 mb-1.5">
               이메일
             </label>
             <input
               type="email"
+              id="login-email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
@@ -99,12 +101,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="login-password" className="block text-sm font-medium text-bb-text2 mb-1.5">
               비밀번호
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                id="login-password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

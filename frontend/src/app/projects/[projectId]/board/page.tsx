@@ -452,7 +452,7 @@ export default function BoardPage() {
             <div className="md:min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-5">
               <h2 className="text-sm font-semibold text-bb-text mb-4 flex items-center gap-2">
                 <FolderKanban size={14} className="text-indigo-400" />
-                팀원별 태스크 현황
+                팀원별 업무 현황
               </h2>
               <div className="grid gap-3">
                 {members.map((m) => {
