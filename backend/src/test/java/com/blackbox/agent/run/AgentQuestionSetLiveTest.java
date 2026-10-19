@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@EnabledIfEnvironmentVariable(named = "SPRING_AI_MODEL_CHAT", matches = "google-genai|bedrock-converse")
+@EnabledIfEnvironmentVariable(named = "SPRING_AI_MODEL_CHAT", matches = "google-genai|bedrock-converse|openai")
 class AgentQuestionSetLiveTest {
     @Autowired AgentRunner runner;
     @Autowired ProposalService proposals;
