@@ -152,7 +152,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       if (gen !== sessionGeneration()) return;
       set((s) => ({ origins: { ...s.origins, [projectId]: data } }));
     } catch {
-      // 실패하면 표시 없이 그린다. 오류를 띄우지 않는다(4.10)
+      // 실패하면 표시 없이 그린다(4.10). 앞에서 받아 둔 표시도 남기지 않고, 오류는 띄우지 않는다.
+      // 앞 세션의 늦은 실패가 새 세션의 표시를 지우지 않게 세대를 본다
+      if (gen !== sessionGeneration()) return;
+      set((s) => ({ origins: { ...s.origins, [projectId]: undefined } }));
     }
   },
 
