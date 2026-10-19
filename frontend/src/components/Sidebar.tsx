@@ -19,6 +19,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useMyRole } from "@/hooks/useMyRole";
 import SidebarNavigation from "@/components/project/SidebarNavigation";
+import NotificationLink from "@/components/project/NotificationLink";
 import AgentLauncher from "@/components/agent/AgentLauncher";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
@@ -109,7 +110,7 @@ function NotificationBell({ projectId }: { projectId: string }) {
         className="relative p-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2 transition-colors"
         aria-label="팀 위험 알림"
       >
-        <Bell size={15} />
+        <AlertTriangle size={15} />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5
                            bg-red-500 rounded-full text-[10px] font-bold text-white
@@ -308,7 +309,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
           </div>
           <div className="flex items-center gap-1">
-            {currentProjectId && <NotificationBell projectId={currentProjectId} />}
+            {currentProjectId && <><NotificationLink projectId={currentProjectId} onNavigate={() => {}} compact /><NotificationBell projectId={currentProjectId} /></>}
             <button
               ref={closeButtonRef}
               onClick={closeMenu}

@@ -107,8 +107,9 @@ public class ProjectService {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireLeader(project, user);
         try {
-            projectRepository.delete(project);
-            projectRepository.flush();   // 점수·활동 기록·파일이 삭제를 막으면 여기서 바로 알 수 있게 즉시 반영
+            // 엔티티 remove는 권한 검사에서 읽은 멤버의 project 참조와 충돌한다.
+            // 단일 DELETE를 즉시 실행하고 DB의 기존 기록 보존 제약은 그대로 적용한다.
+            projectRepository.deleteProjectRow(projectId);
         } catch (DataIntegrityViolationException e) {
             // 지금은 삭제를 막고 이유만 응답한다. 보관(종료) 기능을 만들지는 A-03 보고서 7장에서 팀이 정한다
             throw new ResponseStatusException(HttpStatus.CONFLICT, "기록 보존을 위해 이 프로젝트는 삭제할 수 없습니다");

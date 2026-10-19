@@ -10,6 +10,19 @@ interface Props {
   placeholder?: string;
 }
 
+export function dateInputError(y: string, mo: string, d: string, h = "", mn = "", withTime = false): string {
+  if (![y, mo, d, ...(withTime ? [h, mn] : [])].some(Boolean)) return "";
+  if (y.length !== 4 || Number(y) < 1) return "연도를 네 자리로 입력해 주세요. 예: 2026";
+  if (!mo || !d) return "월과 일을 모두 입력해 주세요.";
+  const month = Number(mo), day = Number(d), year = Number(y);
+  if (month < 1 || month > 12) return "월은 1~12 사이로 입력해 주세요.";
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const lastDay = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (day < 1 || day > lastDay) return `${month}월은 1~${lastDay}일 사이로 입력해 주세요.`;
+  if (withTime && (!h || !mn || Number(h) > 23 || Number(mn) > 59)) return "시간은 0~23시, 분은 0~59분으로 입력해 주세요.";
+  return "";
+}
+
 export default function SmartDateInput({
   value,
   onChange,
@@ -22,11 +35,14 @@ export default function SmartDateInput({
   const [hour,  setHour]  = useState("");
   const [min,   setMin]   = useState("");
 
+  const yearRef = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
   const dayRef   = useRef<HTMLInputElement>(null);
   const hourRef  = useRef<HTMLInputElement>(null);
   const minRef   = useRef<HTMLInputElement>(null);
   const lastEmitted = useRef("");
+  const error = dateInputError(year, month, day, hour, min, withTime);
+  useEffect(() => { yearRef.current?.setCustomValidity(error); }, [error]);
 
   // 외부 value → 내부 state 파싱
   useEffect(() => {
@@ -54,6 +70,7 @@ export default function SmartDateInput({
       if (!y && !mo && !d) { lastEmitted.current = ""; onChange(""); }
       return;
     }
+    if (dateInputError(y, mo, d, h, mn, withTime)) return;
     const dateVal = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
     if (withTime) {
       if (h.length >= 1 && mn.length >= 1) {
@@ -77,6 +94,9 @@ export default function SmartDateInput({
     <div className={`flex items-center gap-1 flex-wrap ${className}`}>
       {/* 년도 */}
       <input
+        ref={yearRef}
+        aria-label="연도"
+        aria-invalid={!!error}
         type="text"
         inputMode="numeric"
         maxLength={4}
@@ -94,6 +114,7 @@ export default function SmartDateInput({
       {/* 월 */}
       <input
         ref={monthRef}
+        aria-label="월"
         type="text"
         inputMode="numeric"
         maxLength={2}
@@ -115,6 +136,7 @@ export default function SmartDateInput({
       {/* 일 */}
       <input
         ref={dayRef}
+        aria-label="일"
         type="text"
         inputMode="numeric"
         maxLength={2}
@@ -136,6 +158,7 @@ export default function SmartDateInput({
           <span className="text-bb-text2 select-none ml-1">·</span>
           <input
             ref={hourRef}
+            aria-label="시"
             type="text"
             inputMode="numeric"
             maxLength={2}
@@ -153,6 +176,7 @@ export default function SmartDateInput({
           <span className="text-bb-text2 select-none">:</span>
           <input
             ref={minRef}
+            aria-label="분"
             type="text"
             inputMode="numeric"
             maxLength={2}
@@ -168,6 +192,7 @@ export default function SmartDateInput({
           />
         </>
       )}
+      {error && <p role="alert" className="w-full text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

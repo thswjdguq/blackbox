@@ -88,8 +88,14 @@ export default function ReviewPanel({
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (loading || !window.location.hash.startsWith("#comment-")) return;
+    document.getElementById(window.location.hash.slice(1))?.scrollIntoView({block:"center"});
+  }, [loading,comments]);
+
   const handleChanged = () => {
     load();
+    window.dispatchEvent(new Event("task-feedback-changed"));
     onTasksChanged();
   };
 

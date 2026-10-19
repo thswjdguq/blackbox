@@ -78,6 +78,11 @@ public class NotificationService {
                 task, actor, null, null, recipients);
     }
 
+    public void commentPosted(TaskMessage comment) {
+        publish("TASK_COMMENT_POSTED", "COMMENT:" + comment.getId(), comment.getTask(), comment.getAuthor(),
+                comment.getId(), null, contributors(comment.getProject()));
+    }
+
     public void opinionRequested(TaskMessage request) {
         publish(OPINION_REQUESTED, "OPINION:" + request.getId(), request.getTask(), request.getAuthor(),
                 request.getId(), null, List.of(request.getRecipient()));
@@ -86,6 +91,21 @@ public class NotificationService {
     public void opinionReplied(TaskMessage reply) {
         publish(OPINION_REPLIED, "REPLY:" + reply.getId(), reply.getTask(), reply.getAuthor(),
                 reply.getId(), null, List.of(reply.getParent().getAuthor()));
+    }
+
+    public void reviewEvent(String type, String key, ReviewRound review, UUID commentId, User actor, Collection<User> candidates) {
+        var project=review.getProject();
+        Set<UUID> allowed=new HashSet<>();
+        contributors(project).forEach(u -> allowed.add(u.getId()));
+        Set<UUID> recipients=new HashSet<>();
+        var file=review.getFile();
+        for (User user:candidates) {
+            if (user==null || !allowed.contains(user.getId()) || user.getId().equals(actor.getId()) || !recipients.add(user.getId())) continue;
+            notifications.insertReview(project.getId(),user.getId(),actor.getId(),actor.getName(),type,key,
+                    review.getDeliverable().getTitle(),review.getDeliverable().getId(),review.getId(),commentId,
+                    file==null?null:file.getId(),file==null?null:file.getFileName(),file==null?null:file.getVersion(),
+                    OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS));
+        }
     }
 
     private void publish(String type, String eventKey, Task task, User actor, UUID messageId, FileVault file,
@@ -125,9 +145,13 @@ public class NotificationService {
         boolean hasMore = rows.size() > size;
         if (hasMore) rows = rows.subList(0, size);
         Set<UUID> taskIds = new HashSet<>();
-        for (UserNotification n : rows) taskIds.add(n.getTaskId());
+        for (UserNotification n : rows) if (n.getTaskId()!=null) taskIds.add(n.getTaskId());
         Set<UUID> existing = taskIds.isEmpty() ? Set.of() : new HashSet<>(notifications.existingTaskIds(projectId, taskIds));
-        List<NotificationDtos.Item> items = rows.stream().map(n -> item(n, existing.contains(n.getTaskId()))).toList();
+        Set<UUID> reviewIds=new HashSet<>();
+        for (var n:rows) if (n.getReviewId()!=null) reviewIds.add(n.getReviewId());
+        Set<UUID> existingReviews=reviewIds.isEmpty()?Set.of():new HashSet<>(notifications.existingReviewIds(projectId,reviewIds));
+        List<NotificationDtos.Item> items = rows.stream().map(n -> item(n, n.getReviewId()!=null
+                ?existingReviews.contains(n.getReviewId()):existing.contains(n.getTaskId()))).toList();
         String next = hasMore ? encode(rows.get(rows.size() - 1)) : null;
         return new NotificationDtos.Page(items, next, unreadCount(projectId, user.getId()));
     }
@@ -160,7 +184,8 @@ public class NotificationService {
     private NotificationDtos.Item item(UserNotification n, boolean taskExists) {
         return new NotificationDtos.Item(n.getId(), n.getType(), n.getProjectId(), n.getActorName(), n.getTaskId(),
                 n.getTaskTitle(), n.getFileId(), n.getFileName(), n.getFileVersion(), n.getMessageId(),
-                utc(n.getCreatedAt()), utc(n.getReadAt()), taskExists);
+                utc(n.getCreatedAt()), utc(n.getReadAt()), taskExists,
+                n.getDeliverableId(), n.getDeliverableId()==null?null:n.getTaskTitle(), n.getReviewId(), n.getCommentId());
     }
 
     // ── cursor: 정렬 위치(created_at, id)만 담는다. 권한 판정에는 쓰지 않는다 ───────

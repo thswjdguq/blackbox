@@ -28,11 +28,10 @@ class ProjectDeleteTest {
 
     @Test void deletesProjectWithoutRecords() {
         assertDoesNotThrow(() -> service.deleteProject(project.getId(), leader));
-        verify(projects).delete(project);
-        verify(projects).flush();
+        verify(projects).deleteProjectRow(project.getId());
     }
     @Test void projectWithRecordsIsRejectedWithGuidance() {
-        doThrow(new DataIntegrityViolationException("contribution_scores_project_id_fkey")).when(projects).flush();
+        doThrow(new DataIntegrityViolationException("contribution_scores_project_id_fkey")).when(projects).deleteProjectRow(project.getId());
         var error = assertThrows(ResponseStatusException.class, () -> service.deleteProject(project.getId(), leader));
         assertEquals(409, error.getStatusCode().value());
         assertEquals("기록 보존을 위해 이 프로젝트는 삭제할 수 없습니다", error.getReason());

@@ -95,7 +95,7 @@ export default function TaskDiscussion({ task, members, files, readOnly, focusMe
         {m.kind === "REPLY" && <span className="text-bb-text2">{messages.find(p => p.id === m.parentId)?.authorName ?? "의견 요청"}에 대한 답글</span>}</div>
       <p className="mt-2 whitespace-pre-wrap break-words text-sm">{m.body}</p>
       {m.fileId && <a href={`/api/files/${m.fileId}/download`} className="inline-block mt-2 text-xs text-bb-primary underline">{m.fileName} · 버전 {m.fileVersion}</a>}
-      {!readOnly && m.kind === "REQUEST" && <button type="button" disabled={busy} onClick={() => reply(m)} className="block mt-2 text-xs font-medium text-bb-primary">답글 작성</button>}
+      {!readOnly && m.kind !== "REPLY" && <button type="button" disabled={busy} onClick={() => reply(m)} className="block mt-2 text-xs font-medium text-bb-primary">답변·수정 내용 남기기</button>}
     </li>)}</ol>
     {error && <p role="alert" className="text-sm text-red-600">{error} <button type="button" onClick={() => load()} className="underline">다시 조회</button></p>}
     {!readOnly && <form onSubmit={send} className="rounded-xl border border-bb-border p-3 space-y-3">
@@ -109,6 +109,8 @@ export default function TaskDiscussion({ task, members, files, readOnly, focusMe
         {files.length > 0 ? <select aria-label="대화에 연결할 결과 파일" value={fileId} disabled={busy} onChange={e => setFileId(e.target.value)} className="max-w-full text-xs p-2 rounded-lg bg-bb-bg border border-bb-border"><option value="">파일 연결 (선택)</option>{files.map(({file}) => <option key={file.id} value={file.id}>{file.fileName} · v{file.version}</option>)}</select> : <span />}
         <button type="submit" disabled={busy || !body.trim() || (requesting && !recipientId)} className="rounded-lg bg-bb-primary text-white px-4 py-2 text-sm disabled:opacity-40">{busy ? "전송 중…" : replyTo ? "답변 보내기" : requesting ? "의견 요청 보내기" : "댓글 등록"}</button>
       </div>
+      {!requesting && !replyTo && <p className="text-xs text-bb-text2">다른 팀원에게 알림을 보냅니다(본인·관찰자 제외). 수정했다면 원문에 답변하고 결과 파일을 연결해 주세요.</p>}
+      {replyTo && <p className="text-xs text-bb-text2">원문 작성자에게 답변 알림을 보냅니다. 파일 연결은 실제 반영 여부의 자동 확인을 뜻하지 않습니다.</p>}
       {requesting && <p className="text-xs text-bb-text2">의견을 기다리는 동안에도 업무를 계속 수정할 수 있습니다.</p>}
     </form>}
     {readOnly && <p className="text-xs text-bb-text2">관찰자는 대화를 볼 수만 있습니다.</p>}

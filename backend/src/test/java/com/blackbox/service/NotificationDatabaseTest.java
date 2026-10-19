@@ -158,9 +158,10 @@ class NotificationDatabaseTest {
         messages.post(t.pid(), t.task.getId(), "반영할게요", null, request.id(), null, t.worker);
         assertEquals(2, count(t, t.worker, "TASK_OPINION_REPLIED"));
         assertEquals(0, count(t, t.peer, "TASK_OPINION_REPLIED"));
-        // 일반 댓글은 알리지 않는다.
+        // 일반 댓글도 본인·관찰자를 제외한 팀원 3명에게 알린다(EXPO-06).
         messages.post(t.pid(), t.task.getId(), "메모", null, null, null, t.leader);
-        assertEquals(3, repo.findAll().stream().filter(n -> n.getProjectId().equals(t.pid())).count());
+        assertEquals(6, repo.findAll().stream().filter(n -> n.getProjectId().equals(t.pid())).count());
+        assertEquals(0, count(t,t.observer));
     }
 
     @Test void projectBoundaryAndMembership() throws Exception {

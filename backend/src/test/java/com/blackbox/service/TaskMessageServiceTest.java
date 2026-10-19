@@ -19,7 +19,7 @@ class TaskMessageServiceTest {
     final ProjectRepository projects=mock(ProjectRepository.class);
     final TaskFileRepository files=mock(TaskFileRepository.class);
     final EntityManager em=mock(EntityManager.class);
-    final TaskMessageService service=new TaskMessageService(tasks,assignees,messages,members,files,new ProjectAccessChecker(projects,members),em,mock(NotificationService.class));
+    final TaskMessageService service=new TaskMessageService(tasks,assignees,messages,members,files,new ProjectAccessChecker(projects,members),em,mock(NotificationService.class),mock(ReviewCommentRepository.class));
     final Project project=new Project(); final Task task=new Task();
     final User author=user("수행자"), peer=user("확인자"), observer=user("관찰자");
     @BeforeEach void setup() {
@@ -69,7 +69,7 @@ class TaskMessageServiceTest {
         assertThrows(ResponseStatusException.class,()->service.post(project.getId(),task.getId(),"새 요청",peer.getId(),null,null,author));
     }
     @Test void inboxSeparatesTargetedOpinionsAndIndependentCompletionReview() {
-        var request=request();when(messages.findByProjectAndKindAndAnsweredAtIsNullOrderByCreatedAtDesc(project,"REQUEST")).thenReturn(List.of(request));
+        var request=request();when(messages.findByProjectOrderByCreatedAtDesc(project)).thenReturn(List.of(request));
         task.setCompletionRequestedAt(OffsetDateTime.now());task.setCompletionRequestedBy(author);
         var assigned=new TaskAssignee();assigned.setTask(task);assigned.setUser(author);
         when(assignees.findByTaskIn(List.of(task))).thenReturn(List.of(assigned));

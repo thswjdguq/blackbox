@@ -71,6 +71,7 @@ export default function KanbanBoard({
   // Modal state
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTab, setEditingTab] = useState<"info" | "resources">("resources");
   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [deliveryFilter, setDeliveryFilter] = useState("");
@@ -190,6 +191,7 @@ export default function KanbanBoard({
   };
 
   const openEdit = (task: Task) => {
+    setEditingTab("resources");
     setEditingTask(task);
     setModalMode("edit");
   };
@@ -330,7 +332,7 @@ export default function KanbanBoard({
               </button>
             </div>
           )}
-          {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} />}
+          {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onManage={task => { openEdit(task); setEditingTab("info"); }} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} />}
         </>
       ) : (
       <>
@@ -380,6 +382,7 @@ export default function KanbanBoard({
       {modalMode && (
         <TaskModal
           mode={modalMode}
+          initialTab={modalMode === "create" ? "info" : editingTab}
           task={editingTask}
           members={members}
           deliverables={deliverables}

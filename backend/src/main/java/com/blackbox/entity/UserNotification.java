@@ -29,8 +29,11 @@ public class UserNotification {
     private String type;
     @Column(name = "event_key", nullable = false, length = 200)
     private String eventKey;
-    @Column(name = "task_id", nullable = false)
+    @Column(name = "task_id")
     private UUID taskId;
+    @Column(name = "deliverable_id") private UUID deliverableId;
+    @Column(name = "review_id") private UUID reviewId;
+    @Column(name = "comment_id") private UUID commentId;
     @Column(name = "task_title", nullable = false)
     private String taskTitle;
     @Column(name = "message_id")

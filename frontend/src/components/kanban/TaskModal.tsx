@@ -37,6 +37,7 @@ interface TaskModalProps {
   availableTasks?: Task[];
   onWorkflowChanged?: (task: Task) => void;
   workOnly?: boolean;
+  initialTab?: "info" | "resources";
   focusMessageId?: string | null;
   focusFileId?: string | null;
 }
@@ -72,6 +73,7 @@ export default function TaskModal({
   availableTasks = [],
   onWorkflowChanged,
   workOnly = false,
+  initialTab,
   focusMessageId,
   focusFileId,
 }: TaskModalProps) {
@@ -95,7 +97,7 @@ export default function TaskModal({
   const [error, setError]             = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
-  const [tab, setTab] = useState<"info" | "resources">(task ? "resources" : "info");
+  const [tab, setTab] = useState<"info" | "resources">(initialTab ?? (task ? "resources" : "info"));
   const [resourceBusy, setResourceBusy] = useState(false);
   const [filesRevision, setFilesRevision] = useState(0);
   const [discussionFiles, setDiscussionFiles] = useState<import("./TaskResources").TaskResource[]>([]);
@@ -254,7 +256,7 @@ export default function TaskModal({
 
         {task && <div className="flex gap-2 px-6 py-3 border-b border-bb-border" role="tablist" aria-label="업무 상세">
           <button type="button" role="tab" aria-selected={tab === "resources"} disabled={submitting} onClick={() => setTab("resources")} className={`text-sm px-3 py-2 rounded ${tab === "resources" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>수행 · 결과 확인</button>
-          {!workOnly && <button type="button" role="tab" aria-selected={tab === "info"} disabled={resourceBusy} onClick={() => setTab("info")} className={`text-sm px-3 py-2 rounded ${tab === "info" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>업무 설정</button>}
+          {!workOnly && <button type="button" role="tab" aria-selected={tab === "info"} disabled={resourceBusy} onClick={() => setTab("info")} className={`text-sm px-3 py-2 rounded ${tab === "info" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>{readOnly ? "업무 정보" : "수정·삭제"}</button>}
         </div>}
         {task && tab === "resources" && <nav aria-label="업무 안에서 바로 이동" className="flex flex-wrap gap-2 border-b border-bb-border px-6 py-2">
           {[
@@ -293,6 +295,8 @@ export default function TaskModal({
             </div>
           )}
 
+          {!readOnly && locked && <p role="status" className="text-sm text-bb-text2">{task?.completionRequestedAt ? "완료 확인 요청 중입니다. 수행 · 결과 확인에서 요청을 취소한 뒤 수정·삭제할 수 있습니다." : "완료된 업무입니다. 수행 · 결과 확인에서 업무를 재개한 뒤 수정·삭제할 수 있습니다."}</p>}
+          {!readOnly && !locked && mode === "edit" && <p className="text-xs text-bb-text2">제목·담당자·마감 등을 수정하고 저장하세요. 더 이상 진행하지 않을 업무는 아래에서 삭제할 수 있습니다. 삭제는 만든 사람과 팀장만 가능합니다.</p>}
           {readOnly && (
             <p className="text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다.</p>
           )}

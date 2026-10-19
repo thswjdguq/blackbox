@@ -356,8 +356,8 @@ export default function DashboardPage() {
       {showDeleteId && (
         <Modal title="프로젝트 삭제" onClose={() => { setShowDeleteId(null); setDeleteError(""); }}>
           <div className="space-y-4">
-            <p className="text-sm text-slate-300">
-              이 프로젝트를 삭제하면 모든 데이터(태스크, 회의록, 파일 등)가 영구적으로 삭제됩니다. 정말 삭제하시겠습니까?
+            <p className="text-sm text-bb-text2">
+              이 프로젝트를 삭제할까요? 삭제한 프로젝트는 복구할 수 없습니다. 활동 기록·파일·기여도 기록 등이 있는 프로젝트는 기록 보존을 위해 삭제가 제한됩니다.
             </p>
             {deleteError && (
               <p role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400 whitespace-pre-wrap">

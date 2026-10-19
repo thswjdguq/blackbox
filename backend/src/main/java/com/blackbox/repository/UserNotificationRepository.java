@@ -13,6 +13,20 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserNotificationRepository extends JpaRepository<UserNotification, UUID> {
+    @Modifying
+    @Query(value = """
+        INSERT INTO user_notifications(project_id, recipient_id, actor_id, actor_name, type, event_key,
+            task_title, deliverable_id, review_id, comment_id, file_id, file_name, file_version, created_at)
+        VALUES (:projectId, :recipientId, :actorId, :actorName, :type, :eventKey,
+            :title, :deliverableId, :reviewId, :commentId, :fileId, :fileName, :fileVersion, :createdAt)
+        ON CONFLICT (event_key, recipient_id) DO NOTHING
+        """, nativeQuery = true)
+    int insertReview(UUID projectId, UUID recipientId, UUID actorId, String actorName, String type, String eventKey,
+                     String title, UUID deliverableId, UUID reviewId, UUID commentId, UUID fileId,
+                     String fileName, Integer fileVersion, OffsetDateTime createdAt);
+
+    @Query(value = "SELECT id FROM review_rounds WHERE project_id = :projectId AND id IN (:ids)", nativeQuery = true)
+    List<UUID> existingReviewIds(@Param("projectId") UUID projectId, @Param("ids") Collection<UUID> ids);
 
     /** 같은 이벤트의 재처리·동시 요청은 고유 제약에서 조용히 무시한다. 예외로 업무 트랜잭션을 깨지 않는다. */
     @Modifying

@@ -22,6 +22,7 @@ public class ReviewCommentService {
     private final ReviewRoundReader reviews;
     private final ActivityLogService activity;
     private final ObjectMapper json;
+    private final ReviewFeedbackNotifications notifications;
 
     @Transactional(readOnly = true)
     public List<Response> list(UUID projectId, UUID deliverableId, UUID reviewId, User user) {
@@ -45,6 +46,7 @@ public class ReviewCommentService {
         c.setAuthor(user); c.setContent(content);
         c = comments.save(c);
         record(c, user, "FEEDBACK_CREATE", Map.of("commentId", c.getId().toString()));
+        notifications.created(c);
         return Response.from(c);
     }
 
@@ -59,6 +61,7 @@ public class ReviewCommentService {
             c.setResolvedAt(java.time.OffsetDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
             c.setResolutionReason(reason);
             record(c, user, "FEEDBACK_RESOLVE", Map.of("commentId", c.getId().toString()));
+            notifications.resolved(c,user);
         }
         return Response.from(c);
     }
@@ -73,6 +76,7 @@ public class ReviewCommentService {
             previous.put("commentId", c.getId()); previous.put("resolvedBy", c.getResolvedBy().getId());
             previous.put("resolvedAt", c.getResolvedAt().toString()); previous.put("reason", c.getResolutionReason());
             record(c, user, "FEEDBACK_REOPEN", previous);
+            notifications.reopened(c,user);
             c.setResolvedBy(null); c.setResolvedAt(null); c.setResolutionReason(null);
         }
         return Response.from(c);

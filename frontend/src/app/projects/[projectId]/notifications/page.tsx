@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ProjectNav from "@/components/project/ProjectNav";
 import TaskModal from "@/components/kanban/TaskModal";
@@ -19,16 +19,27 @@ export default function NotificationsPage() {
   </main></div>;
 }
 function Inbox({ projectId }: { projectId: string }) {
+  const router=useRouter();
   const { projects, load, read } = useNotificationStore();
   const entry = projects[projectId];
   const [selected, setSelected] = useState<{ task: Task; item: PersonalNotification; members: Member[]; readOnly: boolean } | null>(null);
   const [opening, setOpening] = useState(false), [openError, setOpenError] = useState("");
   const active = useRef(true), openingLock = useRef(false);
   useEffect(() => { active.current = true; void load(projectId); return () => { active.current = false; }; }, [projectId, load]);
+  useEffect(() => {
+    const refresh=() => {if (!document.hidden) void load(projectId);};
+    const timer=window.setInterval(refresh,10000);
+    window.addEventListener("focus",refresh);
+    return () => {window.clearInterval(timer);window.removeEventListener("focus",refresh);};
+  },[projectId,load]);
   const open = async (item: PersonalNotification) => {
     // 읽음 요청을 기다리지 않으므로 네트워크 오류가 업무 열기를 막지 않는다.
     if (!item.readAt) void read(projectId, item.id);
     if (!item.targetAvailable || openingLock.current) return;
+    if (item.deliverableId) {
+      router.push(`/projects/${projectId}/deliverables/${item.deliverableId}?tab=review${item.commentId?`#comment-${item.commentId}`:""}`);
+      return;
+    }
     openingLock.current = true; setOpening(true); setOpenError("");
     const generation = sessionGeneration();
     try {

@@ -20,7 +20,13 @@ public class TaskMessageService {
                           String fileName, Integer fileVersion, OffsetDateTime answeredAt, OffsetDateTime createdAt) {}
     public record Thread(List<Message> messages, boolean hasMore) {}
     public record InboxItem(String kind, UUID taskId, String taskTitle, UUID messageId, String body,
-                            String fromName, OffsetDateTime createdAt) {}
+                            String fromName, OffsetDateTime createdAt, String status, String response,
+                            UUID deliverableId, UUID reviewId) {
+        public InboxItem(String kind, UUID taskId, String taskTitle, UUID messageId, String body,
+                         String fromName, OffsetDateTime createdAt) {
+            this(kind, taskId, taskTitle, messageId, body, fromName, createdAt, "OPEN", null, null, null);
+        }
+    }
     public record Inbox(List<InboxItem> received, List<InboxItem> sent, List<InboxItem> revisions) {}
 
     private final TaskRepository tasks;
@@ -31,12 +37,14 @@ public class TaskMessageService {
     private final ProjectAccessChecker access;
     private final EntityManager em;
     private final NotificationService notifications;
+    private final ReviewCommentRepository reviewComments;
 
     public TaskMessageService(TaskRepository tasks, TaskAssigneeRepository assignees, TaskMessageRepository messages,
                               ProjectMemberRepository members, TaskFileRepository links, ProjectAccessChecker access, EntityManager em,
-                              NotificationService notifications) {
+                              NotificationService notifications, ReviewCommentRepository reviewComments) {
         this.tasks=tasks; this.assignees=assignees; this.messages=messages; this.members=members;
         this.links=links; this.access=access; this.em=em; this.notifications=notifications;
+        this.reviewComments=reviewComments;
     }
 
     @Transactional(readOnly=true)
@@ -78,10 +86,10 @@ public class TaskMessageService {
         }
         if (parentId!=null) {
             TaskMessage parent=messages.findByIdAndTask(parentId,task).orElseThrow(() -> new NotFoundException("의견 요청을 찾을 수 없습니다."));
-            if (!"REQUEST".equals(parent.getKind())) throw bad("의견 요청에 답글을 남겨주세요.");
+            if ("REPLY".equals(parent.getKind())) throw bad("원문 피드백에 답글을 남겨주세요.");
             message.setParent(parent); message.setKind("REPLY");
             // 대화에는 누구나 참여할 수 있지만 지정 수신자가 답한 경우에만 '응답 완료'로 표시한다.
-            if (parent.getRecipient().getId().equals(user.getId()) && parent.getAnsweredAt()==null) {
+            if (parent.getRecipient()!=null && parent.getRecipient().getId().equals(user.getId()) && parent.getAnsweredAt()==null) {
                 parent.setAnsweredAt(message.getCreatedAt()); messages.save(parent);
             }
         }
@@ -91,7 +99,7 @@ public class TaskMessageService {
             message.setFile(file);
         }
         messages.saveAndFlush(message);
-        // 일반 댓글은 알리지 않는다(K-54 후속 범위). 요청과 답글만 받는 사람이 명확하다.
+        if ("COMMENT".equals(message.getKind())) notifications.commentPosted(message);
         if ("REQUEST".equals(message.getKind())) notifications.opinionRequested(message);
         if ("REPLY".equals(message.getKind())) notifications.opinionReplied(message);
         return response(message);
@@ -102,10 +110,23 @@ public class TaskMessageService {
     public Inbox inbox(UUID projectId, User user) {
         Project project=access.getProject(projectId); ProjectMember member=access.requireMember(project,user);
         var received=new ArrayList<InboxItem>(); var sent=new ArrayList<InboxItem>(); var revisions=new ArrayList<InboxItem>();
-        for (TaskMessage m:messages.findByProjectAndKindAndAnsweredAtIsNullOrderByCreatedAtDesc(project,"REQUEST")) {
-            InboxItem item=new InboxItem("OPINION",m.getTask().getId(),m.getTask().getTitle(),m.getId(),m.getBody(),m.getAuthor().getName(),m.getCreatedAt());
-            if (m.getRecipient().getId().equals(user.getId())) received.add(item);
-            if (m.getAuthor().getId().equals(user.getId())) sent.add(item);
+        if (!ProjectAccessChecker.canContribute(member)) return new Inbox(received,sent,revisions);
+        var conversation=messages.findByProjectOrderByCreatedAtDesc(project);
+        Map<UUID,TaskMessage> replies=new HashMap<>();
+        for (TaskMessage m:conversation) {
+            if (m.getParent()!=null && !m.getAuthor().getId().equals(m.getParent().getAuthor().getId()))
+                replies.putIfAbsent(m.getParent().getId(),m);
+        }
+        for (TaskMessage m:conversation) {
+            if ("REPLY".equals(m.getKind())) continue;
+            var reply=replies.get(m.getId());
+            InboxItem item=new InboxItem("REQUEST".equals(m.getKind())?"OPINION":"COMMENT",m.getTask().getId(),
+                    m.getTask().getTitle(),m.getId(),m.getBody(),m.getAuthor().getName(),m.getCreatedAt(),
+                    m.getAnsweredAt()!=null?"ANSWERED":reply!=null?"RESPONDED":"OPEN",
+                    reply==null?null:reply.getBody(),null,null);
+            boolean own=m.getAuthor().getId().equals(user.getId());
+            if (own) sent.add(item);
+            else if (m.getRecipient()==null || m.getRecipient().getId().equals(user.getId())) received.add(item);
         }
         if (!"OBSERVER".equals(member.getRole())) {
             var list=tasks.findByProjectOrderByCreatedAtDesc(project);
@@ -122,6 +143,17 @@ public class TaskMessageService {
                 } else if (performer && !"DONE".equals(t.getStatus()) && t.getCompletionRejectionReason()!=null) {
                     revisions.add(new InboxItem("REVISION",t.getId(),t.getTitle(),null,t.getCompletionRejectionReason(),null,t.getUpdatedAt()));
                 }
+            }
+        }
+        for (ReviewComment c:reviewComments.findByProjectIdOrderByCreatedAtDesc(projectId)) {
+            var item=new InboxItem("REVIEW",null,c.getDeliverable().getTitle(),c.getId(),c.getContent(),
+                    c.getAuthor().getName(),c.getCreatedAt(),c.status(),c.getResolutionReason(),c.getDeliverable().getId(),c.getReview().getId());
+            boolean own=c.getAuthor().getId().equals(user.getId());
+            if (own) sent.add(item);
+            else if (ReviewFeedbackNotifications.recipients(c.getReview()).stream().anyMatch(u -> u.getId().equals(user.getId()))
+                    || (c.getLinkedTask()!=null && assignees.findByTaskIn(List.of(c.getLinkedTask())).stream().anyMatch(a -> a.getUser().getId().equals(user.getId())))) {
+                received.add(item);
+                if (c.getResolvedAt()==null) revisions.add(item);
             }
         }
         Comparator<InboxItem> latest=Comparator.comparing(InboxItem::createdAt,Comparator.nullsLast(Comparator.reverseOrder()));

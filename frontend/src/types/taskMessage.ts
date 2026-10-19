@@ -5,7 +5,8 @@ export interface TaskMessage {
   answeredAt: string | null; createdAt: string;
 }
 export interface FeedbackItem {
-  kind: "OPINION" | "COMPLETION" | "REVISION"; taskId: string; taskTitle: string;
+  kind: "OPINION" | "COMPLETION" | "REVISION" | "COMMENT" | "REVIEW"; taskId: string | null; taskTitle: string;
   messageId: string | null; body: string; fromName: string | null; createdAt: string;
+  status?: string; response?: string | null; deliverableId?: string | null; reviewId?: string | null;
 }
 export interface FeedbackInbox { received: FeedbackItem[]; sent: FeedbackItem[]; revisions: FeedbackItem[] }

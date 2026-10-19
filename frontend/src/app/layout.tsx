@@ -3,6 +3,7 @@ import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
 import PageProgress from "@/components/PageProgress";
 import AgentDock from "@/components/agent/AgentDock";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Team Blackbox",
@@ -30,7 +31,7 @@ export default function RootLayout({
       </head>
       <body className="bg-bb-bg text-bb-text">
         <PageProgress />
-        <AuthProvider>{children}<AgentDock /></AuthProvider>
+        <AuthProvider>{children}<SiteFooter /><AgentDock /></AuthProvider>
       </body>
     </html>
   );

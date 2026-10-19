@@ -245,7 +245,7 @@ export default function ReviewRoundCard({
             const cfg = COMMENT_STATUS[c.status];
             const linkedTask = c.linkedTaskId ? tasks.find((t) => t.id === c.linkedTaskId) : undefined;
             return (
-              <li key={c.id} className="py-3">
+              <li key={c.id} id={`comment-${c.id}`} className="py-3 scroll-mt-24 target:bg-bb-primary/10">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className={`px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
                   <span className="text-bb-text">{c.author.name}</span>

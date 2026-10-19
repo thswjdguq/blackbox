@@ -37,9 +37,10 @@ function compare(a: Task, b: Task, key: SortKey): number {
  * 업무 목록 보기 (C-50 6번, Flow 업무 목록 참고). 보드와 같은 필터를 거친 업무를 표로 보여 준다.
  * 열 이름을 누르면 정렬하고, 행을 누르거나 Enter를 누르면 업무 창이 열린다.
  */
-export default function TaskListView({ tasks, onEdit, onMove, busy, readOnly, aiIds }: {
+export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, readOnly, aiIds }: {
   tasks: Task[];
   onEdit: (task: Task) => void;
+  onManage?: (task: Task) => void;
   readOnly?: boolean;
   busy?: boolean;
   onMove: (id: string, status: TaskStatus) => Promise<void>;
@@ -96,6 +97,7 @@ export default function TaskListView({ tasks, onEdit, onMove, busy, readOnly, ai
                 <td className="px-3 py-2.5">
                   <span className={`block truncate text-bb-text ${done ? "line-through" : ""}`}>{t.title} {aiIds?.has(t.id) && <AiBadge />}</span>
                   {t.tag && <span className="block truncate text-[11px] text-bb-text2">#{t.tag}</span>}
+                  {!readOnly && onManage && <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); onManage(t); }} aria-label={`${t.title} 수정·삭제`} className="mt-1 rounded px-1 py-1 text-xs text-blue-700 hover:underline focus-visible:outline focus-visible:outline-2 dark:text-blue-300 disabled:opacity-40">수정·삭제</button>}
                 </td>
                 <td className="px-3 py-2.5">
                   <TaskStatusControl task={t} onMove={onMove} onEdit={onEdit} busy={busy} readOnly={readOnly} />
