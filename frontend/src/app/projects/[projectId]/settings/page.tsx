@@ -33,8 +33,8 @@ interface DiscordSettings {
 }
 
 const TOGGLES: { key: keyof Omit<DiscordSettings, "webhookUrl">; label: string; desc: string }[] = [
-  { key: "notifyTaskAssign",       label: "태스크 담당자 배정",   desc: "담당자가 배정되면 알림" },
-  { key: "notifyTaskDone",         label: "태스크 완료",          desc: "태스크가 완료되면 알림" },
+  { key: "notifyTaskAssign",       label: "업무 담당자 배정",   desc: "담당자가 배정되면 알림" },
+  { key: "notifyTaskDone",         label: "업무 완료",          desc: "업무가 완료되면 알림" },
   { key: "notifyMeetingCreate",    label: "회의 생성",            desc: "새 회의가 생성되면 알림" },
   { key: "notifyMeetingReminder",  label: "회의 10분 전",         desc: "회의 시작 10분 전 자동 알림" },
   { key: "notifyAlert",            label: "경보 발생",            desc: "FREE_RIDE / DROPOUT / OVERLOAD 경보 시 알림" },

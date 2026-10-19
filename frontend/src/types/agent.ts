@@ -6,7 +6,9 @@ export interface UserRef { userId: string; name: string }
 
 export type Stage =
   | "NO_REQUIREMENT" | "NO_TASK" | "UNCOVERED_REQUIREMENT"
-  | "TASKS_IN_PROGRESS" | "UNCHECKED_REQUIREMENT" | "READY_FOR_REVIEW";
+  | "TASKS_IN_PROGRESS" | "UNCHECKED_REQUIREMENT" | "READY_FOR_REVIEW"
+  // 검토가 시작된 뒤(K-30 0.7, #130): 검토 중 → 수정 요청 받음 → 확정 대기 → 제출 기록 대기 → 제출 기록됨
+  | "IN_REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "CONFIRMED" | "SUBMITTED";
 
 export interface AgentStatus {
   available: boolean;
