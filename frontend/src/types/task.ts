@@ -65,9 +65,9 @@ export interface KanbanColumn {
 }
 
 export const KANBAN_COLUMNS: KanbanColumn[] = [
-  { id: "TODO",        label: "To Do",       accent: "bg-slate-500",  countColor: "text-slate-400" },
-  { id: "IN_PROGRESS", label: "In Progress", accent: "bg-indigo-500", countColor: "text-indigo-400" },
-  { id: "DONE",        label: "Done",        accent: "bg-teal-400",   countColor: "text-teal-400" },
+  { id: "TODO",        label: "할 일",       accent: "bg-slate-500",  countColor: "text-slate-400" },
+  { id: "IN_PROGRESS", label: "진행 중",     accent: "bg-indigo-500", countColor: "text-indigo-400" },
+  { id: "DONE",        label: "완료",        accent: "bg-teal-400",   countColor: "text-teal-400" },
 ];
 
 /** 화면 표시 이름. 업무 카드·업무 창·보드 필터·목록이 같은 말을 쓴다 */

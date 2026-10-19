@@ -211,7 +211,7 @@ export default function TaskModal({
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-bb-border">
           <h2 id="task-panel-title" className="text-base font-semibold text-bb-text">
-            {readOnly ? "업무 보기" : mode === "create" ? "새 태스크" : "태스크 수정"}
+            {readOnly ? "업무 보기" : mode === "create" ? "새 업무" : "업무 수정"}
           </h2>
           <button
             onClick={requestClose}
@@ -285,7 +285,7 @@ export default function TaskModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="태스크에 대한 상세 설명"
+              placeholder="업무에 대한 상세 설명"
               rows={3}
               className={`${INPUT_CLS} resize-none`}
             />
