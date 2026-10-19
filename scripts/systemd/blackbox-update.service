@@ -1,0 +1,12 @@
+# 서버 자동 갱신(scripts/ec2-update.sh). blackbox-update.timer가 부른다. 기록: journalctl -u blackbox-update
+[Unit]
+Description=Blackbox server update (config and images)
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ec2-user
+ExecStart=/home/ec2-user/blackbox/scripts/ec2-update.sh
+TimeoutStartSec=20min
