@@ -615,15 +615,15 @@ export default function ProjectHomePage() {
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-bb-text mb-1">팀 활동 내보내기</h2>
                 <p className="text-xs text-bb-text2 leading-relaxed">
-                  회의록 · 기여도 · 자료 이력을 ZIP으로 내려받습니다. 과제 제출은 최종 제출물별 검토와 확정 후 학교 제출처에서 진행하세요.
-                  PDF에는 SHA-256 무결성 해시가 포함되어 데이터 위변조를 방지합니다.
+                  팀원별 수행 근거와 집계 기준을 정리한 기여 활동 보고서, 회의록, 파일 이력을 ZIP으로 내려받습니다.
+                  교수님께 공유할 참고 자료이며 학교 과제 제출은 최종본 확정 후 직접 진행하세요.
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {[
                     `회의록 ${meetings.length}건`,
                     `파일 이력 ${files.length}건`,
-                    "기여도 PDF",
-                    "SHA-256 무결성",
+                    "기여 활동 보고서 PDF",
+                    "파일 버전·내용 식별값",
                   ].map((tag) => (
                     <li
                       key={tag}

@@ -5,6 +5,7 @@ import com.blackbox.repository.*;
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.parser.PdfTextExtractor;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
@@ -17,9 +18,13 @@ class ReportParticipationTest {
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
     final ContributionScoreRepository scores = mock(ContributionScoreRepository.class);
     final AlertRepository alerts = mock(AlertRepository.class);
+    final ReportEvidenceReader evidence = mock(ReportEvidenceReader.class);
     final ReportService service = new ReportService(access, members, mock(TaskRepository.class),
-            mock(FileVaultRepository.class), scores, alerts);
+            mock(FileVaultRepository.class), scores, alerts, evidence);
     final Project project = new Project();
+    @BeforeEach void emptyEvidence() {
+        when(evidence.read(any(),anyList())).thenReturn(new ReportEvidenceReader.Evidence(List.of(),List.of(),List.of(),List.of()));
+    }
 
     User user(String name) {
         User user = new User(); user.setId(UUID.randomUUID()); user.setName(name);

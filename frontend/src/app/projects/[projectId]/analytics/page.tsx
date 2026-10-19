@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
                          hover:bg-bb-bg text-sm rounded-lg transition-all disabled:opacity-50 text-bb-text2 font-medium"
             >
               {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              PDF 리포트
+              기여 활동 보고서 PDF
             </button>
             {canRecalc && (
               <button

@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +19,7 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class EvidencePackageService {
 
-    private static final DateTimeFormatter FMT      = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter FMT      = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("Asia/Seoul"));
     private static final DateTimeFormatter DATE_FMT  = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final ProjectAccessChecker    accessChecker;
@@ -61,7 +62,7 @@ public class EvidencePackageService {
 
             // 1. README.txt
             addEntry(zos, "evidence-package/README.txt",
-                    buildReadme(project, members.size(), meetings.size(), vaults.size(), generatedAt, requester));
+                    buildReadme(project, (int)members.stream().filter(ProjectAccessChecker::canContribute).count(), meetings.size(), vaults.size(), generatedAt, requester));
 
             // 2. 회의록 (meetings/)
             for (Meeting m : meetings) {
@@ -104,22 +105,22 @@ public class EvidencePackageService {
               .append(" ~ ").append(project.getEndDate() != null ? project.getEndDate() : "진행 중").append("\n");
         sb.append("팀원 수     : ").append(memberCount).append("명\n");
         sb.append("\n");
-        sb.append("생성 일시   : ").append(generatedAt).append("\n");
+        sb.append("생성 일시   : ").append(generatedAt).append(" KST\n");
         sb.append("생성자      : ").append(requester.getName())
           .append(" (").append(requester.getEmail()).append(")\n");
         sb.append("\n");
         sb.append("━━━━━━━ 패키지 구성 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
         sb.append("  meetings/           - 회의록 ").append(meetingCount).append("건 (텍스트 파일)\n");
         sb.append("  vault-history.csv   - 업로드 파일 이력 ").append(vaultCount).append("건\n");
-        sb.append("  contribution-report.pdf - SHA-256 무결성 기여도 리포트\n");
+        sb.append("  contribution-report.pdf - 팀 프로젝트 기여 활동 보고서\n");
         sb.append("\n");
         sb.append("━━━━━━━ 무결성 안내 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
-        sb.append("  • 이 패키지의 contribution-report.pdf 에는 리포트 데이터의 SHA-256 해시가\n");
-        sb.append("    포함되어 있어 데이터 무결성을 검증할 수 있습니다.\n");
+        sb.append("  • PDF는 프로젝트 요약, 팀원별 수행 근거, 집계 기준과 상세 부록 순서입니다.\n");
+        sb.append("    활동 기록의 횟수는 기여율이나 성적이 아니며 교수자의 종합 검토를 돕습니다.\n");
         sb.append("  • vault-history.csv 의 file_hash 열은 업로드 시점에 고정된\n");
         sb.append("    원본 파일의 SHA-256 해시값입니다.\n");
-        sb.append("  • Team Blackbox 는 외부 시스템이 기록한 데이터를 읽기 전용으로 수집합니다.\n");
-        sb.append("    데이터를 임의로 생성하거나 수정하지 않습니다.\n\n");
+        sb.append("  • 파일 해시는 같은 내용인지 비교하는 식별값이며 작성자 신원, 기여의 질이나\n");
+        sb.append("    보고서 전체의 진위를 보증하는 전자서명이 아닙니다.\n\n");
         sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         return sb.toString();
     }

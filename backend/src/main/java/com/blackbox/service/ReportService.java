@@ -2,504 +2,222 @@ package com.blackbox.service;
 
 import com.blackbox.entity.*;
 import com.blackbox.repository.*;
-import com.blackbox.service.ProjectAccessChecker;
-import com.lowagie.text.Chunk;
-import com.lowagie.text.Document;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Element;
-import com.lowagie.text.Font;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.Phrase;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.pdf.BaseFont;
-import com.lowagie.text.pdf.ColumnText;
-import com.lowagie.text.pdf.PdfContentByte;
-import com.lowagie.text.pdf.PdfPageEventHelper;
-import com.lowagie.text.pdf.PdfPCell;
-import com.lowagie.text.pdf.PdfPTable;
-import com.lowagie.text.pdf.PdfWriter;
+import com.lowagie.text.*;
+import com.lowagie.text.pdf.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
+/** 결과와 근거부터 읽는 보고서. 기존 네 항목의 집계 계산과 저장은 변경하지 않는다. */
 @Service
 public class ReportService {
-
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-    private static final ZoneId REPORT_ZONE = ZoneId.of("Asia/Seoul");
-
-    // ── 한글 폰트 (NanumGothic, classpath 임베드) ─────────────────────────────
+    private static final ZoneId ZONE=ZoneId.of("Asia/Seoul");
+    private static final DateTimeFormatter FMT=DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final Color INK=new Color(25,45,64), BLUE=new Color(39,78,124), MUTED=new Color(91,108,123),
+            LINE=new Color(218,226,233), PALE=new Color(242,246,250), WHITE=Color.WHITE;
     private static final BaseFont NANUM;
     static {
-        try {
-            NANUM = BaseFont.createFont(
-                    "/fonts/NanumGothic.ttf",
-                    BaseFont.IDENTITY_H,
-                    BaseFont.EMBEDDED);
-        } catch (Exception e) {
-            throw new ExceptionInInitializerError("NanumGothic 폰트 로드 실패: " + e.getMessage());
-        }
+        try { NANUM=BaseFont.createFont("/fonts/NanumGothic.ttf",BaseFont.IDENTITY_H,BaseFont.EMBEDDED); }
+        catch(Exception e) {throw new ExceptionInInitializerError(e);}
     }
-
-    // ── 색상 팔레트 ──────────────────────────────────────────────────────────
-    private static final Color INDIGO      = new Color(99,  102, 241);
-    private static final Color INDIGO_LIGHT= new Color(238, 239, 254);
-    private static final Color TEAL        = new Color(45,  212, 191);
-    private static final Color AMBER       = new Color(245, 158, 11);
-    private static final Color RED         = new Color(239, 68,  68);
-    private static final Color GRAY_DARK   = new Color(30,  41,  59);
-    private static final Color GRAY_MID    = new Color(100, 116, 139);
-    private static final Color GRAY_LIGHT  = new Color(241, 245, 249);
-    private static final Color WHITE       = Color.WHITE;
-
-    private final ProjectAccessChecker    accessChecker;
+    private final ProjectAccessChecker access;
     private final ProjectMemberRepository memberRepo;
-    private final TaskRepository          taskRepo;
-    private final FileVaultRepository     vaultRepo;
+    private final TaskRepository taskRepo;
+    private final FileVaultRepository vaultRepo;
     private final ContributionScoreRepository scoreRepo;
-    private final AlertRepository         alertRepo;
+    private final AlertRepository alertRepo;
+    private final ReportEvidenceReader evidenceReader;
 
-    public ReportService(ProjectAccessChecker accessChecker,
-                         ProjectMemberRepository memberRepo,
-                         TaskRepository taskRepo,
-                         FileVaultRepository vaultRepo,
-                         ContributionScoreRepository scoreRepo,
-                         AlertRepository alertRepo) {
-        this.accessChecker = accessChecker;
-        this.memberRepo    = memberRepo;
-        this.taskRepo      = taskRepo;
-        this.vaultRepo     = vaultRepo;
-        this.scoreRepo     = scoreRepo;
-        this.alertRepo     = alertRepo;
+    public ReportService(ProjectAccessChecker access, ProjectMemberRepository memberRepo, TaskRepository taskRepo,
+                         FileVaultRepository vaultRepo, ContributionScoreRepository scoreRepo, AlertRepository alertRepo,
+                         ReportEvidenceReader evidenceReader) {
+        this.access=access;this.memberRepo=memberRepo;this.taskRepo=taskRepo;this.vaultRepo=vaultRepo;
+        this.scoreRepo=scoreRepo;this.alertRepo=alertRepo;this.evidenceReader=evidenceReader;
     }
 
-    // ── 공개 API ─────────────────────────────────────────────────────────────
-
-    @Transactional(readOnly = true)
+    @Transactional(readOnly=true)
     public byte[] generateReport(UUID projectId, User requester) {
-        Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, requester);
+        Project project=access.getProject(projectId);access.requireMember(project,requester);
+        List<ProjectMember> members=memberRepo.findByProject(project).stream().filter(ProjectAccessChecker::canContribute)
+                .sorted(Comparator.comparing((ProjectMember m)->!"LEADER".equals(m.getRole()))
+                        .thenComparing(m->m.getUser().getName()).thenComparing(m->m.getUser().getId())).toList();
+        Set<UUID> ids=members.stream().map(m->m.getUser().getId()).collect(Collectors.toSet());
+        var tasks=taskRepo.findByProjectOrderByCreatedAtDesc(project);
+        var files=vaultRepo.findByProjectOrderByUploadedAtDesc(project);
+        var scores=scoreRepo.findByProjectOrderByTotalScoreDesc(project).stream().filter(s->ids.contains(s.getUser().getId()))
+                .collect(Collectors.toMap(s->s.getUser().getId(),s->s));
+        var alerts=alertRepo.findByProjectOrderByCreatedAtDesc(project).stream()
+                .filter(a->!a.isRead()&&a.getResolvedAt()==null)
+                .filter(a->!AlertService.PARTICIPATION_TYPES.contains(a.getAlertType()) || a.getUser()!=null&&ids.contains(a.getUser().getId())).toList();
+        var evidence=evidenceReader.read(project,tasks);
+        String reportId="BB-"+LocalDate.now(ZONE).toString().replace("-","")+"-"+UUID.randomUUID().toString().substring(0,8);
+        try(var out=new ByteArrayOutputStream()) {
+            Document doc=new Document(PageSize.A4,46,46,49,49);
+            PdfWriter writer=PdfWriter.getInstance(doc,out);writer.setPageEvent(new Footer(reportId));
+            doc.addTitle("팀 프로젝트 기여 활동 보고서 - "+project.getName());doc.addAuthor("Team Blackbox");doc.open();
+            summary(doc,project,requester,members,tasks,files,evidence);
+            if(!members.isEmpty()) {doc.newPage();people(doc,members,tasks,files,evidence);}
+            doc.newPage();method(doc,members,scores,alerts);
+            if(!tasks.isEmpty()||!files.isEmpty()) {doc.newPage();appendix(doc,tasks,files,evidence);}
+            doc.close();return out.toByteArray();
+        }catch(Exception e){throw new IllegalStateException("기여 활동 PDF 생성 실패",e);}
+    }
 
-        List<ProjectMember>      members = memberRepo.findByProject(project);
-        List<Task>               tasks   = taskRepo.findByProjectOrderByCreatedAtDesc(project);
-        List<FileVault>          vaults  = vaultRepo.findByProjectOrderByUploadedAtDesc(project);
-        // 참여 집계와 참여 알림은 화면(AlertService)과 같이 현재 팀장·팀원만 대상으로 한다. 원본 행은 보존한다.
-        Set<UUID> contributors = members.stream().filter(ProjectAccessChecker::canContribute)
-                .map(m -> m.getUser().getId()).collect(Collectors.toSet());
-        List<ContributionScore>  scores  = scoreRepo.findByProjectOrderByTotalScoreDesc(project).stream()
-                .filter(s -> contributors.contains(s.getUser().getId())).toList();
-        List<Alert>              alerts  = alertRepo.findByProjectOrderByCreatedAtDesc(project).stream()
-                .filter(a -> !AlertService.PARTICIPATION_TYPES.contains(a.getAlertType())
-                        || (a.getUser() != null && contributors.contains(a.getUser().getId())))
-                .toList();
-
-        String generatedAt = OffsetDateTime.now(REPORT_ZONE).format(FMT) + " KST";
-        String reportHash  = computeReportHash(project, scores, tasks, vaults, generatedAt);
-
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            Document doc = new Document(PageSize.A4, 50, 50, 60, 60);
-            PdfWriter writer = PdfWriter.getInstance(doc, baos);
-            writer.setPageEvent(new PageFooter(reportHash));
-            doc.open();
-
-            addCoverSection(doc, project, requester, generatedAt, reportHash, contributors.size());
-            addScoreSection(doc, scores);
-            addTaskSection(doc, tasks);
-            addVaultSection(doc, vaults);
-            addAlertSection(doc, alerts);
-
-            doc.close();
-            return baos.toByteArray();
-        } catch (Exception e) {
-            throw new RuntimeException("PDF 생성 실패: " + e.getMessage(), e);
+    private void summary(Document doc, Project project, User requester, List<ProjectMember> members,
+                         List<Task> tasks,List<FileVault> files,ReportEvidenceReader.Evidence e) throws DocumentException {
+        doc.add(p("TEAM BLACKBOX  /  PROJECT REPORT",10,BLUE,true));
+        doc.add(p("팀 프로젝트 기여 활동 보고서",24,INK,true));
+        doc.add(p(project.getName(),16,BLUE,true));
+        doc.add(p("업무·협업 기록을 정리했습니다. 기여율(%)이나 100점 성적을 산출하지 않습니다.",10,MUTED,false));
+        var meta=table(1,3);row(meta,"과목 · 학기",join(project.getCourseName(),project.getSemester()));
+        row(meta,"프로젝트 기간",date(project.getStartDate())+" ~ "+date(project.getEndDate()));
+        row(meta,"작성 정보",requester.getName()+" / "+time(OffsetDateTime.now())+" KST");
+        compact(meta,6);doc.add(meta);
+        var metrics=table(1,1,1,1);
+        row(metrics,"팀원 수\n"+members.size()+"명","업무 완료\n"+tasks.stream().filter(t->"DONE".equals(t.getStatus())).count()+" / "+tasks.size()+"건",
+                "최종 제출물\n"+e.finalWorks().size()+"건","등록 파일\n"+files.size()+"개 버전");doc.add(metrics);
+        heading(doc,"01", "팀원별 기여 근거 한눈에 보기");
+        doc.add(p("인원별 순위가 아닌 역할·기록의 요약입니다. 공동 담당 업무는 각 담당자에게 표시되므로 개인별 건수 합계와 팀 업무 수는 다를 수 있습니다.",9,MUTED,false));
+        var team=table(1.3f,1.15f,1.05f,1.05f,1.15f);headers(team,"팀원 / 역할","담당 · 완료","파일 등록","의견·답변","확인·검토");
+        for(var m:members) {
+            var u=m.getUser();var own=assigned(e,u);long done=own.stream().filter(t->"DONE".equals(t.getStatus())).count();
+            row(team,u.getName()+" · "+role(m),own.size()+" · "+done+"건",uploads(files,u)+"회",feedback(e,u)+"건",decisions(e,tasks,u)+"건");
+        }
+        if(members.isEmpty()) row(team,"표시할 현재 팀원이 없습니다.","-","-","-","-");doc.add(team);
+        doc.add(p("의견·답변 = 업무 댓글·의견 요청·답글 + 최종 제출물 검토 피드백. 확인·검토 = 업무 완료 확인 + 검토 회차의 승인·수정 요청 결정. 양이나 횟수만으로 기여의 질을 판정하지 않습니다.",8,MUTED,false));
+        heading(doc,"02","최종 제출물 진행 현황");
+        if(e.finalWorks().isEmpty()) doc.add(p("등록된 최종 제출물이 없습니다. 업무·파일 기록은 뒤에서 확인할 수 있습니다.",10,MUTED,false));
+        for(var work:e.finalWorks()) {
+            var d=work.deliverable();var c=work.confirmation();var s=work.submission();
+            var latest=work.rounds().stream().findFirst().orElse(null);
+            var file=c!=null?c.getReview().getFile():latest==null?null:latest.getFile();
+            var box=table(2,1,1.6f);headers(box,"제출물 / 담당","기한","현재 상태");
+            row(box,d.getTitle()+" / "+(d.getOwner()==null?"미지정":d.getOwner().getName()),date(d.getDueDate()),s!=null?"제출 사실 기록 완료":c!=null?"팀장 최종본 확정":latest!=null?"검토 중 / "+decision(latest.getDecision()):"준비 중");
+            compact(box,4);
+            String detail="대상 파일: "+(file==null?"미지정":file.getFileName()+" / v"+file.getVersion());
+            if(c!=null)detail+="\n확정: "+c.getConfirmedBy().getName()+" / "+time(c.getConfirmedAt())+" KST";
+            if(s!=null)detail+=" · 제출 기록: "+time(s.getSubmittedAt())+" KST / "+safe(s.getChannel());
+            // 파일·확정 설명이 표에서 떨어져 한 문장만 다음 장에 남지 않도록 함께 배치한다.
+            var group=table(1);var wrapper=new PdfPCell();wrapper.setBorder(Rectangle.NO_BORDER);wrapper.setPadding(0);
+            wrapper.addElement(box);
+            if(file!=null||c!=null||s!=null)wrapper.addElement(p(detail,8,MUTED,false));
+            group.addCell(wrapper);group.setSpacingBefore(5);group.setSpacingAfter(0);group.setKeepTogether(true);doc.add(group);
         }
     }
 
-    // ── 표지 섹션 ─────────────────────────────────────────────────────────────
-
-    private void addCoverSection(Document doc, Project project, User requester,
-                                 String generatedAt, String reportHash, int memberCount)
-            throws DocumentException {
-        // 상단 컬러 바
-        PdfPTable header = new PdfPTable(1);
-        header.setWidthPercentage(100);
-        PdfPCell bar = new PdfPCell(new Phrase(" "));
-        bar.setBackgroundColor(INDIGO);
-        bar.setFixedHeight(6);
-        bar.setBorder(Rectangle.NO_BORDER);
-        header.addCell(bar);
-        doc.add(header);
-
-        doc.add(spacer(16));
-
-        // 로고 텍스트
-        doc.add(para("Team Blackbox", font(11, INDIGO, Font.BOLD)));
-        doc.add(spacer(4));
-
-        // 프로젝트 제목
-        doc.add(para(project.getName(), font(22, GRAY_DARK, Font.BOLD)));
-        doc.add(spacer(4));
-        doc.add(para("무결성 기여도 리포트", font(13, GRAY_MID, Font.NORMAL)));
-
-        doc.add(spacer(20));
-
-        // 메타 정보 카드
-        PdfPTable meta = new PdfPTable(new float[]{120f, 300f});
-        meta.setWidthPercentage(100);
-        addMetaRow(meta, "생성 일시",   generatedAt);
-        addMetaRow(meta, "생성자",      requester.getName() + " (" + requester.getEmail() + ")");
-        addMetaRow(meta, "팀원 수",     memberCount + "명");
-        if (project.getStartDate() != null)
-            addMetaRow(meta, "프로젝트 기간",
-                    project.getStartDate() + " ~ " + (project.getEndDate() != null ? project.getEndDate() : "진행 중"));
-        doc.add(meta);
-
-        doc.add(spacer(16));
-
-        // 리포트 해시
-        PdfPTable hashBox = new PdfPTable(1);
-        hashBox.setWidthPercentage(100);
-        PdfPCell hashCell = new PdfPCell();
-        hashCell.setBackgroundColor(INDIGO_LIGHT);
-        hashCell.setPadding(10);
-        hashCell.setBorderColor(INDIGO);
-        hashCell.setBorderWidth(0.5f);
-
-        Paragraph hashPara = new Paragraph();
-        hashPara.add(new Chunk("리포트 무결성 해시 (SHA-256)\n", font(8, INDIGO, Font.BOLD)));
-        hashPara.add(new Chunk(reportHash, font(8, GRAY_DARK, Font.COURIER)));
-        hashCell.addElement(hashPara);
-        hashBox.addCell(hashCell);
-        doc.add(hashBox);
-
-        doc.add(spacer(8));
-        doc.add(para("이 해시값은 리포트 데이터의 무결성을 보장합니다. 동일한 데이터로 재생성하면 동일한 해시가 출력됩니다.",
-                font(8, GRAY_MID, Font.ITALIC)));
-
-        // 구분선
-        PdfPTable sep = new PdfPTable(1);
-        sep.setWidthPercentage(100);
-        sep.setSpacingBefore(8);
-        sep.setSpacingAfter(8);
-        PdfPCell sepCell = new PdfPCell(new Phrase(" "));
-        sepCell.setFixedHeight(1f);
-        sepCell.setBackgroundColor(GRAY_LIGHT);
-        sepCell.setBorder(Rectangle.NO_BORDER);
-        sep.addCell(sepCell);
-        doc.add(sep);
-    }
-
-    // ── 참여 여부 섹션 ──────────────────────────────────────────────────────
-
-    private static final Color GREEN_LIGHT = new Color(240, 253, 250);
-    private static final Color TEAL_DARK   = new Color(20,  184, 166);
-    private static final Color YELLOW      = new Color(234, 179,  8);
-
-    private void addScoreSection(Document doc, List<ContributionScore> scores) throws DocumentException {
-        doc.add(sectionTitle("팀원별 자동 집계 활동 기록"));
-
-        if (scores.isEmpty()) {
-            doc.add(emptyNote("아직 참여 데이터가 없습니다."));
-            doc.add(spacer(8));
-            return;
+    private void people(Document doc,List<ProjectMember> members,List<Task> tasks,List<FileVault> files,ReportEvidenceReader.Evidence e) throws DocumentException {
+        heading(doc,"03","팀원별 역할과 수행 기록");
+        doc.add(p("이름순(팀장 우선)으로 정리했습니다. 담당 배정과 실제 수행 기록을 함께 읽어 주세요.",10,MUTED,false));
+        int index=0;
+        for(var m:members) {
+            if(index>0 && index%2==0) {doc.newPage();heading(doc,"03","팀원별 역할과 수행 기록 · 계속");}
+            var u=m.getUser();var own=assigned(e,u);
+            var box=table(1);box.setKeepTogether(false);box.setHeaderRows(1);
+            box.addCell(cell(u.getName()+"  /  "+role(m),true));
+            box.addCell(cell("업무 "+own.size()+"건 담당 · "+own.stream().filter(t->"DONE".equals(t.getStatus())).count()+"건 완료  |  파일 "+uploads(files,u)+"회 등록  |  의견·답변 "+feedback(e,u)+"건  |  확인·검토 "+decisions(e,tasks,u)+"건",false));
+            String work=own.isEmpty()?"현재 배정된 업무 없음":own.stream().map(t->"• "+t.getTitle()+" ["+status(t.getStatus())+"]").collect(Collectors.joining("\n"));
+            box.addCell(cell("담당 업무\n"+work,false));
+            String uploaded=files.stream().filter(v->same(v.getUploader(),u)).limit(3).map(v->"• "+v.getFileName()+" / v"+v.getVersion()+" / "+time(v.getUploadedAt())).collect(Collectors.joining("\n"));
+            box.addCell(cell("최근 등록 파일\n"+(uploaded.isEmpty()?"등록 기록 없음":uploaded),false));
+            long comments=e.comments().stream().filter(c->same(c.getAuthor(),u)).count();
+            long resolved=e.comments().stream().filter(c->same(c.getResolvedBy(),u)).count();
+            box.addCell(cell("피드백 근거\n업무 대화 "+e.messages().stream().filter(v->same(v.getAuthor(),u)).count()+"건 · 최종 제출물 피드백 "+comments+"건 · 해결 기록 "+resolved+"건",false));
+            var review=e.comments().stream().filter(v->same(v.getAuthor(),u)).findFirst();
+            var reflection=e.comments().stream().filter(v->same(v.getResolvedBy(),u)).findFirst();
+            var recent=e.messages().stream().filter(v->same(v.getAuthor(),u)).findFirst();
+            if(review.isPresent())box.addCell(cell("검토 의견 예시 / "+review.get().getDeliverable().getTitle()+"\n“"+excerpt(review.get().getContent(),180)+"”",false));
+            else if(reflection.isPresent())box.addCell(cell("수정·반영 기록 예시 / "+reflection.get().getDeliverable().getTitle()+"\n“"+excerpt(safe(reflection.get().getResolutionReason()),180)+"”",false));
+            else if(recent.isPresent())box.addCell(cell("최근 대화 예시 / "+recent.get().getTask().getTitle()+"\n“"+excerpt(recent.get().getBody(),180)+"”",false));
+            doc.add(box);index++;
         }
+        doc.add(p("파일 수는 버전별 등록 횟수입니다. 한 파일을 여러 번 수정하면 각각 집계됩니다. 검토·답변 활동은 아래 기존 4개 집계 항목과 별도로 제시한 근거이며 새 점수에 합산하지 않았습니다.",9,MUTED,false));
+    }
 
-        PdfPTable table = new PdfPTable(new float[]{20f, 14f, 14f, 14f, 16f, 12f, 10f});
-        table.setWidthPercentage(100);
-
-        String[] headers = {"이름", "태스크 완료", "회의 참석", "파일 업로드", "액션아이템", "종합", "계산 일시"};
-        Color[]  colors  = {INDIGO, TEAL, TEAL, AMBER, TEAL, INDIGO, GRAY_MID};
-        for (int i = 0; i < headers.length; i++) {
-            table.addCell(headerCell(headers[i], colors[i]));
+    private void method(Document doc,List<ProjectMember> members,Map<UUID,ContributionScore> scores,List<Alert> alerts) throws DocumentException {
+        heading(doc,"04","자동 집계 기준과 해석");
+        note(doc,"숫자 점수 대신 네 종류의 기록을 확인합니다","저장된 집계는 아래 조건의 충족 여부입니다. 네 항목은 가중치·기여율·성적이 아니며 평가·감점 기준이 아닙니다. ‘기록 없음’은 실제 활동이 없었다는 확정 판단이 아닙니다.");
+        var rules=table(1,3);headers(rules,"집계 항목","현재 시스템의 확인 조건");
+        row(rules,"업무 완료","담당 업무 중 완료(DONE)된 업무가 1건 이상");
+        row(rules,"회의 참석","프로젝트 회의의 50% 이상에 체크인 기록 존재. 회의가 없으면 이 항목은 확인되지 않음");
+        row(rules,"파일 등록","프로젝트 파일을 1회 이상 업로드");
+        row(rules,"회의 후속 업무","회의에서 생성된 후속 업무 중 담당 업무가 1건 이상 완료");doc.add(rules);
+        doc.add(p("확인된 항목의 수는 활동 종류의 폭을 나타냅니다. 모든 항목이 확인되어야 좋은 기여라는 뜻은 아닙니다. 회의를 열지 않은 팀 등 활동 방식에 따른 차이도 함께 고려해 주세요.",9,MUTED,false));
+        var matrix=table(1.3f,.8f,.8f,.8f,.9f,1.8f);headers(matrix,"팀원","업무","회의","파일","후속 업무","마지막 집계 (KST)");
+        for(var m:members) {
+            var s=scores.get(m.getUser().getId());
+            row(matrix,m.getUser().getName(),mark(s,s!=null&&s.isTaskParticipated()),mark(s,s!=null&&s.isMeetingParticipated()),
+                    mark(s,s!=null&&s.isFileParticipated()),mark(s,s!=null&&s.isActionParticipated()),s==null?"아직 집계되지 않음":time(s.getCalculatedAt()));
         }
+        if(members.isEmpty())row(matrix,"현재 팀원 없음","-","-","-","-","-");doc.add(matrix);
+        doc.add(p("집계 시각 이후의 활동은 이 표에 아직 반영되지 않을 수 있습니다. 앞의 업무·파일·피드백 근거는 보고서 생성 시점에 조회하므로 저장된 집계와 시점이 다를 수 있습니다. 관찰자는 팀원 집계에서 제외합니다.",9,MUTED,false));
+        heading(doc,"05","추가로 함께 확인할 기록");
+        long notices=alerts.stream().filter(a->"FREE_RIDE".equals(a.getAlertType())).count();
+        if(notices>0)doc.add(p("참여 기록 확인 안내 "+notices+"건: 자동 집계가 포착하지 못한 검토·답변·오프라인 역할이 있는지 함께 확인해 주세요. 개인의 불성실이나 감점을 뜻하지 않습니다.",10,MUTED,false));
+        var other=alerts.stream().filter(a->!"FREE_RIDE".equals(a.getAlertType())).toList();
+        if(other.isEmpty())doc.add(p("표시할 미읽음·미해결 추가 알림이 없습니다. 모든 기여가 집계되었다는 뜻은 아닙니다.",10,MUTED,false));
+        else {var t=table(1,3);headers(t,"확인 유형","시스템 안내");for(var a:other)row(t,alertLabel(a.getAlertType()),safe(a.getMessage()));doc.add(t);}
+        note(doc,"교수자 검토 시 참고","담당 역할, 결과물 내용, 수정·검토 근거와 팀원의 설명을 함께 확인해 주세요. 보고서에 나타나지 않는 오프라인 조사·발표 준비·회의 밖 협의는 별도 자료로 보완할 수 있습니다. 학교 제출 기록은 팀원이 남긴 사실 기록이며 학교의 접수 확인을 대신하지 않습니다.");
+    }
 
-        for (ContributionScore s : scores) {
-            Color levelColor = "FULL".equals(s.getParticipationLevel())    ? TEAL_DARK
-                             : "PARTIAL".equals(s.getParticipationLevel()) ? YELLOW
-                             :                                               RED;
-            Color rowBg = "FULL".equals(s.getParticipationLevel()) ? GREEN_LIGHT : WHITE;
-
-            table.addCell(dataCell(s.getUser().getName(), rowBg, Font.BOLD));
-            table.addCell(dataCell(s.isTaskParticipated()    ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
-            table.addCell(dataCell(s.isMeetingParticipated() ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
-            table.addCell(dataCell(s.isFileParticipated()    ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
-            table.addCell(dataCell(s.isActionParticipated()  ? "✓ 참여" : "✗ 기록 없음", rowBg, Font.NORMAL));
-
-            PdfPCell levelCell = new PdfPCell(new Phrase(levelKo(s.getParticipationLevel()), font(8, WHITE, Font.BOLD)));
-            levelCell.setBackgroundColor(levelColor);
-            levelCell.setPadding(4);
-            levelCell.setBorderColor(GRAY_LIGHT);
-            levelCell.setBorderWidth(0.3f);
-            table.addCell(levelCell);
-
-            table.addCell(dataCell(s.getCalculatedAt() != null ? s.getCalculatedAt().atZoneSameInstant(REPORT_ZONE).format(FMT) : "-", rowBg, Font.NORMAL));
+    private void appendix(Document doc,List<Task> tasks,List<FileVault> files,ReportEvidenceReader.Evidence e) throws DocumentException {
+        heading(doc,"부록 A","업무별 상세 근거");
+        if(tasks.isEmpty())doc.add(p("등록된 업무가 없습니다.",10,MUTED,false));
+        else {
+            var t=table(2.1f,1.1f,.8f,1.2f,1.8f);headers(t,"업무","담당자","상태","마감일","완료 확인");
+            for(var task:tasks) {
+                String names=e.assignments().stream().filter(a->a.getTask().getId().equals(task.getId())).map(a->a.getUser().getName()).sorted().collect(Collectors.joining(", "));
+                row(t,task.getTitle(),names.isEmpty()?"미배정":names,status(task.getStatus()),date(task.getDueDate()),
+                        task.getCompletionApprovedBy()==null?"확인 기록 없음":task.getCompletionApprovedBy().getName()+"\n"+time(task.getCompletionApprovedAt()));
+            }doc.add(t);
         }
-        doc.add(table);
-        doc.add(spacer(6));
-        doc.add(para("* 태스크: 담당 태스크 1개↑ 완료 / 회의: 전체 50%↑ 체크인 / 파일: 1개↑ 업로드 / 액션아이템: 담당 1개↑ 완료",
-                font(7, GRAY_MID, Font.ITALIC)));
-        doc.add(para("* 전체참여(4개 모두) / 부분참여(2~3개) / 집계 기록 적음(0~1개). 검토·답변 등은 자동 집계에 빠질 수 있으며 평가·감점 기준이 아닙니다.",
-                font(7, GRAY_MID, Font.ITALIC)));
-        doc.add(spacer(12));
-    }
-
-    // ── 태스크 섹션 ───────────────────────────────────────────────────────────
-
-    private void addTaskSection(Document doc, List<Task> tasks) throws DocumentException {
-        doc.add(sectionTitle("칸반 태스크 목록"));
-
-        if (tasks.isEmpty()) {
-            doc.add(emptyNote("등록된 태스크가 없습니다."));
-            doc.add(spacer(8));
-            return;
-        }
-
-        PdfPTable table = new PdfPTable(new float[]{28f, 12f, 10f, 12f, 38f});
-        table.setWidthPercentage(100);
-
-        for (String h : new String[]{"제목", "상태", "우선순위", "마감일", "행 해시 (SHA-256)"}) {
-            table.addCell(headerCell(h, GRAY_DARK));
-        }
-
-        for (Task t : tasks) {
-            String rowHash = sha256(t.getId() + "|" + t.getTitle() + "|" +
-                    t.getStatus() + "|" + t.getPriority() + "|" + t.getCreatedAt());
-            table.addCell(dataCell(t.getTitle(),                 WHITE, Font.NORMAL));
-            table.addCell(dataCell(statusKo(t.getStatus()),      WHITE, Font.NORMAL));
-            table.addCell(dataCell(priorityKo(t.getPriority()),  WHITE, Font.NORMAL));
-            table.addCell(dataCell(t.getDueDate() != null ? t.getDueDate().toString() : "-", WHITE, Font.NORMAL));
-            table.addCell(hashCell(rowHash));
-        }
-        doc.add(table);
-        doc.add(spacer(12));
-    }
-
-    // ── 파일 금고 섹션 ───────────────────────────────────────────────────────
-
-    private void addVaultSection(Document doc, List<FileVault> vaults) throws DocumentException {
-        doc.add(sectionTitle("업로드 파일 이력"));
-
-        if (vaults.isEmpty()) {
-            doc.add(emptyNote("업로드된 파일이 없습니다."));
-            doc.add(spacer(8));
-            return;
-        }
-
-        PdfPTable table = new PdfPTable(new float[]{22f, 8f, 14f, 56f});
-        table.setWidthPercentage(100);
-
-        for (String h : new String[]{"파일명", "버전", "업로드 일시", "SHA-256 해시 (원본 고정값)"}) {
-            table.addCell(headerCell(h, TEAL));
-        }
-
-        for (FileVault v : vaults) {
-            table.addCell(dataCell(v.getFileName(),                              GRAY_LIGHT, Font.NORMAL));
-            table.addCell(dataCell("v" + v.getVersion(),                         GRAY_LIGHT, Font.NORMAL));
-            table.addCell(dataCell(v.getUploadedAt() != null ? v.getUploadedAt().format(FMT) : "-", GRAY_LIGHT, Font.NORMAL));
-            table.addCell(hashCell(v.getFileHash()));
-        }
-        doc.add(table);
-        doc.add(spacer(12));
-    }
-
-    // ── 경보 섹션 ─────────────────────────────────────────────────────────────
-
-    private void addAlertSection(Document doc, List<Alert> alerts) throws DocumentException {
-        doc.add(sectionTitle("경보 현황"));
-
-        List<Alert> active = alerts.stream().filter(a -> !a.isRead() && a.getResolvedAt() == null).toList();
-        if (active.isEmpty()) {
-            doc.add(emptyNote("표시할 미읽음·미해결 알림이 없습니다. 모든 기여가 집계되었다는 뜻은 아닙니다."));
-            doc.add(spacer(8));
-            return;
-        }
-
-        PdfPTable table = new PdfPTable(new float[]{18f, 12f, 70f});
-        table.setWidthPercentage(100);
-
-        for (String h : new String[]{"유형", "심각도", "메시지"}) {
-            table.addCell(headerCell(h, RED));
-        }
-
-        for (Alert a : active) {
-            table.addCell(dataCell(alertTypeKo(a.getAlertType()), WHITE, Font.BOLD));
-            table.addCell(dataCell(a.getSeverity(), WHITE, Font.NORMAL));
-            // 과거 FREE_RIDE 행의 실명 문구 대신 화면과 같은 중립 안내를 쓴다.
-            String message = "FREE_RIDE".equals(a.getAlertType()) ? AlertService.PARTICIPATION_NOTICE : a.getMessage();
-            table.addCell(dataCell(message, WHITE, Font.NORMAL));
-        }
-        doc.add(table);
-        doc.add(spacer(8));
-    }
-
-    // ── 리포트 해시 ───────────────────────────────────────────────────────────
-
-    private String computeReportHash(Project project, List<ContributionScore> scores,
-                                     List<Task> tasks, List<FileVault> vaults, String ts) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(project.getId()).append("|").append(ts).append("\n");
-        scores.forEach(s -> sb.append(s.getUser().getId()).append("|")
-                .append(s.getTotalScore()).append("|").append(s.getCalculatedAt()).append("\n"));
-        tasks.forEach(t -> sb.append(t.getId()).append("|")
-                .append(t.getStatus()).append("|").append(t.getUpdatedAt()).append("\n"));
-        vaults.forEach(v -> sb.append(v.getFileHash()).append("|")
-                .append(v.getUploadedAt()).append("\n"));
-        return sha256(sb.toString());
-    }
-
-    // ── PDF 헬퍼 ─────────────────────────────────────────────────────────────
-
-    private Paragraph sectionTitle(String text) {
-        Paragraph p = new Paragraph(text, font(11, INDIGO, Font.BOLD));
-        p.setSpacingBefore(6);
-        p.setSpacingAfter(4);
-        return p;
-    }
-
-    private Paragraph emptyNote(String text) {
-        return new Paragraph(text, font(9, GRAY_MID, Font.ITALIC));
-    }
-
-    private Paragraph para(String text, Font f) {
-        return new Paragraph(text, f);
-    }
-
-    private Chunk spacer(float height) {
-        return new Chunk("\n", font((int)(height / 3.5), WHITE, Font.NORMAL));
-    }
-
-    private void addMetaRow(PdfPTable table, String key, String value) {
-        PdfPCell k = new PdfPCell(new Phrase(key, font(9, GRAY_MID, Font.NORMAL)));
-        k.setBorder(Rectangle.NO_BORDER);
-        k.setPadding(3);
-        PdfPCell v = new PdfPCell(new Phrase(value, font(9, GRAY_DARK, Font.BOLD)));
-        v.setBorder(Rectangle.NO_BORDER);
-        v.setPadding(3);
-        table.addCell(k);
-        table.addCell(v);
-    }
-
-    private PdfPCell headerCell(String text, Color bg) {
-        PdfPCell c = new PdfPCell(new Phrase(text, font(8, WHITE, Font.BOLD)));
-        c.setBackgroundColor(bg);
-        c.setPadding(5);
-        c.setBorderColor(WHITE);
-        c.setBorderWidth(0.5f);
-        return c;
-    }
-
-    private PdfPCell dataCell(String text, Color bg, int style) {
-        PdfPCell c = new PdfPCell(new Phrase(text != null ? text : "-", font(8, GRAY_DARK, style)));
-        c.setBackgroundColor(bg);
-        c.setPadding(4);
-        c.setBorderColor(GRAY_LIGHT);
-        c.setBorderWidth(0.3f);
-        return c;
-    }
-
-    private PdfPCell hashCell(String hash) {
-        PdfPCell c = new PdfPCell(new Phrase(hash != null ? hash : "-", font(6, GRAY_MID, Font.COURIER)));
-        c.setBackgroundColor(WHITE);
-        c.setPadding(4);
-        c.setBorderColor(GRAY_LIGHT);
-        c.setBorderWidth(0.3f);
-        return c;
-    }
-
-    private Font font(int size, Color color, int style) {
-        Font f = new Font(NANUM, size, style);
-        f.setColor(color);
-        return f;
-    }
-
-    // ── 암호화 ────────────────────────────────────────────────────────────────
-
-    private String sha256(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = md.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (byte b : bytes) hex.append(String.format("%02x", b));
-            return hex.toString();
-        } catch (Exception e) {
-            return "hash-error";
+        if(!files.isEmpty()) {
+            doc.newPage();heading(doc,"부록 B","파일 버전과 등록 이력");
+            doc.add(p("파일명·버전·등록자로 원 기록을 찾을 수 있습니다. 아래 SHA-256은 파일 내용 비교를 위한 식별값이며 작성자의 기여 정도나 학교 접수를 증명하는 값이 아닙니다.",10,MUTED,false));
+            int i=0;
+            for(var file:files) {
+                var t=table(1,3);row(t,"F-"+String.format("%03d",++i),file.getFileName()+" / v"+file.getVersion());
+                row(t,"등록 기록",(file.getUploader()==null?"등록자 미상":file.getUploader().getName())+" / "+time(file.getUploadedAt())+" KST");
+                PdfPCell label=cell("내용 식별값",false);PdfPCell hash=cell(safe(file.getFileHash()),false);hash.setPhrase(new Phrase(safe(file.getFileHash()),f(7,MUTED,false)));t.addCell(label);t.addCell(hash);t.setKeepTogether(true);doc.add(t);
+            }
         }
     }
 
-    // ── 번역 헬퍼 ────────────────────────────────────────────────────────────
-
-    private String fmt(java.math.BigDecimal v) {
-        return v != null ? String.format("%.1f", v) : "-";
-    }
-
-    private String statusKo(String s) {
-        return switch (s) {
-            case "TODO"        -> "예정";
-            case "IN_PROGRESS" -> "진행 중";
-            case "DONE"        -> "완료";
-            default            -> s;
-        };
-    }
-
-    private String priorityKo(String p) {
-        return switch (p) {
-            case "LOW"    -> "낮음";
-            case "MEDIUM" -> "보통";
-            case "HIGH"   -> "높음";
-            case "URGENT" -> "긴급";
-            default       -> p;
-        };
-    }
-
-    private String alertTypeKo(String t) {
-        return switch (t) {
-            case "FREE_RIDE" -> "참여 기록 확인";
-            case "OVERLOAD"  -> "과부하 위험";
-            case "DROPOUT"   -> "이탈 감지";
-            case "TAMPER"    -> "변조";
-            default          -> t;
-        };
-    }
-
-    private String levelKo(String level) {
-        return switch (level) {
-            case "FULL"    -> "전체참여";
-            case "PARTIAL" -> "부분참여";
-            default        -> "집계 기록 적음";
-        };
-    }
-
-    // ── 페이지 푸터 이벤트 ───────────────────────────────────────────────────
-
-    private static class PageFooter extends PdfPageEventHelper {
-        private final String reportHash;
-        PageFooter(String hash) { this.reportHash = hash; }
-
-        @Override
-        public void onEndPage(PdfWriter writer, Document document) {
-            PdfContentByte cb = writer.getDirectContent();
-            Font f = new Font(NANUM, 7, Font.NORMAL);
-            f.setColor(new Color(148, 163, 184));
-
-            ColumnText.showTextAligned(cb, Element.ALIGN_CENTER,
-                    new Phrase("Team Blackbox  |  무결성 리포트  |  " + reportHash.substring(0, 16) + "…", f),
-                    document.getPageSize().getWidth() / 2, 30, 0);
-
-            ColumnText.showTextAligned(cb, Element.ALIGN_RIGHT,
-                    new Phrase(writer.getPageNumber() + " / ?", f),
-                    document.getPageSize().getRight(40), 30, 0);
+    private List<Task> assigned(ReportEvidenceReader.Evidence e,User u) {return e.assignments().stream().filter(a->same(a.getUser(),u)).map(TaskAssignee::getTask).distinct().toList();}
+    private long uploads(List<FileVault> files,User u) {return files.stream().filter(v->same(v.getUploader(),u)).count();}
+    private long feedback(ReportEvidenceReader.Evidence e,User u) {return e.messages().stream().filter(v->same(v.getAuthor(),u)).count()+e.comments().stream().filter(v->same(v.getAuthor(),u)).count();}
+    private long decisions(ReportEvidenceReader.Evidence e,List<Task> tasks,User u) {return tasks.stream().filter(t->same(t.getCompletionApprovedBy(),u)).count()+e.finalWorks().stream().flatMap(w->w.rounds().stream()).filter(r->r.getDecision()!=null&&same(r.getDecidedBy(),u)).count();}
+    private static boolean same(User a,User b) {return a!=null&&b!=null&&Objects.equals(a.getId(),b.getId());}
+    private static String time(OffsetDateTime t) {return t==null?"미기록":t.atZoneSameInstant(ZONE).format(FMT);}
+    private static String date(LocalDate d) {return d==null?"미설정":d.toString();}
+    private static String safe(String s) {return s==null||s.isBlank()?"미기록":s;}
+    private static String join(String a,String b) {return safe(a)+" / "+safe(b);}
+    private static String role(ProjectMember m) {return "LEADER".equals(m.getRole())?"팀장":"팀원";}
+    private static String mark(ContributionScore s,boolean b) {return s==null?"미집계":b?"확인":"기록 없음";}
+    private static String excerpt(String s,int n) {return s==null?"":s.length()>n?s.substring(0,n)+"...":s;}
+    private static String status(String s) {return "DONE".equals(s)?"완료":"IN_PROGRESS".equals(s)?"진행 중":"할 일";}
+    private static String decision(String s) {return "APPROVED".equals(s)?"승인":"CHANGES_REQUESTED".equals(s)?"수정 요청":"결정 전";}
+    private static String alertLabel(String s) {return switch(s){case "OVERLOAD"->"업무 분배 확인";case "DROPOUT"->"활동 기록 확인";case "TAMPER"->"파일 내용 확인";default->"추가 확인";};}
+    private static Font f(float size,Color color,boolean bold) {return new Font(NANUM,size,bold?Font.BOLD:Font.NORMAL,color);}
+    private static Paragraph p(String text,float size,Color color,boolean bold) {var p=new Paragraph(text,f(size,color,bold));p.setLeading(size*1.4f);p.setSpacingAfter(7);return p;}
+    private static void heading(Document doc,String number,String text) throws DocumentException {var p=p(number+"  "+text,15,BLUE,true);p.setSpacingBefore(6);p.setKeepTogether(true);doc.add(p);}
+    private static PdfPTable table(float... widths) {var t=new PdfPTable(widths);t.setWidthPercentage(100);t.setSpacingBefore(4);t.setSpacingAfter(8);t.setSplitLate(false);return t;}
+    private static PdfPCell cell(String text,boolean header) {var c=new PdfPCell(new Phrase(safe(text),f(header?9:9.5f,header?WHITE:INK,header)));c.setBackgroundColor(header?BLUE:WHITE);c.setPadding(9);c.setLeading(0,1.45f);c.setBorderColor(LINE);c.setBorderWidth(.5f);c.setVerticalAlignment(Element.ALIGN_TOP);return c;}
+    private static void row(PdfPTable t,String... cells) {for(String s:cells)t.addCell(cell(s,false));}
+    private static void headers(PdfPTable t,String... cells) {for(String s:cells)t.addCell(cell(s,true));t.setHeaderRows(1);}
+    private static void compact(PdfPTable table,float padding) {for(var row:table.getRows())for(var c:row.getCells())if(c!=null)c.setPadding(padding);}
+    private static void note(Document d,String title,String body) throws DocumentException {var t=table(1);var c=cell(title+"\n"+body,false);c.setBackgroundColor(PALE);t.addCell(c);t.setKeepTogether(true);d.add(t);}
+    private static class Footer extends PdfPageEventHelper {
+        private final String id;Footer(String id){this.id=id;}
+        @Override public void onEndPage(PdfWriter writer,Document doc) {
+            var cb=writer.getDirectContent();cb.setColorStroke(LINE);cb.moveTo(doc.left(),36);cb.lineTo(doc.right(),36);cb.stroke();
+            ColumnText.showTextAligned(cb,Element.ALIGN_LEFT,new Phrase("Team Blackbox  |  "+id,f(7,MUTED,false)),doc.left(),24,0);
+            ColumnText.showTextAligned(cb,Element.ALIGN_RIGHT,new Phrase(writer.getPageNumber()+"쪽",f(8,MUTED,false)),doc.right(),24,0);
         }
     }
 }
