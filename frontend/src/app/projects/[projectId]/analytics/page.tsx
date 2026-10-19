@@ -183,6 +183,8 @@ export default function AnalyticsPage() {
   const partialCount = scores.filter((s) => s.participationLevel === "PARTIAL").length;
   const noneCount    = scores.filter((s) => s.participationLevel === "NONE").length;
   const unreadAlerts = alerts.filter((a) => !a.isResolved);
+  const participationNotes = unreadAlerts.filter((a) => a.alertType === "FREE_RIDE");
+  const otherAlerts = unreadAlerts.filter((a) => a.alertType !== "FREE_RIDE");
 
   // 위험도 게이지 데이터
   const riskGaugeData = risk ? [{ name: "위험도", value: risk.riskScore, fill: getRiskColor(risk.level) }] : [];
@@ -257,11 +259,21 @@ export default function AnalyticsPage() {
         {unreadAlerts.length > 0 && (
           <div className="mb-8">
             <SectionTitle>
-              <AlertTriangle size={14} className="text-red-500" />
-              활성 경보 ({unreadAlerts.length})
+              <AlertTriangle size={14} className="text-bb-text2" />
+              함께 확인할 기록
             </SectionTitle>
             <div className="space-y-2">
-              {unreadAlerts.map((alert) => {
+              {/* 참여 기록 확인은 같은 안내가 사람 수만큼 반복되므로 한 줄로 묶고 중립 색으로 보여 준다(평가·감점 아님). */}
+              {participationNotes.length > 0 && (
+                <div className="flex items-start gap-3 p-4 border border-bb-border bg-bb-surface rounded-xl">
+                  <AlertTriangle size={15} className="text-bb-text2 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-bb-text">참여 기록이 적은 팀원 {participationNotes.length}명 — 함께 확인해 주세요</p>
+                    <p className="text-xs text-bb-text2 mt-0.5">검토·답변 등 자동 집계에 반영되지 않은 활동이 있을 수 있습니다. 평가·감점 기준이 아닙니다.</p>
+                  </div>
+                </div>
+              )}
+              {otherAlerts.map((alert) => {
                 const cfg = ALERT_CONFIG[alert.alertType] ?? ALERT_CONFIG.FREE_RIDE;
                 const tone = ALERT_TONE[alert.severity] ?? ALERT_TONE.LOW;
                 return (

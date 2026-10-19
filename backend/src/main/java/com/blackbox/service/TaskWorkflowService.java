@@ -88,7 +88,7 @@ public class TaskWorkflowService {
         boolean reviewer=editable && !"OBSERVER".equals(member.getRole()) && independentReviewer(task,user)
                 && task.getCompletionRequestedAt()!=null;
         return new Completion(response(task),checks,editable && passed && eligible && task.getCompletionRequestedAt()==null
-                && ("IN_PROGRESS".equals(task.getStatus()) || legacy),passed && reviewer,reviewer,
+                && (startable(task) || legacy),passed && reviewer,reviewer,
                 !"OBSERVER".equals(member.getRole()) && pending(task) && editable
                 && (leader || Objects.equals(task.getCompletionRequestedBy().getId(),user.getId())));
     }
@@ -101,7 +101,7 @@ public class TaskWorkflowService {
         requireDeliverableEditable(task.getDeliverable());
         if (task.getCompletionRequestedAt()!=null) return response(task);
         boolean legacy="DONE".equals(task.getStatus()) && task.getCompletionApprovedAt()==null;
-        if (!"IN_PROGRESS".equals(task.getStatus()) && !legacy) throw conflict("진행 중인 업무에서 완료를 요청하세요.");
+        if (!startable(task) && !legacy) throw conflict("진행 중인 업무에서 완료를 요청하세요.");
         requireChecks(task);
         if (!hasReviewer(task,user)) throw conflict("담당자와 요청자를 제외한 확인 가능한 팀원이 없습니다. 담당자를 조정해 주세요.");
         task.setStatus("IN_PROGRESS"); task.setCompletedAt(null);
@@ -160,6 +160,8 @@ public class TaskWorkflowService {
         task.setCompletionRequestedAt(null); task.setCompletionRequestedBy(null);
         save(task); return response(task);
     }
+    // 결과 파일을 먼저 올린 '할 일' 업무도 조건(선행 업무 포함)을 충족하면 바로 확인 요청할 수 있다. 요청 시 진행 중으로 바뀐다.
+    private boolean startable(Task task) { return "IN_PROGRESS".equals(task.getStatus()) || "TODO".equals(task.getStatus()); }
     private boolean pending(Task task) {
         return "IN_PROGRESS".equals(task.getStatus()) && task.getCompletionRequestedAt()!=null
                 && task.getCompletionRequestedBy()!=null && task.getCompletionApprovedAt()==null;

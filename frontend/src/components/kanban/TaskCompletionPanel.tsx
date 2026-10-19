@@ -69,7 +69,8 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
         <button type="button" disabled={disabled || busy || !cancelReason.trim()} onClick={() => run(() => api.post<Task>(`${path}/completion-cancel`, { reason: cancelReason.trim() }))} className="rounded-lg border border-bb-border px-3 py-2 text-sm disabled:opacity-40">확인 요청 취소</button>
       </>}
     </div>}
-    {!pending && task.status === "IN_PROGRESS" && role !== "OBSERVER" && <>
+    {/* 할 일 상태에서도 결과를 올렸으면 바로 확인 요청할 수 있다. 서버가 요청과 함께 진행 중으로 바꾼다. */}
+    {!pending && task.status !== "DONE" && role !== "OBSERVER" && <>
       <p className="text-xs text-bb-text2">완료 기준에 맞게 작성했는지 팀원에게 확인받습니다.</p>
       <button type="button" disabled={disabled || busy || !view?.canRequest} onClick={() => run(() => api.post<Task>(`${path}/completion-request`))} className="w-full px-3 py-3 rounded-lg bg-bb-primary text-white text-sm font-medium disabled:opacity-40">등록한 결과 확인 요청</button>
       {view && !view.canRequest && !missing.length && <p className="text-xs text-bb-text2">담당자 또는 팀장이 결과 확인을 요청할 수 있습니다.</p>}
@@ -81,7 +82,7 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
       {returning && <div className="space-y-2"><textarea aria-label="보완 요청 사유" maxLength={2000} value={reason} disabled={disabled || busy} onChange={e => setReason(e.target.value)} placeholder="어떤 부분을 보완하면 되는지 적어주세요" className="w-full min-h-20 p-3 border border-bb-border rounded bg-bb-surface text-sm" />
       <button type="button" disabled={disabled || busy || !reason.trim()} onClick={() => run(() => api.put<Task>(`${path}/completion-decision`, { approved: false, reason }))} className="px-3 py-2 rounded-lg border border-bb-border text-sm disabled:opacity-40">보완 내용 전달</button></div>}
     </>}
-    {!pending && task.status === "TODO" && role !== "OBSERVER" && <button type="button" disabled={disabled || busy} onClick={() => run(() => api.patch<Task>(`${path}/status`, { status: "IN_PROGRESS" }))} className="w-full px-3 py-3 rounded-lg bg-bb-primary text-white text-sm disabled:opacity-40">업무 시작</button>}
+    {!pending && task.status === "TODO" && role !== "OBSERVER" && <button type="button" disabled={disabled || busy} onClick={() => run(() => api.patch<Task>(`${path}/status`, { status: "IN_PROGRESS" }))} className="w-full px-3 py-2.5 rounded-lg border border-bb-border text-sm disabled:opacity-40">결과 없이 업무 시작만 하기</button>}
     {role === "LEADER" && task.status === "DONE" && <button type="button" disabled={disabled || busy} onClick={() => { const message = window.prompt("업무를 다시 진행해야 하는 사유를 적어주세요."); if (message?.trim()) run(() => api.post<Task>(`${path}/reopen`, { reason: message.trim() })); }} className="text-sm underline text-bb-text2">업무 다시 열기</button>}
   </section>;
 }

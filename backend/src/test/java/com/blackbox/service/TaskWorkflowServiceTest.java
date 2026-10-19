@@ -87,6 +87,12 @@ class TaskWorkflowServiceTest {
         assertFalse(workflow.view(project.getId(),task.getId(),peer).canReview());
         assertThrows(ForbiddenException.class,()->workflow.decide(project.getId(),task.getId(),true,true,null,peer));
     }
+    @Test void todoTaskWithUploadedResultCanRequestAndStartsProgress() {
+        task.setStatus("TODO");task.setAttachmentRequired(true);when(files.existsByTask(task)).thenReturn(true);
+        assertTrue(workflow.view(project.getId(),task.getId(),user).canRequest());
+        var requested=workflow.request(project.getId(),task.getId(),user);
+        assertEquals("IN_PROGRESS",requested.status());assertNotNull(requested.completionRequestedAt());
+    }
     @Test void requiredFileAndCriteriaAreCheckedBeforeRequest() {
         task.setCompletionCriteria(" ");assertThrows(ResponseStatusException.class,()->workflow.request(project.getId(),task.getId(),user));
         task.setCompletionCriteria("비교표");task.setAttachmentRequired(true);

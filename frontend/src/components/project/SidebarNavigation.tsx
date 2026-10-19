@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, ChevronDown, ClipboardList, FileText, Files, FolderKanban, Kanban, LayoutDashboard, Settings, BarChart2, MessageSquare } from "lucide-react";
-import { useFeedbackInbox } from "@/hooks/useFeedbackInbox";
+import { countActionableFeedback, useFeedbackInbox } from "@/hooks/useFeedbackInbox";
 import { projectNavigation, projectSection } from "@/lib/projectNavigation";
 import NotificationLink from "./NotificationLink";
 
@@ -12,7 +12,7 @@ const icons = { home: LayoutDashboard, deliverables: ClipboardList, board: Kanba
 export default function SidebarNavigation({ projectId, onNavigate }: { projectId: string | null; onNavigate: () => void }) {
   const pathname = usePathname();
   const { data: inbox, error: inboxError } = useFeedbackInbox(projectId);
-  const waiting = inbox ? inbox.received.length + inbox.revisions.length : 0;
+  const waiting = countActionableFeedback(inbox);
   const selected = projectId ? projectSection(pathname, projectId) : undefined;
   const auxiliary = selected?.primary === false;
   const [more, setMore] = useState(auxiliary);

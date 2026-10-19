@@ -1,206 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Menu,
-  X,
-  Shield,
-  LogOut,
-  Sun,
-  Moon,
-  Bell,
-  AlertTriangle,
-  Zap,
-  TrendingDown,
-  ShieldAlert,
-} from "lucide-react";
+import { Menu, X, Shield, LogOut, Sun, Moon } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
-import { useMyRole } from "@/hooks/useMyRole";
 import SidebarNavigation from "@/components/project/SidebarNavigation";
-import NotificationLink from "@/components/project/NotificationLink";
 import AgentLauncher from "@/components/agent/AgentLauncher";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import api from "@/lib/api";
 import AccountIdentity from "@/components/AccountIdentity";
-import { ALERT_TONE } from "@/lib/alertTone";
-import { Alert } from "@/types/vault";
 
-// ── 알림 유틸 ──────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1)  return "방금";
-  if (mins < 60) return `${mins}분 전`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}시간 전`;
-  return `${Math.floor(hrs / 24)}일 전`;
-}
-
-const ALERT_CFG = {
-  FREE_RIDE: { label: "참여 기록 확인",  color: "text-amber-400",  bg: "bg-amber-500/15",  Icon: TrendingDown  },
-  OVERLOAD:  { label: "과부하",    color: "text-orange-400", bg: "bg-orange-500/15", Icon: Zap           },
-  DROPOUT:   { label: "이탈 감지", color: "text-red-400",    bg: "bg-red-500/15",    Icon: AlertTriangle },
-  TAMPER:    { label: "파일 변조", color: "text-purple-400", bg: "bg-purple-500/15", Icon: ShieldAlert   },
-} as const;
-
-// ── 알림 벨 컴포넌트 ────────────────────────────────────────────────────────
-
-function NotificationBell({ projectId }: { projectId: string }) {
-  const containerRef  = useRef<HTMLDivElement>(null);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [open,   setOpen]   = useState(false);
-  // 30초마다 다시 부르므로 실패를 팝업으로 알리지는 않는다. 다만 실패를 "알림 없음"으로 보이게 하지 않도록
-  // 마지막 조회가 실패했는지 기억하고, 이전에 받은 알림은 그대로 둔다
-  const [failed, setFailed] = useState(false);
-
-  const fetchAlerts = useCallback(async () => {
-    try {
-      const res = await api.get<Alert[]>(`/projects/${projectId}/alerts`);
-      setAlerts(res.data);
-      setFailed(false);
-    } catch {
-      setFailed(true);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    fetchAlerts();
-    const id = setInterval(fetchAlerts, 30_000);
-    return () => clearInterval(id);
-  }, [fetchAlerts]);
-
-  // 드롭다운 외부 클릭 시 닫기
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node))
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // 읽음 표시는 팀 공용이라 팀장·팀원만 바꾼다(관찰자 403). 역할을 아직 모르면 시도하고 403이면 멈춘다
-  const role = useMyRole(projectId);
-  const [readDenied, setReadDenied] = useState(false);
-  const canMarkRead = role !== "OBSERVER" && !readDenied;
-
-  const handleMarkRead = (alert: Alert) => {
-    if (!alert.isRead && canMarkRead) {
-      api.patch(`/projects/${projectId}/alerts/${alert.id}/read`)
-        .then(() => setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, isRead: true } : a)))
-        .catch((err) => {
-          if ((err as { response?: { status?: number } })?.response?.status === 403) setReadDenied(true);
-        });
-    }
-    setOpen(false);
-  };
-
-  const unread    = alerts.filter(a => !a.isRead).length;
-  const displayed = alerts.slice(0, 10);
-
-  return (
-    <div className="relative" ref={containerRef}>
-      {/* 벨 버튼 */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="relative p-1.5 rounded-lg text-bb-text2 hover:text-bb-text hover:bg-bb-surface2 transition-colors"
-        aria-label="팀 위험 알림"
-      >
-        <AlertTriangle size={15} />
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5
-                           bg-red-500 rounded-full text-[10px] font-bold text-white
-                           flex items-center justify-center leading-none">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </button>
-
-      {/* 드롭다운 */}
-      {open && (
-        <div className="absolute left-0 top-full mt-2 w-80
-                        bg-bb-surface border border-bb-border rounded-xl
-                        shadow-2xl z-50 overflow-hidden">
-          {/* 헤더 */}
-          <div className="px-4 py-3 border-b border-bb-border flex items-center justify-between">
-            <span className="text-sm font-semibold text-bb-text">팀 위험 알림</span>
-            {unread > 0 && (
-              <span className="text-xs text-bb-text2">{unread}개 읽지 않음</span>
-            )}
-          </div>
-          {!canMarkRead && (
-            <p className="px-4 py-2 border-b border-bb-border text-[11px] text-bb-text2">
-              읽음 표시는 팀이 함께 쓰는 상태라 팀장·팀원만 바꿀 수 있습니다.
-            </p>
-          )}
-
-          {/* 목록 */}
-          <div className="max-h-80 overflow-y-auto">
-            {failed && (
-              <div className="px-4 py-2 text-xs text-amber-400 border-b border-bb-border">
-                알림을 새로 불러오지 못했습니다.{displayed.length > 0 && " 이전에 받은 알림을 보여 줍니다."}
-              </div>
-            )}
-            {displayed.length === 0 ? (
-              <div className="py-10 text-center text-sm text-bb-text2">
-                {failed ? "알림을 확인할 수 없습니다" : "새로운 알림이 없습니다"}
-              </div>
-            ) : (
-              displayed.map((alert) => {
-                const cfg = ALERT_CFG[alert.alertType as keyof typeof ALERT_CFG] ?? ALERT_CFG.FREE_RIDE;
-                const tone = ALERT_TONE[alert.severity] ?? ALERT_TONE.LOW;
-                return (
-                  <button
-                    key={alert.id}
-                    onClick={() => handleMarkRead(alert)}
-                    className={`w-full text-left px-4 py-3 transition-colors
-                                border-b border-bb-border/40 last:border-0
-                                hover:bg-bb-bg/60
-                                ${!alert.isRead ? "bg-bb-bg/30" : ""}`}
-                  >
-                    <div className="flex items-start gap-2.5">
-                      {/* 타입 배지 */}
-                      <span className={`mt-0.5 shrink-0 text-[10px] font-semibold
-                                        px-1.5 py-0.5 rounded
-                                        ${tone.color} ${tone.bg} border`}>
-                        {tone.label} · {cfg.label}
-                      </span>
-                      {/* 메시지 + 시간 */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-bb-text leading-relaxed">{alert.message}</p>
-                        <p className="text-[10px] text-bb-text2 mt-1">{timeAgo(alert.createdAt)}</p>
-                      </div>
-                      {/* 읽지 않음 점 */}
-                      {!alert.isRead && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-bb-primary shrink-0 mt-1.5" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {/* 전체 보기 */}
-          <div className="px-4 py-2.5 border-t border-bb-border">
-            <Link
-              href={`/projects/${projectId}/analytics`}
-              onClick={() => setOpen(false)}
-              className="block w-full text-xs text-bb-text2 hover:text-bb-primary
-                         transition-colors text-center py-1"
-            >
-              전체 보기 →
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// 개인 알림은 사이드바 메뉴(알림)에서, 참여 기록·파일 변조 등 팀 알림은 팀 활동 페이지에서 확인한다.
+// 헤더의 중복 벨과 빨간 경고 배지는 두지 않는다.
 
 interface SidebarProps {
   hasProjects?: boolean;
@@ -297,7 +108,7 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
                     duration-200 md:translate-x-0 md:visible
                     ${mobileOpen ? "translate-x-0 visible transition-transform" : "-translate-x-full invisible transition-[transform,visibility]"}`}
       >
-        {/* 로고 + 알림 벨 */}
+        {/* 로고 */}
         <div className="px-5 py-6 border-b border-bb-border flex items-center justify-between">
           <div
             className="flex items-center gap-2 cursor-pointer hover:opacity-75 transition-opacity"
@@ -309,7 +120,6 @@ export default function Sidebar({ hasProjects }: SidebarProps) {
             <span className="text-sm font-semibold text-bb-text">Team Blackbox</span>
           </div>
           <div className="flex items-center gap-1">
-            {currentProjectId && <><NotificationLink projectId={currentProjectId} onNavigate={() => {}} compact /><NotificationBell projectId={currentProjectId} /></>}
             <button
               ref={closeButtonRef}
               onClick={closeMenu}
