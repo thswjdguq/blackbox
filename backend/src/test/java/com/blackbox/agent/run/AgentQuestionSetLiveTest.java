@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@EnabledIfEnvironmentVariable(named = "SPRING_AI_MODEL_CHAT", matches = "google-genai|bedrock-converse")
+@EnabledIfEnvironmentVariable(named = "SPRING_AI_MODEL_CHAT", matches = "google-genai|bedrock-converse|openai")
 class AgentQuestionSetLiveTest {
     @Autowired AgentRunner runner;
     @Autowired ProposalService proposals;
@@ -154,6 +154,11 @@ class AgentQuestionSetLiveTest {
         // ── 글의 표기: 화면이 글자를 그대로 보여 주므로 줄바꿈, "- " 목록, 링크만 쓴다. 링크는 이 프로젝트의 화면 경로뿐이다
         String all = String.join("\n", texts);
         check("글에 제목·굵게·코드·HTML 표기가 없음", !java.util.regex.Pattern.compile("(?m)^\\s*#{1,6} |\\*\\*|`|<[a-zA-Z/][^>]*>").matcher(all).find(), all);
+        java.util.regex.Matcher raw = java.util.regex.Pattern.compile("\\b(overdue|stage|met|required|TODO|IN_PROGRESS|DONE|HIGH|MEDIUM|LOW|"
+                + java.util.Arrays.stream(com.blackbox.agent.DeliverableStage.values()).map(Enum::name).collect(java.util.stream.Collectors.joining("|")) + ")\\b").matcher(all);
+        List<String> rawWords = new ArrayList<>();
+        while (raw.find()) rawWords.add(raw.group(1));
+        check("글에 도구의 영문 값과 칸 이름이 없음", rawWords.isEmpty(), rawWords.toString());
         java.util.regex.Matcher links = java.util.regex.Pattern.compile("\\]\\(([^)]*)\\)").matcher(all);
         List<String> wrong = new ArrayList<>();
         while (links.find()) if (!links.group(1).startsWith("/projects/" + project.getId() + "/")) wrong.add(links.group(1));

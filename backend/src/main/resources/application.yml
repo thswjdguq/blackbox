@@ -25,6 +25,12 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  http:
+    client:
+      # Spring AI의 OpenAI 공급자가 쓰는 HTTP 클라이언트의 응답 대기 시간. 기본은 제한이 없어 응답 없는 요청이 스레드를 끝없이 잡는다.
+      # 이 설정을 받는 클라이언트(RestClient)를 쓰는 곳은 지금 그 공급자뿐이다
+      read-timeout: ${app.agent.model-request-timeout}
+
   # ── AI 에이전트(K-30)의 모델 ──────────────────────────────────────────
   # 공급자와 모델에 닿는 설정은 여기(spring.ai)에, 에이전트가 스스로 지키는 상한은 아래 app.agent에 둔다.
   # 값을 바꿀 때는 환경 변수로 준다(.env.example 참고). 키는 이 파일에 적지 않는다
@@ -33,7 +39,16 @@ spring:
       # 공급자. none이면 키가 없어도 서버가 뜨고 에이전트만 꺼진다
       #   google-genai      + SPRING_AI_GOOGLE_GENAI_API_KEY
       #   bedrock-converse  + SPRING_AI_BEDROCK_AWS_REGION 과 AWS 자격 증명
+      #   openai            + SPRING_AI_OPENAI_API_KEY, SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL.
+      #                       OpenAI 호환 게이트웨이에 붙을 때는 SPRING_AI_OPENAI_BASE_URL도 준다(끝에 /v1 없이)
       chat: none
+      # 쓰지 않는 종류다. OpenAI 스타터는 이 종류들의 빈도 기본으로 만들고 그때 키가 없으면 서버가 뜨지 않는다
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
     google:
       genai:
         chat:
