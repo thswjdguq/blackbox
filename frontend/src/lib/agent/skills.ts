@@ -27,12 +27,17 @@ export function skillLabel(status: AgentStatus | undefined, skill: string) {
   return status?.skills.find((s) => s.skill === skill)?.label ?? skill;
 }
 
+/** 확정됐거나 제출을 기록한 제출물. 더 할 일이 없어 추천과 업무 나누기에서 뺀다(K-30 0.7) */
+export function isClosedStage(stage: string) {
+  return stage === "CONFIRMED" || stage === "SUBMITTED";
+}
+
 /**
- * "지금 단계에 맞는 도움" (화면 문서 4.9의 표). 기한이 가장 빠른 제출물의 단계로 고른다.
+ * "지금 단계에 맞는 도움" (화면 문서 4.9의 표). 확정·제출된 것을 건너뛰고 기한이 가장 빠른 제출물의 단계로 고른다.
  * 1단계에서는 업무가 진행 중일 때의 "지금 상태 살펴보기"만 있다. 맞는 실행이 없으면 null.
  */
 export function suggestFor(status: AgentStatus): { title: string; dueDate: string; sentence: string; skill: string } | null {
-  const first = status.stages[0];
+  const first = status.stages.find((s) => !isClosedStage(s.stage));
   if (!first) return null;
   if (first.stage === "TASKS_IN_PROGRESS") {
     const skill = "STATUS_BRIEF";
