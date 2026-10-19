@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Send, Sparkles, X } from "lucide-react";
 import { useAgentStore } from "@/lib/store/agentStore";
-import { BRIEF_MAX, buttonSkills, canAsk, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
+import { BRIEF_MAX, breakDownBlocked, buttonSkills, canAsk, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
 import { shortDate } from "@/lib/due";
 import RunEntryView from "./RunEntryView";
 import ProposalList from "./ProposalList";
@@ -22,6 +22,29 @@ function useSmallScreen() {
     return () => mq.removeEventListener("change", apply);
   }, []);
   return small;
+}
+
+const FOCUSABLE = 'a[href], button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), summary, [tabindex="0"]';
+
+/**
+ * 작은 화면의 대화 상자(aria-modal)에서 Tab·Shift+Tab이 창 밖으로 나가지 않게 끝에서 처음으로 돌린다(8장).
+ * 실행을 시작하면 입력 칸이 꺼져 초점이 body로 빠지므로, 창 밖에 있을 때도 창 안으로 데려온다.
+ * 닫힌 details 안처럼 보이지 않는 것은 건너뛴다.
+ */
+function keepFocusInside(e: KeyboardEvent, dock: HTMLElement) {
+  const items = Array.from(dock.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.getClientRects().length > 0);
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!first || !last) return;
+  const active = document.activeElement;
+  const inside = active instanceof HTMLElement && items.includes(active);
+  if (e.shiftKey && (!inside || active === first)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (!inside || active === last)) {
+    e.preventDefault();
+    first.focus();
+  }
 }
 
 /** 보이는 여는 버튼(사이드바 또는 작은 화면 상단 바)으로 초점을 돌려준다 */
@@ -58,6 +81,7 @@ export default function AgentDock() {
   const [brief, setBrief] = useState("");
   const [pickedDeliverable, setPickedDeliverable] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const dockRef = useRef<HTMLElement>(null);
 
   const usable = !!status && (status.available || status.pendingProposalCount > 0);
   const visible = open && !!projectId && usable;
@@ -75,6 +99,16 @@ export default function AgentDock() {
     if (open && projectId) loadStatus(projectId, true);
   }, [open, projectId, loadStatus]);
 
+  // 작은 화면에서는 초점을 창 안에 가둔다. 큰 화면의 옆 칸은 본문과 함께 쓰므로 가두지 않는다
+  useEffect(() => {
+    if (!small || !visible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Tab" && dockRef.current) keepFocusInside(e, dockRef.current);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [small, visible]);
+
   // 창이 보이게 되면 초점을 창 안으로 옮긴다(8장)
   useLayoutEffect(() => {
     if (visible) headingRef.current?.focus();
@@ -90,7 +124,7 @@ export default function AgentDock() {
     if (!pendingInput || pendingInput.projectId !== projectId || !status) return;
     if (pendingInput.skill === "PLAN_FROM_BRIEF") setPending({ skill: "PLAN_FROM_BRIEF" });
     if (pendingInput.skill === "BREAK_DOWN_TASKS") {
-      setPickedDeliverable(status.stages.find((s) => s.stage !== "NO_REQUIREMENT")?.deliverableId ?? "");
+      setPickedDeliverable(status.stages.find((s) => !breakDownBlocked(s.stage))?.deliverableId ?? "");
       setPending({ skill: "BREAK_DOWN_TASKS" });
     }
     clearPendingInput();
@@ -127,7 +161,7 @@ export default function AgentDock() {
       return;
     }
     if (kind === "deliverable" && !input) {
-      setPickedDeliverable(status.stages.find((s) => s.stage !== "NO_REQUIREMENT")?.deliverableId ?? "");
+      setPickedDeliverable(status.stages.find((s) => !breakDownBlocked(s.stage))?.deliverableId ?? "");
       setPending({ skill: "BREAK_DOWN_TASKS" });
       return;
     }
@@ -173,7 +207,7 @@ export default function AgentDock() {
           onSubmit={(e) => {
             e.preventDefault();
             const d = status.stages.find((s) => s.deliverableId === pickedDeliverable);
-            if (!d || d.stage === "NO_REQUIREMENT" || running) return;
+            if (!d || breakDownBlocked(d.stage) || running) return;
             start("BREAK_DOWN_TASKS", { deliverableId: d.deliverableId }, d.title);
           }}
           className="mt-2 space-y-2"
@@ -187,8 +221,8 @@ export default function AgentDock() {
           >
             {status.stages.length === 0 && <option value="">제출물이 없습니다</option>}
             {status.stages.map((s) => (
-              <option key={s.deliverableId} value={s.deliverableId} disabled={s.stage === "NO_REQUIREMENT"}>
-                {s.title} · 기한 {shortDate(s.dueDate)}{s.stage === "NO_REQUIREMENT" ? " (요구사항이 없습니다)" : ""}
+              <option key={s.deliverableId} value={s.deliverableId} disabled={!!breakDownBlocked(s.stage)}>
+                {s.title} · 기한 {shortDate(s.dueDate)}{breakDownBlocked(s.stage) ? ` (${breakDownBlocked(s.stage)})` : ""}
               </option>
             ))}
           </select>
@@ -196,7 +230,7 @@ export default function AgentDock() {
             <button type="button" onClick={() => setPending(null)} className="px-2 py-1.5 text-xs text-bb-text2 hover:text-bb-text">취소</button>
             <button
               type="submit"
-              disabled={running || !status.stages.some((s) => s.deliverableId === pickedDeliverable && s.stage !== "NO_REQUIREMENT")}
+              disabled={running || !status.stages.some((s) => s.deliverableId === pickedDeliverable && !breakDownBlocked(s.stage))}
               className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-bb-primary-h disabled:opacity-50"
             >
               업무로 나누기
@@ -272,6 +306,7 @@ export default function AgentDock() {
 
   return (
     <aside
+      ref={dockRef}
       aria-label="AI 도우미"
       {...(small ? { role: "dialog", "aria-modal": true } : {})}
       data-testid="agent-dock"

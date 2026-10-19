@@ -7,6 +7,7 @@ import { acceptProposal, getProposal, rejectProposal } from "@/lib/api/agent";
 import { apiError } from "@/lib/apiError";
 import { fieldName, fieldProblems, problemSummary } from "@/lib/agent/problems";
 import { shortDate } from "@/lib/due";
+import { sessionGeneration } from "@/lib/sessionCache";
 import { useAgentStore } from "@/lib/store/agentStore";
 import type { AgentStatus, Proposal } from "@/types/agent";
 import ProposalEditor from "./ProposalEditor";
@@ -116,8 +117,11 @@ export default function ProposalCard({
 
   // 409: 누가 먼저 결정했거나 기존 기능이 거절했다. 카드를 다시 받아 지금 상태로(5.2)
   const refetch = async () => {
+    const gen = sessionGeneration();
     try {
       const { data } = await getProposal(projectId, p.id);
+      // 그 사이 로그아웃·계정 전환이 있었으면 비운 저장소를 다시 채우지 않는다
+      if (gen !== sessionGeneration()) return;
       putProposal(data);
     } catch {
       /* 문장만 남긴다 */
@@ -128,12 +132,16 @@ export default function ProposalCard({
     setBusy(kind);
     setError("");
     setProblems({});
+    const gen = sessionGeneration();
     try {
       const { data } = kind === "accept" ? await acceptProposal(projectId, p.id) : await rejectProposal(projectId, p.id);
+      // 응답이 오기 전에 로그아웃·계정 전환이 있었으면 저장소(카드·상태·기록 버전)를 건드리지 않는다
+      if (gen !== sessionGeneration()) return;
       if (kind === "accept" && data.status === "ACCEPTED") bumpRecords();
       setConfirmReject(false);
       afterDecision(data);
     } catch (err) {
+      if (gen !== sessionGeneration()) return;
       const code = (err as { response?: { status?: number } })?.response?.status;
       const detail = apiError(err, kind === "accept" ? "채택하지 못했습니다." : "거절하지 못했습니다.");
       if (code === 404) {

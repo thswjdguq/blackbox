@@ -5,6 +5,7 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import { saveProposal } from "@/lib/api/agent";
 import { apiError } from "@/lib/apiError";
 import { fieldName, fieldProblems, problemSummary } from "@/lib/agent/problems";
+import { sessionGeneration } from "@/lib/sessionCache";
 import { useAgentStore } from "@/lib/store/agentStore";
 import type { PlanContent, Proposal, TasksContent } from "@/types/agent";
 
@@ -119,11 +120,15 @@ export default function ProposalEditor({
     setSaving(true);
     setError("");
     setProblems({});
+    const gen = sessionGeneration();
     try {
       const { data } = await saveProposal(projectId, proposal.id, content);
+      // 저장이 가는 중에 로그아웃·계정 전환이 있었으면 비운 저장소에 앞 사람의 카드를 넣지 않는다
+      if (gen !== sessionGeneration()) return;
       putProposal(data);
       onDone();
     } catch (err) {
+      if (gen !== sessionGeneration()) return;
       const detail = apiError(err, "저장하지 못했습니다.");
       const found = fieldProblems(detail);
       setProblems(found);

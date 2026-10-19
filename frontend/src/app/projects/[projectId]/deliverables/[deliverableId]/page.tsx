@@ -419,7 +419,10 @@ export default function DeliverableDetailPage() {
                   <dt className="text-xs text-bb-text2">제출 기한</dt>
                   <dd className="mt-0.5 text-bb-text">
                     {deliverable.dueDate}{" "}
-                    <span className={`text-xs font-medium ${DUE_TEXT[dueTone(deliverable.dueDate)]}`}>{dueLabel(deliverable.dueDate)}</span>
+                    {/* 제출을 기록했으면 남은 날·지난 날은 뜻이 없다(목록과 같게) */}
+                    {deliverable.status !== "SUBMITTED" && (
+                      <span className={`text-xs font-medium ${DUE_TEXT[dueTone(deliverable.dueDate)]}`}>{dueLabel(deliverable.dueDate)}</span>
+                    )}
                   </dd>
                 </div>
                 <div>
@@ -487,7 +490,7 @@ export default function DeliverableDetailPage() {
                     요구사항 <span className="text-bb-text2">{deliverable.requirements.length}</span>
                   </h2>
                   <p className="mt-1 text-xs text-bb-text2">
-                    과제 안내의 필수 내용과 형식을 적으세요. 업무 완료와 요구사항 충족은 따로 확인합니다.
+                    {editable && "과제 안내의 필수 내용과 형식을 적으세요. "}업무 완료와 요구사항 충족은 따로 확인합니다.
                   </p>
                   {locked ? (
                     <p className="mt-1 text-xs text-bb-text2">최종본이 확정된 제출물이라 요구사항·충족 확인·업무 연결을 바꿀 수 없습니다.</p>
@@ -496,7 +499,10 @@ export default function DeliverableDetailPage() {
                   )}
 
                   {deliverable.requirements.length === 0 ? (
-                    <p className="my-4 text-sm text-bb-text2">예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부</p>
+                    <p className="my-4 text-sm text-bb-text2">
+                      {/* 관찰자·확정된 제출물에는 할 일을 시키지 않는다 */}
+                      {editable ? "예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부" : "등록된 요구사항이 없습니다."}
+                    </p>
                   ) : (
                     <ul className="my-4 divide-y divide-bb-border">
                       {deliverable.requirements.map((req) => {
@@ -648,7 +654,9 @@ export default function DeliverableDetailPage() {
                   </p>
 
                   {linkedTasks.length === 0 ? (
-                    <p className="my-4 text-sm text-bb-text2">필요한 업무를 추가하거나 기존 업무를 연결하세요.</p>
+                    <p className="my-4 text-sm text-bb-text2">
+                      {editable ? "필요한 업무를 추가하거나 기존 업무를 연결하세요." : "연결된 업무가 없습니다."}
+                    </p>
                   ) : (
                     <ul className="mt-3 divide-y divide-bb-border">
                       {linkedTasks.map((t) => (
