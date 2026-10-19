@@ -26,3 +26,8 @@ export function fieldName(path: string): string {
   if (m) return `${m[1] === "tasks" ? "업무" : "요구사항"} ${Number(m[2]) + 1}의 ${names[m[3]] ?? m[3]}`;
   return names[path] ?? path;
 }
+
+/** 칸별 이유를 따로 보일 때 폼 위에 남길 요약. 괄호 부분을 뺀다("제안의 내용을 확인해주세요") */
+export function problemSummary(detail: string): string {
+  return detail.replace(/\s*\(.*\)\s*$/, "").trim() || detail;
+}
