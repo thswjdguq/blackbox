@@ -17,7 +17,7 @@ const COLUMNS: { key: SortKey; label: string; cls: string }[] = [
   { key: "status",      label: "상태",       cls: "w-[16%]" },
   { key: "assignee",    label: "담당자",     cls: "w-[14%]" },
   { key: "due",         label: "마감",       cls: "w-[16%]" },
-  { key: "deliverable", label: "제출물·요구사항", cls: "w-[20%]" },
+  { key: "deliverable", label: "최종 제출물·요구사항", cls: "w-[20%]" },
   { key: "priority",    label: "우선순위",   cls: "w-[8%]" },
 ];
 
@@ -114,7 +114,7 @@ export default function TaskListView({ tasks, onEdit, onMove, busy, readOnly, ai
                   )}
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className="block truncate text-bb-text2">{t.deliverableTitle ?? "제출물 미연결"}</span>
+                  <span className="block truncate text-bb-text2">{t.deliverableTitle ?? "최종 제출물 미연결"}</span>
                   {t.requirementContent && <span className="block truncate text-[11px] text-bb-text2/80">{t.requirementContent}</span>}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap text-bb-text2">{PRIORITY_TEXT[t.priority]}</td>

@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
         {/* ── 헤더 ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-bb-text">기여도 분석</h1>
+            <h1 className="text-2xl font-bold text-bb-text">활동·기여 기록</h1>
             <p className="text-sm text-bb-text2 mt-1">
               자동 집계된 활동 기록입니다. 검토·답변 등 모든 기여를 포함하지 않으며 평가·감점 기준이 아닙니다.
             </p>

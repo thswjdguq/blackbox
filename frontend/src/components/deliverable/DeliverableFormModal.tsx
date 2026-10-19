@@ -20,7 +20,7 @@ export default function DeliverableFormModal({
   onSave,
   onClose,
 }: {
-  /** null 이면 새 제출물 */
+  /** null 이면 새 최종 제출물 */
   initial: Deliverable | null;
   /** 제출 담당자로 지정할 수 있는 팀장·팀원 (관찰자 제외) */
   owners: OwnerCandidate[];
@@ -74,7 +74,7 @@ export default function DeliverableFormModal({
       >
         <div className="flex items-center justify-between">
           <h2 id="deliverable-form-title" className="text-base font-semibold text-bb-text">
-            {initial ? "제출물 수정" : "새 제출물"}
+            {initial ? "최종 제출물 수정" : "새 최종 제출물"}
           </h2>
           <button type="button" onClick={onClose} disabled={saving} aria-label="닫기" className="text-bb-text2 hover:text-bb-text">
             <X size={18} />
@@ -88,7 +88,7 @@ export default function DeliverableFormModal({
         )}
 
         <label className="block text-sm text-bb-text">
-          제출물 이름 *
+          최종 제출물 이름 *
           <input
             autoFocus
             required

@@ -44,8 +44,8 @@ export default function FeedbackPage() {
   return <div className="min-h-screen bg-bb-bg"><Sidebar />
     <main className="md:ml-64 mt-14 md:mt-0 px-4 md:px-8 py-6 max-w-[1440px]">
       <ProjectNav projectId={projectId} />
-      <div className="flex justify-between items-center mt-6 gap-3"><div><h1 className="text-2xl font-bold">피드백함</h1><p className="mt-2 text-sm text-bb-text2">답할 요청과 보완할 업무를 확인하세요.</p></div>
-        <button type="button" onClick={refresh} disabled={loading} aria-label="피드백함 새로고침" className="p-2 rounded-lg border border-bb-border bg-bb-surface"><RefreshCw size={17} className={loading ? "animate-spin" : ""}/></button></div>
+      <div className="flex justify-between items-center mt-6 gap-3"><div><h1 className="text-2xl font-bold">피드백</h1><p className="mt-2 text-sm text-bb-text2">답할 요청과 보완할 업무를 확인하세요.</p></div>
+        <button type="button" onClick={refresh} disabled={loading} aria-label="피드백 새로고침" className="p-2 rounded-lg border border-bb-border bg-bb-surface"><RefreshCw size={17} className={loading ? "animate-spin" : ""}/></button></div>
       <div role="tablist" aria-label="피드백 요청 분류" className="flex flex-wrap gap-2 mt-6">{tabs.map(t=><button key={t.key} role="tab" aria-selected={t.key===tab} onClick={()=>setTab(t.key)} className={`px-4 py-2.5 rounded-lg text-sm ${t.key===tab ? "bg-bb-primary text-white" : "bg-bb-surface border border-bb-border text-bb-text2"}`}>{t.label} {data?.[t.key].length ?? ""}</button>)}</div>
       {(error||openError||memberError) && <p role="alert" className="mt-4 text-sm text-red-600">{error||openError||memberError}</p>}
       {selected && <Link href={`/projects/${projectId}/board?task=${selected.id}`} className="inline-flex mt-4 text-xs text-bb-primary underline">현재 업무의 설정 수정 →</Link>}

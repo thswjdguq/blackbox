@@ -91,7 +91,7 @@ export default function DeliverablesPage() {
       setProjectName(projRes.data.name);
       setMyUserId(profileRes.data.id);
     } catch (err) {
-      setError(apiError(err, "제출물 목록을 불러오지 못했습니다."));
+      setError(apiError(err, "최종 제출물 목록을 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -104,7 +104,7 @@ export default function DeliverablesPage() {
   const handleCreate = async (payload: SaveDeliverablePayload) => {
     await createDeliverable(projectId, payload);
     setShowForm(false);
-    setNotice("제출물을 추가했습니다. 제출물을 열어 요구사항을 적으세요.");
+    setNotice("최종 제출물을 추가했습니다. 최종 제출물을 열어 요구사항을 적으세요.");
     fetchAll();
   };
 
@@ -113,7 +113,7 @@ export default function DeliverablesPage() {
     await deleteDeliverable(projectId, deleteTarget.id);
     setDeliverables((prev) => prev.filter((d) => d.id !== deleteTarget.id));
     setDeleteTarget(null);
-    setNotice("제출물을 삭제했습니다.");
+    setNotice("최종 제출물을 삭제했습니다.");
   };
 
   const owners = members.filter((m) => m.role !== "OBSERVER");
@@ -131,9 +131,9 @@ export default function DeliverablesPage() {
           <div>
             <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
               <ClipboardList size={20} className="text-bb-primary" />
-              제출물
+              최종 제출물
             </h1>
-            <p className="mt-1 text-sm text-bb-text2">무엇을 제출할지 정하고, 필요한 작업을 팀원에게 나누세요.</p>
+            <p className="mt-1 text-sm text-bb-text2">최종으로 낼 보고서와 발표자료를 준비하세요. 준비 중인 자료부터 검토·확정·제출 기록까지 관리합니다.</p>
           </div>
           {canWrite && (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -143,7 +143,7 @@ export default function DeliverablesPage() {
               className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
             >
               <Plus size={15} />
-              제출물 추가
+              최종 제출물 추가
             </button>
             </div>
           )}
@@ -183,7 +183,7 @@ export default function DeliverablesPage() {
         {!loading && !error && deliverables.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <ClipboardList size={32} className="text-bb-text2 opacity-40" />
-            <p className="text-sm font-medium text-bb-text">첫 제출물을 등록하세요</p>
+            <p className="text-sm font-medium text-bb-text">첫 최종 제출물을 등록하세요</p>
             <p className="text-xs text-bb-text2">예: 중간발표 자료, 조사 보고서, 최종 작품 설명서</p>
             {canWrite ? (
               <button
@@ -191,17 +191,17 @@ export default function DeliverablesPage() {
                 className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
               >
                 <Plus size={14} />
-                제출물 등록하기
+                최종 제출물 등록하기
               </button>
             ) : (
-              <p className="text-xs text-bb-text2">팀원이 제출물을 등록하면 여기서 확인할 수 있습니다.</p>
+              <p className="text-xs text-bb-text2">팀원이 최종 제출물을 등록하면 여기서 확인할 수 있습니다.</p>
             )}
             <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
           </div>
         )}
 
         {!loading && !error && deliverables.length > 0 && (
-          <div role="group" aria-label="제출물 보기 방식" className="mb-3 flex w-fit rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
+          <div role="group" aria-label="최종 제출물 보기 방식" className="mb-3 flex w-fit rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
             {([["list", "목록"], ["timeline", "일정"]] as const).map(([v, label]) => (
               <button
                 key={v}
@@ -274,7 +274,7 @@ export default function DeliverablesPage() {
 
         {!loading && !error && unlinkedCount > 0 && (
           <p className="mt-6 text-sm text-bb-text2">
-            제출물에 연결되지 않은 업무가 {unlinkedCount}개 있습니다.{" "}
+            최종 제출물에 연결되지 않은 업무가 {unlinkedCount}개 있습니다.{" "}
             <Link href={`/projects/${projectId}/board`} className="text-bb-primary underline">
               업무 보드에서 확인
             </Link>
@@ -287,7 +287,7 @@ export default function DeliverablesPage() {
       )}
       {deleteTarget && (
         <ConfirmDeleteDialog
-          title={`제출물 "${deleteTarget.title}"`}
+          title={`최종 제출물 "${deleteTarget.title}"`}
           onConfirm={handleDelete}
           onClose={() => setDeleteTarget(null)}
         />

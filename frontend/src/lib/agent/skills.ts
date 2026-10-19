@@ -3,7 +3,7 @@ import type { AgentStatus } from "@/types/agent";
 /**
  * 실행 종류의 등록 (화면 문서 3.4). 종류마다 다른 것은 입력을 받는 방법뿐이다.
  * 창은 이 표만 보고 그리고, 서버가 화면이 모르는 종류를 주면 그리지 않는다.
- * - none: 누르면 바로 시작 / question: 창 아래 입력 칸 / brief: 긴 글 입력 칸 / deliverable: 제출물 고르기
+ * - none: 누르면 바로 시작 / question: 창 아래 입력 칸 / brief: 긴 글 입력 칸 / deliverable: 최종 제출물 고르기
  */
 export type SkillInput = "none" | "question" | "brief" | "deliverable";
 
@@ -35,7 +35,7 @@ function allowed(status: AgentStatus, skill: string) {
 }
 
 export interface Suggestion {
-  /** 제출물이 없으면 null */
+  /** 최종 제출물이 없으면 null */
   deliverable: { id: string; title: string; dueDate: string } | null;
   sentence: string;
   skill: string;
@@ -51,7 +51,7 @@ export function breakDownUnavailableReason(stage: string) {
 }
 
 /**
- * "지금 단계에 맞는 도움" (화면 문서 4.9의 표). 기한이 가장 빠른 제출물의 단계로 고른다.
+ * "지금 단계에 맞는 도움" (화면 문서 4.9의 표). 기한이 가장 빠른 최종 제출물의 단계로 고른다.
  * 4단계의 화면마다의 버튼도 이 규칙을 같이 쓴다. 맞는 실행이 없거나 허용되지 않으면 null.
  */
 export function suggestFor(status: AgentStatus): Suggestion | null {
@@ -59,7 +59,7 @@ export function suggestFor(status: AgentStatus): Suggestion | null {
   if (!first) {
     if (status.stages.length) return null;
     return allowed(status, "PLAN_FROM_BRIEF")
-      ? { deliverable: null, sentence: "아직 제출물이 없습니다", skill: "PLAN_FROM_BRIEF", input: {} }
+      ? { deliverable: null, sentence: "아직 최종 제출물이 없습니다", skill: "PLAN_FROM_BRIEF", input: {} }
       : null;
   }
   const deliverable = { id: first.deliverableId, title: first.title, dueDate: first.dueDate };

@@ -12,7 +12,7 @@ import type { AgentStatus, Proposal } from "@/types/agent";
 import ProposalEditor from "./ProposalEditor";
 import { sessionGeneration } from "@/lib/sessionCache";
 
-const KIND_LABEL: Record<string, string> = { DELIVERABLE_PLAN: "제출물 계획", TASKS: "업무" };
+const KIND_LABEL: Record<string, string> = { DELIVERABLE_PLAN: "최종 제출물 계획", TASKS: "업무" };
 const STATUS_LABEL: Record<string, string> = { PENDING: "대기", ACCEPTED: "채택됨", REJECTED: "거절됨" };
 const STATUS_CLS: Record<string, string> = {
   PENDING: "bg-amber-500/15 text-amber-400",
@@ -86,7 +86,7 @@ export default function ProposalCard({
   }, [needsRequirementNames, projectId, loadDeliverables]);
 
   const stageTitle = (id: string | null) =>
-    id == null ? "제출물 연결 없음" : status.stages.find((s) => s.deliverableId === id)?.title ?? "삭제된 제출물";
+    id == null ? "최종 제출물 연결 없음" : status.stages.find((s) => s.deliverableId === id)?.title ?? "삭제된 최종 제출물";
   const requirementName = (deliverableId: string | null, requirementId: string | null) => {
     if (!requirementId) return null;
     const d = deliverables?.find((x) => x.id === deliverableId);
@@ -104,7 +104,7 @@ export default function ProposalCard({
   const duplicate = p.kind === "DELIVERABLE_PLAN" && status.stages.some((s) => s.title === p.content.deliverable.title);
   const acceptLabel =
     p.kind === "DELIVERABLE_PLAN"
-      ? `채택 — 제출물 1 · 요구사항 ${p.content.requirements.length} · 업무 ${p.content.tasks.length} 만들기`
+      ? `채택 — 최종 제출물 1 · 요구사항 ${p.content.requirements.length} · 업무 ${p.content.tasks.length} 만들기`
       : p.kind === "TASKS"
         ? `채택 — 업무 ${p.content.tasks.length}개 만들기`
         : "";
@@ -217,7 +217,7 @@ export default function ProposalCard({
           {p.kind === "DELIVERABLE_PLAN" && (
             <>
               <dl className="grid grid-cols-[4rem_1fr] gap-x-2 gap-y-1 text-xs">
-                <dt className="text-bb-text2">제출물</dt><dd className="text-bb-text"><Value text={p.content.deliverable.title} /></dd>
+                <dt className="text-bb-text2">최종 제출물</dt><dd className="text-bb-text"><Value text={p.content.deliverable.title} /></dd>
                 <dt className="text-bb-text2">기한</dt><dd className="text-bb-text">{p.content.deliverable.dueDate ?? <span className="text-amber-400">없음</span>}</dd>
                 <dt className="text-bb-text2">제출</dt><dd className="text-bb-text"><Value text={p.content.deliverable.submissionMethod} /></dd>
                 <dt className="text-bb-text2">설명</dt><dd className="text-bb-text whitespace-pre-wrap"><Value text={p.content.deliverable.description} /></dd>
@@ -259,7 +259,7 @@ export default function ProposalCard({
 
           {p.status === "PENDING" && (
             <>
-              {duplicate && <p className="text-xs text-amber-400">같은 제목의 제출물이 이미 있습니다.</p>}
+              {duplicate && <p className="text-xs text-amber-400">같은 제목의 최종 제출물이 이미 있습니다.</p>}
               {needs > 0 && <p className="text-xs text-amber-400">채워야 할 칸이 {needs}개 남았습니다.</p>}
               {noDue && <p className="text-xs text-amber-400">기한을 채워야 채택할 수 있습니다.</p>}
             </>
@@ -343,7 +343,7 @@ function acceptedLinks(p: Proposal, projectId: string): { label: string; href: s
   if (!r) return [];
   if (p.kind === "DELIVERABLE_PLAN" && r.deliverableId) {
     return [
-      { label: "제출물 열기", href: `${base}/deliverables/${r.deliverableId}` },
+      { label: "최종 제출물 열기", href: `${base}/deliverables/${r.deliverableId}` },
       { label: `업무 ${r.taskIds.length}개 보기`, href: `${base}/board?deliverable=${r.deliverableId}` },
     ];
   }

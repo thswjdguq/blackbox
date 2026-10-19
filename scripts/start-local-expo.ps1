@@ -1,4 +1,4 @@
-param()
+param([switch]$EnableAi)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $outputRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot '../outputs/expo-20261016'))
@@ -20,6 +20,25 @@ if ($LASTEXITCODE -ne 0) { throw 'Check Docker Desktop and blackbox_test_db. Do 
 if ($dbState -ne 'true') { docker start blackbox_test_db | Out-Null }
 if (-not (Test-LocalPort '127.0.0.1' 25432)) { throw 'Test DB port 25432 is not ready. Retry after startup.' }
 if (-not (Test-LocalPort '127.0.0.1' 18083)) {
+    if ($EnableAi) {
+        # Read only the configured AI values. Never execute .env contents or print secrets.
+        $aiValues = @{}
+        foreach ($line in [IO.File]::ReadAllLines((Join-Path $repoRoot '.env'))) {
+            if ($line -match '^\s*(OPENAI_API_KEY|EXTERNAL_OPENAI_BASE_URL|EXTERNAL_OPENAI_MODEL|LLM_BASE_URL|LLM_MODEL)\s*=\s*(.*?)\s*$') {
+                $aiValues[$matches[1]] = $matches[2].Trim().Trim('"').Trim("'")
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($aiValues['OPENAI_API_KEY'])) { throw 'OPENAI_API_KEY is missing from the local .env.' }
+        $env:OPENAI_API_KEY = $aiValues['OPENAI_API_KEY']
+        $env:EXTERNAL_OPENAI_BASE_URL = 'https://api.openai.com'
+        $env:EXTERNAL_OPENAI_MODEL = 'gpt-4o-mini'
+        foreach ($key in @('LLM_BASE_URL', 'EXTERNAL_OPENAI_BASE_URL')) {
+            if ($aiValues[$key]) { $env:EXTERNAL_OPENAI_BASE_URL = $aiValues[$key] }
+        }
+        foreach ($key in @('LLM_MODEL', 'EXTERNAL_OPENAI_MODEL')) {
+            if ($aiValues[$key]) { $env:EXTERNAL_OPENAI_MODEL = $aiValues[$key] }
+        }
+    }
     $env:SPRING_DATASOURCE_URL = 'jdbc:postgresql://127.0.0.1:25432/bb_expo_20261016_demo'
     $env:SPRING_DATASOURCE_USERNAME = 'blackbox_test'
     $env:SPRING_DATASOURCE_PASSWORD = 'blackbox_test'

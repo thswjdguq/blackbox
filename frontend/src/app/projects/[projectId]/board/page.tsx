@@ -195,7 +195,7 @@ export default function BoardPage() {
 
           <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-bb-text">업무</h1>
+              <h1 className="text-xl font-bold text-bb-text">팀 업무</h1>
               <p className="text-xs text-bb-text2 mt-1">{project?.name}</p>
 
               {project?.courseName && (

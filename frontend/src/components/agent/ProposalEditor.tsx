@@ -28,7 +28,7 @@ function newKey(used: string[]) {
 }
 
 /**
- * 제안 카드의 고치는 모양 (화면 문서 4.7 "고치기"). 칸 이름·길이 제한은 제출물 입력·업무 입력과 같다.
+ * 제안 카드의 고치는 모양 (화면 문서 4.7 "고치기"). 칸 이름·길이 제한은 최종 제출물 입력·업무 입력과 같다.
  * 저장은 PUT /proposals/{id}로 content를 통째로 보낸다(고치지 않은 칸도 모두). 응답의 카드로 바꾼다.
  * 채택 버튼은 여기에 없다. 저장한 뒤 펼친 모양에서 채택한다(보이는 것과 만들어지는 것이 같게).
  */
@@ -90,19 +90,19 @@ export default function ProposalEditor({
     else setTasks((c) => ({ ...c, tasks: c.tasks.filter((_, j) => j !== i) }));
   };
 
-  // 업무 카드의 연결할 요구사항은 그 제출물의 요구사항에서 고른다
+  // 업무 카드의 연결할 요구사항은 그 최종 제출물의 요구사항에서 고른다
   const deliverableRequirements =
     tasksContent?.deliverableId ? deliverables?.find((d) => d.id === tasksContent.deliverableId)?.requirements ?? [] : [];
   const deliverableTitle = tasksContent
     ? tasksContent.deliverableId == null
-      ? "제출물 연결 없음"
-      : status?.stages.find((s) => s.deliverableId === tasksContent.deliverableId)?.title ?? "삭제된 제출물"
+      ? "최종 제출물 연결 없음"
+      : status?.stages.find((s) => s.deliverableId === tasksContent.deliverableId)?.title ?? "삭제된 최종 제출물"
     : "";
 
   /** 서버에 보내기 전에 빈 필수 칸만 막는다. 나머지 규칙은 서버의 400을 칸에 표시한다 */
   const localProblems = (): Record<string, string> => {
     const out: Record<string, string> = {};
-    if (plan && !plan.deliverable.title.trim()) out["deliverable.title"] = "제출물 제목을 입력해주세요";
+    if (plan && !plan.deliverable.title.trim()) out["deliverable.title"] = "최종 제출물 제목을 입력해주세요";
     plan?.requirements.forEach((r, i) => { if (!r.content.trim()) out[`requirements[${i}].content`] = "요구사항 내용을 입력해주세요"; });
     tasks.forEach((t, i) => { if (!t.title.trim()) out[`tasks[${i}].title`] = "업무 제목을 입력해주세요"; });
     if (tasks.length === 0) out.tasks = "업무는 한 줄 이상 있어야 합니다";
@@ -161,9 +161,9 @@ export default function ProposalEditor({
 
       {plan && (
         <fieldset className="space-y-2">
-          <legend className="font-medium text-bb-text2">제출물</legend>
+          <legend className="font-medium text-bb-text2">최종 제출물</legend>
           <label className="block">
-            <span className="text-bb-text2">제출물 제목 <span className="text-red-400">*</span></span>
+            <span className="text-bb-text2">최종 제출물 제목 <span className="text-red-400">*</span></span>
             <input name="deliverable.title" value={plan.deliverable.title} maxLength={255} className={INPUT}
               onChange={(e) => setPlan((c) => ({ ...c, deliverable: { ...c.deliverable, title: e.target.value } }))} />
             <Problem name="deliverable.title" problems={problems} />

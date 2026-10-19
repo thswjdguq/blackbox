@@ -36,9 +36,9 @@ interface Row {
 }
 
 /**
- * 제출물 일정 보기 (C-50 7번, Flow 간트차트·캘린더 참고). 읽기 전용.
- * 업무에는 시작일이 없어 막대 대신 마감일에 점을 찍는다. 제출물 기한은 마름모, 오늘은 세로선.
- * 점을 누르면 업무 보드에서 그 업무가, 제출물 이름을 누르면 제출물 상세가 열린다.
+ * 최종 제출물 일정 보기 (C-50 7번, Flow 간트차트·캘린더 참고). 읽기 전용.
+ * 업무에는 시작일이 없어 막대 대신 마감일에 점을 찍는다. 최종 제출물 기한은 마름모, 오늘은 세로선.
+ * 점을 누르면 업무 보드에서 그 업무가, 최종 제출물 이름을 누르면 최종 제출물 상세가 열린다.
  */
 export default function DeliverableTimeline({ projectId, deliverables, tasks }: {
   projectId: string;
@@ -67,7 +67,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
     });
   const unlinked = tasks.filter((t) => !t.deliverableId);
   if (unlinked.some((t) => t.dueDate)) {
-    rows.push({ key: "unlinked", title: "제출물 미연결", href: null, due: null, tasks: unlinked.filter((t) => t.dueDate), undated: unlinked.filter((t) => !t.dueDate).length });
+    rows.push({ key: "unlinked", title: "최종 제출물 미연결", href: null, due: null, tasks: unlinked.filter((t) => t.dueDate), undated: unlinked.filter((t) => !t.dueDate).length });
   }
 
   // 오늘과 모든 날짜를 포함하는 범위
@@ -103,7 +103,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
         <div className="relative" style={{ width: labelW + totalDays * DAY, minWidth: "100%" }}>
           {/* 날짜 머리줄 */}
           <div className="sticky top-0 z-10 flex border-b border-bb-border bg-bb-surface text-[10px] text-bb-text2">
-            <div className="sticky left-0 z-20 flex shrink-0 items-end border-r border-bb-border bg-bb-surface px-3 py-1" style={{ width: labelW }}>제출물</div>
+            <div className="sticky left-0 z-20 flex shrink-0 items-end border-r border-bb-border bg-bb-surface px-3 py-1" style={{ width: labelW }}>최종 제출물</div>
             {days.map((d) => {
               const first = d.getDate() === 1 || d.getTime() === start.getTime();
               const weekend = d.getDay() === 0 || d.getDay() === 6;

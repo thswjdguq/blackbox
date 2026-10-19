@@ -277,7 +277,7 @@ export default function MeetingDetailPage() {
           <div className="bg-bb-surface border border-bb-border rounded-xl p-6 mb-6">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h2 className="text-lg font-semibold text-bb-text">회의록</h2>
-              {canWrite && !editNotes.trim() && <button type="button" onClick={() => setEditNotes("## 1. 회의 개요\n\n- 일시 / 참석자:\n\n## 2. 논의 안건\n\n### 안건 A: 제출물 일정 조율\n\n- 논의 내용:\n\n## 3. 결정사항 및 다음 할 일\n\n- [ ] ")} className="text-xs px-3 py-2 border border-bb-border rounded-lg">회의록 양식 넣기</button>}
+              {canWrite && !editNotes.trim() && <button type="button" onClick={() => setEditNotes("## 1. 회의 개요\n\n- 일시 / 참석자:\n\n## 2. 논의 안건\n\n### 안건 A: 최종 제출물 일정 조율\n\n- 논의 내용:\n\n## 3. 결정사항 및 다음 할 일\n\n- [ ] ")} className="text-xs px-3 py-2 border border-bb-border rounded-lg">회의록 양식 넣기</button>}
             </div>
             <p role="status" className="mb-3 text-xs text-bb-text2">{!canWrite ? "읽기 전용 · 작성은 팀장과 팀원에게 허용됩니다." : saving ? "저장 중…" : dirty ? "저장하지 않은 변경사항이 있습니다." : "저장된 회의록입니다."}</p>
             <div className="space-y-4">

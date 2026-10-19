@@ -22,10 +22,10 @@ interface VaultFile {
 }
 
 const STATUS_BADGE: Record<DeliverableStatus, { label: string; cls: string }> = {
-  DRAFT: { label: "초안", cls: "bg-bb-surface2 text-bb-text2" },
+  DRAFT: { label: "준비 중", cls: "bg-bb-surface2 text-bb-text2" },
   IN_REVIEW: { label: "검토 중", cls: "bg-indigo-500/15 text-indigo-400" },
-  CONFIRMED: { label: "확정", cls: "bg-teal-500/15 text-teal-400" },
-  SUBMITTED: { label: "제출 완료", cls: "bg-green-500/15 text-green-400" },
+  CONFIRMED: { label: "최종본 확정", cls: "bg-teal-500/15 text-teal-400" },
+  SUBMITTED: { label: "제출 기록 완료", cls: "bg-green-500/15 text-green-400" },
 };
 
 export default function ReviewPanel({

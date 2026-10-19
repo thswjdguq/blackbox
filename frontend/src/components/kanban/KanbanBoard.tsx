@@ -94,7 +94,7 @@ export default function KanbanBoard({
     try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* 이번 화면에서는 적용 */ }
   };
   const view = preferences.view;
-  // 제출물에서 들어온 링크와 명시적인 담당자 필터를 개인 기본 보기보다 우선한다.
+  // 최종 제출물에서 들어온 링크와 명시적인 담당자 필터를 개인 기본 보기보다 우선한다.
   const scope = filter?.assigneeId ? "all" : scopeOverride ?? (deliverableParam ? "all" : preferences.scope);
   const changeScope = (next: TaskScope) => { onClearAssignee(); setScopeOverride(next); updatePreferences({ scope: next }); };
   useEffect(() => { setScopeOverride(null); }, [deliverableParam]);
@@ -120,7 +120,7 @@ export default function KanbanBoard({
   }, [tasks, projectId, readOnly, reviewRetry]);
   const openedTask = useRef<string | null>(null);
 
-  // 제출물 상세의 "보드에서 이 제출물 업무 보기"가 ?deliverable=<id> 로 연다
+  // 최종 제출물 상세의 "보드에서 이 최종 제출물 업무 보기"가 ?deliverable=<id> 로 연다
   useEffect(() => {
     setDeliveryFilter(deliverableParam ?? "");
   }, [deliverableParam]);
@@ -131,7 +131,7 @@ export default function KanbanBoard({
     setDeliverablesError("");
     api.get<Deliverable[]>(`/projects/${projectId}/deliverables`)
       .then(({ data }) => setDeliverables(data))
-      .catch((err) => setDeliverablesError(apiError(err, "제출물 목록을 불러오지 못했습니다.")));
+      .catch((err) => setDeliverablesError(apiError(err, "최종 제출물 목록을 불러오지 못했습니다.")));
   }, [projectId]);
 
   useEffect(() => {
@@ -282,12 +282,12 @@ export default function KanbanBoard({
   return (
     <>
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <select aria-label="제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="max-w-full rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
-          <option value="">전체 제출물</option>
-          <option value="unlinked">제출물 미연결</option>
+        <select aria-label="최종 제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="max-w-full rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
+          <option value="">전체 최종 제출물</option>
+          <option value="unlinked">최종 제출물 미연결</option>
           {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
-        <Link href={`/projects/${projectId}/deliverables`} className="whitespace-nowrap text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
+        <Link href={`/projects/${projectId}/deliverables`} className="whitespace-nowrap text-sm text-indigo-500">최종 제출물·요구사항 관리 →</Link>
         <AgentButton projectId={projectId} skill="STATUS_BRIEF" />
         <div role="group" aria-label="업무 보기 방식" className="ml-auto flex rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
           {([["list", "목록", List], ["board", "칸반", Columns3]] as const).map(([v, label, Icon]) => (

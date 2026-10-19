@@ -123,8 +123,8 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
         )}
       </div>
 
-      <p className="mb-2 text-xs text-teal-400 truncate" title={task.deliverableTitle ?? "제출물 미연결"}>
-        {task.deliverableTitle ? `제출물: ${task.deliverableTitle}` : "제출물 미연결"}
+      <p className="mb-2 text-xs text-teal-400 truncate" title={task.deliverableTitle ?? "최종 제출물 미연결"}>
+        {task.deliverableTitle ? `최종 제출물: ${task.deliverableTitle}` : "최종 제출물 미연결"}
       </p>
       {/* Description preview */}
       {task.description && (

@@ -47,7 +47,7 @@ export default function TaskResources({ task, readOnly, uploadLocked = false, on
   return <section className="space-y-3">
     <div className="flex items-center justify-between"><h3 className="font-semibold text-sm">결과 파일</h3><span className="text-xs text-bb-text2">{task.attachmentRequired ? "첨부 필수" : "필요한 경우 첨부"}</span></div>
     {!readOnly && !uploadLocked && <label className="block rounded-xl border border-dashed border-bb-border bg-bb-bg p-4 text-sm">
-      작업 결과 또는 수정본 추가
+      업무 결과 올리기
       <input ref={input} type="file" disabled={busy} className="block w-full mt-2 text-sm" onChange={e => { const file = e.target.files?.[0]; if (file) upload(file); }} />
     </label>}
     {error && <p role="alert" className="text-sm text-red-600">{error} <button type="button" disabled={busy} onClick={load} className="underline">다시 조회</button></p>}
@@ -59,7 +59,7 @@ export default function TaskResources({ task, readOnly, uploadLocked = false, on
         <p className="text-xs text-bb-text2 mt-1">버전 {file.version} · {file.uploaderName} · {new Date(file.uploadedAt).toLocaleString("ko-KR")}</p>
       </li>)}</ul>}
     {task.deliverableId && <Link href={`/projects/${task.projectId}/deliverables/${task.deliverableId}`} className="inline-block text-xs text-bb-primary underline">
-      {task.deliverableTitle ?? "연결된 제출물"}에서 최종 취합·검토 보기 →
+      {task.deliverableTitle ?? "연결된 최종 제출물"}에서 최종 취합·검토 보기 →
     </Link>}
   </section>;
 }

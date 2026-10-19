@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Shield, Sun, Moon, Eye, EyeOff, LogIn } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
+import LoginIntroduction from "@/components/LoginIntroduction";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,7 +51,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bb-bg flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bb-bg text-bb-text">
+      <header className="mx-auto flex max-w-7xl items-center gap-2 px-6 py-6 sm:px-10"><Shield size={23} className="text-blue-600 dark:text-blue-300" /><span className="font-semibold tracking-tight">Team Blackbox</span></header>
       {/* Theme Toggle */}
       <button
         onClick={toggleTheme}
@@ -60,24 +62,23 @@ export default function LoginPage() {
         {isDark ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
-      {/* Card */}
-      <div className="w-full max-w-md bg-bb-surface border border-bb-border rounded-xl p-8">
+      <main className="mx-auto grid w-full max-w-7xl gap-8 px-6 pb-12 pt-4 sm:px-10 lg:min-h-[calc(100vh-80px)] lg:grid-cols-[1.35fr_1fr] lg:items-center lg:gap-14 lg:py-12">
+      <LoginIntroduction />
+      <section aria-labelledby="login-title" className="w-full max-w-md justify-self-center rounded-2xl border border-bb-border bg-bb-surface p-6 shadow-sm sm:p-8 lg:p-10">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-bb-primary/10 mb-4">
             <Shield size={24} className="text-indigo-500" />
           </div>
-          <h1 className="text-2xl font-bold text-bb-text">
-            Team Blackbox
-          </h1>
+          <h2 id="login-title" className="text-2xl font-bold text-bb-text">팀플을 이어가세요</h2>
           <p className="text-sm text-bb-text2 mt-1">
-            팀 프로젝트 기여도 자동 증빙 플랫폼
+            로그인하고 우리 팀의 다음 할 일을 확인하세요.
           </p>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
+          <div role="alert" className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
             {error}
           </div>
         )}
@@ -85,11 +86,13 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="login-email" className="block text-sm font-medium text-bb-text2 mb-1.5">
               이메일
             </label>
             <input
               type="email"
+              id="login-email"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
@@ -99,12 +102,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label htmlFor="login-password" className="block text-sm font-medium text-bb-text2 mb-1.5">
               비밀번호
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                id="login-password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -148,7 +153,8 @@ export default function LoginPage() {
             회원가입
           </Link>
         </p>
-      </div>
+      </section>
+      </main>
     </div>
   );
 }

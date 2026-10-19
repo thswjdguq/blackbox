@@ -139,7 +139,7 @@ export default function ProjectHomePage() {
   const [scores,   setScores]   = useState<ScoreEntry[]>([]);
   const [alerts,   setAlerts]   = useState<Alert[]>([]);
   const [members,  setMembers]  = useState<Member[]>([]);
-  // null: 제출물 목록을 못 불러옴 → 다음 할 일 카드를 숨긴다 (잘못된 안내보다 낫다)
+  // null: 최종 제출물 목록을 못 불러옴 → 다음 할 일 카드를 숨긴다 (잘못된 안내보다 낫다)
   const [deliverables, setDeliverables] = useState<Deliverable[] | null>(null);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -615,7 +615,7 @@ export default function ProjectHomePage() {
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-bb-text mb-1">팀 활동 내보내기</h2>
                 <p className="text-xs text-bb-text2 leading-relaxed">
-                  회의록 · 기여도 · 자료 이력을 ZIP으로 내려받습니다. 과제 제출은 제출물별 검토와 확정 후 학교 제출처에서 진행하세요.
+                  회의록 · 기여도 · 자료 이력을 ZIP으로 내려받습니다. 과제 제출은 최종 제출물별 검토와 확정 후 학교 제출처에서 진행하세요.
                   PDF에는 SHA-256 무결성 해시가 포함되어 데이터 위변조를 방지합니다.
                 </p>
                 <ul className="mt-2 flex flex-wrap gap-2">

@@ -20,7 +20,7 @@ export default function AgentButton({
   skill: string;
   /** 없으면 창에 입력 칸을 연 채로 기다린다(계획 만들기의 안내문 등) */
   input?: object;
-  /** 실행 기록 제목 뒤에 붙일 말(업무 나누기의 제출물 이름) */
+  /** 실행 기록 제목 뒤에 붙일 말(업무 나누기의 최종 제출물 이름) */
   titleExtra?: string;
   className?: string;
 }) {

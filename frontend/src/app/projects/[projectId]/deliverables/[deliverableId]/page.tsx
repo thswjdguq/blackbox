@@ -203,7 +203,7 @@ export default function DeliverableDetailPage() {
       setMembers(memRes.data);
       setMyUserId(profileRes.data.id);
     } catch (err) {
-      setError(apiError(err, "제출물 정보를 불러오지 못했습니다."));
+      setError(apiError(err, "최종 제출물 정보를 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -233,11 +233,11 @@ export default function DeliverableDetailPage() {
       prev ? { ...prev, requirements: prev.requirements.map((r) => (r.id === updated.id ? updated : r)) } : prev
     );
 
-  // ── 제출물 수정·삭제 ──────────────────────────────────────────────────
+  // ── 최종 제출물 수정·삭제 ──────────────────────────────────────────────────
   const handleSaveDeliverable = async (payload: SaveDeliverablePayload) => {
     await updateDeliverable(projectId, deliverableId, payload);
     setShowEdit(false);
-    setNotice("제출물을 수정했습니다.");
+    setNotice("최종 제출물을 수정했습니다.");
     fetchAll();
   };
 
@@ -338,7 +338,7 @@ export default function DeliverableDetailPage() {
     try {
       await api.patch(`/projects/${projectId}/tasks/${linkTaskId}`, { deliverableId });
       setLinkTaskId("");
-      setNotice("업무를 이 제출물에 연결했습니다.");
+      setNotice("업무를 이 최종 제출물에 연결했습니다.");
       refresh();
     } catch (err) {
       setActionError(apiError(err, "업무를 연결하지 못했습니다. 다시 시도해주세요."));
@@ -358,7 +358,7 @@ export default function DeliverableDetailPage() {
           className="inline-flex items-center gap-1 mb-3 text-xs text-bb-text2 hover:text-bb-text transition-colors"
         >
           <ChevronLeft size={14} />
-          제출물 목록
+          최종 제출물 목록
         </Link>
 
         {loading && (
@@ -623,7 +623,7 @@ export default function DeliverableDetailPage() {
                         href={`/projects/${projectId}/board?deliverable=${deliverableId}`}
                         className="text-xs text-bb-text2 hover:text-bb-primary"
                       >
-                        보드에서 이 제출물 업무 보기
+                        보드에서 이 최종 제출물 업무 보기
                       </Link>
                       {canWrite && (
                         <button
@@ -689,7 +689,7 @@ export default function DeliverableDetailPage() {
                         className="flex items-center gap-1 px-3 py-2 text-xs text-bb-text border border-bb-border hover:bg-bb-surface2 disabled:opacity-50 rounded-lg"
                       >
                         {linking && <Loader2 size={12} className="animate-spin" />}
-                        이 제출물에 연결
+                        이 최종 제출물에 연결
                       </button>
                     </form>
                   )}
@@ -725,7 +725,7 @@ export default function DeliverableDetailPage() {
       )}
       {deleteTarget && deliverable && (
         <ConfirmDeleteDialog
-          title={deleteTarget.kind === "deliverable" ? `제출물 "${deliverable.title}"` : "요구사항"}
+          title={deleteTarget.kind === "deliverable" ? `최종 제출물 "${deliverable.title}"` : "요구사항"}
           onConfirm={() =>
             deleteTarget.kind === "deliverable" ? handleDeleteDeliverable() : handleDeleteRequirement(deleteTarget.req)
           }

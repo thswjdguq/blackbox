@@ -207,7 +207,7 @@ export default function TaskModal({
   };
 
   return (
-    // 넓은 화면에서는 오른쪽 패널로 열어 보드·제출물이 옆에 보이게 하고(C-50 5번), 작은 화면에서는 전체 화면
+    // 넓은 화면에서는 오른쪽 패널로 열어 보드·최종 제출물이 옆에 보이게 하고(C-50 5번), 작은 화면에서는 전체 화면
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* 배경 — 패널 옆 화면이 보이도록 옅게 */}
       <div
@@ -371,7 +371,7 @@ export default function TaskModal({
           </div>
           <details className="rounded-xl border border-bb-border p-4">
             <summary className="text-sm font-medium text-bb-text">추가 설정 (선택)
-              <span className="ml-2 text-xs font-normal text-bb-text2">{[selectedDeliverable?.title ?? (deliverableId ? task?.deliverableTitle : null), attachmentRequired ? "파일 첨부 필수" : null, predecessorId ? "선행 업무 있음" : null].filter(Boolean).join(" · ") || "설명 · 제출물 연결 · 우선순위 등"}</span>
+              <span className="ml-2 text-xs font-normal text-bb-text2">{[selectedDeliverable?.title ?? (deliverableId ? task?.deliverableTitle : null), attachmentRequired ? "파일 첨부 필수" : null, predecessorId ? "선행 업무 있음" : null].filter(Boolean).join(" · ") || "설명 · 최종 제출물 연결 · 우선순위 등"}</span>
             </summary>
             <div className="mt-4 space-y-4">
           {/* 설명 */}
@@ -390,19 +390,19 @@ export default function TaskModal({
           </div>
 
           <div>
-            <label htmlFor="task-deliverable" className="block text-xs font-medium text-bb-text2 mb-1.5">연결할 제출물</label>
+            <label htmlFor="task-deliverable" className="block text-xs font-medium text-bb-text2 mb-1.5">연결할 최종 제출물</label>
             <select id="task-deliverable" className={INPUT_CLS} value={deliverableId}
               onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
-              <option value="">제출물 미연결</option>
-              {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 제출물"}</option>}
+              <option value="">최종 제출물 미연결</option>
+              {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 최종 제출물"}</option>}
               {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
-            <p className="text-xs text-bb-text2 mt-1">이 업무가 어떤 제출물을 완성하는지 연결하세요.</p>
+            <p className="text-xs text-bb-text2 mt-1">이 업무가 어떤 최종 제출물을 완성하는지 연결하세요.</p>
           </div>
           {selectedDeliverable && <div>
             <label htmlFor="task-requirement" className="block text-xs font-medium text-bb-text2 mb-1.5">관련 요구사항 (선택)</label>
             <select id="task-requirement" className={INPUT_CLS} value={requirementId} onChange={e => setRequirementId(e.target.value)}>
-              <option value="">제출물 전체 작업</option>
+              <option value="">최종 제출물 전체 작업</option>
               {selectedDeliverable.requirements.map(r => <option key={r.id} value={r.id}>{r.required ? "[필수] " : ""}{r.content}</option>)}
             </select>
           </div>}

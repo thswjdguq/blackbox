@@ -18,7 +18,7 @@ interface Step {
 }
 
 /**
- * 제출물 → 요구사항 → 업무 → 충족 확인 → 검토 순서에서 아직 안 끝난 첫 단계를 고른다.
+ * 최종 제출물 → 요구사항 → 업무 → 충족 확인 → 검토 순서에서 아직 안 끝난 첫 단계를 고른다.
  * 화면이 판단하는 안내일 뿐이며, 충족·승인은 사람이 확인한다 (CONTRACTS 3장 1항).
  * 요구사항–업무 연결은 선택이므로, 충족 확인이 끝난 요구사항에는 업무를 요구하지 않는다.
  * canWrite=false(관찰자)에게는 할 일을 시키지 않고 현재 상태만 알린다.
@@ -30,7 +30,7 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
   const required = d.requirements.filter((r) => r.required);
   const unchecked = required.filter((r) => r.assessment == null);
   const uncovered = unchecked.filter((r) => !linked.some((t) => t.requirementId === r.id));
-  const view = "제출물 보기";
+  const view = "최종 제출물 보기";
 
   if (d.status === "SUBMITTED") return { title: "제출 기록이 완료됐습니다", detail: "확정된 파일과 제출 경로·시각을 확인할 수 있습니다.", href: `${base}?tab=submit`, action: "제출 기록 보기" };
   if (d.status === "CONFIRMED") return { title: "학교에 제출한 뒤 기록을 남기세요", detail: "최종본이 확정됐습니다. 학교 시스템에 직접 제출한 뒤 제출 기록을 남기세요.", href: `${base}?tab=submit`, action: canWrite ? "확정본·제출 기록" : "확정본 보기" };
@@ -108,9 +108,9 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
   return canWrite
     ? {
         title: "검토를 요청할 준비가 됐습니다",
-        detail: "업무와 필수 요구사항 확인이 끝났습니다. 업무에서 자료를 등록하고, 제출물에서 검토를 요청하세요.",
+        detail: "업무와 필수 요구사항 확인이 끝났습니다. 업무에서 자료를 등록하고, 최종 제출물에서 검토를 요청하세요.",
         href: base,
-        action: "제출물 열기",
+        action: "최종 제출물 열기",
       }
     : {
         title: "검토 요청 준비가 끝났습니다",
@@ -141,18 +141,18 @@ export default function NextStepCard({
         className="mb-6 block rounded-xl border border-blue-500/30 bg-blue-500/10 p-5 hover:bg-blue-500/15"
       >
         <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">다음 할 일</p>
-        <h2 className="mt-1 font-semibold text-bb-text">{canWrite ? "제출물부터 계획하기" : "아직 제출물이 없습니다"}</h2>
+        <h2 className="mt-1 font-semibold text-bb-text">{canWrite ? "최종 제출물부터 계획하기" : "아직 최종 제출물이 없습니다"}</h2>
         <p className="mt-2 text-sm text-bb-text2">
           {canWrite
             ? "제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요."
-            : "팀원이 제출물을 등록하면 여기에 다음 할 일이 표시됩니다."}
+            : "팀원이 최종 제출물을 등록하면 여기에 다음 할 일이 표시됩니다."}
         </p>
-        <div className="mt-3 flex flex-wrap gap-3"><Link href={`/projects/${projectId}/deliverables`} className="text-sm font-medium text-blue-700 dark:text-blue-300">{canWrite ? "제출물 열기" : "제출물 목록 보기"} →</Link><AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" /></div>
+        <div className="mt-3 flex flex-wrap gap-3"><Link href={`/projects/${projectId}/deliverables`} className="text-sm font-medium text-blue-700 dark:text-blue-300">{canWrite ? "최종 제출물 열기" : "최종 제출물 목록 보기"} →</Link><AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" /></div>
       </section>
     );
   }
 
-  // 마감이 가장 가까운 제출물부터 본다. 기한이 지난 제출물도 포함한다
+  // 마감이 가장 가까운 최종 제출물부터 본다. 기한이 지난 최종 제출물도 포함한다
   const sorted = [...deliverables].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const target = sorted.find(d => d.status !== "SUBMITTED") ?? sorted[0];
   const step = nextStepFor(projectId, target, tasks, canWrite);
@@ -178,7 +178,7 @@ export default function NextStepCard({
         </Link>
         {sorted.length > 1 && (
           <Link href={`/projects/${projectId}/deliverables`} className="text-xs text-bb-text2 hover:text-bb-text">
-            다른 제출물 {sorted.length - 1}개 보기
+            다른 최종 제출물 {sorted.length - 1}개 보기
           </Link>
         )}
         {help && <AgentButton projectId={projectId} skill={help.skill} input={help.skill === "BREAK_DOWN_TASKS" ? help.input : undefined} titleExtra={help.deliverable?.title} />}

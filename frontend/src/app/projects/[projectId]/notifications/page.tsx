@@ -44,14 +44,14 @@ function Inbox({ projectId }: { projectId: string }) {
   };
   const settingsOnly = async () => { throw new Error("업무 화면에서 설정을 수정하세요."); };
   return <>
-    <div className="mt-6 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">새 소식</h1>
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">알림</h1>
       <p className="mt-2 text-sm text-bb-text2">팀원이 올린 결과와 나에게 온 요청을 확인하세요. 읽음 표시는 업무 완료와 별개입니다.</p></div>
       <button type="button" disabled={entry?.loading} onClick={() => load(projectId)} className="rounded-lg border border-bb-border px-3 py-2 text-sm disabled:opacity-50">{entry?.loading ? "불러오는 중…" : "새로고침"}</button></div>
     {(entry?.error || openError) && <p role="alert" className="mt-4 text-sm text-red-600">{entry?.error || openError}</p>}
     {entry?.readError && <div role="alert" className="mt-4 text-sm text-amber-700">{entry.readError} {entry.failedReadId && <button type="button" onClick={() => read(projectId, entry.failedReadId!)} className="underline">읽음 처리 다시 시도</button>}</div>}
     {!entry?.page && !entry?.error && <p role="status" className="mt-8 text-sm text-bb-text2">알림을 불러오는 중…</p>}
     {entry?.page && <div className="mt-5 space-y-3">
-      {!entry.page.items.length && <p className="rounded-xl border border-bb-border p-8 text-center text-sm text-bb-text2">아직 받은 새 소식이 없습니다.</p>}
+      {!entry.page.items.length && <p className="rounded-xl border border-bb-border p-8 text-center text-sm text-bb-text2">아직 받은 알림이 없습니다.</p>}
       {entry.page.items.map(item => <article key={item.id} className={`rounded-xl border p-4 ${item.readAt ? "border-bb-border bg-bb-surface" : "border-bb-primary/30 bg-bb-primary/5"}`}>
         <div className="flex flex-wrap justify-between gap-2 text-xs text-bb-text2"><span>{notificationLabels[item.type] ?? "업무 소식"} · {item.readAt ? "읽음" : "읽지 않음"}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></div>
         <h2 className="mt-2 break-words font-semibold text-sm">{item.taskTitle}</h2><p className="mt-1 text-sm text-bb-text2">{item.actorName}님 · {notificationLabels[item.type] ?? "업무 소식"}</p>

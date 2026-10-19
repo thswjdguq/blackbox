@@ -17,7 +17,7 @@ export default function NotificationLink({ projectId, onNavigate }: { projectId:
   }, [projectId, count]);
   return <Link href={`/projects/${projectId}/notifications`} onClick={onNavigate} aria-current={active ? "page" : undefined}
     className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm ${active ? "bg-bb-primary/10 text-bb-primary font-semibold" : "text-bb-text2 hover:bg-bb-surface2"}`}>
-    <Bell size={17} /><span>새 소식</span>
+    <Bell size={17} /><span>알림</span>
     {entry?.countError ? <span aria-label="알림 조회 실패" className="ml-auto text-amber-600">!</span> : !!entry?.count && <span aria-label={`읽지 않은 알림 ${entry.count}건`} className="ml-auto rounded-full bg-bb-primary px-2 py-0.5 text-xs text-white">{entry.count > 99 ? "99+" : entry.count}</span>}
   </Link>;
 }

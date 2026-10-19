@@ -18,8 +18,8 @@ export function fieldProblems(detail: string): Record<string, string> {
 export function fieldName(path: string): string {
   const m = path.match(/^(requirements|tasks)\[(\d+)\]\.(\w+)$/);
   const names: Record<string, string> = {
-    "deliverable.title": "제출물 제목", "deliverable.dueDate": "기한", "deliverable.submissionMethod": "제출 방법",
-    "deliverable.description": "설명", deliverableId: "제출물", tasks: "업무", requirements: "요구사항",
+    "deliverable.title": "최종 제출물 제목", "deliverable.dueDate": "기한", "deliverable.submissionMethod": "제출 방법",
+    "deliverable.description": "설명", deliverableId: "최종 제출물", tasks: "업무", requirements: "요구사항",
     content: "내용", title: "제목", completionCriteria: "완료 기준", dueDate: "기한", key: "키",
     requirementKey: "연결할 요구사항", requirementId: "연결할 요구사항", required: "필수 여부",
   };
