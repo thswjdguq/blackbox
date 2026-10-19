@@ -124,7 +124,7 @@ export default function AgentDock() {
     if (!pendingInput || pendingInput.projectId !== projectId || !status) return;
     if (pendingInput.skill === "PLAN_FROM_BRIEF") setPending({ skill: "PLAN_FROM_BRIEF" });
     if (pendingInput.skill === "BREAK_DOWN_TASKS") {
-      setPickedDeliverable(status.stages.find((s) => s.stage !== "NO_REQUIREMENT")?.deliverableId ?? "");
+      setPickedDeliverable(status.stages.find((s) => !breakDownBlocked(s.stage))?.deliverableId ?? "");
       setPending({ skill: "BREAK_DOWN_TASKS" });
     }
     clearPendingInput();
