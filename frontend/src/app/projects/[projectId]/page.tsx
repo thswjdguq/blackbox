@@ -342,7 +342,9 @@ export default function ProjectHomePage() {
   const recentTasks    = [...tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3);
   const recentMeetings = meetings.slice(0, 3);
   const recentFiles    = files.slice(0, 3);
-  const activeAlerts   = alerts.filter((a) => !a.isRead);
+  // 서버가 해제되지 않은 경보만 준다(findActiveByProject). 읽음은 팀이 함께 쓰는 사이드바 알림 표시라 여기서 거르지 않는다.
+  // 거르면 누가 사이드바에서 연 경보는 팀원 배지에서만 사라지고 위의 상태 표시(getHealth)에는 남는다(#134)
+  const activeAlerts   = alerts;
 
   const ALERT_LABEL: Record<string, string> = {
     FREE_RIDE: "무임승차 의심",
