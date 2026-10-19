@@ -105,19 +105,16 @@ class NotificationAssignmentDatabaseTest {
         assertEquals(1L, (long) tx.<Long>execute(s -> count(t, t.peer)));
     }
 
-    // ── 2. 가벼운 생성 흐름과 기존 완료 조건 유지 ─────────────────────────
+    // ── 2. 가벼운 생성 흐름과 선택 완료 기준 ─────────────────────────
 
-    @Test void titleOnlyTaskStillNeedsCriteriaAndIndependentReviewer() {
+    @Test void titleOnlyTaskCanRequestWithoutCriteriaAndStillNeedsIndependentReviewer() {
         Team t = new Team();
         var task = tasks.createTask(t.pid(), create("발표 자료 초안", null), t.worker);
         assertNull(task.dueDate()); assertTrue(task.assignees().isEmpty()); assertNull(task.completionCriteria());
         assertEquals(0, repo.findAll().stream().filter(n -> n.getProjectId().equals(t.pid())).count(), "담당자 없으면 배정 알림 없음");
         tasks.updateStatus(t.pid(), task.id(), new UpdateTaskStatusRequest("IN_PROGRESS"), t.worker);
-        // 담당자가 없으면 생성자가 수행자. 완료 기준이 없으면 완료 확인 요청은 409(기존 규칙 유지).
-        var noCriteria = assertThrows(ResponseStatusException.class, () -> workflow.request(t.pid(), task.id(), t.worker));
-        assertEquals(409, noCriteria.getStatusCode().value());
-        assertTrue(noCriteria.getReason().contains("완료 조건"));
-        tasks.updateTask(t.pid(), task.id(), new UpdateTaskRequest(null, null, null, null, null, null, null, null, null, "10장 이내"), t.worker);
+        // 담당자가 없으면 생성자가 수행자. 완료 기준이 없어도 확인 요청과 알림을 보낸다.
+        assertTrue(workflow.view(t.pid(),task.id(),t.worker).canRequest());
         workflow.request(t.pid(), task.id(), t.worker);
         assertEquals(0, count(t, t.worker, "TASK_COMPLETION_REQUESTED"));
         assertEquals(1, count(t, t.leader, "TASK_COMPLETION_REQUESTED"));

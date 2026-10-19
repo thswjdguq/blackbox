@@ -190,8 +190,8 @@ public class TaskWorkflowService {
 
     private List<Check> checks(Task task) {
         Task before=task.getPredecessor();
-        return List.of(new Check("CRITERIA","완료 조건 작성",task.getCompletionCriteria()!=null&&!task.getCompletionCriteria().isBlank()),
-                new Check("PREDECESSOR",before==null?"선행 업무 없음":"선행 업무 승인 완료: "+before.getTitle(),before==null || ("DONE".equals(before.getStatus())&&before.getCompletionApprovedAt()!=null)),
+        // 완료 기준은 팀원에게 전달하는 선택 메모이며 결과 확인 요청을 막지 않는다.
+        return List.of(new Check("PREDECESSOR",before==null?"선행 업무 없음":"선행 업무 승인 완료: "+before.getTitle(),before==null || ("DONE".equals(before.getStatus())&&before.getCompletionApprovedAt()!=null)),
                 new Check("ATTACHMENT",task.isAttachmentRequired()?"이 업무에 파일 첨부":"파일 첨부 선택",!task.isAttachmentRequired()||files.existsByTask(task)));
     }
     private void requireChecks(Task task) { checks(task).stream().filter(c->!c.passed()).findFirst().ifPresent(c->{throw conflict(c.label()+" 조건을 충족해야 합니다.");}); }

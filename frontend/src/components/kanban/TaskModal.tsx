@@ -271,7 +271,7 @@ export default function TaskModal({
           </div>
           <ol aria-label="업무 진행 흐름" className="flex gap-2 text-xs">{["수행", "팀원 확인", "완료"].map((label, index) => <li key={label} className={`flex-1 rounded-lg px-2 py-2 text-center ${(task.status === "DONE" ? 2 : task.completionRequestedAt ? 1 : 0) === index ? "bg-bb-primary text-white" : "bg-bb-bg text-bb-text2"}`}>{index + 1}. {label}</li>)}</ol>
           {dirty && <p className="text-sm text-amber-700">수정한 업무 설정을 먼저 저장하세요. <button type="button" onClick={() => setTab("info")} className="underline">설정으로 이동</button></p>}
-          <section className="rounded-xl border border-bb-border p-4"><h3 className="text-sm font-semibold mb-2">이 결과가 갖춰야 할 것</h3><p className="text-sm whitespace-pre-wrap">{task.completionCriteria || "완료 기준을 업무 설정에서 작성해 주세요."}</p></section>
+          <section className="rounded-xl border border-bb-border p-4"><h3 className="text-sm font-semibold mb-2">완료 기준 (선택)</h3><p className="text-sm whitespace-pre-wrap">{task.completionCriteria || "작성된 기준이 없습니다. 결과를 등록하고 팀원에게 확인을 요청할 수 있습니다."}</p></section>
           <TaskSteps task={task} disabled={readOnly || dirty || locked || resourceBusy} onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} />
           <div ref={resultsRef} tabIndex={-1} role="group" aria-label="결과 파일" className="scroll-mt-4">
           <TaskResources task={task} focusFileId={focusFileId} readOnly={readOnly || dirty || resourceBusy} uploadLocked={locked} onBusy={setResourceBusy} onFilesChanged={setDiscussionFiles} onUploaded={() => setFilesRevision(v => v + 1)} />
@@ -368,10 +368,10 @@ export default function TaskModal({
           </div>
 
           <div>
-            <label htmlFor="completion-criteria" className="block text-xs font-medium text-bb-text2 mb-1.5">어떤 결과면 끝인가요? <span className="font-normal">(나중에 작성 가능)</span></label>
+            <label htmlFor="completion-criteria" className="block text-xs font-medium text-bb-text2 mb-1.5">어떤 결과면 끝인가요? <span className="font-normal">(선택)</span></label>
             <textarea id="completion-criteria" value={completionCriteria} onChange={e => setCompletionCriteria(e.target.value)}
               rows={2} maxLength={2000} className={`${INPUT_CLS} resize-none`} placeholder="예: 비교표에 공통 의견과 출처를 모두 포함" />
-            <p className="mt-1 text-xs text-bb-text2">지금은 제목만으로 만들 수 있습니다. 팀원에게 완료 확인을 요청하기 전에는 결과 기준을 적어주세요.</p>
+            <p className="mt-1 text-xs text-bb-text2">팀원이 결과를 확인할 때 참고할 메모입니다. 비워 두어도 확인 요청과 피드백을 주고받을 수 있습니다.</p>
           </div>
           <details className="rounded-xl border border-bb-border p-4">
             <summary className="text-sm font-medium text-bb-text">추가 설정 (선택)

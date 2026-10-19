@@ -93,9 +93,21 @@ class TaskWorkflowServiceTest {
         var requested=workflow.request(project.getId(),task.getId(),user);
         assertEquals("IN_PROGRESS",requested.status());assertNotNull(requested.completionRequestedAt());
     }
-    @Test void requiredFileAndCriteriaAreCheckedBeforeRequest() {
-        task.setCompletionCriteria(" ");assertThrows(ResponseStatusException.class,()->workflow.request(project.getId(),task.getId(),user));
-        task.setCompletionCriteria("비교표");task.setAttachmentRequired(true);
+    @Test void optionalCriteriaAllowsRequestNotificationAndApproval() {
+        for (String criteria : new String[]{null, "", " "}) {
+            task.setCompletionCriteria(criteria);task.setStatus("TODO");
+            task.setCompletionRequestedAt(null);task.setCompletionRequestedBy(null);
+            task.setCompletionApprovedAt(null);task.setCompletionApprovedBy(null);
+            assertTrue(workflow.view(project.getId(),task.getId(),user).canRequest());
+            assertNotNull(workflow.request(project.getId(),task.getId(),user).completionRequestedAt());
+            assertTrue(workflow.view(project.getId(),task.getId(),leader).canApprove());
+            assertEquals("DONE",workflow.decide(project.getId(),task.getId(),true,true,null,leader).status());
+        }
+        verify(notifications,times(3)).completionRequested(eq(task),eq(user),anyList());
+    }
+    @Test void requiredFileIsStillCheckedWithoutCriteria() {
+        task.setCompletionCriteria(null);task.setAttachmentRequired(true);
+        assertFalse(workflow.view(project.getId(),task.getId(),user).canRequest());
         assertThrows(ResponseStatusException.class,()->workflow.request(project.getId(),task.getId(),user));
         when(files.existsByTask(task)).thenReturn(true);assertNotNull(workflow.request(project.getId(),task.getId(),user).completionRequestedAt());
     }
