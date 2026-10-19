@@ -25,6 +25,7 @@ public class ListDeliverablesTool implements ProjectTool {
     @Override public String label() { return "제출물과 요구사항 조회"; }
     @Override public String description() {
         return "제출물을 기한이 빠른 순으로 돌려준다. 제출물마다 요구사항과, 요구사항이 충족됐다고 확인됐는지(met), 진행 단계(stage)가 들어 있다. "
+                + "required가 true인 요구사항은 꼭 지켜야 하는 것(필수), false는 권장이다. 권장을 필수라고 쓰지 않는다. "
                 + "stage의 값: " + Arrays.stream(DeliverableStage.values())
                         .map(s -> s.name() + "(" + s.meaning() + ")").collect(Collectors.joining(", "));
     }
