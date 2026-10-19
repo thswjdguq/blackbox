@@ -11,7 +11,7 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '7,37 * * * *'   # 정각·30분은 GitHub 일정이 몰려 늦거나 빠진다. 피해서 7분·37분
   workflow_dispatch:
     inputs:
       branch:
