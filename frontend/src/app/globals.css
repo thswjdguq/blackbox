@@ -86,3 +86,10 @@ body {
   color: rgb(var(--bb-primary));
   font-weight: 600;
 }
+
+/* AI 도우미 창이 열려 있으면 큰 화면에서 본문을 창 폭만큼 줄인다. 그보다 작으면 창이 본문 위를 덮는다 */
+@media (min-width: 1280px) {
+  html[data-agent-open] main {
+    margin-right: 420px;
+  }
+}
