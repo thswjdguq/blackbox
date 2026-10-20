@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { DayPicker } from "react-day-picker";
 import { format, parse, isValid } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -27,6 +28,8 @@ export default function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0, maxHeight: 0 });
   const yearRef  = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
   const dayRef   = useRef<HTMLInputElement>(null);
@@ -60,13 +63,58 @@ export default function DatePicker({
   // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)
+          && !popoverRef.current?.contains(e.target as Node)) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const updatePosition = () => {
+      const anchor = containerRef.current?.getBoundingClientRect();
+      const popup = popoverRef.current;
+      if (!anchor || !popup) return;
+      const viewport = window.visualViewport;
+      const topEdge = (viewport?.offsetTop ?? 0) + 8;
+      const leftEdge = (viewport?.offsetLeft ?? 0) + 8;
+      const bottomEdge = (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 8;
+      const rightEdge = (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth) - 8;
+      const below = Math.max(0, bottomEdge - anchor.bottom - 4);
+      const above = Math.max(0, anchor.top - topEdge - 4);
+      const height = popup.scrollHeight;
+      const openAbove = below < height && above > below;
+      const maxHeight = Math.max(1, openAbove ? above : below);
+      const visibleHeight = Math.min(height, maxHeight);
+      setPosition({
+        top: Math.max(topEdge, Math.min(openAbove ? anchor.top - 4 - visibleHeight : anchor.bottom + 4, bottomEdge - visibleHeight)),
+        left: Math.max(leftEdge, Math.min(anchor.left, rightEdge - popup.getBoundingClientRect().width)),
+        maxHeight,
+      });
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.stopPropagation(); setOpen(false); }
+    };
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    if (popoverRef.current) observer.observe(popoverRef.current);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [open]);
 
   const handleDaySelect = (day: Date | undefined) => {
     if (day && isValid(day)) {
@@ -139,6 +187,8 @@ export default function DatePicker({
         {/* Calendar icon button */}
         <button
           type="button"
+          aria-label="날짜 선택 달력"
+          aria-expanded={open}
           onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
           className="ml-auto text-bb-text2 hover:text-bb-primary transition-colors"
         >
@@ -147,9 +197,14 @@ export default function DatePicker({
       </div>
 
       {/* Calendar Popover */}
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute top-full left-0 mt-1 z-50
+          ref={popoverRef}
+          role="dialog"
+          aria-label="날짜 선택"
+          style={{ top: position.top, left: position.left, maxHeight: position.maxHeight || undefined,
+            maxWidth: "calc(100vw - 16px)", visibility: position.maxHeight ? "visible" : "hidden" }}
+          className="fixed z-[100] overflow-auto overscroll-contain
                      bg-bb-surface border border-bb-border rounded-xl shadow-xl p-3"
           onClick={(e) => e.stopPropagation()}
         >
@@ -163,7 +218,7 @@ export default function DatePicker({
             toYear={2035}
             showOutsideDays
           />
-        </div>
+        </div>, document.body
       )}
     </div>
   );
