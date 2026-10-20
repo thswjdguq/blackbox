@@ -45,7 +45,7 @@ public class OpenAiService extends AbstractLlmClient {
     public Map<?, ?> agentChat(List<Map<String, Object>> messages, List<Map<String, Object>> tools, Duration timeout) {
         if (!isConfigured()) throw new IllegalStateException("OpenAI 연결이 설정되지 않았습니다.");
         Map<String,Object> body = new LinkedHashMap<>();
-        body.put("model",model); body.put("messages",messages); body.put("max_tokens",2000);
+        body.put("model",model); body.put("messages",messages); body.put("max_tokens",8000);
         if (!tools.isEmpty()) { body.put("tools",tools); body.put("tool_choice","auto"); body.put("parallel_tool_calls",false); }
         return webClient.post().uri("/v1/chat/completions").header("Authorization","Bearer "+apiKey)
                 .bodyValue(body).retrieve().bodyToMono(Map.class).block(timeout);
