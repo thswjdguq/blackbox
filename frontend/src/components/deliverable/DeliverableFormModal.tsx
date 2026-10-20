@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { apiError } from "@/lib/apiError";
+import DatePicker from "@/components/DatePicker";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
 
 export interface OwnerCandidate {
@@ -100,10 +101,10 @@ export default function DeliverableFormModal({
           />
         </label>
 
-        <label className="block text-sm text-bb-text">
-          제출 기한 *
-          <input type="date" required min="0001-01-01" max="9999-12-31" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={FIELD} />
-        </label>
+        <div role="group" aria-labelledby="deliverable-due-date-label" className="text-sm text-bb-text">
+          <p id="deliverable-due-date-label">제출 기한 *</p>
+          <DatePicker required value={dueDate} onChange={setDueDate} className="mt-1.5" />
+        </div>
 
         <label className="block text-sm text-bb-text">
           제출 담당자
