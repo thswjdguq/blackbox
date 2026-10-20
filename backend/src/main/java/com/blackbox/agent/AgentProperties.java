@@ -22,8 +22,8 @@ public class AgentProperties {
     @NotNull private ZoneId zone = ZoneId.of("Asia/Seoul");
     @Min(1) private int toolListLimit = 50;
     @Min(1) private int proposalListLimit = 50;
-    @NotNull private Duration runTimeLimit = Duration.ofSeconds(120);
-    @NotNull private Duration modelRequestTimeout = Duration.ofSeconds(30);
+    @NotNull private Duration runTimeLimit = Duration.ofSeconds(240);
+    @NotNull private Duration modelRequestTimeout = Duration.ofSeconds(90);
     @Min(1) private int modelRequestAttempts = 1;
     @Min(1) private int maxToolCalls = 12;
     @Min(1) private int runsPerHour = 20;
