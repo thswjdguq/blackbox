@@ -13,6 +13,7 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  required?: boolean;
 }
 
 /**
@@ -25,6 +26,7 @@ export default function DatePicker({
   onChange,
   placeholder = "날짜 선택",
   className = "",
+  required = false,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,6 +43,15 @@ export default function DatePicker({
   const [year,  setYear]  = useState(value ? value.slice(0, 4) : "");
   const [month, setMonth] = useState(value ? value.slice(5, 7) : "");
   const [day,   setDay]   = useState(value ? value.slice(8, 10) : "");
+
+  useEffect(() => {
+    const candidate = `${year}-${month}-${day}`;
+    const date = parse(candidate, "yyyy-MM-dd", new Date());
+    const empty = !year && !month && !day;
+    const valid = /^\d{4}-\d{2}-\d{2}$/.test(candidate)
+      && Number(year) >= 1 && isValid(date) && format(date, "yyyy-MM-dd") === candidate;
+    yearRef.current?.setCustomValidity(empty && !required || valid ? "" : "올바른 날짜를 모두 입력해 주세요.");
+  }, [year, month, day, required]);
 
   // Sync parts → parent when all 3 are valid
   const commitDate = (y: string, m: string, d: string) => {
@@ -160,6 +171,9 @@ export default function DatePicker({
       >
         <input
           ref={yearRef}
+          aria-label="연도"
+          required={required}
+          inputMode="numeric"
           value={year}
           onChange={handleYearChange}
           placeholder="YYYY"
@@ -169,6 +183,9 @@ export default function DatePicker({
         <span className="text-bb-text2 text-sm select-none">-</span>
         <input
           ref={monthRef}
+          aria-label="월"
+          required={required}
+          inputMode="numeric"
           value={month}
           onChange={handleMonthChange}
           placeholder="MM"
@@ -178,6 +195,9 @@ export default function DatePicker({
         <span className="text-bb-text2 text-sm select-none">-</span>
         <input
           ref={dayRef}
+          aria-label="일"
+          required={required}
+          inputMode="numeric"
           value={day}
           onChange={handleDayChange}
           placeholder="DD"
