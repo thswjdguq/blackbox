@@ -7,4 +7,3 @@
 - 계약: ../contracts/K-EXPO-07-optional-deadline-time.md.
 - 완료 기준: 날짜만 저장 호환, 시간 저장·수정·해제, HH:mm 검증, 한국 시간 기준 마감 판단, AI 제안 수정·채택에서 보존, 실제 로컬 DB/API 확인. UI 클릭 검증과 API 검증을 분리한다.
 - 검사: 관련 JUnit, 프론트 타입·운영 빌드·마감 경계 검사, 별도 로컬 DB migration·인증 API 확인.
-
