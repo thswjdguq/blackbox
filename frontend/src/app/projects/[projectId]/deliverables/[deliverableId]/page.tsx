@@ -1,5 +1,7 @@
 "use client";
 
+import { deliverableDeadline } from "@/lib/due";
+
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -417,7 +419,7 @@ export default function DeliverableDetailPage() {
                 <div>
                   <dt className="text-xs text-bb-text2">제출 기한</dt>
                   <dd className="mt-0.5 text-bb-text">
-                    {deliverable.dueDate}{" "}
+                    {deliverableDeadline(deliverable)}{" "}
                     <span className={`text-xs font-medium ${deliverableDue(deliverable).cls}`}>{deliverableDue(deliverable).label}</span>
                   </dd>
                 </div>

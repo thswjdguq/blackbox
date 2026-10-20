@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { apiError } from "@/lib/apiError";
 import DatePicker from "@/components/DatePicker";
+import OptionalDeadlineTime from "@/components/OptionalDeadlineTime";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
 
 export interface OwnerCandidate {
@@ -30,6 +31,7 @@ export default function DeliverableFormModal({
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
+  const [dueTime, setDueTime] = useState<string | null>(initial?.dueTime ?? null);
   const [ownerId, setOwnerId] = useState(initial?.ownerId ?? "");
   const [submissionMethod, setSubmissionMethod] = useState(initial?.submissionMethod ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -52,6 +54,7 @@ export default function DeliverableFormModal({
       await onSave({
         title: title.trim(),
         dueDate,
+        dueTime,
         description,
         submissionMethod,
         ownerId: ownerId || null,
@@ -104,6 +107,7 @@ export default function DeliverableFormModal({
         <div role="group" aria-labelledby="deliverable-due-date-label" className="text-sm text-bb-text">
           <p id="deliverable-due-date-label">제출 기한 *</p>
           <DatePicker required value={dueDate} onChange={setDueDate} className="mt-1.5" />
+          <OptionalDeadlineTime value={dueTime} onChange={setDueTime} />
         </div>
 
         <label className="block text-sm text-bb-text">

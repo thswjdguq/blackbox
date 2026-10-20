@@ -95,7 +95,7 @@ export default function ProposalCard({
 
   const counts =
     p.kind === "DELIVERABLE_PLAN"
-      ? `요구사항 ${p.content.requirements.length} · 업무 ${p.content.tasks.length} · ${p.content.deliverable.dueDate ? `기한 ${shortDate(p.content.deliverable.dueDate)}` : "기한 없음"}`
+      ? `요구사항 ${p.content.requirements.length} · 업무 ${p.content.tasks.length} · ${p.content.deliverable.dueDate ? `기한 ${shortDate(p.content.deliverable.dueDate)} · ${p.content.deliverable.dueTime ?? "시간 미지정"}` : "기한 없음"}`
       : p.kind === "TASKS"
         ? `업무 ${p.content.tasks.length} · ${stageTitle(p.content.deliverableId)}`
         : "";
@@ -218,7 +218,7 @@ export default function ProposalCard({
             <>
               <dl className="grid grid-cols-[4rem_1fr] gap-x-2 gap-y-1 text-xs">
                 <dt className="text-bb-text2">최종 제출물</dt><dd className="text-bb-text"><Value text={p.content.deliverable.title} /></dd>
-                <dt className="text-bb-text2">기한</dt><dd className="text-bb-text">{p.content.deliverable.dueDate ?? <span className="text-amber-400">없음</span>}</dd>
+                <dt className="text-bb-text2">기한</dt><dd className="text-bb-text">{p.content.deliverable.dueDate ?? <span className="text-amber-400">없음</span>} · {p.content.deliverable.dueTime ? `${p.content.deliverable.dueTime} (한국 시간)` : "시간 미지정"}</dd>
                 <dt className="text-bb-text2">제출</dt><dd className="text-bb-text"><Value text={p.content.deliverable.submissionMethod} /></dd>
                 <dt className="text-bb-text2">설명</dt><dd className="text-bb-text whitespace-pre-wrap"><Value text={p.content.deliverable.description} /></dd>
               </dl>

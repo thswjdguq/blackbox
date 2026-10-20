@@ -607,10 +607,10 @@ export default function ProjectHomePage() {
 
           </div></details>
           {/* ── 팀플 종료 — 활동 보고서 ─────────────────────────────────── */}
-          <div className="bg-gradient-to-br from-indigo-950/60 to-bb-surface border border-indigo-700/30 rounded-2xl p-6">
+          <div className="bg-bb-surface border border-bb-border rounded-2xl p-6">
             <div className="flex items-start gap-4 flex-wrap">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
-                <Archive size={18} className="text-indigo-400" />
+              <div className="w-10 h-10 rounded-xl bg-bb-surface2 flex items-center justify-center shrink-0">
+                <Archive size={18} className="text-bb-text2" />
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-bb-text mb-1">팀 활동 내보내기</h2>
@@ -627,7 +627,7 @@ export default function ProjectHomePage() {
                   ].map((tag) => (
                     <li
                       key={tag}
-                      className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-bb-bg text-bb-text2 border border-bb-border"
                     >
                       {tag}
                     </li>
@@ -638,7 +638,7 @@ export default function ProjectHomePage() {
                 onClick={downloadEvidencePackage}
                 disabled={downloading}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl
-                           bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60
+                           bg-blue-700 hover:bg-blue-800 disabled:opacity-60
                            text-white text-sm font-semibold transition-colors shrink-0"
               >
                 {downloading ? (

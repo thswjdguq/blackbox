@@ -27,6 +27,7 @@ export interface Deliverable {
   title: string;
   description: string | null;
   dueDate: string;             // "YYYY-MM-DD" — due_at 으로 임의 변경 금지
+  dueTime?: string | null;     // HH:mm, Asia/Seoul. null/생략 = 시간 미지정
   submissionMethod: string | null;
   ownerId: string | null;
   ownerName: string | null;
@@ -39,6 +40,7 @@ export interface Deliverable {
 export interface SaveDeliverablePayload {
   title: string;
   dueDate: string;
+  dueTime?: string | null;
   description: string;
   submissionMethod: string;
   ownerId: string | null;

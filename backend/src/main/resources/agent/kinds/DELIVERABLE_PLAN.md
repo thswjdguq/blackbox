@@ -6,6 +6,7 @@
 
 - deliverable.title: 필수, 255자까지. description: 5000자까지. submissionMethod: 500자까지
 - deliverable.dueDate: 자료에 기한이 없으면 null로 둔다. 추측하지 않는다
+- deliverable.dueTime: 안내문에 명시된 마감 시간을 한국 시간(Asia/Seoul)의 HH:mm으로 넣는다. 예: 오후 6시 → "18:00". 시간이 없거나 불명확하면 null, 23:59 등으로 추측하지 않는다. 날짜가 없으면 시간도 null로 둔다.
 - requirements[].key: 이 카드 안에서만 쓰는 이름표다. 서로 달라야 한다
 - requirements[].content: 필수, 1000자까지. 요구사항 하나에 한 가지만 적는다
 - requirements[].required: 꼭 지켜야 하면 true, 권장이면 false

@@ -91,9 +91,9 @@ public class DeliverablePlanKind implements ProposalKind {
     }
 
     record Content(Deliverable deliverable, List<Requirement> requirements, List<Task> tasks) {}
-    record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod) {
+    record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod, String dueTime) {
         DeliverableDtos.SaveRequest toRequest() {
-            return new DeliverableDtos.SaveRequest(title, description, dueDate, submissionMethod, null);
+            return new DeliverableDtos.SaveRequest(title, description, dueDate, submissionMethod, null, dueTime);
         }
     }
     record Requirement(String key, String content, boolean required) {}

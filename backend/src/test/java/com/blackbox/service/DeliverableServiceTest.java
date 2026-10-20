@@ -43,6 +43,17 @@ class DeliverableServiceTest {
         assertEquals(2L, service.countRequiredRequirements(delivery));
         verify(requirements, never()).findByDeliverableOrderByCreatedAtAsc(any());
     }
+    @Test void savesAndClearsOptionalDeadlineTime() {
+        when(deliveries.save(any())).thenAnswer(i -> i.getArgument(0));
+        var timed = service.save(project.getId(), delivery.getId(),
+                new SaveRequest("보고서", null, LocalDate.of(2026, 11, 5), null, null, "18:00"), user);
+        assertEquals("18:00", timed.dueTime());
+        assertEquals(java.time.LocalTime.of(18, 0), delivery.getDueTime());
+        var dateOnly = service.save(project.getId(), delivery.getId(),
+                new SaveRequest("보고서", null, LocalDate.of(2026, 11, 5), null, null), user);
+        assertNull(dateOnly.dueTime());
+        assertNull(delivery.getDueTime());
+    }
     @Test void countIsZeroWhenNoRequiredRequirement() {
         when(requirements.countByDeliverableAndRequiredTrue(delivery)).thenReturn(0L);
         assertEquals(0L, service.countRequiredRequirements(delivery));

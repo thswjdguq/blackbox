@@ -8,6 +8,7 @@ import { apiError } from "@/lib/apiError";
 import { fieldName, fieldProblems, problemSummary } from "@/lib/agent/problems";
 import { useAgentStore } from "@/lib/store/agentStore";
 import type { PlanContent, Proposal, TasksContent } from "@/types/agent";
+import OptionalDeadlineTime from "@/components/OptionalDeadlineTime";
 
 const INPUT = "w-full rounded-md border border-bb-border bg-bb-surface px-2 py-1.5 text-xs text-bb-text focus:border-bb-primary focus:outline-none";
 const ROW_BTN = "inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-[11px] text-bb-text2 hover:bg-bb-surface2 hover:text-bb-text md:min-h-0 md:py-1";
@@ -102,6 +103,7 @@ export default function ProposalEditor({
   /** 서버에 보내기 전에 빈 필수 칸만 막는다. 나머지 규칙은 서버의 400을 칸에 표시한다 */
   const localProblems = (): Record<string, string> => {
     const out: Record<string, string> = {};
+    if (plan?.deliverable.dueTime != null && !/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(plan.deliverable.dueTime)) out["deliverable.dueTime"] = "마감 시간을 입력하거나 시간 삭제를 눌러 주세요";
     if (plan && !plan.deliverable.title.trim()) out["deliverable.title"] = "최종 제출물 제목을 입력해주세요";
     plan?.requirements.forEach((r, i) => { if (!r.content.trim()) out[`requirements[${i}].content`] = "요구사항 내용을 입력해주세요"; });
     tasks.forEach((t, i) => { if (!t.title.trim()) out[`tasks[${i}].title`] = "업무 제목을 입력해주세요"; });
@@ -174,6 +176,9 @@ export default function ProposalEditor({
               onChange={(e) => setPlan((c) => ({ ...c, deliverable: { ...c.deliverable, dueDate: e.target.value || null } }))} />
             <Problem name="deliverable.dueDate" problems={problems} />
           </label>
+          <OptionalDeadlineTime name="deliverable.dueTime" value={plan.deliverable.dueTime}
+            onChange={dueTime => setPlan(c => ({ ...c, deliverable: { ...c.deliverable, dueTime } }))} />
+          <Problem name="deliverable.dueTime" problems={problems} />
           <label className="block">
             <span className="text-bb-text2">제출 방법</span>
             <input name="deliverable.submissionMethod" value={plan.deliverable.submissionMethod ?? ""} maxLength={500} className={INPUT}

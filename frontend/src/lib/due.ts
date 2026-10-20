@@ -47,10 +47,21 @@ export const DUE_TEXT: Record<DueTone, string> = {
 };
 
 /** 최종 제출물의 기한 표시. 확정·제출을 기록했으면 기한이 지나도 "초과"가 아니라 그 상태를 보인다 */
-export function deliverableDue(d: { dueDate: string; status?: string | null }): { label: string; cls: string } {
+export function deliverableDue(d: { dueDate: string; dueTime?: string | null; status?: string | null }, now: Date = new Date()): { label: string; cls: string } {
   if (d.status === "SUBMITTED") return { label: "제출 기록됨", cls: "text-bb-text2" };
   if (d.status === "CONFIRMED") return { label: "확정됨", cls: "text-bb-text2" };
-  return { label: dueLabel(d.dueDate), cls: DUE_TEXT[dueTone(d.dueDate)] };
+  if (d.dueTime) {
+    const deadline = new Date(`${d.dueDate}T${d.dueTime}:00+09:00`);
+    if (now.getTime() >= deadline.getTime()) return { label: "기한 지남", cls: DUE_TEXT.overdue };
+    const koreanDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    const koreanNow = parseLocalDate(koreanDate);
+    return { label: dueLabel(d.dueDate, koreanNow), cls: DUE_TEXT[dueTone(d.dueDate, 3, koreanNow)] };
+  }
+  return { label: dueLabel(d.dueDate, now), cls: DUE_TEXT[dueTone(d.dueDate, 3, now)] };
+}
+
+export function deliverableDeadline(d: { dueDate: string; dueTime?: string | null }): string {
+  return `${shortDate(d.dueDate)} · ${d.dueTime ? `${d.dueTime} (한국 시간)` : "시간 미지정"}`;
 }
 
 export const DUE_BADGE: Record<DueTone, string> = {

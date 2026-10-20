@@ -216,7 +216,7 @@ export default function AgentDock() {
             <option value="">{status.stages.some(s => canBreakDown(s.stage)) ? "최종 제출물을 선택하세요" : "업무를 나눌 수 있는 최종 제출물이 없습니다"}</option>
             {status.stages.map((s) => (
               <option key={s.deliverableId} value={s.deliverableId} disabled={!canBreakDown(s.stage)}>
-                {s.title} · 기한 {shortDate(s.dueDate)}{breakDownUnavailableReason(s.stage) ? ` (${breakDownUnavailableReason(s.stage)})` : ""}
+                {s.title} · 기한 {shortDate(s.dueDate)} · {s.dueTime ?? "시간 미지정"}{breakDownUnavailableReason(s.stage) ? ` (${breakDownUnavailableReason(s.stage)})` : ""}
               </option>
             ))}
           </select>
@@ -242,7 +242,7 @@ export default function AgentDock() {
           <h3 id="agent-suggest" className="text-xs font-semibold text-bb-text2">지금 단계에 맞는 도움</h3>
           <div className="mt-2 rounded-lg border border-bb-border bg-bb-bg p-3">
             {suggestion.deliverable && (
-              <p className="text-sm text-bb-text">{suggestion.deliverable.title} · 기한 {shortDate(suggestion.deliverable.dueDate)}</p>
+              <p className="text-sm text-bb-text">{suggestion.deliverable.title} · 기한 {shortDate(suggestion.deliverable.dueDate)} · {suggestion.deliverable.dueTime ?? "시간 미지정"}</p>
             )}
             <p className="mt-0.5 text-xs text-bb-text2">{suggestion.sentence}</p>
             <button

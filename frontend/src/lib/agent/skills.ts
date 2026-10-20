@@ -36,7 +36,7 @@ function allowed(status: AgentStatus, skill: string) {
 
 export interface Suggestion {
   /** 최종 제출물이 없으면 null */
-  deliverable: { id: string; title: string; dueDate: string } | null;
+  deliverable: { id: string; title: string; dueDate: string; dueTime?: string | null } | null;
   sentence: string;
   skill: string;
   input: object;
@@ -62,7 +62,7 @@ export function suggestFor(status: AgentStatus): Suggestion | null {
       ? { deliverable: null, sentence: "아직 최종 제출물이 없습니다", skill: "PLAN_FROM_BRIEF", input: {} }
       : null;
   }
-  const deliverable = { id: first.deliverableId, title: first.title, dueDate: first.dueDate };
+  const deliverable = { id: first.deliverableId, title: first.title, dueDate: first.dueDate, dueTime: first.dueTime };
   const pick = (skill: string, sentence: string, input: object): Suggestion | null =>
     allowed(status, skill) ? { deliverable, sentence, skill, input } : null;
   switch (first.stage) {

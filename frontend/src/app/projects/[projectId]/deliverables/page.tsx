@@ -1,5 +1,7 @@
 "use client";
 
+import { deliverableDeadline } from "@/lib/due";
+
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -238,7 +240,7 @@ export default function DeliverablesPage() {
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-bb-text2">
                         <span className="flex items-center gap-1">
                           <CalendarDays size={12} />
-                          제출일 {shortDate(d.dueDate)}
+                          제출일 {deliverableDeadline(d)}
                           <span className={`font-medium ${due.cls}`}>· {due.label}</span>
                         </span>
                         <span className="flex items-center gap-1">
