@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
 import PageProgress from "@/components/PageProgress";
+import AgentDock from "@/components/agent/AgentDock";
 
 export const metadata: Metadata = {
   title: "Team Blackbox",
@@ -29,7 +30,11 @@ export default function RootLayout({
       </head>
       <body className="bg-bb-bg text-bb-text">
         <PageProgress />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          {/* 화면을 옮겨도 닫히지 않게 한 번만 둔다(AI 도우미, K-30) */}
+          <AgentDock />
+        </AuthProvider>
       </body>
     </html>
   );
