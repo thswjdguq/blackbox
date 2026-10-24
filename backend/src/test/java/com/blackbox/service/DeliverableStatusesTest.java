@@ -1,6 +1,7 @@
 package com.blackbox.service;
 
 import com.blackbox.entity.*;
+import com.blackbox.repository.DeliverableConfirmationCancellationRepository;
 import com.blackbox.repository.DeliverableConfirmationRepository;
 import com.blackbox.repository.DeliverableSubmissionRepository;
 import com.blackbox.service.DeliverableStatuses.Status;
@@ -37,6 +38,7 @@ class DeliverableStatusesTest {
     @Autowired DeliverableStatusReader reader;
     @Autowired DeliverableConfirmationRepository confirmations;
     @Autowired DeliverableSubmissionRepository submissions;
+    @Autowired DeliverableConfirmationCancellationRepository cancellations;
 
     @Test void statusFollowsTheTableOneByOneAndForTheWholeProject() {
         User leader = user(em, "leader");
@@ -49,6 +51,11 @@ class DeliverableStatusesTest {
         expected.put(with(deliverable(em, project, "승인"), leader, "APPROVED"), new Status("IN_REVIEW", "APPROVED"));
         expected.put(with(deliverable(em, project, "수정 요청 뒤 새 회차"), leader, "CHANGES_REQUESTED", null), new Status("IN_REVIEW", null));
         expected.put(with(deliverable(em, project, "승인 뒤 수정 요청"), leader, "APPROVED", "CHANGES_REQUESTED"), new Status("DRAFT", "CHANGES_REQUESTED"));
+        // 확정을 취소한 회차가 최신이면 보완 중이다. 결정은 승인 그대로 남는다(K-20 0.3)
+        expected.put(cancel(with(deliverable(em, project, "확정 취소"), leader, "APPROVED"), leader), new Status("DRAFT", "APPROVED"));
+        Deliverable reopened = cancel(with(deliverable(em, project, "확정 취소 뒤 새 회차"), leader, "APPROVED"), leader);
+        round(em, reopened, 2, leader, null);
+        expected.put(reopened, new Status("IN_REVIEW", null));
         Deliverable confirmed = with(deliverable(em, project, "확정"), leader, "CHANGES_REQUESTED", "APPROVED");
         Deliverable submitted = with(deliverable(em, project, "제출 기록"), leader, "APPROVED");
         // 다른 프로젝트의 제출물은 그 프로젝트로 물었을 때만 나온다
@@ -65,7 +72,7 @@ class DeliverableStatusesTest {
         var statistics = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
         statistics.clear();
         assertEquals(byId, statuses.of(project, expected.keySet()));
-        assertEquals(3, statistics.getPrepareStatementCount(), "제출물 수만큼 조회가 늘면 안 된다");
+        assertEquals(4, statistics.getPrepareStatementCount(), "제출물 수만큼 조회가 늘면 안 된다");
         assertEquals(Map.of(foreign.getId(), new Status("CONFIRMED", "APPROVED")), statuses.of(other, List.of(foreign)));
     }
 
@@ -108,8 +115,17 @@ class DeliverableStatusesTest {
     }
 
     private void confirm(Deliverable deliverable, User leader) {
-        ReviewRound approved = em.createQuery("select r from ReviewRound r where r.deliverable = :d order by r.roundNo desc", ReviewRound.class)
+        confirmations.save(DeliverableConfirmation.of(latest(deliverable), leader, NOW));
+    }
+
+    /** 최신 회차로 확정했다가 취소한 기록을 남긴다 */
+    private Deliverable cancel(Deliverable deliverable, User leader) {
+        cancellations.save(DeliverableConfirmationCancellation.of(DeliverableConfirmation.of(latest(deliverable), leader, NOW), leader, "오타", NOW));
+        return deliverable;
+    }
+
+    private ReviewRound latest(Deliverable deliverable) {
+        return em.createQuery("select r from ReviewRound r where r.deliverable = :d order by r.roundNo desc", ReviewRound.class)
                 .setParameter("d", deliverable).setMaxResults(1).getSingleResult();
-        confirmations.save(DeliverableConfirmation.of(approved, leader, NOW));
     }
 }
