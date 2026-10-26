@@ -12,6 +12,7 @@ for(const file of files){
   assert.equal(actual,expected,`이미 적용된 main migration 변경: ${file}`);
 }
 const versions=fs.readdirSync(path.join(root,prefix)).filter(f=>/^V.*\.sql$/.test(f)).map(f=>f.split('__')[0].slice(1).replaceAll('_','.'));
+assert.ok(versions.every(v=>/^[1-9][0-9]*$/.test(v)),'main 통합본에는 정수 migration 번호만 허용');
 assert.equal(new Set(versions).size,versions.length,'migration 번호 중복');
 assert.ok(!fs.existsSync(path.join(root,prefix,'V29__agent_proposals.sql')),'중복 AI 생성 SQL');
 console.log(`PASS: main V1~V25 ${files.length}개 파일 보존, ${versions.length}개 migration 번호 중복 없음`);

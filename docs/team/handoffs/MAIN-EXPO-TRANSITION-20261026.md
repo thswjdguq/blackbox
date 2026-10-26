@@ -16,17 +16,17 @@
 | V28 task_messages | V29 | 업무 대화, V27 뒤 적용 |
 | V30 user_notifications | V30 | 개인 알림 |
 | V31 task_assigned_notification | V31 | 배정 알림 |
-| V31_1 feedback_notifications | V31.1 | 피드백 알림 |
-| V31_2 user_university_affiliation | V31.2 | 학교·학과 |
-| V31_3 deliverable_optional_due_time | V31.3 | 마감 시간 |
-| 신규 | V31.4 | 기존 main DONE 업무 수정 호환 |
-| #133 | V32 예약 유지 | 확정 취소는 본 PR에 포함하지 않음 |
+| V31_1 feedback_notifications | V32 | 피드백 알림 |
+| V31_2 user_university_affiliation | V33 | 학교·학과 |
+| V31_3 deliverable_optional_due_time | V34 | 마감 시간 |
+| 신규 | V35 | 기존 main DONE 업무 수정 호환 |
+| #133 | V36으로 조정 필요(제안) | 확정 취소는 본 PR에 포함하지 않음 |
 
-2026-10-26 최신 main 및 열린 PR의 migration 경로 대조: #133 V32 예약 유지. 이 번호안은 A 검토와 병합 전 재확인이 필요하다. V26 이상인 다른 PR이 먼저 main에 병합되면 재배치·재검증한다.
+사용자 요청으로 expo에서 임시 사용한 소수 번호를 main에서는 사용하지 않는다. V26~V35 정수 연속 번호로 구성한다. #133은 현재 V32를 사용하므로 V36 또는 병합 당시 다음 번호로 조정해야 한다. #133 브랜치는 이 작업에서 변경하지 않았다. 이 번호안은 A 검토와 병합 전 재확인이 필요하다. 다른 migration PR이 먼저 main에 병합되면 재배치·재검증한다.
 
 ## 기존 완료 업무 호환
 - 기존 main의 승인 없는 DONE 업무는 그대로 보존한다. expo의 NOT VALID CHECK는 해당 행의 제목 수정까지 막을 수 있다.
-- 신규 V31.4에서 전환 검사 trigger로 바꾼다. 기존 DONE이며 승인 기록이 없던 행의 일반 수정은 허용한다. 승인자를 임의로 채우지 않는다.
+- 신규 V35에서 전환 검사 trigger로 바꾼다. 기존 DONE이며 승인 기록이 없던 행의 일반 수정은 허용한다. 승인자를 임의로 채우지 않는다.
 - 새 DONE 삽입, 진행 상태에서 승인 없이 DONE 전환, 승인된 DONE의 승인 기록 제거는 23514로 거절한다.
 - 기존 업무를 재개했다면 다시 DONE이 될 때 승인이 필요하다. 서비스의 권한·독립 확인자 검사는 바꾸지 않는다.
 

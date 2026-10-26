@@ -42,7 +42,7 @@ MIGRATION_DIR=backend/src/main/resources/db/migration
 MIGRATION_COUNT=$(ls "$MIGRATION_DIR"/V*__*.sql | wc -l | tr -d ' ')
 VERSIONS=$(ls "$MIGRATION_DIR"/V*__*.sql | sed -E 's/.*\/V([0-9]+([._][0-9]+)*)__.*/\1/; s/_/./g' | sort -V)
 LATEST_VERSION=$(printf '%s\n' "$VERSIONS" | tail -1)
-# 현재 통합의 호환 기준은 기존 main V25다. 소수 버전(31.1~31.4)도 Flyway 순서대로 비교한다.
+# 현재 통합의 호환 기준은 기존 main V25다. 신규 번호는 정수를 사용한다.
 PREV_VERSION=${BB_UPGRADE_FROM:-25}
 printf '%s\n' "$VERSIONS" | grep -Fxq "$PREV_VERSION" || { echo '업그레이드 기준 버전을 찾지 못했습니다'; exit 1; }
 
