@@ -33,6 +33,8 @@ export interface Task {
   attachmentRequired: boolean;
   completionRequestedAt: string | null;
   completionRequestedByName: string | null;
+  /** 요청자 ID. 서버가 아직 주지 않으면 없음(K-58 후속) */
+  completionRequestedBy?: string | null;
   completionApprovedAt: string | null;
   completionApprovedByName: string | null;
   completionRejectionReason: string | null;

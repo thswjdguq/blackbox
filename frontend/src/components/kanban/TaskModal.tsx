@@ -279,7 +279,8 @@ export default function TaskModal({
           <div ref={completionRef} tabIndex={-1} role="group" aria-label="결과 확인" className="scroll-mt-4">
           <TaskCompletionPanel task={task} disabled={readOnly || dirty || submitting || resourceBusy} refreshKey={filesRevision}
             onSnapshot={updated => { if (!dirty && !resourceBusy && !submitting && JSON.stringify(updated) !== JSON.stringify(task)) onWorkflowChanged?.(updated); }}
-            onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} onDraftChange={setCompletionDirty} />
+            onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} onDraftChange={setCompletionDirty}
+            onAdjustAssignees={!workOnly && !readOnly && !locked ? () => setTab("info") : undefined} />
           </div>
           <div ref={discussionRef} tabIndex={-1} role="group" aria-label="업무 대화와 피드백" className="scroll-mt-4">
           <TaskDiscussion task={task} members={members} files={discussionFiles} readOnly={readOnly} focusMessageId={focusMessageId} onDraftChange={setDiscussionDirty} onBusy={setResourceBusy} />

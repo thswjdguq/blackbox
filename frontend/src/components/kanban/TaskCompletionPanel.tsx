@@ -5,10 +5,15 @@ import { apiError } from "@/lib/apiError";
 import type { Task } from "@/types/task";
 import { useMyRole } from "@/hooks/useMyRole";
 import { sessionGeneration } from "@/lib/sessionCache";
+import { getMembers } from "@/lib/api/member";
+import type { ProjectMember } from "@/types/member";
+import { eligibleReviewers } from "@/lib/reviewers";
 
 interface Completion { task: Task; checks: { code: string; label: string; passed: boolean }[]; canRequest: boolean; canApprove: boolean; canReview: boolean; canCancel?: boolean }
-export default function TaskCompletionPanel({ task: initialTask, disabled, onChanged, onSnapshot, onBusy, onDraftChange, refreshKey = 0 }: {
+export default function TaskCompletionPanel({ task: initialTask, disabled, onChanged, onSnapshot, onBusy, onDraftChange, refreshKey = 0, onAdjustAssignees }: {
   task: Task; disabled: boolean; onChanged: (task: Task) => void; onSnapshot?: (task: Task) => void; onBusy: (busy: boolean) => void; onDraftChange?: (dirty: boolean) => void; refreshKey?: number;
+  /** 확인할 팀원이 없을 때 담당자를 고치러 가는 길. 없으면 버튼을 숨긴다 */
+  onAdjustAssignees?: () => void;
 }) {
   const path = `/projects/${initialTask.projectId}/tasks/${initialTask.id}`;
   const role = useMyRole(initialTask.projectId);
@@ -22,6 +27,17 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
   const mutationPending = useRef(false);
   const alive = useRef(true);
   useEffect(() => { onDraftChange?.(!!reason.trim() || !!cancelReason.trim()); }, [reason, cancelReason, onDraftChange]);
+  // 확인해 줄 수 있는 팀원 이름을 보여 주려고 팀 구성과 내 ID를 한 번 불러온다. 실패하면 서버의 조건 목록만 보여 준다
+  // 계정이 바뀐 뒤 도착한 응답은 버리고, 그려 둔 값도 세대가 다르면 쓰지 않는다
+  const [team, setTeam] = useState<{ members: ProjectMember[]; me: string; generation: number } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const generation = sessionGeneration();
+    Promise.all([getMembers(initialTask.projectId), api.get<{ id: string }>("/auth/profile")])
+      .then(([m, p]) => { if (live && generation === sessionGeneration()) setTeam({ members: m.data, me: p.data.id, generation }); })
+      .catch(() => { if (live && generation === sessionGeneration()) setTeam(null); });
+    return () => { live = false; };
+  }, [initialTask.projectId]);
   const snapshot = useRef(onSnapshot); snapshot.current = onSnapshot;
   const sequence = useRef(0);
   const load = useCallback(async () => {
@@ -52,14 +68,19 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
     finally { mutationPending.current = false; if (alive.current && generation === sessionGeneration()) { setBusy(false); onBusy(false); } }
   };
   const pending = !!task.completionRequestedAt;
-  const missing = view?.checks.filter(c => !c.passed) ?? [];
+  const reviewers = team && team.generation === sessionGeneration() ? eligibleReviewers(task, team.members, team.me) : null;
+  const noReviewer = view?.checks.some(c => c.code === "REVIEWER" && !c.passed) ?? false;
+  // 확인할 팀원은 아래에서 이름과 해결 방법으로 따로 안내한다(팀 구성을 못 불러오면 조건 목록에 남긴다)
+  const missing = view?.checks.filter(c => !c.passed && !(c.code === "REVIEWER" && reviewers)) ?? [];
+  const names = (list: ProjectMember[]) => list.map(m => m.name).join(", ");
   return <section className="border border-bb-border rounded-xl bg-bb-bg p-4 space-y-3">
     <h3 className="font-semibold text-sm">{task.status === "DONE" ? "확인 완료" : pending ? "팀원 확인" : "결과 제출"}</h3>
     {error && <p role="alert" className="text-sm text-red-600">{error} <button type="button" onClick={load} className="underline">다시 확인</button></p>}
     {!view && !error && <p className="text-sm text-bb-text2">조건을 확인하는 중…</p>}
     {missing.length > 0 && <ul className="space-y-1 text-sm text-amber-700">{missing.map(c => <li key={c.code}>○ {c.label}</li>)}</ul>}
     {task.completionRejectionReason && <div className="rounded-lg border border-amber-500/30 p-3"><p className="text-xs font-semibold text-amber-700">보완할 내용</p><p className="text-sm whitespace-pre-wrap mt-1">{task.completionRejectionReason}</p></div>}
-    {pending && <p role="status" className="text-sm text-bb-text2">{task.completionRequestedByName}님이 결과 확인을 요청했습니다. 담당자와 요청자를 제외한 팀원 한 명이 확인하면 완료됩니다.</p>}
+    {pending && <p role="status" className="text-sm text-bb-text2">{task.completionRequestedByName}님이 결과 확인을 요청했습니다. {reviewers && reviewers.length > 0 ? <><b className="font-semibold text-bb-text">{names(reviewers)}</b> 중 한 명이 확인하면 완료됩니다.</> : "담당자와 요청자를 제외한 팀원 한 명이 확인하면 완료됩니다."}</p>}
+    {pending && view?.canReview && <p className="text-sm font-semibold text-bb-primary">내가 확인할 차례입니다.</p>}
     {pending && view && !view.canReview && <p className="text-xs text-bb-text2">{role === "OBSERVER" ? "관찰자는 결과를 확인하거나 보완을 요청할 수 없습니다." : "담당자와 요청자는 본인 결과를 완료 처리할 수 없습니다. 다른 팀원의 확인을 기다리고 있습니다."}</p>}
     {task.status === "DONE" && <p role="status" className="text-sm text-bb-primary">{task.completionApprovedAt ? `${task.completionApprovedByName}님이 결과를 확인했습니다.` : "이전 완료 기록 · 확인자 기록 없음"}</p>}
     {pending && view?.canCancel && <div className="space-y-2 border-t border-bb-border pt-3">
@@ -71,7 +92,13 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
     </div>}
     {/* 할 일 상태에서도 결과를 올렸으면 바로 확인 요청할 수 있다. 서버가 요청과 함께 진행 중으로 바꾼다. */}
     {!pending && task.status !== "DONE" && role !== "OBSERVER" && <>
-      <p className="text-xs text-bb-text2">팀원에게 알림을 보내 결과 확인과 피드백을 요청합니다. 완료 기준은 선택 사항입니다.</p>
+      {reviewers && reviewers.length > 0 && <p data-testid="eligible-reviewers" className="text-sm text-bb-text2">확인해 줄 수 있는 팀원: <b className="font-semibold text-bb-text">{names(reviewers)}</b></p>}
+      {reviewers && (noReviewer || reviewers.length === 0) && <div role="note" data-testid="no-reviewer" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+        <p className="text-sm font-semibold text-amber-700">지금은 결과를 확인해 줄 팀원이 없습니다</p>
+        <p className="text-xs leading-5 text-bb-text2">담당자와 확인을 요청하는 사람은 본인 결과를 확인할 수 없습니다. 담당자를 줄이거나, 팀원을 초대해 확인할 사람을 만들어 주세요.</p>
+        {onAdjustAssignees && <button type="button" onClick={onAdjustAssignees} className="text-sm font-medium text-bb-primary underline">담당자 조정하기</button>}
+      </div>}
+      <p className="text-xs text-bb-text2">{reviewers && reviewers.length > 0 ? "요청하면 이 팀원들에게 알림이 가고, 한 명이 확인하면 완료됩니다." : "팀원에게 알림을 보내 결과 확인과 피드백을 요청합니다."} 완료 기준은 선택 사항입니다.</p>
       <button type="button" disabled={disabled || busy || !view?.canRequest} onClick={() => run(() => api.post<Task>(`${path}/completion-request`))} className="w-full px-3 py-3 rounded-lg bg-bb-primary text-white text-sm font-medium disabled:opacity-40">등록한 결과 확인 요청</button>
       {view && !view.canRequest && !missing.length && <p className="text-xs text-bb-text2">담당자 또는 팀장이 결과 확인을 요청할 수 있습니다.</p>}
     </>}
