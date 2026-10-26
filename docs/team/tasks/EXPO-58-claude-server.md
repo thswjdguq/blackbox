@@ -1,6 +1,6 @@
-# C-58 · 완료 확인 대기 막힘 예방 및 복구
+# EXPO-58 · 완료 확인 대기 막힘 예방 및 복구
 
-2026-10-15. C-56 서버 handoff에 따른 다음 작업. 사용자 요청의 대학생 팀플 흐름 개선 범위. 기존 B-31/C-56 변경 보존, Codex는 frontend 담당. 서버 작업 위치는 기존 B-31 worktree.
+2026-10-15. EXPO-56 서버 handoff에 따른 다음 작업. 사용자 요청의 대학생 팀플 흐름 개선 범위. 기존 B-31/EXPO-56 변경 보존, Codex는 frontend 담당. 서버 작업 위치는 기존 B-31 worktree.
 
 ## 결정
 
@@ -11,7 +11,7 @@
 ## Claude에게 전달할 지시
 
 ```text
-AGENTS.md 및 기존 B-31/C-56 handoff와 K-54 v0.3을 읽고 작업하라.
+AGENTS.md 및 기존 B-31/EXPO-56 handoff와 K-54 v0.3을 읽고 작업하라.
 기존 미커밋 변경을 보존하고 teamplay-ui는 수정하지 마라.
 
 완료 요청 전 독립 검토자가 있는지 기존 independentReviewer 판정으로 검사하라.

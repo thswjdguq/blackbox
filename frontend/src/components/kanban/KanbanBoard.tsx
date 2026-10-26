@@ -138,6 +138,13 @@ export default function KanbanBoard({
   useEffect(() => {
     loadDeliverables();
   }, [loadDeliverables, recordsVersion]);
+
+  // 확정·제출된 최종 제출물의 업무는 서버가 상태·파일·완료 요청을 409로 막는다(K-20 4장). 그 업무만 읽기 전용으로 둔다
+  const lockedIds = useMemo(
+    () => new Set(deliverables.filter((d) => d.status === "CONFIRMED" || d.status === "SUBMITTED").map((d) => d.id)),
+    [deliverables]
+  );
+  const isLocked = useCallback((task: Task) => !!task.deliverableId && lockedIds.has(task.deliverableId), [lockedIds]);
   useEffect(() => {
     if (recordsVersion === 0) return;
     let active = true;
@@ -266,14 +273,18 @@ export default function KanbanBoard({
 
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
     const original = tasksRef.current.find(t => t.id === taskId);
-    if (readOnly || mutationLock.current || !original || original.status === "DONE" || original.completionRequestedAt || original.status === newStatus) return;
+    if (readOnly || mutationLock.current || !original || isLocked(original) || original.status === "DONE" || original.completionRequestedAt || original.status === newStatus) return;
     if (newStatus === "DONE") { openEdit(original); return; }
     mutationLock.current = true; setUpdating(true); setBoardError("");
     try {
       const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
       const next = tasksRef.current.map(t => t.id === taskId ? data : t);
       tasksRef.current = next; setTasks(next); onTasksChange?.(next);
-    } catch (err) { setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다. 다시 시도해주세요.")); }
+    } catch (err) {
+      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다. 다시 시도해주세요."));
+      // 보드를 연 뒤 다른 사람이 확정했으면 409가 온다. 최종 제출물을 다시 읽어 잠금을 화면에 반영한다
+      if ((err as { response?: { status?: number } })?.response?.status === 409) loadDeliverables();
+    }
     finally { mutationLock.current = false; setUpdating(false); }
   };
 
@@ -332,7 +343,7 @@ export default function KanbanBoard({
               </button>
             </div>
           )}
-          {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onManage={task => { openEdit(task); setEditingTab("info"); }} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} />}
+          {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onManage={task => { openEdit(task); setEditingTab("info"); }} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} isLocked={isLocked} />}
         </>
       ) : (
       <>
@@ -340,18 +351,18 @@ export default function KanbanBoard({
           /* 빈 상태 — 태스크가 하나도 없을 때 */
           <div className="flex flex-col items-center justify-center text-center py-28">
             <span className="text-5xl mb-4">📋</span>
-            <p className="text-base font-semibold text-bb-text mb-1.5">아직 태스크가 없어요</p>
+            <p className="text-base font-semibold text-bb-text mb-1.5">아직 업무가 없어요</p>
             {readOnly ? (
               <p className="text-sm text-bb-text2">팀원이 업무를 만들면 여기서 확인할 수 있습니다</p>
             ) : (
               <>
-                <p className="text-sm text-bb-text2 mb-6">첫 태스크를 만들어 팀원에게 배정해보세요</p>
+                <p className="text-sm text-bb-text2 mb-6">첫 업무를 만들어 팀원에게 배정해보세요</p>
                 <button
                   onClick={() => openCreate("TODO")}
                   className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500
                              text-white text-sm font-medium rounded-lg transition-all"
                 >
-                  + 태스크 추가
+                  + 업무 추가
                 </button>
               </>
             )}
@@ -370,6 +381,7 @@ export default function KanbanBoard({
                 readOnly={readOnly}
                 busy={updating}
                 aiIds={aiOrigins.task}
+                isLocked={isLocked}
               />
             ))}
           </div>
@@ -392,6 +404,7 @@ export default function KanbanBoard({
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           readOnly={readOnly}
+          deliverableLocked={!!editingTask && isLocked(editingTask)}
           availableTasks={tasks}
           onWorkflowChanged={data => { setEditingTask(data); setTasks(prev => prev.map(t => t.id === data.id ? data : t)); onTasksChange?.(tasks.map(t => t.id === data.id ? data : t)); }}
         />

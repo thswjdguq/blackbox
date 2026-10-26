@@ -46,18 +46,23 @@ export const DUE_TEXT: Record<DueTone, string> = {
   later:   "text-blue-700 dark:text-blue-300",
 };
 
-/** 최종 제출물의 기한 표시. 확정·제출을 기록했으면 기한이 지나도 "초과"가 아니라 그 상태를 보인다 */
-export function deliverableDue(d: { dueDate: string; dueTime?: string | null; status?: string | null }, now: Date = new Date()): { label: string; cls: string } {
-  if (d.status === "SUBMITTED") return { label: "제출 기록됨", cls: "text-bb-text2" };
-  if (d.status === "CONFIRMED") return { label: "확정됨", cls: "text-bb-text2" };
+/** 최종 제출물의 기한 표시. 확정·제출을 기록했으면 기한이 지나도 "초과"가 아니라 그 상태를 보인다.
+ *  cls는 글자 색, badge는 테두리 있는 배지(홈 "다음 할 일" 등)의 색이다 */
+export function deliverableDue(d: { dueDate: string; dueTime?: string | null; status?: string | null }, now: Date = new Date()): { label: string; cls: string; badge: string } {
+  const done = "text-bb-text2";
+  const doneBadge = "text-bb-text2 bg-bb-surface2 border-bb-border";
+  if (d.status === "SUBMITTED") return { label: "제출 기록됨", cls: done, badge: doneBadge };
+  if (d.status === "CONFIRMED") return { label: "확정됨", cls: done, badge: doneBadge };
   if (d.dueTime) {
     const deadline = new Date(`${d.dueDate}T${d.dueTime}:00+09:00`);
-    if (now.getTime() >= deadline.getTime()) return { label: "기한 지남", cls: DUE_TEXT.overdue };
+    if (now.getTime() >= deadline.getTime()) return { label: "기한 지남", cls: DUE_TEXT.overdue, badge: DUE_BADGE.overdue };
     const koreanDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
     const koreanNow = parseLocalDate(koreanDate);
-    return { label: dueLabel(d.dueDate, koreanNow), cls: DUE_TEXT[dueTone(d.dueDate, 3, koreanNow)] };
+    const tone = dueTone(d.dueDate, 3, koreanNow);
+    return { label: dueLabel(d.dueDate, koreanNow), cls: DUE_TEXT[tone], badge: DUE_BADGE[tone] };
   }
-  return { label: dueLabel(d.dueDate, now), cls: DUE_TEXT[dueTone(d.dueDate, 3, now)] };
+  const tone = dueTone(d.dueDate, 3, now);
+  return { label: dueLabel(d.dueDate, now), cls: DUE_TEXT[tone], badge: DUE_BADGE[tone] };
 }
 
 export function deliverableDeadline(d: { dueDate: string; dueTime?: string | null }): string {

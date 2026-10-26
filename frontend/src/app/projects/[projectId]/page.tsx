@@ -277,7 +277,9 @@ export default function ProjectHomePage() {
   const recentTasks    = [...tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3);
   const recentMeetings = meetings.slice(0, 3);
   const recentFiles    = files.slice(0, 3);
-  const activeAlerts   = alerts.filter((a) => !a.isRead);
+  // 서버가 해제되지 않은 경보만 준다(findActiveByProject). 읽음은 팀이 함께 쓰는 알림 표시라 여기서 거르지 않는다.
+  // 거르면 누가 알림에서 연 경보만 팀원 배지에서 사라져 기여도 화면·PDF와 달라진다(main #136)
+  const activeAlerts   = alerts;
 
   const ALERT_LABEL: Record<string, string> = {
     FREE_RIDE: "참여 기록 확인",

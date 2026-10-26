@@ -1,4 +1,4 @@
--- V32 is reserved by PR #133. Additive change; preserve existing users with NULL affiliation.
+-- Main integration V33. Additive change; preserve existing users with NULL affiliation.
 ALTER TABLE users
     ADD COLUMN university_id VARCHAR(64),
     ADD COLUMN university_name VARCHAR(150),

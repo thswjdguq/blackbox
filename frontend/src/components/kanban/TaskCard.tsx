@@ -23,6 +23,8 @@ interface TaskCardProps {
   busy?: boolean;
   readOnly?: boolean;
   isAi?: boolean;
+  /** 확정·제출된 최종 제출물의 업무. 상태 바꾸기·완료 요청을 숨기고 "확정됨"을 붙인다 */
+  locked?: boolean;
 }
 
 const PRIORITY_CONFIG = {
@@ -71,7 +73,7 @@ function ScoreChip({ score }: { score: number }) {
   );
 }
 
-export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false, isAi = false, busy }: TaskCardProps) {
+export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false, isAi = false, busy, locked = false }: TaskCardProps) {
   const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
   const PriorityIcon = priority.icon;
   const dueInfo = formatDue(task.dueDate, task.status === "DONE");
@@ -81,7 +83,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
   const isDone = task.status === "DONE";
 
   return (
-    <div role="button" tabIndex={0} aria-label={`${task.title} 보기`}
+    <div role="button" tabIndex={0} aria-label={`${task.title} 보기${locked ? " (확정된 최종 제출물)" : ""}`}
       onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onEdit(task); } }}
       onClick={() => onEdit(task)}
       className={`group relative cursor-pointer bg-bb-surface border rounded-xl p-4 overflow-hidden ${isDone ? "border-bb-border/40 opacity-60" : "border-bb-border/60 hover:border-indigo-500/50"}`}>
@@ -123,8 +125,9 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
         )}
       </div>
 
-      <p className="mb-2 text-xs text-teal-400 truncate" title={task.deliverableTitle ?? "최종 제출물 미연결"}>
-        {task.deliverableTitle ? `최종 제출물: ${task.deliverableTitle}` : "최종 제출물 미연결"}
+      <p className="mb-2 flex min-w-0 items-center gap-1.5 text-xs text-teal-400" title={task.deliverableTitle ?? "최종 제출물 미연결"}>
+        <span className="truncate">{task.deliverableTitle ? `최종 제출물: ${task.deliverableTitle}` : "최종 제출물 미연결"}</span>
+        {locked && <span data-testid="task-locked" className="shrink-0 rounded bg-bb-surface2 px-1.5 py-0.5 text-[10px] font-medium text-bb-text2">확정됨</span>}
       </p>
       {/* Description preview */}
       {task.description && (
@@ -143,7 +146,7 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
         </div>
       )}
 
-      <TaskStatusControl task={task} onEdit={onEdit} onMove={onMove} readOnly={readOnly} busy={busy} />
+      <TaskStatusControl task={task} onEdit={onEdit} onMove={onMove} readOnly={readOnly || locked} busy={busy} />
       {/* Bottom Row */}
       {task.completionRequestedAt && <p className="text-xs text-bb-primary mt-2">팀원 확인 대기</p>}
       {task.completionRejectionReason && <p className="text-xs text-amber-700 mt-2">보완 요청 · 업무를 열어 확인하세요.</p>}

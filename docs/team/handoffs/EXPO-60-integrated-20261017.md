@@ -1,6 +1,6 @@
-# C-60 수정 통합 및 전시 이미지 · 2026-10-17
+# EXPO-60 수정 통합 및 전시 이미지 · 2026-10-17
 
-기준 shinguexpo / db847808 + 기존 미커밋 변경. C-60 Claude handoff/패치/배포 초안을 검토했다. 커밋·push·merge·AWS 적용 없음.
+기준 shinguexpo / db847808 + 기존 미커밋 변경. EXPO-60 Claude handoff/패치/배포 초안을 검토했다. 커밋·push·merge·AWS 적용 없음.
 
 ## 반영 내용
 
@@ -24,7 +24,7 @@
 
 **IMAGE_TAG=expo-20261017-db847808-wb99be1ff**
 
-C-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/frontend/nginx 세 이미지를 빌드했다. 기존 `expo-20261017-db847808-w371a6d7d`에는 R1~R3이 없으므로 새 시연 후보로 쓰지 않는다.
+EXPO-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/frontend/nginx 세 이미지를 빌드했다. 기존 `expo-20261017-db847808-w371a6d7d`에는 R1~R3이 없으므로 새 시연 후보로 쓰지 않는다.
 
 이미지 ID는 `outputs/c60-integrated-20261017/images/manifest-expo-20261017-db847808-wb99be1ff.json`. 이후 추가된 handoff 문서는 이미지에 없으며, 태그는 빌드 시점 소스와 대응한다. 동일 태그를 덮어쓰지 않고 이미지 ID로 확인한다. tar/save·push·서버 전송은 하지 않았다.
 
@@ -36,7 +36,7 @@ C-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/fro
 - AI available:false. 실제 모델 호출 없음.
 - 검사 후 c60smoke 컨테이너 중지(컨테이너·볼륨 삭제 없음). 기존 시연 18083/13000 유지.
 
-이번 스모크는 HTTP 검사이며 Docker 환경의 전체 브라우저 재리허설·재부팅 복구를 새로 완료한 것은 아니다. C-60의 이전 태그 재시작 보존 검증과 구분한다.
+이번 스모크는 HTTP 검사이며 Docker 환경의 전체 브라우저 재리허설·재부팅 복구를 새로 완료한 것은 아니다. EXPO-60의 이전 태그 재시작 보존 검증과 구분한다.
 
 ## 남은 결정과 다음 작업
 
@@ -44,4 +44,4 @@ C-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/fro
 
 배포 초안은 outputs/c60-check-20261017/deploy-draft에 보존. 실제 환경값과 배포 대상이 정해지면 새 태그/ID를 기준으로 전송·적용안을 확정한다. 기존 운영 DB 연결, 기존 compose.prod의 latest 사용, 새 기능 개발은 진행하지 않는다.
 
-Claude 다음 지시서: docs/team/tasks/C-61-claude-release-check.md. 반복 구현 대신 새 이미지의 최종 브라우저 확인과 실제 전시 환경의 남은 점검을 담당한다.
+Claude 다음 지시서: docs/team/tasks/EXPO-61-claude-release-check.md. 반복 구현 대신 새 이미지의 최종 브라우저 확인과 실제 전시 환경의 남은 점검을 담당한다.

@@ -14,6 +14,8 @@ interface KanbanColumnProps {
   busy?: boolean;
   readOnly?: boolean;
   aiIds?: Set<string>;
+  /** 확정·제출된 최종 제출물의 업무인가 */
+  isLocked?: (task: Task) => boolean;
 }
 
 export default function KanbanColumn({
@@ -26,6 +28,7 @@ export default function KanbanColumn({
   readOnly = false,
   aiIds,
   busy,
+  isLocked,
 }: KanbanColumnProps) {
   const isTodo = column.id === "TODO";
   const canAdd = isTodo && !readOnly;
@@ -50,7 +53,7 @@ export default function KanbanColumn({
             onClick={() => onAddTask(column.id)}
             className="text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10
                        p-1.5 rounded-lg transition-all duration-150"
-            aria-label="태스크 추가"
+            aria-label="업무 추가"
           >
             <Plus size={15} />
           </button>
@@ -68,6 +71,7 @@ export default function KanbanColumn({
               readOnly={readOnly}
               busy={busy}
               isAi={aiIds?.has(task.id)}
+              locked={isLocked?.(task) ?? false}
             />
           ))}
 
