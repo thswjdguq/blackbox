@@ -98,7 +98,8 @@ class ProfessorReportHttpTest {
             assertTrue(all.toString().replaceAll("\\s+","").contains("끝표시"));
             // 원 기록 부록은 당시 담당자를 보존하지만 현재 팀원 수·평가 대상에는 관찰자를 넣지 않는다.
             assertFalse(extract.getTextFromPage(1).contains("관찰자표시금지"));
-            assertTrue(extract.getTextFromPage(1).contains("둘째 제출물"));
+            String firstPage = extract.getTextFromPage(1);
+            assertTrue(firstPage.contains("둘째 제출물"), () -> "첫 페이지 추출 내용: " + firstPage);
             assertTrue(extract.getTextFromPage(2).replaceAll("\\s+","").contains("팀원별역할과수행기록"));
         }
         assertEquals(4L,em.createQuery("select count(t) from Task t where t.project=:p",Long.class).setParameter("p",project).getSingleResult());
