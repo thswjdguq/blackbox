@@ -12,9 +12,9 @@ teamplay-ui 기준 SHA는 db847808b22368e956c5c4b9089165d613f8c93f이다.
 
 AGENTS.md, DEVELOPMENT.md, docs/team/{README,OWNERSHIP,WORKFLOW,CONTRACTS}.md를 읽어라.
 다음 최신 로컬 문서는 teamplay-ui에서 읽기만 하라:
-- docs/team/tasks/C-54.md
+- docs/team/tasks/EXPO-54.md
 - docs/team/contracts/K-54-personal-notifications.md
-- docs/team/handoffs/C-53-20261014.md
+- docs/team/handoffs/EXPO-53-20261014.md
 
 K-54는 아직 DRAFT다. 실제 코드와 대조해 미확정 항목을 해결하고
 네 작업 폴더에 검토된 계약 및 변경 사유를 기록하라. 원본 계약을 동시에 편집하지 마라.

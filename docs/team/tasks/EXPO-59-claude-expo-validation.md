@@ -6,10 +6,10 @@
 
 ```text
 너는 엑스포 시연 리허설·실행 환경 검증을 맡는다.
-먼저 C:\blackbox\teamplay-ui\docs\team\handoffs\C-59-20261017.md를 읽어라.
-AGENTS.md, DEVELOPMENT.md, docs/team 규칙과 C-59 작업서도 읽어라.
+먼저 C:\blackbox\teamplay-ui\docs\team\handoffs\EXPO-59-20261017.md를 읽어라.
+AGENTS.md, DEVELOPMENT.md, docs/team 규칙과 EXPO-59 작업서도 읽어라.
 
-중요: C-54/B-31/C-56 알림, C-58 검토자 진단·요청 취소는 Codex가 teamplay-ui 통합본에 반영했다.
+중요: EXPO-54/B-31/EXPO-56 알림, EXPO-58 검토자 진단·요청 취소는 Codex가 teamplay-ui 통합본에 반영했다.
 이 기능을 옛 B-31 폴더에서 다시 구현하거나 통합본을 옛 파일로 덮어쓰지 마라.
 teamplay-ui에는 HEAD에 없는 미커밋 변경이 많으므로 git clone/HEAD만으로 시연본을 재현했다고 하지 마라.
 PR128/130 로컬 반영과 최종본 확정·제출 기록 프론트도 포함돼 있다.

@@ -8,8 +8,8 @@
 
 - 로컬 shinguexpo HEAD와 GitHub shinguexpo가 모두 db847808b22368e956c5c4b9089165d613f8c93f. 조회 시점에 원격 추가 커밋 없음. 실제 push 직전에 다시 확인할 것.
 - GitHub remote는 `github`, `origin`은 로컬 `C:/new teamplay`. 따라서 대상은 `github shinguexpo`다. 강제 push 불필요.
-- 검토 시작 시 수정/새 파일 132개. 마지막 검증 manifest와 비교했을 때 이후 변경은 C-61의 AI 필수 범위 문서뿐이며 구현 파일은 동일했다.
-- 최근 검증: backend 275/275, 프론트 빌드/회귀 검사, PC 전체 리허설(C-60), 실제 PDF/ZIP 및 격리 HTTPS 스모크. 이번 확인에서 전체 검사를 반복 실행하지 않았다.
+- 검토 시작 시 수정/새 파일 132개. 마지막 검증 manifest와 비교했을 때 이후 변경은 EXPO-61의 AI 필수 범위 문서뿐이며 구현 파일은 동일했다.
+- 최근 검증: backend 275/275, 프론트 빌드/회귀 검사, PC 전체 리허설(EXPO-60), 실제 PDF/ZIP 및 격리 HTTPS 스모크. 이번 확인에서 전체 검사를 반복 실행하지 않았다.
 - `.env`, `frontend/.env.local`은 ignore 대상. 업로드 후보에서 private key/주요 토큰 패턴 및 로컬 env의 긴 비밀값과의 일치 항목은 발견되지 않았다. 이는 제한된 사전 검사이며 모든 형태의 비밀값을 보장하는 검사는 아니다.
 - outputs 이미지/DB/PDF/다운로드/실제 계정 안내는 repo 밖이므로 포함하지 않는다. Docker 배포 초안도 outputs에만 있어 코드 push만으로 배포 패키징까지 전달되지는 않는다.
 - 현재 CI workflow는 main push 또는 main 대상 PR에서 실행된다. shinguexpo push만으로 CI가 실행된다고 보장하면 안 된다.
