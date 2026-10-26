@@ -73,6 +73,19 @@ class ReportParticipationTest {
         assertEquals("팀장합성님이 미참여했습니다",legacy.getMessage());
         verify(alerts,never()).save(any());
     }
+    @Test void readingAnAlertDoesNotRemoveItButResolvingItDoes() throws Exception {
+        User leader=user("팀장합성");
+        when(members.findByProject(project)).thenReturn(List.of(member(leader,"LEADER")));
+        Alert active=alert(leader,"TAMPER","파일내용재확인필요");
+        when(alerts.findByProjectOrderByCreatedAtDesc(project)).thenReturn(List.of(active));
+        assertTrue(render(leader,"before-read.pdf").contains("파일내용재확인필요"));
+        active.setRead(true);
+        assertTrue(render(leader,"after-read.pdf").contains("파일내용재확인필요"));
+        active.setResolvedAt(OffsetDateTime.now());
+        assertFalse(render(leader,"after-resolved.pdf").contains("파일내용재확인필요"));
+        assertTrue(active.isRead());assertNotNull(active.getResolvedAt());
+        verify(alerts,never()).save(any());
+    }
     @Test void emptyAlertsDoNotAssertBalancedContribution() throws Exception {
         User leader=user("팀장합성");
         when(members.findByProject(project)).thenReturn(List.of(member(leader,"LEADER")));

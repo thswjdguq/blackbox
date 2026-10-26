@@ -53,7 +53,7 @@ public class ReportService {
         var scores=scoreRepo.findByProjectOrderByTotalScoreDesc(project).stream().filter(s->ids.contains(s.getUser().getId()))
                 .collect(Collectors.toMap(s->s.getUser().getId(),s->s));
         var alerts=alertRepo.findByProjectOrderByCreatedAtDesc(project).stream()
-                .filter(a->!a.isRead()&&a.getResolvedAt()==null)
+                .filter(a->a.getResolvedAt()==null)
                 .filter(a->!AlertService.PARTICIPATION_TYPES.contains(a.getAlertType()) || a.getUser()!=null&&ids.contains(a.getUser().getId())).toList();
         var evidence=evidenceReader.read(project,tasks);
         String reportId="BB-"+LocalDate.now(ZONE).toString().replace("-","")+"-"+UUID.randomUUID().toString().substring(0,8);
@@ -162,7 +162,7 @@ public class ReportService {
         long notices=alerts.stream().filter(a->"FREE_RIDE".equals(a.getAlertType())).count();
         if(notices>0)doc.add(p("참여 기록 확인 안내 "+notices+"건: 자동 집계가 포착하지 못한 검토·답변·오프라인 역할이 있는지 함께 확인해 주세요. 개인의 불성실이나 감점을 뜻하지 않습니다.",10,MUTED,false));
         var other=alerts.stream().filter(a->!"FREE_RIDE".equals(a.getAlertType())).toList();
-        if(other.isEmpty())doc.add(p("표시할 미읽음·미해결 추가 알림이 없습니다. 모든 기여가 집계되었다는 뜻은 아닙니다.",10,MUTED,false));
+        if(other.isEmpty())doc.add(p("표시할 미해결 추가 알림이 없습니다. 모든 기여가 집계되었다는 뜻은 아닙니다.",10,MUTED,false));
         else {var t=table(1,3);headers(t,"확인 유형","시스템 안내");for(var a:other)row(t,alertLabel(a.getAlertType()),safe(a.getMessage()));doc.add(t);}
         note(doc,"교수자 검토 시 참고","담당 역할, 결과물 내용, 수정·검토 근거와 팀원의 설명을 함께 확인해 주세요. 보고서에 나타나지 않는 오프라인 조사·발표 준비·회의 밖 협의는 별도 자료로 보완할 수 있습니다. 학교 제출 기록은 팀원이 남긴 사실 기록이며 학교의 접수 확인을 대신하지 않습니다.");
     }
