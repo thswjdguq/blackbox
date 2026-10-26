@@ -14,7 +14,7 @@
 
 - 전용 PostgreSQL bb_expo_20261016_test에서 전체 backend **275/275**, 실패·오류 0. Java 로컬 JAR 빌드 통과.
 - 수정 JAR로 18083 백엔드만 재시작. 13000 프론트와 시연 DB/업로드 보존. 프론트 소스 변경 없음.
-- 실제 frontend proxy HTTP: 월요일 demo 및 EXPO-60 프로젝트 모두 scores=4명, PDF 200, 증거 ZIP 200.
+- 실제 frontend proxy HTTP: 월요일 demo 및 C-60 프로젝트 모두 scores=4명, PDF 200, 증거 ZIP 200.
 - 두 프로젝트의 PDF 및 ZIP 내부 PDF 모두 무임승차/미참여/관찰자/과거 실명 문구 없음, 팀원 4명 및 KST 확인. PDF 네 페이지를 PNG로 렌더링해 참여표·중립 문구가 잘리지 않음을 확인.
 - 증거: outputs/c60-integrated-20261017/{demo,c60}.{pdf,zip}, PNG, verify-exports.cjs, check-pdf.py. 기존 합성 자료를 읽었고 수정하지 않았다.
 - 기존 PDF 표시 한계: 하단 총 페이지는 원래 `?` 표기, 일부 표가 다음 페이지로 이어질 때 제목행 반복 없음. 업로드 이력 시간은 기존 포맷 유지. 이번 R3은 생성/계산 시각 범위이며 전체 보고서 날짜 체계 개편은 하지 않았다.
