@@ -28,12 +28,14 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
   const alive = useRef(true);
   useEffect(() => { onDraftChange?.(!!reason.trim() || !!cancelReason.trim()); }, [reason, cancelReason, onDraftChange]);
   // 확인해 줄 수 있는 팀원 이름을 보여 주려고 팀 구성과 내 ID를 한 번 불러온다. 실패하면 서버의 조건 목록만 보여 준다
-  const [team, setTeam] = useState<{ members: ProjectMember[]; me: string } | null>(null);
+  // 계정이 바뀐 뒤 도착한 응답은 버리고, 그려 둔 값도 세대가 다르면 쓰지 않는다
+  const [team, setTeam] = useState<{ members: ProjectMember[]; me: string; generation: number } | null>(null);
   useEffect(() => {
     let live = true;
+    const generation = sessionGeneration();
     Promise.all([getMembers(initialTask.projectId), api.get<{ id: string }>("/auth/profile")])
-      .then(([m, p]) => { if (live) setTeam({ members: m.data, me: p.data.id }); })
-      .catch(() => { if (live) setTeam(null); });
+      .then(([m, p]) => { if (live && generation === sessionGeneration()) setTeam({ members: m.data, me: p.data.id, generation }); })
+      .catch(() => { if (live && generation === sessionGeneration()) setTeam(null); });
     return () => { live = false; };
   }, [initialTask.projectId]);
   const snapshot = useRef(onSnapshot); snapshot.current = onSnapshot;
@@ -66,7 +68,7 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
     finally { mutationPending.current = false; if (alive.current && generation === sessionGeneration()) { setBusy(false); onBusy(false); } }
   };
   const pending = !!task.completionRequestedAt;
-  const reviewers = team ? eligibleReviewers(task, team.members, team.me) : null;
+  const reviewers = team && team.generation === sessionGeneration() ? eligibleReviewers(task, team.members, team.me) : null;
   const noReviewer = view?.checks.some(c => c.code === "REVIEWER" && !c.passed) ?? false;
   // 확인할 팀원은 아래에서 이름과 해결 방법으로 따로 안내한다(팀 구성을 못 불러오면 조건 목록에 남긴다)
   const missing = view?.checks.filter(c => !c.passed && !(c.code === "REVIEWER" && reviewers)) ?? [];
