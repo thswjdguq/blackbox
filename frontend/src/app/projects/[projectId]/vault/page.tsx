@@ -6,6 +6,7 @@ import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import FileDownloadLink from "@/components/FileDownloadLink";
 import { FileRecord, FileUploadResult } from "@/types/vault";
 import {
   Files,
@@ -64,10 +65,6 @@ function HistoryItem({
   projectId: string;
   isTampered: boolean;
 }) {
-  const handleDownload = () => {
-    window.open(`/api/files/${record.id}/download`, "_blank");
-  };
-
   const versionLabel = record.version === 1 ? "최초 업로드" : isTampered ? "파일 변경 내역" : `v${record.version} 재업로드`;
 
   return (
@@ -118,13 +115,11 @@ function HistoryItem({
       </div>
 
       {/* 다운로드 버튼 */}
-      <button
-        onClick={handleDownload}
-        title="다운로드"
-        className="p-2 text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all"
-      >
+      {/* 새 창으로 열면 로그인 갱신을 거치지 않아 30분 뒤 401 창이 뜬다(main #109) */}
+      <FileDownloadLink fileId={record.id} fileName={record.fileName} label={`${record.fileName} 내려받기`}
+        className="p-2 text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all">
         <Download size={14} />
-      </button>
+      </FileDownloadLink>
     </div>
   );
 }

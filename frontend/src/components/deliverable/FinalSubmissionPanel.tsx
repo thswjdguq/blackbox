@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import FileDownloadLink from "@/components/FileDownloadLink";
 import { sessionGeneration } from "@/lib/sessionCache";
 import type { ConfirmationView } from "@/types/confirmation";
 
@@ -72,7 +73,7 @@ export default function FinalSubmissionPanel({ projectId, deliverableId, isLeade
     {view && <>
       <ol className="flex flex-wrap gap-2 text-xs" aria-label="최종 제출 진행"><li>1. 최종 파일 검토</li><li>→ 2. 팀장 확정</li><li>→ 3. 학교 제출 후 기록</li></ol>
       {view.soleContributor && !view.confirmation && <p className="text-sm text-amber-700">파일을 올린 사람 외에 결과를 확인할 팀원이 필요합니다. 팀원을 초대한 뒤 검토를 진행하세요.</p>}
-      {file && <div className="rounded-xl border border-bb-border bg-bb-surface p-4"><p className="text-xs text-bb-text2">{view.confirmation ? "확정된 파일" : "승인된 최종 후보"}</p><a download href={`/api/files/${file.fileId}/download`} className="mt-2 inline-block break-all text-sm text-bb-primary underline">{file.fileName} · 버전 {file.version}</a><p className="mt-1 text-xs text-bb-text2">등록 {file.uploaderName} · 파일 식별 {file.shortHash}</p></div>}
+      {file && <div className="rounded-xl border border-bb-border bg-bb-surface p-4"><p className="text-xs text-bb-text2">{view.confirmation ? "확정된 파일" : "승인된 최종 후보"}</p><FileDownloadLink fileId={file.fileId} fileName={file.fileName} className="mt-2 inline-block break-all text-sm text-bb-primary underline">{file.fileName} · 버전 {file.version}</FileDownloadLink><p className="mt-1 text-xs text-bb-text2">등록 {file.uploaderName} · 파일 식별 {file.shortHash}</p></div>}
       {!view.confirmation ? <div className="space-y-3 rounded-xl border border-bb-border p-4">
         <h3 className="font-semibold text-sm">확정 전에 확인할 것</h3>
         <ul className="space-y-2 text-sm">{view.checks.map(check => <li key={check.code} className={check.passed ? "text-bb-text2" : "text-amber-700"}>{check.passed ? "✓" : "○"} {check.detail}</li>)}</ul>
