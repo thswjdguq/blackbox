@@ -37,7 +37,7 @@ function compare(a: Task, b: Task, key: SortKey): number {
  * 업무 목록 보기 (C-50 6번, Flow 업무 목록 참고). 보드와 같은 필터를 거친 업무를 표로 보여 준다.
  * 열 이름을 누르면 정렬하고, 행을 누르거나 Enter를 누르면 업무 창이 열린다.
  */
-export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, readOnly, aiIds }: {
+export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, readOnly, aiIds, isLocked }: {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onManage?: (task: Task) => void;
@@ -45,6 +45,8 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
   busy?: boolean;
   onMove: (id: string, status: TaskStatus) => Promise<void>;
   aiIds?: Set<string>;
+  /** 확정·제출된 최종 제출물의 업무인가 */
+  isLocked?: (task: Task) => boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("due");
   const [asc, setAsc] = useState(true);
@@ -84,6 +86,7 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
         <tbody>
           {sorted.map((t) => {
             const done = t.status === "DONE";
+            const locked = isLocked?.(t) ?? false;
             return (
               <tr
                 key={t.id}
@@ -91,16 +94,16 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
                 tabIndex={0}
                 onClick={() => onEdit(t)}
                 onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onEdit(t); } }}
-                aria-label={`${t.title} ${readOnly ? "보기" : "열기"}`}
+                aria-label={`${t.title} ${readOnly || locked ? "보기" : "열기"}${locked ? " (확정된 최종 제출물)" : ""}`}
                 className={`cursor-pointer border-b border-bb-border/60 last:border-0 hover:bg-bb-surface2 focus:outline-none focus-visible:bg-bb-surface2 ${done ? "opacity-60" : ""}`}
               >
                 <td className="px-3 py-2.5">
                   <span className={`block truncate text-bb-text ${done ? "line-through" : ""}`}>{t.title} {aiIds?.has(t.id) && <AiBadge />}</span>
                   {t.tag && <span className="block truncate text-[11px] text-bb-text2">#{t.tag}</span>}
-                  {!readOnly && onManage && <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); onManage(t); }} aria-label={`${t.title} 수정·삭제`} className="mt-1 rounded px-1 py-1 text-xs text-blue-700 hover:underline focus-visible:outline focus-visible:outline-2 dark:text-blue-300 disabled:opacity-40">수정·삭제</button>}
+                  {!readOnly && !locked && onManage && <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); onManage(t); }} aria-label={`${t.title} 수정·삭제`} className="mt-1 rounded px-1 py-1 text-xs text-blue-700 hover:underline focus-visible:outline focus-visible:outline-2 dark:text-blue-300 disabled:opacity-40">수정·삭제</button>}
                 </td>
                 <td className="px-3 py-2.5">
-                  <TaskStatusControl task={t} onMove={onMove} onEdit={onEdit} busy={busy} readOnly={readOnly} />
+                  <TaskStatusControl task={t} onMove={onMove} onEdit={onEdit} busy={busy} readOnly={readOnly || locked} />
                 </td>
                 <td className="px-3 py-2.5 truncate text-bb-text2">
                   {t.assignees.length === 0 ? "미배정" : t.assignees.map((a) => a.name).join(", ")}
@@ -116,7 +119,10 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
                   )}
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className="block truncate text-bb-text2">{t.deliverableTitle ?? "최종 제출물 미연결"}</span>
+                  <span className="block truncate text-bb-text2">
+                    {t.deliverableTitle ?? "최종 제출물 미연결"}
+                    {locked && <span data-testid="task-locked" className="ml-1.5 rounded bg-bb-surface2 px-1 py-0.5 text-[10px]">확정됨</span>}
+                  </span>
                   {t.requirementContent && <span className="block truncate text-[11px] text-bb-text2/80">{t.requirementContent}</span>}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap text-bb-text2">{PRIORITY_TEXT[t.priority]}</td>

@@ -34,6 +34,8 @@ interface TaskModalProps {
   onDelete: (taskId: string) => Promise<void>;
   /** 관찰자: 내용만 보여주고 저장·삭제를 숨긴다 */
   readOnly?: boolean;
+  /** 확정·제출된 최종 제출물의 업무. 서버가 상태·수정·파일·완료 요청을 409로 막는다(K-20 4장). 대화는 남길 수 있다 */
+  deliverableLocked?: boolean;
   availableTasks?: Task[];
   onWorkflowChanged?: (task: Task) => void;
   workOnly?: boolean;
@@ -70,6 +72,7 @@ export default function TaskModal({
   onUpdate,
   onDelete,
   readOnly = false,
+  deliverableLocked = false,
   availableTasks = [],
   onWorkflowChanged,
   workOnly = false,
@@ -83,7 +86,8 @@ export default function TaskModal({
   const [completionCriteria, setCompletionCriteria] = useState(task?.completionCriteria ?? "");
   const [predecessorId, setPredecessorId] = useState(task?.predecessorId ?? "");
   const [attachmentRequired, setAttachmentRequired] = useState(task?.attachmentRequired ?? false);
-  const locked = !!task && (task.status === "DONE" || !!task.completionRequestedAt);
+  const locked = !!task && (task.status === "DONE" || !!task.completionRequestedAt || deliverableLocked);
+  const lockedNote = `최종본이 확정된 "${task?.deliverableTitle ?? "최종 제출물"}"의 업무라 바꿀 수 없습니다. 대화는 남길 수 있습니다.`;
   const selectedDeliverable = deliverables.find(d => d.id === deliverableId);
   const [description, setDescription] = useState(task?.description ?? "");
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "MEDIUM");
@@ -256,7 +260,7 @@ export default function TaskModal({
 
         {task && <div className="flex gap-2 px-6 py-3 border-b border-bb-border" role="tablist" aria-label="업무 상세">
           <button type="button" role="tab" aria-selected={tab === "resources"} disabled={submitting} onClick={() => setTab("resources")} className={`text-sm px-3 py-2 rounded ${tab === "resources" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>수행 · 결과 확인</button>
-          {!workOnly && <button type="button" role="tab" aria-selected={tab === "info"} disabled={resourceBusy} onClick={() => setTab("info")} className={`text-sm px-3 py-2 rounded ${tab === "info" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>{readOnly ? "업무 정보" : "수정·삭제"}</button>}
+          {!workOnly && <button type="button" role="tab" aria-selected={tab === "info"} disabled={resourceBusy} onClick={() => setTab("info")} className={`text-sm px-3 py-2 rounded ${tab === "info" ? "bg-bb-primary text-white" : "text-bb-text2"}`}>{readOnly || deliverableLocked ? "업무 정보" : "수정·삭제"}</button>}
         </div>}
         {task && tab === "resources" && <nav aria-label="업무 안에서 바로 이동" className="flex flex-wrap gap-2 border-b border-bb-border px-6 py-2">
           {[
@@ -270,6 +274,7 @@ export default function TaskModal({
             {task.dueDate && task.status !== "DONE" && <span className={`mt-2 inline-block rounded border px-2 py-0.5 text-xs font-semibold ${DUE_BADGE[dueTone(task.dueDate)]}`}>{dueLabel(task.dueDate)}</span>}
           </div>
           <ol aria-label="업무 진행 흐름" className="flex gap-2 text-xs">{["수행", "팀원 확인", "완료"].map((label, index) => <li key={label} className={`flex-1 rounded-lg px-2 py-2 text-center ${(task.status === "DONE" ? 2 : task.completionRequestedAt ? 1 : 0) === index ? "bg-bb-primary text-white" : "bg-bb-bg text-bb-text2"}`}>{index + 1}. {label}</li>)}</ol>
+          {!readOnly && deliverableLocked && <p role="status" className="rounded-lg bg-bb-surface2 px-3 py-2 text-sm text-bb-text2">{lockedNote}</p>}
           {dirty && <p className="text-sm text-amber-700">수정한 업무 설정을 먼저 저장하세요. <button type="button" onClick={() => setTab("info")} className="underline">설정으로 이동</button></p>}
           <section className="rounded-xl border border-bb-border p-4"><h3 className="text-sm font-semibold mb-2">완료 기준 (선택)</h3><p className="text-sm whitespace-pre-wrap">{task.completionCriteria || "작성된 기준이 없습니다. 결과를 등록하고 팀원에게 확인을 요청할 수 있습니다."}</p></section>
           <TaskSteps task={task} disabled={readOnly || dirty || locked || resourceBusy} onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} />
@@ -277,7 +282,7 @@ export default function TaskModal({
           <TaskResources task={task} focusFileId={focusFileId} readOnly={readOnly || dirty || resourceBusy} uploadLocked={locked} onBusy={setResourceBusy} onFilesChanged={setDiscussionFiles} onUploaded={() => setFilesRevision(v => v + 1)} />
           </div>
           <div ref={completionRef} tabIndex={-1} role="group" aria-label="결과 확인" className="scroll-mt-4">
-          <TaskCompletionPanel task={task} disabled={readOnly || dirty || submitting || resourceBusy} refreshKey={filesRevision}
+          <TaskCompletionPanel task={task} disabled={readOnly || deliverableLocked || dirty || submitting || resourceBusy} refreshKey={filesRevision}
             onSnapshot={updated => { if (!dirty && !resourceBusy && !submitting && JSON.stringify(updated) !== JSON.stringify(task)) onWorkflowChanged?.(updated); }}
             onChanged={updated => onWorkflowChanged?.(updated)} onBusy={setResourceBusy} onDraftChange={setCompletionDirty} />
           </div>
@@ -295,7 +300,7 @@ export default function TaskModal({
             </div>
           )}
 
-          {!readOnly && locked && <p role="status" className="text-sm text-bb-text2">{task?.completionRequestedAt ? "완료 확인 요청 중입니다. 수행 · 결과 확인에서 요청을 취소한 뒤 수정·삭제할 수 있습니다." : "완료된 업무입니다. 수행 · 결과 확인에서 업무를 재개한 뒤 수정·삭제할 수 있습니다."}</p>}
+          {!readOnly && locked && <p role="status" className="text-sm text-bb-text2">{deliverableLocked ? lockedNote : task?.completionRequestedAt ? "완료 확인 요청 중입니다. 수행 · 결과 확인에서 요청을 취소한 뒤 수정·삭제할 수 있습니다." : "완료된 업무입니다. 수행 · 결과 확인에서 업무를 재개한 뒤 수정·삭제할 수 있습니다."}</p>}
           {!readOnly && !locked && mode === "edit" && <p className="text-xs text-bb-text2">제목·담당자·마감 등을 수정하고 저장하세요. 더 이상 진행하지 않을 업무는 아래에서 삭제할 수 있습니다. 삭제는 만든 사람과 팀장만 가능합니다.</p>}
           {readOnly && (
             <p className="text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다.</p>
@@ -399,7 +404,8 @@ export default function TaskModal({
               onChange={e => { setDeliverableId(e.target.value); setRequirementId(""); }}>
               <option value="">최종 제출물 미연결</option>
               {deliverableId && !selectedDeliverable && <option value={deliverableId}>{task?.deliverableTitle ?? "현재 최종 제출물"}</option>}
-              {deliverables.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+              {/* 확정·제출된 최종 제출물에는 업무를 새로 연결할 수 없다(서버 409). 이미 연결돼 있으면 그대로 보인다 */}
+              {deliverables.filter(d => d.id === deliverableId || (d.status !== "CONFIRMED" && d.status !== "SUBMITTED")).map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
             <p className="text-xs text-bb-text2 mt-1">이 업무가 어떤 최종 제출물을 완성하는지 연결하세요.</p>
           </div>
