@@ -347,7 +347,7 @@ export default function MeetingDetailPage() {
               <form onSubmit={handleAddAction} className="bg-bb-bg rounded-xl p-4 space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-bb-text2 mb-1.5">
-                    태스크 제목 <span className="text-red-400">*</span>
+                    업무 제목 <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={actionTitle}
