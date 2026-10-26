@@ -29,14 +29,22 @@ ADMIN_DB=${BB_TEST_ADMIN_DB:-blackbox_test}
 SKIP_COMPOSE=${BB_SKIP_COMPOSE:-0}
 PSQL_IMAGE=${BB_PSQL_IMAGE:-postgres:16-alpine}
 
-FRESH_DB=bb_fresh
-UPGRADE_DB=bb_upgrade
+FRESH_DB=${BB_FRESH_DB:-bb_fresh}
+UPGRADE_DB=${BB_UPGRADE_DB:-bb_upgrade}
+# 지정한 검사 DB만 재생성한다. 운영 DB 이름을 실수로 전달하지 못하게 제한한다.
+for db in "$FRESH_DB" "$UPGRADE_DB"; do
+  [[ "$db" =~ ^bb_(fresh|upgrade|pr143_[a-z0-9_]+)$ ]] || { echo "허용되지 않은 검사 DB: $db"; exit 1; }
+done
+[ "$FRESH_DB" != "$UPGRADE_DB" ] || { echo '검사 DB 두 개는 달라야 합니다'; exit 1; }
 
 # 기대값은 파일에서 계산한다. 새 마이그레이션이 추가돼도 이 스크립트를 고칠 필요가 없다.
 MIGRATION_DIR=backend/src/main/resources/db/migration
 MIGRATION_COUNT=$(ls "$MIGRATION_DIR"/V*__*.sql | wc -l | tr -d ' ')
-LATEST_VERSION=$(ls "$MIGRATION_DIR"/V*__*.sql | sed -E 's/.*\/V([0-9]+)__.*/\1/' | sort -n | tail -1)
-PREV_VERSION=$(ls "$MIGRATION_DIR"/V*__*.sql | sed -E 's/.*\/V([0-9]+)__.*/\1/' | sort -n | tail -2 | head -1)
+VERSIONS=$(ls "$MIGRATION_DIR"/V*__*.sql | sed -E 's/.*\/V([0-9]+([._][0-9]+)*)__.*/\1/; s/_/./g' | sort -V)
+LATEST_VERSION=$(printf '%s\n' "$VERSIONS" | tail -1)
+# 현재 통합의 호환 기준은 기존 main V25다. 소수 버전(31.1~31.4)도 Flyway 순서대로 비교한다.
+PREV_VERSION=${BB_UPGRADE_FROM:-25}
+printf '%s\n' "$VERSIONS" | grep -Fxq "$PREV_VERSION" || { echo '업그레이드 기준 버전을 찾지 못했습니다'; exit 1; }
 
 # 고정 UUID — 업그레이드 후 같은 행이 남아 있는지 확인하는 데 쓴다.
 U1=11111111-1111-4111-8111-111111111111
@@ -157,7 +165,7 @@ step "2. 기존 V$PREV_VERSION 데이터가 있는 DB를 V$LATEST_VERSION으로 
 recreate_db "$UPGRADE_DB"
 
 SPRING_FLYWAY_TARGET="$PREV_VERSION" SPRING_JPA_HIBERNATE_DDL_AUTO=none migrate "$UPGRADE_DB"
-expect_value "$UPGRADE_DB" "SELECT max(version::int) FROM flyway_schema_history WHERE success AND version ~ '^[0-9]+$'" "$PREV_VERSION" "업그레이드 전 스키마 버전"
+expect_value "$UPGRADE_DB" "SELECT version FROM flyway_schema_history WHERE success AND type='SQL' ORDER BY installed_rank DESC LIMIT 1" "$PREV_VERSION" "업그레이드 전 스키마 버전"
 
 psql_run "$UPGRADE_DB" <<SQL
 INSERT INTO users (id, email, name, password_hash) VALUES ('$U1', 'a01@example.com', '검증계정', 'not-a-real-hash');
