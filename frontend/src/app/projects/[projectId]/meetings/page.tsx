@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import SmartDateInput from "@/components/SmartDateInput";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
 function formatDate(iso: string | null): string {
@@ -148,6 +149,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
     setTimeout(() => setToast(null), 3000);
   };
   const [selectedRank, setSelectedRank]       = useState<number | null>(null);
+  useUnsavedGuard(!!(title.trim() || purpose.trim()), "만들지 않은 회의가 있습니다. 이 화면을 떠날까요?");
 
   // ── 3단계 상태 ──────────────────────────────────────────────────────
   const [calStatus, setCalStatus]             = useState<MemberCalendarStatus[]>([]);

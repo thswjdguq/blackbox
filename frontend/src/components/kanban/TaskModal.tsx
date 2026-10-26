@@ -11,6 +11,7 @@ import TaskCompletionPanel from "./TaskCompletionPanel";
 import TaskSteps from "./TaskSteps";
 import TaskDiscussion from "./TaskDiscussion";
 import { DUE_BADGE, dueLabel, dueTone } from "@/lib/due";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
 interface Member {
@@ -120,6 +121,7 @@ export default function TaskModal({
   const dirty = !readOnly && (initialForm !== currentForm || !!newStep.trim());
 
   // 닫기는 한 곳으로: 배경·닫기(X)·취소·Escape 모두 작성 중이면 먼저 묻는다
+  useUnsavedGuard(dirty || discussionDirty || completionDirty, "업무 창에 저장하지 않은 내용이 있습니다. 이 화면을 떠날까요?");
   const requestClose = () => { if (resourceBusy || submitting) return; dirty || discussionDirty || completionDirty ? setConfirmClose(true) : onClose(); };
 
   // 열리면 초점을 패널로 옮기고(그려지기 전에), 닫히면 열기 전 자리(업무 카드 등)로 돌려준다
