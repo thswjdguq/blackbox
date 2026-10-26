@@ -98,7 +98,9 @@ public class ReportService {
             var latest=work.rounds().stream().findFirst().orElse(null);
             var file=c!=null?c.getReview().getFile():latest==null?null:latest.getFile();
             var box=table(2,1,1.6f);headers(box,"제출물 / 담당","기한","현재 상태");
-            row(box,d.getTitle()+" / "+(d.getOwner()==null?"미지정":d.getOwner().getName()),date(d.getDueDate())+" / "+(d.getDueTime()==null?"시간 미지정":d.getDueTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))+" KST"),s!=null?"제출 사실 기록 완료":c!=null?"팀장 최종본 확정":latest!=null?"검토 중 / "+decision(latest.getDecision()):"준비 중");
+            // 선택 시간이 없으면 날짜만 표시한다. 좁은 기한 열에서 불필요한 문구가 줄을 늘리지 않게 한다.
+            String deadline=date(d.getDueDate())+(d.getDueTime()==null?"":"\n"+d.getDueTime().format(DateTimeFormatter.ofPattern("HH:mm"))+" KST");
+            row(box,d.getTitle()+" / "+(d.getOwner()==null?"미지정":d.getOwner().getName()),deadline,s!=null?"제출 사실 기록 완료":c!=null?"팀장 최종본 확정":latest!=null?"검토 중 / "+decision(latest.getDecision()):"준비 중");
             compact(box,4);
             String detail="대상 파일: "+(file==null?"미지정":file.getFileName()+" / v"+file.getVersion());
             if(c!=null)detail+="\n확정: "+c.getConfirmedBy().getName()+" / "+time(c.getConfirmedAt())+" KST";

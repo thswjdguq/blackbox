@@ -104,5 +104,16 @@ class ProfessorReportHttpTest {
         }
         assertEquals(4L,em.createQuery("select count(t) from Task t where t.project=:p",Long.class).setParameter("p",project).getSingleResult());
     }
+    @Test void reportIncludesConfiguredDeadlineTime() throws Exception {
+        var d=em.createQuery("select d from Deliverable d where d.project=:p",Deliverable.class).setParameter("p",project).getSingleResult();
+        d.setDueTime(LocalTime.of(18,30));em.flush();
+        byte[] pdf=mvc.perform(get("/api/projects/{id}/report",project.getId()).header("Authorization",token(leader)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        try(var reader=new PdfReader(pdf)) {
+            var text=new StringBuilder();var extract=new PdfTextExtractor(reader);
+            for(int page=1;page<=reader.getNumberOfPages();page++)text.append(extract.getTextFromPage(page));
+            assertTrue(text.toString().replaceAll("\\s+","").contains("2026-10-1818:30KST"));
+        }
+    }
     private String token(User user){return "Bearer "+jwt.generateAccessToken(user.getEmail());}
 }
