@@ -6,6 +6,7 @@ import { ChevronRight, ListTodo, RefreshCw } from "lucide-react";
 import api from "@/lib/api";
 import { DUE_TEXT, daysLeft, dueLabel, dueTone, shortDate } from "@/lib/due";
 import type { Task } from "@/types/task";
+import type { Deliverable } from "@/types/deliverable";
 
 interface ProjectRef {
   id: string;
@@ -42,6 +43,8 @@ const PRIORITY_ORDER = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 } as Record<strin
  * 모든 프로젝트에서 나에게 배정된 아직 안 끝난 업무를 마감별로 모은다 (C-50 3번, Flow 모아보기 참고).
  * 여러 프로젝트를 모아 주는 서버 API가 없어 프로젝트마다 업무 목록을 불러 합친다.
  * 일부 프로젝트를 못 불러오면 나머지는 보여 주고 어느 프로젝트가 빠졌는지 알린다.
+ * 확정·제출된 최종 제출물의 업무는 뺀다. 서버가 끝내거나 지우는 것을 막아(K-20 4장) 할 일로 남을 이유가 없다(main #118).
+ * 최종 제출물 목록을 못 불러오면 빼지 않는다.
  */
 export default function MyTasks({ projects }: { projects: ProjectRef[] }) {
   const [items, setItems] = useState<Item[] | null>(null);
@@ -62,14 +65,24 @@ export default function MyTasks({ projects }: { projects: ProjectRef[] }) {
       return;
     }
     const results = await Promise.allSettled(
-      projects.map((p) => api.get<Task[]>(`/projects/${p.id}/tasks`).then((r) => ({ p, tasks: r.data })))
+      projects.map((p) =>
+        Promise.all([
+          api.get<Task[]>(`/projects/${p.id}/tasks`),
+          api.get<Deliverable[]>(`/projects/${p.id}/deliverables`).then((r) => r.data).catch(() => [] as Deliverable[]),
+        ]).then(([t, ds]) => ({
+          p,
+          tasks: t.data,
+          locked: new Set(ds.filter((d) => d.status === "CONFIRMED" || d.status === "SUBMITTED").map((d) => d.id)),
+        }))
+      )
     );
     const all: Item[] = [];
     const miss: string[] = [];
     results.forEach((r, i) => {
       if (r.status === "rejected") { miss.push(projects[i].name); return; }
       for (const t of r.value.tasks) {
-        if (t.status !== "DONE" && t.assignees.some((a) => a.userId === myId)) all.push({ ...t, projectName: r.value.p.name });
+        const locked = !!t.deliverableId && r.value.locked.has(t.deliverableId);
+        if (t.status !== "DONE" && !locked && t.assignees.some((a) => a.userId === myId)) all.push({ ...t, projectName: r.value.p.name });
       }
     });
     all.sort((a, b) =>

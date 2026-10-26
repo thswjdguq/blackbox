@@ -490,14 +490,17 @@ export default function DeliverableDetailPage() {
                     요구사항 <span className="text-bb-text2">{deliverable.requirements.length}</span>
                   </h2>
                   <p className="mt-1 text-xs text-bb-text2">
-                    과제 안내의 필수 내용과 형식을 적으세요. 업무 완료와 요구사항 충족은 따로 확인합니다.
+                    {canWrite && "과제 안내의 필수 내용과 형식을 적으세요. "}업무 완료와 요구사항 충족은 따로 확인합니다.
                   </p>
                   {!canWrite && (
                     <p className="mt-1 text-xs text-bb-text2">{locked ? "최종본이 확정되어 요구사항과 충족 여부를 바꿀 수 없습니다." : "관찰자는 충족 여부를 확인할 수 없습니다."}</p>
                   )}
 
                   {deliverable.requirements.length === 0 ? (
-                    <p className="my-4 text-sm text-bb-text2">예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부</p>
+                    <p className="my-4 text-sm text-bb-text2">
+                      {/* 관찰자·확정된 제출물에는 할 일을 시키지 않는다 */}
+                      {canWrite ? "예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부" : "등록된 요구사항이 없습니다."}
+                    </p>
                   ) : (
                     <ul className="my-4 divide-y divide-bb-border">
                       {deliverable.requirements.map((req) => {
@@ -643,7 +646,7 @@ export default function DeliverableDetailPage() {
                   </p>
 
                   {linkedTasks.length === 0 ? (
-                    <p className="my-4 text-sm text-bb-text2">필요한 업무를 추가하거나 기존 업무를 연결하세요.</p>
+                    <p className="my-4 text-sm text-bb-text2">{canWrite ? "필요한 업무를 추가하거나 기존 업무를 연결하세요." : "연결된 업무가 없습니다."}</p>
                   ) : (
                     <ul className="mt-3 divide-y divide-bb-border">
                       {linkedTasks.map((t) => (

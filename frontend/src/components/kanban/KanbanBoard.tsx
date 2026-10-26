@@ -340,18 +340,18 @@ export default function KanbanBoard({
           /* 빈 상태 — 태스크가 하나도 없을 때 */
           <div className="flex flex-col items-center justify-center text-center py-28">
             <span className="text-5xl mb-4">📋</span>
-            <p className="text-base font-semibold text-bb-text mb-1.5">아직 태스크가 없어요</p>
+            <p className="text-base font-semibold text-bb-text mb-1.5">아직 업무가 없어요</p>
             {readOnly ? (
               <p className="text-sm text-bb-text2">팀원이 업무를 만들면 여기서 확인할 수 있습니다</p>
             ) : (
               <>
-                <p className="text-sm text-bb-text2 mb-6">첫 태스크를 만들어 팀원에게 배정해보세요</p>
+                <p className="text-sm text-bb-text2 mb-6">첫 업무를 만들어 팀원에게 배정해보세요</p>
                 <button
                   onClick={() => openCreate("TODO")}
                   className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500
                              text-white text-sm font-medium rounded-lg transition-all"
                 >
-                  + 태스크 추가
+                  + 업무 추가
                 </button>
               </>
             )}
