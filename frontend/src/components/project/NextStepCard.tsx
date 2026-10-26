@@ -8,7 +8,7 @@ import { suggestFor } from "@/lib/agent/skills";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
-import { DUE_BADGE, dueTone, dueLabel } from "@/lib/due";
+import { deliverableDue } from "@/lib/due";
 
 interface Step {
   title: string;
@@ -156,6 +156,7 @@ export default function NextStepCard({
   const sorted = [...deliverables].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const target = sorted.find(d => d.status !== "SUBMITTED") ?? sorted[0];
   const step = nextStepFor(projectId, target, tasks, canWrite);
+  const due = deliverableDue(target);
 
   return (
     <section className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 p-5" aria-labelledby="next-step-title">
@@ -165,7 +166,8 @@ export default function NextStepCard({
           <ClipboardList size={12} />
           {target.title}
         </span>
-        <span className={`rounded border px-2 py-0.5 font-medium ${DUE_BADGE[dueTone(target.dueDate)]}`}>{dueLabel(target.dueDate)}</span>
+        {/* 목록·상세와 같은 기준: 확정·제출 기록이면 그 상태, 마감 시간이 있으면 시간까지 본다(#138) */}
+        <span className={`rounded border px-2 py-0.5 font-medium ${due.badge}`}>{due.label}</span>
       </div>
       <h2 id="next-step-title" className="mt-1.5 font-semibold text-bb-text">
         {step.title}
