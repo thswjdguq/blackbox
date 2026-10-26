@@ -23,7 +23,7 @@ async function main() {
   const drafts = [], busy = []; let calls = 0, reject, finish;
   const panel = harness('src/components/kanban/TaskCompletionPanel.tsx', { task, disabled: false, onChanged() {}, onBusy: b => busy.push(b), onDraftChange: d => drafts.push(d) }, {
     '@/lib/api': { get: async () => ({ data: { task, checks: [], canReview: true, canApprove: true } }), put: () => { calls++; return new Promise((resolve, nope) => { finish = resolve; reject = nope; }); } },
-    '@/lib/apiError': { apiError: () => '저장 실패' }, '@/hooks/useMyRole': { useMyRole: () => 'MEMBER' }, '@/lib/sessionCache': { sessionGeneration: () => 0 },
+    '@/lib/apiError': { apiError: () => '저장 실패' }, '@/hooks/useMyRole': { useMyRole: () => 'MEMBER' }, '@/lib/sessionCache': { sessionGeneration: () => 0 }, '@/lib/api/member': { getMembers: async () => ({ data: [] }) }, '@/lib/reviewers': { eligibleReviewers: () => [] },
   });
   panel.render(); panel.effects().forEach(f => f()); await new Promise(setImmediate); panel.render();
   panel.find(n => n.type === 'button' && n.props.children === '보완 요청').props.onClick(); panel.render();

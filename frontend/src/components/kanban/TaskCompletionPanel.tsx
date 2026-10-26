@@ -24,6 +24,9 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
   const [reason, setReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const mutationPending = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => { onDraftChange?.(!!reason.trim() || !!cancelReason.trim()); }, [reason, cancelReason, onDraftChange]);
   // 확인해 줄 수 있는 팀원 이름을 보여 주려고 팀 구성과 내 ID를 한 번 불러온다. 실패하면 서버의 조건 목록만 보여 준다
   const [team, setTeam] = useState<{ members: ProjectMember[]; me: string } | null>(null);
   useEffect(() => {
@@ -33,9 +36,6 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
       .catch(() => { if (live) setTeam(null); });
     return () => { live = false; };
   }, [initialTask.projectId]);
-  const mutationPending = useRef(false);
-  const alive = useRef(true);
-  useEffect(() => { onDraftChange?.(!!reason.trim() || !!cancelReason.trim()); }, [reason, cancelReason, onDraftChange]);
   const snapshot = useRef(onSnapshot); snapshot.current = onSnapshot;
   const sequence = useRef(0);
   const load = useCallback(async () => {
