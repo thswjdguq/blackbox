@@ -1,6 +1,6 @@
 # K-58 완료 확인 요청 복구
 
-2026-10-16 · C-59 로컬 통합 계약. 기존 K-54 알림 계약 유지.
+2026-10-16 · EXPO-59 로컬 통합 계약. 기존 K-54 알림 계약 유지.
 
 - `GET /api/projects/{projectId}/tasks/{taskId}/completion`에 `canCancel: boolean` 추가.
 - `checks`에 `REVIEWER` 추가. 실제 요청자와 수행자(무담당이면 생성자)를 제외한 팀장/팀원이 있어야 통과한다. 대기 요청은 저장된 요청자를 기준으로 계산한다.

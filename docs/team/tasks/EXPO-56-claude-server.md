@@ -1,4 +1,4 @@
-# C-56 · Claude Code 병렬 작업 지시
+# EXPO-56 · Claude Code 병렬 작업 지시
 
 사용자 한 명이 Codex와 Claude Code를 운영한다. 아래 범위는 사용자 요청에 따른 엑스포 임시 배정이다.
 

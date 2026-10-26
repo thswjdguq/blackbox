@@ -1,6 +1,6 @@
-# C-60 수정 통합 및 전시 이미지 · 2026-10-17
+# EXPO-60 수정 통합 및 전시 이미지 · 2026-10-17
 
-기준 shinguexpo / db847808 + 기존 미커밋 변경. C-60 Claude handoff/패치/배포 초안을 검토했다. 커밋·push·merge·AWS 적용 없음.
+기준 shinguexpo / db847808 + 기존 미커밋 변경. EXPO-60 Claude handoff/패치/배포 초안을 검토했다. 커밋·push·merge·AWS 적용 없음.
 
 ## 반영 내용
 
@@ -14,7 +14,7 @@
 
 - 전용 PostgreSQL bb_expo_20261016_test에서 전체 backend **275/275**, 실패·오류 0. Java 로컬 JAR 빌드 통과.
 - 수정 JAR로 18083 백엔드만 재시작. 13000 프론트와 시연 DB/업로드 보존. 프론트 소스 변경 없음.
-- 실제 frontend proxy HTTP: 월요일 demo 및 C-60 프로젝트 모두 scores=4명, PDF 200, 증거 ZIP 200.
+- 실제 frontend proxy HTTP: 월요일 demo 및 EXPO-60 프로젝트 모두 scores=4명, PDF 200, 증거 ZIP 200.
 - 두 프로젝트의 PDF 및 ZIP 내부 PDF 모두 무임승차/미참여/관찰자/과거 실명 문구 없음, 팀원 4명 및 KST 확인. PDF 네 페이지를 PNG로 렌더링해 참여표·중립 문구가 잘리지 않음을 확인.
 - 증거: outputs/c60-integrated-20261017/{demo,c60}.{pdf,zip}, PNG, verify-exports.cjs, check-pdf.py. 기존 합성 자료를 읽었고 수정하지 않았다.
 - 기존 PDF 표시 한계: 하단 총 페이지는 원래 `?` 표기, 일부 표가 다음 페이지로 이어질 때 제목행 반복 없음. 업로드 이력 시간은 기존 포맷 유지. 이번 R3은 생성/계산 시각 범위이며 전체 보고서 날짜 체계 개편은 하지 않았다.
@@ -24,7 +24,7 @@
 
 **IMAGE_TAG=expo-20261017-db847808-wb99be1ff**
 
-C-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/frontend/nginx 세 이미지를 빌드했다. 기존 `expo-20261017-db847808-w371a6d7d`에는 R1~R3이 없으므로 새 시연 후보로 쓰지 않는다.
+EXPO-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/frontend/nginx 세 이미지를 빌드했다. 기존 `expo-20261017-db847808-w371a6d7d`에는 R1~R3이 없으므로 새 시연 후보로 쓰지 않는다.
 
 이미지 ID는 `outputs/c60-integrated-20261017/images/manifest-expo-20261017-db847808-wb99be1ff.json`. 이후 추가된 handoff 문서는 이미지에 없으며, 태그는 빌드 시점 소스와 대응한다. 동일 태그를 덮어쓰지 않고 이미지 ID로 확인한다. tar/save·push·서버 전송은 하지 않았다.
 
@@ -36,7 +36,7 @@ C-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/fro
 - AI available:false. 실제 모델 호출 없음.
 - 검사 후 c60smoke 컨테이너 중지(컨테이너·볼륨 삭제 없음). 기존 시연 18083/13000 유지.
 
-이번 스모크는 HTTP 검사이며 Docker 환경의 전체 브라우저 재리허설·재부팅 복구를 새로 완료한 것은 아니다. C-60의 이전 태그 재시작 보존 검증과 구분한다.
+이번 스모크는 HTTP 검사이며 Docker 환경의 전체 브라우저 재리허설·재부팅 복구를 새로 완료한 것은 아니다. EXPO-60의 이전 태그 재시작 보존 검증과 구분한다.
 
 ## 남은 결정과 다음 작업
 
@@ -44,4 +44,4 @@ C-60 배포 초안의 build-images.ps1로 현재 통합 소스에서 backend/fro
 
 배포 초안은 outputs/c60-check-20261017/deploy-draft에 보존. 실제 환경값과 배포 대상이 정해지면 새 태그/ID를 기준으로 전송·적용안을 확정한다. 기존 운영 DB 연결, 기존 compose.prod의 latest 사용, 새 기능 개발은 진행하지 않는다.
 
-Claude 다음 지시서: docs/team/tasks/C-61-claude-release-check.md. 반복 구현 대신 새 이미지의 최종 브라우저 확인과 실제 전시 환경의 남은 점검을 담당한다.
+Claude 다음 지시서: docs/team/tasks/EXPO-61-claude-release-check.md. 반복 구현 대신 새 이미지의 최종 브라우저 확인과 실제 전시 환경의 남은 점검을 담당한다.

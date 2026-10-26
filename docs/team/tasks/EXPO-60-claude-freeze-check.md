@@ -1,10 +1,10 @@
-# C-60 · 수정본 확인과 전시 패키징 초안
+# EXPO-60 · 수정본 확인과 전시 패키징 초안
 
-Claude Code에 아래 내용을 전달한다. C-54/C-56/C-59 기능을 재구현하지 않는다.
+Claude Code에 아래 내용을 전달한다. EXPO-54/EXPO-56/EXPO-59 기능을 재구현하지 않는다.
 
 ```text
 C:\blackbox\teamplay-ui의 AGENTS/DEVELOPMENT 및 docs/team 협업 문서를 읽고,
-docs/team/handoffs/C-59-fixes-20261017.md를 기준으로 시작해 주세요.
+docs/team/handoffs/EXPO-59-fixes-20261017.md를 기준으로 시작해 주세요.
 git 상태/기준 커밋과 실행 프로세스를 먼저 확인하고 기존 미커밋 변경을 보존하세요.
 
 1. 실행 중인 18083/13000 수정본에서 브라우저로 한글 파일 다운로드, 월·일 날짜 입력,
