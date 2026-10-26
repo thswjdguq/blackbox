@@ -43,7 +43,18 @@ public class TaskWorkflowService {
     // 작은 팀의 순서 변경·시작·검토·승인을 프로젝트 단위로 직렬화하여 순환 연결과 검사 이후 변경을 막는다.
     public void lock(Project project) { em.lock(project, LockModeType.PESSIMISTIC_WRITE); }
     public void requireEditable(Task task) {
+        UUID previous = task.getDeliverable()==null ? null : task.getDeliverable().getId();
         requireDeliverableEditable(task.getDeliverable());
+        // 제출물 잠금 대기 중 다른 쓰기 경로에서 업무 연결이 바뀌었을 수 있다.
+        // 새 제출물 잠금을 뒤늦게 추가하지 않고 재시도를 요청한다(main B-22 보존).
+        try {
+            em.refresh(task,LockModeType.PESSIMISTIC_WRITE);
+        } catch (EntityNotFoundException missing) {
+            throw new NotFoundException("태스크를 찾을 수 없습니다");
+        }
+        UUID current = task.getDeliverable()==null ? null : task.getDeliverable().getId();
+        if (!Objects.equals(previous,current))
+            throw conflict("업무의 제출물 연결이 바뀌었습니다. 새로고침 후 다시 시도해주세요");
         if ("DONE".equals(task.getStatus()) || task.getCompletionRequestedAt()!=null) {
             throw conflict("완료 요청 중이거나 승인된 업무입니다. 보완 요청 또는 재개 후 수정하세요.");
         }
