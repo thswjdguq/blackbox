@@ -14,7 +14,9 @@
 - Java 17, PostgreSQL 16 전용 DB bb_b_restore_clean_20261026 사용. 운영·시연 DB는 사용하지 않았다.
 - 첫 시도는 기존 build/resources 안에 남은 과거 V31.x SQL 때문에 V32 중복 컬럼 오류로 기동 실패했다. clean 후 새 전용 DB에서는 V35까지 정상 적용됐다. 원본 migration이나 적용 이력은 고치지 않았다.
 - 수정 전 실제 DB 검사 8건: 7 통과, 1 실패. 실패: taskWriteWaitsForDeliverableLockAndRejectsChangedAssociation.
-- 수정 후 두 DB 검사 클래스와 TaskWorkflowServiceTest/TaskDeliverableTest/TaskAssignmentRegressionTest를 실행한다. 최종 결과는 PR에 기록한다.
+- 수정 후 두 DB 검사 클래스 8/8, TaskWorkflowServiceTest 23/23, TaskDeliverableTest 9/9, TaskAssignmentRegressionTest 22/22: 총 62/62 통과, 실패·오류·건너뜀 0. Java 17 Gradle 실행은 3분 7초로 종료 코드 0이다. DB 통합 8건과 서비스 단위 54건을 구분한다.
+- 실행: `sh gradlew test --tests com.blackbox.service.TaskFinalizationIntegrationTest --tests com.blackbox.service.TaskWriteConcurrencyTest --tests com.blackbox.service.TaskWorkflowServiceTest --tests com.blackbox.service.TaskDeliverableTest --tests com.blackbox.service.TaskAssignmentRegressionTest --no-daemon`.
+- PR: https://github.com/thswjdguq/blackbox/pull/150 . 통합 브랜치 대상이며 작성자 외 A 검토 및 전체 통합 검증이 남아 있다.
 
 ## 남은 검증
 - A/C 복원까지 합친 전체 테스트·브라우저·학교 AI·운영 이관/배포 검증은 이번 범위 밖이며 완료하지 않았다.
