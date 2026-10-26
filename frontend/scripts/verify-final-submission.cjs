@@ -6,7 +6,7 @@ function harness(initial,role='LEADER'){
   const api={get:async()=>({data:remote}),put:(url,body)=>{writes.push({url,body});return new Promise((yes,no)=>{resolve=yes;reject=no;});}};
   const hooks={...React,useState:v=>{const i=cursor++;if(!(i in state))state[i]=typeof v==='function'?v():v;return[state[i],v=>state[i]=typeof v==='function'?v(state[i]):v];},useRef:v=>{const i=cursor++;if(!(i in state))state[i]={current:v};return state[i];},useEffect:f=>effects.push(f),useCallback:f=>f};
   const m={exports:{}};const code=ts.transpileModule(fs.readFileSync('src/components/deliverable/FinalSubmissionPanel.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
-  new Function('require','module','exports',code)(n=>({react:hooks,'@/lib/api':api,'@/lib/apiError':{apiError:()=> '저장 실패'},'@/lib/sessionCache':{sessionGeneration:()=>0}}[n]??require(n)),m,m.exports);
+  new Function('require','module','exports',code)(n=>({react:hooks,'@/lib/api':api,'@/lib/apiError':{apiError:()=> '저장 실패'},'@/lib/sessionCache':{sessionGeneration:()=>0},'@/components/FileDownloadLink':{__esModule:true,default:()=>null}}[n]??require(n)),m,m.exports);
   const props={projectId:'p',deliverableId:'d',isLeader:role==='LEADER',canWrite:role!=='OBSERVER',submissionMethod:null,onChanged(){changed++;},onReview(){},onOverview(){},onDirty:v=>dirty.push(v)};
   const render=()=>{cursor=0;effects=[];tree=m.exports.default(props);};
   render();const settle=async()=>{cleanups=effects.map(f=>f()).filter(f=>typeof f==='function');await new Promise(setImmediate);render();};
