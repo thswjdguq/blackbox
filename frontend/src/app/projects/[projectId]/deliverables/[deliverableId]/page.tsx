@@ -738,7 +738,7 @@ export default function DeliverableDetailPage() {
         />
       )}
       {selectedTask && <TaskModal mode="edit" task={selectedTask} members={contributors}
-        deliverables={deliverable ? [deliverable] : []} readOnly={!canWrite}
+        deliverables={deliverable ? [deliverable] : []} readOnly={!canContribute} deliverableLocked={locked}
         availableTasks={tasks}
         onWorkflowChanged={data => { setSelectedTask(data); setTasks(prev => prev.map(t => t.id === data.id ? data : t)); fetchProgress(); }}
         onClose={() => { setSelectedTask(null); refresh(); }}

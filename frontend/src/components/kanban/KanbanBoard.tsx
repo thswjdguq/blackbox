@@ -138,6 +138,13 @@ export default function KanbanBoard({
   useEffect(() => {
     loadDeliverables();
   }, [loadDeliverables, recordsVersion]);
+
+  // 확정·제출된 최종 제출물의 업무는 서버가 상태·파일·완료 요청을 409로 막는다(K-20 4장). 그 업무만 읽기 전용으로 둔다
+  const lockedIds = useMemo(
+    () => new Set(deliverables.filter((d) => d.status === "CONFIRMED" || d.status === "SUBMITTED").map((d) => d.id)),
+    [deliverables]
+  );
+  const isLocked = useCallback((task: Task) => !!task.deliverableId && lockedIds.has(task.deliverableId), [lockedIds]);
   useEffect(() => {
     if (recordsVersion === 0) return;
     let active = true;
@@ -266,14 +273,18 @@ export default function KanbanBoard({
 
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
     const original = tasksRef.current.find(t => t.id === taskId);
-    if (readOnly || mutationLock.current || !original || original.status === "DONE" || original.completionRequestedAt || original.status === newStatus) return;
+    if (readOnly || mutationLock.current || !original || isLocked(original) || original.status === "DONE" || original.completionRequestedAt || original.status === newStatus) return;
     if (newStatus === "DONE") { openEdit(original); return; }
     mutationLock.current = true; setUpdating(true); setBoardError("");
     try {
       const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
       const next = tasksRef.current.map(t => t.id === taskId ? data : t);
       tasksRef.current = next; setTasks(next); onTasksChange?.(next);
-    } catch (err) { setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다. 다시 시도해주세요.")); }
+    } catch (err) {
+      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다. 다시 시도해주세요."));
+      // 보드를 연 뒤 다른 사람이 확정했으면 409가 온다. 최종 제출물을 다시 읽어 잠금을 화면에 반영한다
+      if ((err as { response?: { status?: number } })?.response?.status === 409) loadDeliverables();
+    }
     finally { mutationLock.current = false; setUpdating(false); }
   };
 
@@ -332,7 +343,7 @@ export default function KanbanBoard({
               </button>
             </div>
           )}
-          {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onManage={task => { openEdit(task); setEditingTab("info"); }} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} />}
+          {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onManage={task => { openEdit(task); setEditingTab("info"); }} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} isLocked={isLocked} />}
         </>
       ) : (
       <>
@@ -370,6 +381,7 @@ export default function KanbanBoard({
                 readOnly={readOnly}
                 busy={updating}
                 aiIds={aiOrigins.task}
+                isLocked={isLocked}
               />
             ))}
           </div>
@@ -392,6 +404,7 @@ export default function KanbanBoard({
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           readOnly={readOnly}
+          deliverableLocked={!!editingTask && isLocked(editingTask)}
           availableTasks={tasks}
           onWorkflowChanged={data => { setEditingTask(data); setTasks(prev => prev.map(t => t.id === data.id ? data : t)); onTasksChange?.(tasks.map(t => t.id === data.id ? data : t)); }}
         />
