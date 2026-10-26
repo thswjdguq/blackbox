@@ -50,6 +50,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 interface Member {
   userId: string;
@@ -168,6 +169,7 @@ export default function DeliverableDetailPage() {
   const [editingReqId, setEditingReqId] = useState<string | null>(null);
   const [reqSaving, setReqSaving] = useState(false);
   const [reqError, setReqError] = useState("");
+  useUnsavedGuard(!!reqContent.trim(), "추가하지 않은 요구사항이 있습니다. 이 화면을 떠날까요?");
 
   const [showEdit, setShowEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: "deliverable" } | { kind: "requirement"; req: DeliverableRequirement } | null>(null);
