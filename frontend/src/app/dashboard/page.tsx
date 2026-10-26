@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import MyTasks from "@/components/dashboard/MyTasks";
+import ReviewQueue from "@/components/dashboard/ReviewQueue";
 import DatePicker from "@/components/DatePicker";
 import api from "@/lib/api";
 import { roleLabel } from "@/lib/roleLabel";
@@ -181,6 +182,9 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* 내가 확인해 줄 결과 요청을 먼저(업무 흐름 개선 3번). 없으면 그리지 않는다 */}
+        {!loading && <ReviewQueue projects={projects} />}
 
         {/* 모든 프로젝트에서 나에게 배정된 업무 (C-50) */}
         {!loading && <MyTasks projects={projects} />}
