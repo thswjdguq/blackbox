@@ -1,10 +1,13 @@
-# 정해진 시각(매일 06:00, 한국 시간)과 서버가 켜진 직후에 갱신한다. 시연 외에는 서버를 꺼 두므로 켜질 때 한 번 더 본다.
+# 서버가 켜진 직후, 매일 06:00(한국 시간), 켜져 있는 동안 10분마다 갱신한다.
+# 시연 외에는 서버를 꺼 두므로 켜질 때 밀린 것을 받고, 켜져 있으면 main에 병합되어 새로 만든 이미지를 10분 안에 받는다.
+# 새 이미지가 없으면 몇 초 만에 "바뀐 것이 없다"로 끝난다
 # 시각을 바꾸면: sudo systemctl daemon-reload && sudo systemctl restart blackbox-update.timer
 [Unit]
 Description=Blackbox server update schedule
 
 [Timer]
 OnCalendar=*-*-* 06:00:00 Asia/Seoul
+OnCalendar=*:0/10
 OnBootSec=2min
 
 [Install]
