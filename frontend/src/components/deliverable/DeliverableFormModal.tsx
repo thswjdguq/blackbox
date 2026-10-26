@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { apiError } from "@/lib/apiError";
+import DatePicker from "@/components/DatePicker";
+import OptionalDeadlineTime from "@/components/OptionalDeadlineTime";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
 
 export interface OwnerCandidate {
@@ -20,7 +22,7 @@ export default function DeliverableFormModal({
   onSave,
   onClose,
 }: {
-  /** null 이면 새 제출물 */
+  /** null 이면 새 최종 제출물 */
   initial: Deliverable | null;
   /** 제출 담당자로 지정할 수 있는 팀장·팀원 (관찰자 제외) */
   owners: OwnerCandidate[];
@@ -29,6 +31,7 @@ export default function DeliverableFormModal({
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
+  const [dueTime, setDueTime] = useState<string | null>(initial?.dueTime ?? null);
   const [ownerId, setOwnerId] = useState(initial?.ownerId ?? "");
   const [submissionMethod, setSubmissionMethod] = useState(initial?.submissionMethod ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -41,12 +44,17 @@ export default function DeliverableFormModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !dueDate) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || dueDate < "0001-01-01") {
+      setError("제출 기한의 연도를 네 자리로 입력해 주세요.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
       await onSave({
         title: title.trim(),
         dueDate,
+        dueTime,
         description,
         submissionMethod,
         ownerId: ownerId || null,
@@ -70,7 +78,7 @@ export default function DeliverableFormModal({
       >
         <div className="flex items-center justify-between">
           <h2 id="deliverable-form-title" className="text-base font-semibold text-bb-text">
-            {initial ? "제출물 수정" : "새 제출물"}
+            {initial ? "최종 제출물 수정" : "새 최종 제출물"}
           </h2>
           <button type="button" onClick={onClose} disabled={saving} aria-label="닫기" className="text-bb-text2 hover:text-bb-text">
             <X size={18} />
@@ -84,7 +92,7 @@ export default function DeliverableFormModal({
         )}
 
         <label className="block text-sm text-bb-text">
-          제출물 이름 *
+          최종 제출물 이름 *
           <input
             autoFocus
             required
@@ -96,10 +104,11 @@ export default function DeliverableFormModal({
           />
         </label>
 
-        <label className="block text-sm text-bb-text">
-          제출 기한 *
-          <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={FIELD} />
-        </label>
+        <div role="group" aria-labelledby="deliverable-due-date-label" className="text-sm text-bb-text">
+          <p id="deliverable-due-date-label">제출 기한 *</p>
+          <DatePicker required value={dueDate} onChange={setDueDate} className="mt-1.5" />
+          <OptionalDeadlineTime value={dueTime} onChange={setDueTime} />
+        </div>
 
         <label className="block text-sm text-bb-text">
           제출 담당자

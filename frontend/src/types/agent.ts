@@ -7,7 +7,6 @@ export interface UserRef { userId: string; name: string }
 export type Stage =
   | "NO_REQUIREMENT" | "NO_TASK" | "UNCOVERED_REQUIREMENT"
   | "TASKS_IN_PROGRESS" | "UNCHECKED_REQUIREMENT" | "READY_FOR_REVIEW"
-  // 검토가 시작된 뒤(K-30 0.7, #130): 검토 중 → 수정 요청 받음 → 확정 대기 → 제출 기록 대기 → 제출 기록됨
   | "IN_REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "CONFIRMED" | "SUBMITTED";
 
 export interface AgentStatus {
@@ -17,12 +16,12 @@ export interface AgentStatus {
   /** 이 사람이 제안 카드를 고치고 채택·거절할 수 있는가. AI가 꺼져 있어도 역할대로 온다 */
   canDecide: boolean;
   /** 기한이 빠른 순. 제출물이 없으면 빈 배열. AI가 꺼져 있어도 온다 */
-  stages: { deliverableId: string; title: string; dueDate: string; stage: Stage | string }[];
+  stages: { deliverableId: string; title: string; dueDate: string; dueTime?: string | null; stage: Stage | string }[];
   pendingProposalCount: number;
 }
 
 export interface PlanContent {
-  deliverable: { title: string; description: string | null; dueDate: string | null; submissionMethod: string | null };
+  deliverable: { title: string; description: string | null; dueDate: string | null; submissionMethod: string | null; dueTime?: string | null };
   requirements: { key: string; content: string; required: boolean }[];
   tasks: { title: string; completionCriteria: string | null; dueDate: string | null; requirementKey: string | null }[];
 }

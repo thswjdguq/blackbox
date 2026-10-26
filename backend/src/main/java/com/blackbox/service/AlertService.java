@@ -11,9 +11,14 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AlertService {
+    // ReportService(PDF)도 화면과 같은 대상·문구를 쓰도록 같은 패키지에 공개한다.
+    static final Set<String> PARTICIPATION_TYPES=Set.of("FREE_RIDE","DROPOUT","OVERLOAD");
+    static final String PARTICIPATION_NOTICE="자동 집계된 참여 기록이 적습니다. 검토·답변 등 집계에 반영되지 않은 활동이 있을 수 있으니 팀과 함께 확인해 주세요.";
 
     private final AlertRepository               alertRepository;
     private final ActivityLogRepository         activityLogRepository;
@@ -62,8 +67,18 @@ public class AlertService {
     public List<AlertResponse> getAlerts(UUID projectId, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireMember(project, user);
+        Set<UUID> contributors=contributorIds(project);
         return alertRepository.findActiveByProject(project).stream()
-                .map(AlertResponse::from)
+                .filter(a->!PARTICIPATION_TYPES.contains(a.getAlertType())
+                        || (a.getUser()!=null && contributors.contains(a.getUser().getId())))
+                .map(a->{
+                    AlertResponse response=AlertResponse.from(a);
+                    if (!"FREE_RIDE".equals(a.getAlertType())) return response;
+                    // 이전 경보도 읽기 응답에서만 안내 문구로 바꾼다. 원본 기록은 보존한다.
+                    return new AlertResponse(response.id(),response.userId(),response.alertType(),response.severity(),
+                            PARTICIPATION_NOTICE,response.isRead(),response.isResolved(),response.createdAt(),
+                            response.resolvedAt(),response.resolveReason());
+                })
                 .toList();
     }
 
@@ -72,7 +87,10 @@ public class AlertService {
     @Transactional
     public void checkAlerts(Project project, List<ProjectMember> members,
                             List<ContributionScore> scores) {
+        members=currentContributors(project);
         if (members.size() < 2) return;
+        Set<UUID> ids=members.stream().map(m->m.getUser().getId()).collect(Collectors.toSet());
+        scores=scores.stream().filter(s->ids.contains(s.getUser().getId())).toList();
 
         resolveImprovedAlerts(project, scores, members);  // 먼저 해제
         checkFreeRide(project, scores);
@@ -84,6 +102,7 @@ public class AlertService {
 
     @Transactional
     public void reevaluate(User user, Project project) {
+        if (!contributorIds(project).contains(user.getId())) return;
         reevaluateFreeRide(user, project);
         reevaluateDropout(user, project);
         reevaluateOverload(project);
@@ -129,8 +148,10 @@ public class AlertService {
 
     /** OVERLOAD 해제: FULL 인원이 2명 이상이면 (1인 독점 해소) */
     private void reevaluateOverload(Project project) {
+        Set<UUID> ids=contributorIds(project);
         List<ContributionScore> all = scoreRepository.findByProjectOrderByTotalScoreDesc(project);
-        long fullCount = all.stream().filter(s -> "FULL".equals(s.getParticipationLevel())).count();
+        long fullCount = all.stream().filter(s->ids.contains(s.getUser().getId()))
+                .filter(s -> "FULL".equals(s.getParticipationLevel())).count();
         if (fullCount >= 2) {
             alertRepository.findActiveByProjectAndType(project, "OVERLOAD")
                     .forEach(a -> resolve(a, "복수 팀원이 전체 참여 중으로 과부하가 해소되었습니다"));
@@ -151,7 +172,7 @@ public class AlertService {
                     && !alertRepository.existsByProjectAndUserAndAlertTypeAndResolvedAtIsNull(
                             project, s.getUser(), "FREE_RIDE")) {
                 createAlert(project, s.getUser(), "FREE_RIDE", "MEDIUM",
-                        s.getUser().getName() + "님이 태스크·회의·파일·액션아이템 중 1개 이하에만 참여했습니다 (미참여)");
+                        PARTICIPATION_NOTICE);
             }
         }
     }
@@ -197,5 +218,11 @@ public class AlertService {
         alert.setMessage(message);
         alertRepository.save(alert);
         discordService.notifyAlert(alert, project);
+    }
+    private List<ProjectMember> currentContributors(Project project) {
+        return memberRepository.findByProject(project).stream().filter(ProjectAccessChecker::canContribute).toList();
+    }
+    private Set<UUID> contributorIds(Project project) {
+        return currentContributors(project).stream().map(m->m.getUser().getId()).collect(Collectors.toSet());
     }
 }

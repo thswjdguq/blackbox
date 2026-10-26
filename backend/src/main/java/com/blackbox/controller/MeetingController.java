@@ -77,14 +77,6 @@ public class MeetingController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/api/projects/{projectId}/meetings/{meetingId}/checkin-code/regenerate")
-    public ResponseEntity<MeetingResponse> regenerateCheckinCode(
-            @PathVariable UUID projectId,
-            @PathVariable UUID meetingId,
-            @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(meetingService.regenerateCheckinCode(projectId, meetingId, user));
-    }
-
     @GetMapping("/api/projects/{projectId}/meetings/{meetingId}/attendees")
     public ResponseEntity<List<AttendeeResponse>> listAttendees(
             @PathVariable UUID projectId,
@@ -123,7 +115,7 @@ public class MeetingController {
             @PathVariable UUID meetingId,
             @AuthenticationPrincipal User user) {
         MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
-        List<ActionItemDto> items = aiService.extractStructuredActionItems(meeting.notes(), meeting.decisions());
+        List<ActionItemDto> items = aiService.extractStructuredActionItems(meeting.notes(), meeting.decisions(), meeting.meetingDate());
         return ResponseEntity.ok(new AiActionItemsResponse(items));
     }
 
@@ -180,18 +172,4 @@ public class MeetingController {
 
     // ── Global checkin endpoint (코드만으로 체크인) ────────────────────────
 
-    @PostMapping("/api/meetings/checkin")
-    public ResponseEntity<AttendeeResponse> checkin(
-            @Valid @RequestBody CheckinRequest req,
-            @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(meetingService.checkin(req, user));
-    }
-
-    // ── 내 체크인 내역 (프로젝트 멤버십 무관) ──────────────────────────────
-
-    @GetMapping("/api/my/checkins")
-    public ResponseEntity<List<AttendeeResponse>> myCheckins(
-            @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(meetingService.myCheckins(user));
-    }
 }

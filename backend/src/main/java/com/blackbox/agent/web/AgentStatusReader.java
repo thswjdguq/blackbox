@@ -36,7 +36,7 @@ public class AgentStatusReader {
                 runner.skills().stream().map(s -> new Skill(s.name(), s.label(), s.allows(contributor))).toList(),
                 contributor,
                 stages.read(projectId, user).stream()
-                        .map(s -> new Stage(s.deliverable().id(), s.deliverable().title(), s.deliverable().dueDate(), s.stage())).toList(),
+                        .map(s -> new Stage(s.deliverable().id(), s.deliverable().title(), s.deliverable().dueDate(), s.stage(), s.deliverable().dueTime())).toList(),
                 proposals.countByProjectAndStatus(project, AgentProposal.Status.PENDING));
     }
 
@@ -44,5 +44,5 @@ public class AgentStatusReader {
     public record Status(boolean available, String unavailableReason, List<Skill> skills, boolean canDecide,
                          List<Stage> stages, long pendingProposalCount) {}
     public record Skill(String skill, String label, boolean allowed) {}
-    public record Stage(UUID deliverableId, String title, LocalDate dueDate, DeliverableStage stage) {}
+    public record Stage(UUID deliverableId, String title, LocalDate dueDate, DeliverableStage stage, String dueTime) {}
 }

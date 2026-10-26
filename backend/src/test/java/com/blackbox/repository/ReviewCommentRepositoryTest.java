@@ -24,7 +24,10 @@ class ReviewCommentRepositoryTest {
         Deliverable d=new Deliverable(); d.setProject(p); d.setTitle("중간 보고서"); d.setDueDate(LocalDate.of(2026,10,18)); em.persist(d);
         ReviewRound first=round(p,d,u,1), second=round(p,d,u,2);
         ReviewComment open=comment(p,d,u,first), pending=comment(p,d,u,second), resolved=comment(p,d,u,second);
-        Task task=new Task(); task.setProject(p); task.setDeliverable(d); task.setTitle("출처 반영"); task.setStatus("DONE"); task.setPriority("MEDIUM"); task.setCreatedBy(u); em.persist(task);
+        Task task=new Task(); task.setProject(p); task.setDeliverable(d); task.setTitle("출처 반영"); task.setStatus("DONE"); task.setPriority("MEDIUM"); task.setCreatedBy(u);
+        // 완료된 업무 fixture도 승인 후 완료 정책을 따른다. 삭제 뒤 피드백 보존을 검증하는 테스트다.
+        task.setCompletionApprovedAt(java.time.OffsetDateTime.now()); task.setCompletionApprovedBy(u);
+        em.persist(task);
         pending.setLinkedTask(task);
         resolved.setResolvedBy(u); resolved.setResolvedAt(java.time.OffsetDateTime.now()); resolved.setResolutionReason("반영 완료");
         em.flush(); em.clear();

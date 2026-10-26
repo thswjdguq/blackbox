@@ -13,8 +13,8 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
     Optional<Project> findByInviteCode(String inviteCode);
     boolean existsByInviteCode(String inviteCode);
 
-    /** 엔티티를 거치지 않고 프로젝트 한 줄을 지운다. 멤버·업무·제출물은 DB가 함께 지우고, 지울 수 없는 기록이 있으면 무결성 위반이 난다. */
-    @Modifying
+    // DB의 기록 보존 제약과 CASCADE를 적용하고 권한 확인 중 읽은 멤버는 캐시에서 비운다.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from Project p where p.id = :id")
-    void deleteRowById(@Param("id") UUID id);
+    int deleteProjectRow(@Param("id") UUID id);
 }

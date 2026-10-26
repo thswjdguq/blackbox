@@ -1,16 +1,23 @@
 "use client";
 
+import { deliverableDeadline } from "@/lib/due";
+
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
+import AgentButton from "@/components/agent/AgentButton";
+import AiBadge, { useAiOrigins } from "@/components/agent/AiBadge";
+import { useAgentStore } from "@/lib/store/agentStore";
 import TaskModal from "@/components/kanban/TaskModal";
+import TaskFilesPanel from "@/components/deliverable/TaskFilesPanel";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
-import SubmitPanel from "@/components/deliverable/SubmitPanel";
+import FinalSubmissionPanel from "@/components/deliverable/FinalSubmissionPanel";
 import api from "@/lib/api";
-import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
+import { deliverableDue, dueLabel, shortDate } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import {
   getDeliverable,
@@ -29,7 +36,6 @@ import type {
   DeliverableProgress,
   SaveDeliverablePayload,
 } from "@/types/deliverable";
-import { isDeliverableLocked } from "@/types/deliverable";
 import type { CreateTaskPayload, Task } from "@/types/task";
 import {
   AlertCircle,
@@ -57,7 +63,7 @@ type Tab = "overview" | "review" | "submit";
 const TABS: { id: Tab; label: string; implemented: boolean }[] = [
   { id: "overview", label: "요구사항·업무", implemented: true },
   { id: "review", label: "검토", implemented: true },
-  { id: "submit", label: "최종 제출", implemented: true },
+  { id: "submit", label: "최종본·제출 기록", implemented: true },
 ];
 
 const TASK_STATUS_LABEL: Record<Task["status"], string> = {
@@ -137,6 +143,8 @@ export default function DeliverableDetailPage() {
   const router = useRouter();
   const projectId = params?.projectId as string;
   const deliverableId = params?.deliverableId as string;
+  const aiOrigins = useAiOrigins(projectId);
+  const recordsVersion = useAgentStore(s => s.recordsVersion);
 
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -144,11 +152,10 @@ export default function DeliverableDetailPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeliverableProgress | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
-  // 프로젝트 홈의 "다음 할 일"이 ?tab=review·submit 으로 그 탭을 바로 연다
-  useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab === "review" || tab === "submit") setActiveTab(tab);
-  }, []);
+  const [submissionDirty, setSubmissionDirty] = useState(false);
+  const desiredTab = useSearchParams()?.get("tab");
+  useEffect(() => { if (desiredTab === "overview" || desiredTab === "review" || desiredTab === "submit") setActiveTab(desiredTab); }, [desiredTab, deliverableId]);
+  const changeTab = (next: Tab) => { if (submissionDirty && !window.confirm("저장하지 않은 제출 기록이 있습니다. 이동할까요?")) return; setActiveTab(next); };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [progressError, setProgressError] = useState(false);
@@ -165,6 +172,7 @@ export default function DeliverableDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: "deliverable" } | { kind: "requirement"; req: DeliverableRequirement } | null>(null);
   const [taskDraft, setTaskDraft] = useState<{ requirementId: string } | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [linkTaskId, setLinkTaskId] = useState("");
   const [linking, setLinking] = useState(false);
   // 충족 확인 요청 중인 요구사항 — 빠른 연타로 PUT·DELETE 가 엇갈려 도착하지 않게 한다
@@ -172,10 +180,9 @@ export default function DeliverableDetailPage() {
 
   // 역할은 멤버 목록에서 내 항목으로 판단한다. GET /projects/{id} 응답의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
   const myRole = members.find((m) => m.userId === myUserId)?.role ?? null;
-  const canWrite = myRole === "LEADER" || myRole === "MEMBER";
-  // 확정·제출 기록된 제출물은 정보·요구사항·충족 확인·업무 연결을 바꿀 수 없다 (K-20 4장, 서버도 409)
-  const locked = isDeliverableLocked(deliverable);
-  const editable = canWrite && !locked;
+  const canContribute = myRole === "LEADER" || myRole === "MEMBER";
+  const locked = deliverable?.status === "CONFIRMED" || deliverable?.status === "SUBMITTED";
+  const canWrite = canContribute && !locked;
   // K-14 §2: 문구(content)가 바뀌면 서버가 충족 확인을 푼다. 필수 여부만 바꾸면 유지된다
   const editingReq = deliverable?.requirements.find((r) => r.id === editingReqId) ?? null;
   const assessmentWillReset =
@@ -198,7 +205,7 @@ export default function DeliverableDetailPage() {
       setMembers(memRes.data);
       setMyUserId(profileRes.data.id);
     } catch (err) {
-      setError(apiError(err, "제출물 정보를 불러오지 못했습니다."));
+      setError(apiError(err, "최종 제출물 정보를 불러오지 못했습니다."));
     } finally {
       setLoading(false);
     }
@@ -221,18 +228,18 @@ export default function DeliverableDetailPage() {
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, recordsVersion]);
 
   const replaceRequirement = (updated: DeliverableRequirement) =>
     setDeliverable((prev) =>
       prev ? { ...prev, requirements: prev.requirements.map((r) => (r.id === updated.id ? updated : r)) } : prev
     );
 
-  // ── 제출물 수정·삭제 ──────────────────────────────────────────────────
+  // ── 최종 제출물 수정·삭제 ──────────────────────────────────────────────────
   const handleSaveDeliverable = async (payload: SaveDeliverablePayload) => {
     await updateDeliverable(projectId, deliverableId, payload);
     setShowEdit(false);
-    setNotice("제출물을 수정했습니다.");
+    setNotice("최종 제출물을 수정했습니다.");
     fetchAll();
   };
 
@@ -333,7 +340,7 @@ export default function DeliverableDetailPage() {
     try {
       await api.patch(`/projects/${projectId}/tasks/${linkTaskId}`, { deliverableId });
       setLinkTaskId("");
-      setNotice("업무를 이 제출물에 연결했습니다.");
+      setNotice("업무를 이 최종 제출물에 연결했습니다.");
       refresh();
     } catch (err) {
       setActionError(apiError(err, "업무를 연결하지 못했습니다. 다시 시도해주세요."));
@@ -347,12 +354,13 @@ export default function DeliverableDetailPage() {
       <Sidebar />
 
       <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         <Link
           href={`/projects/${projectId}/deliverables`}
           className="inline-flex items-center gap-1 mb-3 text-xs text-bb-text2 hover:text-bb-text transition-colors"
         >
           <ChevronLeft size={14} />
-          제출물 목록
+          최종 제출물 목록
         </Link>
 
         {loading && (
@@ -386,9 +394,9 @@ export default function DeliverableDetailPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <h1 className="text-xl font-bold text-bb-text flex items-center gap-2 min-w-0 break-words">
                   <ClipboardList size={20} className="text-bb-primary shrink-0" />
-                  {deliverable.title}
+                  {deliverable.title} {aiOrigins.deliverable.has(deliverable.id) && <AiBadge />}
                 </h1>
-                {editable && (
+                {canWrite && (
                   <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => setShowEdit(true)}
@@ -411,11 +419,8 @@ export default function DeliverableDetailPage() {
                 <div>
                   <dt className="text-xs text-bb-text2">제출 기한</dt>
                   <dd className="mt-0.5 text-bb-text">
-                    {deliverable.dueDate}{" "}
-                    {/* 제출을 기록했으면 남은 날·지난 날은 뜻이 없다(목록과 같게) */}
-                    {deliverable.status !== "SUBMITTED" && (
-                      <span className={`text-xs font-medium ${DUE_TEXT[dueTone(deliverable.dueDate)]}`}>{dueLabel(deliverable.dueDate)}</span>
-                    )}
+                    {deliverableDeadline(deliverable)}{" "}
+                    <span className={`text-xs font-medium ${deliverableDue(deliverable).cls}`}>{deliverableDue(deliverable).label}</span>
                   </dd>
                 </div>
                 <div>
@@ -437,7 +442,7 @@ export default function DeliverableDetailPage() {
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => tab.implemented && setActiveTab(tab.id)}
+                  onClick={() => tab.implemented && changeTab(tab.id)}
                   className={`shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
                     !tab.implemented
                       ? "opacity-40 cursor-not-allowed text-bb-text2"
@@ -457,6 +462,8 @@ export default function DeliverableDetailPage() {
 
             {activeTab === "overview" && (
               <div className="space-y-6">
+                <TaskFilesPanel key={selectedTask?.id ?? "closed"} projectId={projectId} deliverableId={deliverableId}
+                  onOpenTask={id => { const task = tasks.find(t => t.id === id); if (task) setSelectedTask(task); }} />
                 {notice && (
                   <div role="status" className="flex items-center gap-2 p-3 bg-teal-500/10 border border-teal-500/20 rounded-lg text-sm text-bb-text">
                     {notice}
@@ -483,19 +490,14 @@ export default function DeliverableDetailPage() {
                     요구사항 <span className="text-bb-text2">{deliverable.requirements.length}</span>
                   </h2>
                   <p className="mt-1 text-xs text-bb-text2">
-                    {editable && "과제 안내의 필수 내용과 형식을 적으세요. "}업무 완료와 요구사항 충족은 따로 확인합니다.
+                    과제 안내의 필수 내용과 형식을 적으세요. 업무 완료와 요구사항 충족은 따로 확인합니다.
                   </p>
-                  {locked ? (
-                    <p className="mt-1 text-xs text-bb-text2">최종본이 확정된 제출물이라 요구사항·충족 확인·업무 연결을 바꿀 수 없습니다.</p>
-                  ) : !canWrite && (
-                    <p className="mt-1 text-xs text-bb-text2">관찰자는 충족 여부를 확인할 수 없습니다.</p>
+                  {!canWrite && (
+                    <p className="mt-1 text-xs text-bb-text2">{locked ? "최종본이 확정되어 요구사항과 충족 여부를 바꿀 수 없습니다." : "관찰자는 충족 여부를 확인할 수 없습니다."}</p>
                   )}
 
                   {deliverable.requirements.length === 0 ? (
-                    <p className="my-4 text-sm text-bb-text2">
-                      {/* 관찰자·확정된 제출물에는 할 일을 시키지 않는다 */}
-                      {editable ? "예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부" : "등록된 요구사항이 없습니다."}
-                    </p>
+                    <p className="my-4 text-sm text-bb-text2">예: 조사 출처 포함, 발표자료 PDF 형식, 작품 설명서 첨부</p>
                   ) : (
                     <ul className="my-4 divide-y divide-bb-border">
                       {deliverable.requirements.map((req) => {
@@ -509,16 +511,16 @@ export default function DeliverableDetailPage() {
                           <li key={req.id} className="py-3">
                             <div className="flex items-start gap-3">
                               <button
-                                onClick={() => editable && handleToggleAssessment(req)}
-                                disabled={!editable || assessingIds.has(req.id)}
+                                onClick={() => canWrite && handleToggleAssessment(req)}
+                                disabled={!canWrite || assessingIds.has(req.id)}
                                 className={`shrink-0 mt-0.5 p-0.5 rounded transition-colors ${
-                                  editable
+                                  canWrite
                                     ? assessed
                                       ? "text-teal-400 hover:text-teal-300"
                                       : "text-bb-text2 hover:text-teal-400"
                                     : "text-bb-border cursor-not-allowed"
                                 }`}
-                                title={locked ? "확정된 제출물은 바꿀 수 없습니다." : !canWrite ? "관찰자는 확인할 수 없습니다." : assessed ? "충족 확인 해제" : "충족 확인"}
+                                title={!canWrite ? "관찰자는 확인할 수 없습니다." : assessed ? "충족 확인 해제" : "충족 확인"}
                                 aria-label={assessed ? "충족 확인 해제" : "충족 확인"}
                               >
                                 {assessed ? <CheckSquare size={16} /> : <Circle size={16} />}
@@ -526,7 +528,7 @@ export default function DeliverableDetailPage() {
                               <span className={`shrink-0 mt-0.5 text-xs ${req.required ? "text-teal-400" : "text-bb-text2"}`}>
                                 {req.required ? "필수" : "선택"}
                               </span>
-                              <p className="flex-1 min-w-0 text-sm text-bb-text whitespace-pre-wrap break-words">{req.content}</p>
+                              <p className="flex-1 min-w-0 text-sm text-bb-text whitespace-pre-wrap break-words">{req.content} {aiOrigins.requirement.has(req.id) && <AiBadge />}</p>
                             </div>
 
                             <div className="mt-2 ml-[52px] flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -547,7 +549,7 @@ export default function DeliverableDetailPage() {
                               {allDone && !assessed && (
                                 <span className="text-amber-400">업무가 모두 끝났습니다. 충족 여부를 확인하세요.</span>
                               )}
-                              {editable && (
+                              {canWrite && (
                                 <>
                                   <button onClick={() => setTaskDraft({ requirementId: req.id })} className="text-bb-primary hover:underline">
                                     이 요구사항의 업무 만들기
@@ -567,7 +569,7 @@ export default function DeliverableDetailPage() {
                     </ul>
                   )}
 
-                  {editable && (
+                  {canWrite && (
                     <form onSubmit={handleSaveRequirement} className="space-y-2 border-t border-bb-border pt-4">
                       <label htmlFor="requirement-content" className="block text-sm text-bb-text">
                         {editingReqId ? "요구사항 수정" : "요구사항 추가"}
@@ -617,14 +619,15 @@ export default function DeliverableDetailPage() {
                 <section className="bg-bb-surface border border-bb-border rounded-xl p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-sm font-semibold text-bb-text">연결 업무 {linkedTasks.length}개</h2>
+                    {deliverable.requirements.length > 0 && deliverable.status !== "CONFIRMED" && deliverable.status !== "SUBMITTED" && <AgentButton projectId={projectId} skill="BREAK_DOWN_TASKS" input={{deliverableId}} titleExtra={deliverable.title} />}
                     <div className="flex items-center gap-3">
                       <Link
                         href={`/projects/${projectId}/board?deliverable=${deliverableId}`}
                         className="text-xs text-bb-text2 hover:text-bb-primary"
                       >
-                        보드에서 이 제출물 업무 보기
+                        보드에서 이 최종 제출물 업무 보기
                       </Link>
-                      {editable && (
+                      {canWrite && (
                         <button
                           onClick={() => setTaskDraft({ requirementId: "" })}
                           className="flex items-center gap-1 px-3 py-1.5 bg-bb-primary hover:bg-bb-primary-h text-white text-xs rounded-lg"
@@ -640,20 +643,18 @@ export default function DeliverableDetailPage() {
                   </p>
 
                   {linkedTasks.length === 0 ? (
-                    <p className="my-4 text-sm text-bb-text2">
-                      {editable ? "필요한 업무를 추가하거나 기존 업무를 연결하세요." : "연결된 업무가 없습니다."}
-                    </p>
+                    <p className="my-4 text-sm text-bb-text2">필요한 업무를 추가하거나 기존 업무를 연결하세요.</p>
                   ) : (
                     <ul className="mt-3 divide-y divide-bb-border">
                       {linkedTasks.map((t) => (
                         <li key={t.id} className="py-3">
-                          <Link
-                            href={`/projects/${projectId}/board?task=${t.id}`}
+                          <button type="button"
+                            onClick={() => setSelectedTask(t)}
                             className="flex items-center gap-2 text-sm font-medium text-bb-text hover:text-bb-primary"
                           >
-                            {t.title}
+                            {t.title} {aiOrigins.task.has(t.id) && <AiBadge />}
                             <ArrowRight size={14} />
-                          </Link>
+                          </button>
                           <p className="mt-1 text-xs text-bb-text2">
                             {TASK_STATUS_LABEL[t.status]} · {t.assignees.map((a) => a.name).join(", ") || "담당자 미지정"} ·{" "}
                             {t.dueDate ? `${shortDate(t.dueDate)}${t.status === "DONE" ? "" : ` (${dueLabel(t.dueDate)})`}` : "마감 미설정"}
@@ -667,7 +668,7 @@ export default function DeliverableDetailPage() {
                     </ul>
                   )}
 
-                  {editable && unlinkedTasks.length > 0 && (
+                  {canWrite && unlinkedTasks.length > 0 && (
                     <form onSubmit={handleLinkTask} className="mt-4 flex flex-wrap items-end gap-3 border-t border-bb-border pt-4">
                       <label className="flex-1 min-w-[200px] text-xs text-bb-text2">
                         기존 미연결 업무
@@ -690,26 +691,12 @@ export default function DeliverableDetailPage() {
                         className="flex items-center gap-1 px-3 py-2 text-xs text-bb-text border border-bb-border hover:bg-bb-surface2 disabled:opacity-50 rounded-lg"
                       >
                         {linking && <Loader2 size={12} className="animate-spin" />}
-                        이 제출물에 연결
+                        이 최종 제출물에 연결
                       </button>
                     </form>
                   )}
                 </section>
               </div>
-            )}
-
-            {activeTab === "submit" && deliverable && (
-              <SubmitPanel
-                projectId={projectId}
-                deliverableId={deliverableId}
-                myRole={myRole}
-                requiredCount={deliverable.requirements.filter((r) => r.required).length}
-                submissionMethod={deliverable.submissionMethod}
-                openTaskCount={progress ? progress.tasks.total - progress.tasks.completed : null}
-                onRetryOpenTasks={fetchProgress}
-                onGoTab={setActiveTab}
-                onChanged={refresh}
-              />
             )}
 
             {activeTab === "review" && (
@@ -720,8 +707,12 @@ export default function DeliverableDetailPage() {
                 myUserId={myUserId}
                 tasks={tasks}
                 onTasksChanged={refresh}
+                onFinal={() => changeTab("submit")}
               />
             )}
+            {activeTab === "submit" && <FinalSubmissionPanel key={deliverableId} projectId={projectId} deliverableId={deliverableId}
+              isLeader={myRole === "LEADER"} canWrite={canContribute} submissionMethod={deliverable.submissionMethod}
+              onChanged={refresh} onReview={() => changeTab("review")} onOverview={() => changeTab("overview")} onDirty={setSubmissionDirty} />}
           </>
         )}
       </main>
@@ -736,18 +727,32 @@ export default function DeliverableDetailPage() {
       )}
       {deleteTarget && deliverable && (
         <ConfirmDeleteDialog
-          title={deleteTarget.kind === "deliverable" ? `제출물 "${deliverable.title}"` : "요구사항"}
+          title={deleteTarget.kind === "deliverable" ? `최종 제출물 "${deliverable.title}"` : "요구사항"}
           onConfirm={() =>
             deleteTarget.kind === "deliverable" ? handleDeleteDeliverable() : handleDeleteRequirement(deleteTarget.req)
           }
           onClose={() => setDeleteTarget(null)}
         />
       )}
+      {selectedTask && <TaskModal mode="edit" task={selectedTask} members={contributors}
+        deliverables={deliverable ? [deliverable] : []} readOnly={!canWrite}
+        availableTasks={tasks}
+        onWorkflowChanged={data => { setSelectedTask(data); setTasks(prev => prev.map(t => t.id === data.id ? data : t)); fetchProgress(); }}
+        onClose={() => { setSelectedTask(null); refresh(); }}
+        onCreate={async () => {}}
+        onUpdate={async (id, payload) => {
+          await api.patch(`/projects/${projectId}/tasks/${id}`, payload);
+          if (payload.assigneeIds) await api.put(`/projects/${projectId}/tasks/${id}/assignees`, { assigneeIds: payload.assigneeIds });
+          if (payload.status && payload.status !== selectedTask.status) await api.patch(`/projects/${projectId}/tasks/${id}/status`, { status: payload.status });
+          setSelectedTask(null); await fetchAll(); await fetchProgress();
+        }}
+        onDelete={async id => { await api.delete(`/projects/${projectId}/tasks/${id}`); setSelectedTask(null); await fetchAll(); await fetchProgress(); }} />}
       {taskDraft && (
         <TaskModal
           mode="create"
           task={null}
           members={contributors}
+          availableTasks={tasks}
           deliverables={deliverable ? [deliverable] : []}
           defaultDeliverableId={deliverableId}
           defaultRequirementId={taskDraft.requirementId}

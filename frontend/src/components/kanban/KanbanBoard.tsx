@@ -2,23 +2,12 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Deliverable, isDeliverableLocked } from "@/types/deliverable";
+import { useSearchParams } from "next/navigation";
+import AgentButton from "@/components/agent/AgentButton";
+import { useAiOrigins } from "@/components/agent/AiBadge";
+import { useAgentStore } from "@/lib/store/agentStore";
+import { Deliverable } from "@/types/deliverable";
 import { apiError, PartialSaveError } from "@/lib/apiError";
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverEvent,
-  DragOverlay,
-  DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  pointerWithin,
-  rectIntersection,
-  MeasuringStrategy,
-} from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
 import {
   Task,
   TaskStatus,
@@ -28,7 +17,7 @@ import {
   CreateTaskPayload,
 } from "@/types/task";
 import KanbanColumn from "./KanbanColumn";
-import TaskCard from "./TaskCard";
+import { defaultTaskView, restoreTaskView, inTaskScope, type TaskView, type TaskScope } from "@/lib/taskView";
 import TaskModal from "./TaskModal";
 import TaskListView from "./TaskListView";
 import { Columns3, List } from "lucide-react";
@@ -42,17 +31,25 @@ export interface KanbanFilter {
 
 interface KanbanBoardProps {
   projectId: string;
+  userId: string;
+  role: string;
+  onClearAssignee: () => void;
+  onResetFilters: () => void;
   initialTasks: Task[];
   members: { userId: string; name: string; email: string }[];
   scoreMap: ScoreMap;
   filter?: KanbanFilter;
   onTasksChange?: (tasks: Task[]) => void;
-  /** 관찰자: 서버가 업무 쓰기를 거절하므로 추가·이동·드래그·수정을 숨긴다 */
+  /** 관찰자: 서버가 업무 쓰기를 거절하므로 추가·상태 변경·수정을 숨긴다 */
   readOnly?: boolean;
 }
 
 export default function KanbanBoard({
   projectId,
+  userId,
+  role,
+  onClearAssignee,
+  onResetFilters,
   initialTasks,
   members,
   scoreMap,
@@ -61,35 +58,73 @@ export default function KanbanBoard({
   readOnly = false,
 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
-
-  // Track new status during drag — avoids stale-closure bug in handleDragEnd
-  const dragStatusRef = useRef<TaskStatus | null>(null);
-  const dragSnapshot = useRef<Task[]>([]);
+  const searchParams = useSearchParams();
+  const taskParam = searchParams.get("task");
+  const deliverableParam = searchParams.get("deliverable");
+  const aiOrigins = useAiOrigins(projectId);
+  const recordsVersion = useAgentStore(s => s.recordsVersion);
+  const mutationLock = useRef(false);
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const [updating, setUpdating] = useState(false);
 
   // Modal state
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTab, setEditingTab] = useState<"info" | "resources">("resources");
   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [boardError, setBoardError] = useState("");
-  // 보드 / 목록 보기. 보는 사람의 브라우저에만 기억한다
-  const [view, setView] = useState<"board" | "list">("board");
+  const storageKey = `task-view-v2:${userId}:${projectId}:${role}`;
+  const [preferences, setPreferences] = useState<TaskView>(() => defaultTaskView(role));
+  const [ready, setReady] = useState(false);
+  const [scopeOverride, setScopeOverride] = useState<TaskScope | null>(null);
+  const [reviewIds, setReviewIds] = useState<Set<string>>(new Set());
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState(false);
+  const [reviewRetry, setReviewRetry] = useState(0);
   useEffect(() => {
-    try { if (localStorage.getItem("task-view") === "list") setView("list"); } catch { /* 저장소를 못 쓰면 보드 */ }
-  }, []);
-  const changeView = (v: "board" | "list") => {
-    setView(v);
-    try { localStorage.setItem("task-view", v); } catch { /* 무시 */ }
+    try { setPreferences(restoreTaskView(localStorage.getItem(storageKey), role)); }
+    catch { setPreferences(defaultTaskView(role)); }
+    setReady(true);
+  }, [storageKey, role]);
+  const updatePreferences = (patch: Partial<TaskView>) => {
+    const next = { ...preferences, ...patch };
+    setPreferences(next);
+    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* 이번 화면에서는 적용 */ }
   };
+  const view = preferences.view;
+  // 최종 제출물에서 들어온 링크와 명시적인 담당자 필터를 개인 기본 보기보다 우선한다.
+  const scope = filter?.assigneeId ? "all" : scopeOverride ?? (deliverableParam ? "all" : preferences.scope);
+  const changeScope = (next: TaskScope) => { onClearAssignee(); setScopeOverride(next); updatePreferences({ scope: next }); };
+  useEffect(() => { setScopeOverride(null); }, [deliverableParam]);
+  useEffect(() => {
+    if (readOnly) { setReviewIds(new Set()); return; }
+    let active = true;
+    const pending = tasks.filter(t => t.status !== "DONE" && t.completionRequestedAt);
+    setReviewLoading(true); setReviewError(false);
+    // 업무가 많아도 검토 권한 조회를 한꺼번에 발송하지 않는다.
+    (async () => {
+      const results: PromiseSettledResult<string | null>[] = [];
+      for (let i = 0; i < pending.length && active; i += 4) {
+        results.push(...await Promise.allSettled(pending.slice(i, i + 4).map(t => api.get<{ canReview: boolean }>(`/projects/${projectId}/tasks/${t.id}/completion`)
+          .then(({data}) => data.canReview ? t.id : null))));
+      }
+      return results;
+    })().then(results => {
+      if (!active) return;
+      setReviewIds(new Set(results.flatMap(r => r.status === "fulfilled" && r.value ? [r.value] : [])));
+      setReviewError(results.some(r => r.status === "rejected")); setReviewLoading(false);
+    });
+    return () => { active = false; };
+  }, [tasks, projectId, readOnly, reviewRetry]);
   const openedTask = useRef<string | null>(null);
 
-  // 제출물 상세의 "보드에서 이 제출물 업무 보기"가 ?deliverable=<id> 로 연다
+  // 최종 제출물 상세의 "보드에서 이 최종 제출물 업무 보기"가 ?deliverable=<id> 로 연다
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("deliverable");
-    if (id) setDeliveryFilter(id);
-  }, []);
+    setDeliveryFilter(deliverableParam ?? "");
+  }, [deliverableParam]);
 
   const [deliverablesError, setDeliverablesError] = useState("");
 
@@ -97,61 +132,35 @@ export default function KanbanBoard({
     setDeliverablesError("");
     api.get<Deliverable[]>(`/projects/${projectId}/deliverables`)
       .then(({ data }) => setDeliverables(data))
-      .catch((err) => setDeliverablesError(apiError(err, "제출물 목록을 불러오지 못했습니다.")));
+      .catch((err) => setDeliverablesError(apiError(err, "최종 제출물 목록을 불러오지 못했습니다.")));
   }, [projectId]);
 
   useEffect(() => {
     loadDeliverables();
-  }, [loadDeliverables]);
-
-  // 확정·제출된 제출물의 업무는 서버가 쓰기를 409로 거절한다(K-20 4장). 그 업무만 읽기 전용으로 둔다
-  const lockedIds = useMemo(
-    () => new Set(deliverables.filter((d) => isDeliverableLocked(d)).map((d) => d.id)),
-    [deliverables]
-  );
-  const isLocked = useCallback(
-    (task: Task) => !!task.deliverableId && lockedIds.has(task.deliverableId),
-    [lockedIds]
-  );
-  // 보드를 연 뒤 다른 사람이 확정했으면 409가 온다. 제출물을 다시 읽어 잠금을 화면에 반영한다
-  const refreshIfConflict = (err: unknown) => {
-    if ((err as { response?: { status?: number } })?.response?.status === 409) loadDeliverables();
-  };
-  const withConflictRefresh = <A extends unknown[]>(write: (...args: A) => Promise<void>) =>
-    async (...args: A) => {
-      try {
-        await write(...args);
-      } catch (err) {
-        refreshIfConflict(err);
-        throw err;
-      }
-    };
+  }, [loadDeliverables, recordsVersion]);
+  useEffect(() => {
+    if (recordsVersion === 0) return;
+    let active = true;
+    api.get<Task[]>(`/projects/${projectId}/tasks`).then(({data}) => {
+      if (!active) return;
+      setTasks(data); onTasksChange?.(data);
+    }).catch(e => { if(active) setBoardError(apiError(e,"채택한 업무 목록을 다시 읽지 못했습니다.")); });
+    return () => {active=false;};
+  }, [projectId,recordsVersion,onTasksChange]);
 
   useEffect(() => {
     setTasks(initialTasks);
-    const id = new URLSearchParams(window.location.search).get("task");
+  }, [initialTasks]);
+  useEffect(() => {
+    const id = taskParam;
+    if (!id) {openedTask.current=null; return;}
     const task = initialTasks.find((item) => item.id === id);
     if (task && openedTask.current !== id) {
       openedTask.current = id;
       setEditingTask(task);
       setModalMode("edit");
     }
-  }, [initialTasks]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
-
-  // Custom collision detection: pointer-within first, then closest center.
-  // This ensures empty columns are properly detected as drop targets.
-  const collisionDetection = useCallback(
-    (args: Parameters<typeof closestCenter>[0]) => {
-      const pointerCollisions = pointerWithin(args);
-      if (pointerCollisions.length > 0) return pointerCollisions;
-      return rectIntersection(args);
-    },
-    []
-  );
+  }, [initialTasks,taskParam]);
 
   // ── Column grouping (filter 적용) ────────────────────────────────────
 
@@ -159,94 +168,19 @@ export default function KanbanBoard({
   const visibleTasks = useMemo(() => {
     const q = filter?.tag?.toLowerCase();
     return tasks.filter((t) =>
+      (preferences.showDone || t.status !== "DONE") &&
+      inTaskScope(t, scope, userId, reviewIds) &&
       (!deliveryFilter || (deliveryFilter === "unlinked" ? !t.deliverableId : t.deliverableId === deliveryFilter)) &&
       (!filter?.assigneeId || t.assignees.some((a) => a.userId === filter.assigneeId)) &&
       (!filter?.priority || t.priority === filter.priority) &&
       (!q || !!t.tag?.toLowerCase().includes(q))
     );
-  }, [tasks, filter, deliveryFilter]);
+  }, [tasks, filter, deliveryFilter, preferences.showDone, scope, userId, reviewIds]);
 
   const tasksByStatus = useCallback(
     (status: TaskStatus) => visibleTasks.filter((t) => t.status === status),
     [visibleTasks]
   );
-
-  // ── Drag handlers ──────────────────────────────────────────────────────
-
-  function handleDragStart({ active }: DragStartEvent) {
-    dragSnapshot.current = tasks;
-    setBoardError("");
-    const found = tasks.find((t) => t.id === active.id);
-    if (found) {
-      setActiveTask(found);
-      dragStatusRef.current = found.status; // initial status
-    }
-  }
-
-  function handleDragOver({ active, over }: DragOverEvent) {
-    if (!over) return;
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const isOverColumn = KANBAN_COLUMNS.some((c) => c.id === overId);
-
-    setTasks((prev) => {
-      const activeIdx = prev.findIndex((t) => t.id === activeId);
-      if (activeIdx === -1) return prev;
-
-      const newStatus: TaskStatus = isOverColumn
-        ? (overId as TaskStatus)
-        : (prev.find((t) => t.id === overId)?.status ?? prev[activeIdx].status);
-
-      // Always update ref so handleDragEnd has the latest status
-      dragStatusRef.current = newStatus;
-
-      if (prev[activeIdx].status === newStatus) return prev;
-
-      const updated = [...prev];
-      updated[activeIdx] = { ...updated[activeIdx], status: newStatus };
-      return updated;
-    });
-  }
-
-  async function handleDragEnd({ active, over }: DragEndEvent) {
-    setActiveTask(null);
-
-    const newStatus = dragStatusRef.current;
-    dragStatusRef.current = null;
-
-    if (!over || newStatus === null) {
-      setTasks(dragSnapshot.current);
-      return;
-    }
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    // Reorder within same column if dropped on another task
-    setTasks((prev) => {
-      const activeIdx = prev.findIndex((t) => t.id === activeId);
-      const overIdx = prev.findIndex((t) => t.id === overId);
-      if (activeIdx === -1) return prev;
-      if (overIdx !== -1 && activeIdx !== overIdx) {
-        return arrayMove(prev, activeIdx, overIdx);
-      }
-      return prev;
-    });
-
-    // Persist status to backend using ref value (not stale closure)
-    try {
-      await api.patch(
-        `/projects/${projectId}/tasks/${activeId}/status`,
-        { status: newStatus }
-      );
-      onTasksChange?.(tasks.map(t => t.id === activeId ? { ...t, status: newStatus } : t));
-    } catch (err) {
-      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
-      setTasks(dragSnapshot.current);
-      refreshIfConflict(err);
-    }
-  }
 
   // ── Modal handlers ─────────────────────────────────────────────────────
 
@@ -257,6 +191,7 @@ export default function KanbanBoard({
   };
 
   const openEdit = (task: Task) => {
+    setEditingTab("resources");
     setEditingTask(task);
     setModalMode("edit");
   };
@@ -329,46 +264,38 @@ export default function KanbanBoard({
     closeModal();
   };
 
-  // ── 버튼 클릭으로 상태 이동 (To Do→In Progress, In Progress→Done) ─────
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
-    const original = tasks.find((t) => t.id === taskId);
-    if (!original || original.status === newStatus) return;
-    setBoardError("");
-
-    // 낙관적 업데이트
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-    );
-
+    const original = tasksRef.current.find(t => t.id === taskId);
+    if (readOnly || mutationLock.current || !original || original.status === "DONE" || original.completionRequestedAt || original.status === newStatus) return;
+    if (newStatus === "DONE") { openEdit(original); return; }
+    mutationLock.current = true; setUpdating(true); setBoardError("");
     try {
-      await api.patch(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
-      onTasksChange?.(tasks.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
-    } catch (err) {
-      setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다."));
-      refreshIfConflict(err);
-      // 실패 시 원상복구
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? original : t))
-      );
-    }
+      const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}/status`, { status: newStatus });
+      const next = tasksRef.current.map(t => t.id === taskId ? data : t);
+      tasksRef.current = next; setTasks(next); onTasksChange?.(next);
+    } catch (err) { setBoardError(apiError(err, "업무 상태를 저장하지 못했습니다. 다시 시도해주세요.")); }
+    finally { mutationLock.current = false; setUpdating(false); }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
 
+  if (!ready) return <p className="py-8 text-sm text-bb-text2">업무 보기를 불러오는 중입니다.</p>;
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <select aria-label="제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="max-w-full rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
-          <option value="">전체 제출물</option>
-          <option value="unlinked">제출물 미연결</option>
+        <select aria-label="최종 제출물로 업무 필터" value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} className="max-w-full rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm">
+          <option value="">전체 최종 제출물</option>
+          <option value="unlinked">최종 제출물 미연결</option>
           {deliverables.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
-        <Link href={`/projects/${projectId}/deliverables`} className="whitespace-nowrap text-sm text-indigo-500">제출물·요구사항 관리 →</Link>
+        <Link href={`/projects/${projectId}/deliverables`} className="whitespace-nowrap text-sm text-indigo-500">최종 제출물·요구사항 관리 →</Link>
+        <AgentButton projectId={projectId} skill="STATUS_BRIEF" />
         <div role="group" aria-label="업무 보기 방식" className="ml-auto flex rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
-          {([["board", "보드", Columns3], ["list", "목록", List]] as const).map(([v, label, Icon]) => (
+          {([["list", "목록", List], ["board", "칸반", Columns3]] as const).map(([v, label, Icon]) => (
             <button
               key={v}
-              onClick={() => changeView(v)}
+              onClick={() => updatePreferences({ view: v })}
               aria-pressed={view === v}
               className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${view === v ? "bg-bb-surface2 text-bb-text font-medium" : "text-bb-text2 hover:text-bb-text"}`}
             >
@@ -378,6 +305,17 @@ export default function KanbanBoard({
           ))}
         </div>
       </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="업무 범위">
+        {([...(readOnly ? [] : [["mine", "내 업무"], ["review", "내가 검토할 업무"]]), ["all", "전체 업무"], ["unassigned", "미배정"]] as [TaskScope, string][]).map(([key, label]) => {
+          const count = tasks.filter(t => (preferences.showDone || t.status !== "DONE") && inTaskScope(t, key, userId, reviewIds)).length;
+          return <button key={key} aria-pressed={scope === key} onClick={() => changeScope(key)} className={`rounded-lg border px-3 py-2 text-sm ${scope === key ? "border-bb-primary bg-bb-primary/10 text-bb-primary" : "border-bb-border text-bb-text2"}`}>{label} {key === "review" && reviewError ? "확인 실패" : key === "review" && reviewLoading ? "확인 중" : count}</button>;
+        })}
+        <label className="ml-auto flex items-center gap-2 text-sm text-bb-text2"><input type="checkbox" checked={preferences.showDone} onChange={e => updatePreferences({ showDone: e.target.checked })} />완료 업무 포함</label>
+      </div>
+      <p className="mb-3 text-xs text-bb-text2">프로젝트 {tasks.length}개 중 {visibleTasks.length}개 표시 · 범위 버튼의 건수는 프로젝트 전체 기준</p>
+      {reviewError && <p role="alert" className="mb-3 text-sm text-red-500">검토 권한 일부를 확인하지 못했습니다. <button onClick={() => setReviewRetry(n => n + 1)} className="underline">다시 확인</button></p>}
+      {scope === "review" && reviewLoading && <p role="status" className="mb-3 text-sm text-bb-text2">검토할 수 있는 업무를 확인하고 있습니다.</p>}
+      {visibleTasks.length === 0 && tasks.length > 0 && !(scope === "review" && (reviewLoading || reviewError)) && <p className="mb-3 text-sm text-bb-text2">현재 조건에 맞는 업무가 없습니다. <button className="underline" onClick={() => { onResetFilters(); setScopeOverride("all"); setDeliveryFilter(""); updatePreferences({ scope: "all", showDone: true }); }}>모든 필터 해제·완료 업무 보기</button></p>}
       {deliverablesError && (
         <p role="alert" className="mb-4 text-sm text-red-500">
           {deliverablesError}{" "}
@@ -394,34 +332,26 @@ export default function KanbanBoard({
               </button>
             </div>
           )}
-          <TaskListView tasks={visibleTasks} onEdit={openEdit} readOnly={readOnly} isLocked={isLocked} />
+          {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onManage={task => { openEdit(task); setEditingTab("info"); }} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} />}
         </>
       ) : (
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetection}
-        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={() => { setTasks(dragSnapshot.current); setActiveTask(null); dragStatusRef.current = null; }}
-      >
+      <>
         {tasks.length === 0 ? (
           /* 빈 상태 — 태스크가 하나도 없을 때 */
           <div className="flex flex-col items-center justify-center text-center py-28">
             <span className="text-5xl mb-4">📋</span>
-            <p className="text-base font-semibold text-bb-text mb-1.5">아직 업무가 없어요</p>
+            <p className="text-base font-semibold text-bb-text mb-1.5">아직 태스크가 없어요</p>
             {readOnly ? (
               <p className="text-sm text-bb-text2">팀원이 업무를 만들면 여기서 확인할 수 있습니다</p>
             ) : (
               <>
-                <p className="text-sm text-bb-text2 mb-6">첫 업무를 만들어 팀원에게 배정해보세요</p>
+                <p className="text-sm text-bb-text2 mb-6">첫 태스크를 만들어 팀원에게 배정해보세요</p>
                 <button
                   onClick={() => openCreate("TODO")}
                   className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500
                              text-white text-sm font-medium rounded-lg transition-all"
                 >
-                  + 업무 추가
+                  + 태스크 추가
                 </button>
               </>
             )}
@@ -431,48 +361,39 @@ export default function KanbanBoard({
             {KANBAN_COLUMNS.map((col) => (
               <KanbanColumn
                 key={col.id}
-                column={col}
+                column={col.id === "DONE" && !preferences.showDone ? { ...col, label: "완료 · 숨김" } : col}
                 tasks={tasksByStatus(col.id)}
                 scoreMap={scoreMap}
                 onAddTask={openCreate}
                 onEditTask={openEdit}
                 onMoveTask={handleMoveTask}
                 readOnly={readOnly}
-                isLocked={isLocked}
+                busy={updating}
+                aiIds={aiOrigins.task}
               />
             ))}
           </div>
         )}
 
-        {/* Drag overlay — ghost card while dragging */}
-        <DragOverlay>
-          {activeTask && (
-            <div className="rotate-2 scale-105 opacity-90 shadow-2xl shadow-indigo-500/20">
-              <TaskCard task={activeTask} scoreMap={scoreMap} onEdit={() => { }} />
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+      </>
       )}
 
       {/* Task create / edit modal */}
       {modalMode && (
         <TaskModal
           mode={modalMode}
+          initialTab={modalMode === "create" ? "info" : editingTab}
           task={editingTask}
           members={members}
           deliverables={deliverables}
           defaultStatus={createStatus}
           onClose={closeModal}
-          onCreate={withConflictRefresh(handleCreate)}
-          onUpdate={withConflictRefresh(handleUpdate)}
-          onDelete={withConflictRefresh(handleDelete)}
-          readOnly={readOnly || (!!editingTask && isLocked(editingTask))}
-          readOnlyNote={
-            !readOnly && editingTask && isLocked(editingTask)
-              ? `확정된 제출물 "${editingTask.deliverableTitle ?? ""}"의 업무라 바꿀 수 없습니다.`
-              : undefined
-          }
+          onCreate={handleCreate}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+          readOnly={readOnly}
+          availableTasks={tasks}
+          onWorkflowChanged={data => { setEditingTask(data); setTasks(prev => prev.map(t => t.id === data.id ? data : t)); onTasksChange?.(tasks.map(t => t.id === data.id ? data : t)); }}
         />
       )}
     </>

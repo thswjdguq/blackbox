@@ -31,15 +31,17 @@ public class ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectAccessChecker accessChecker;
     private final EntityManager entityManager;
+    private final MeetingAttendanceService attendance;
 
     public ProjectService(ProjectRepository projectRepository,
                           ProjectMemberRepository projectMemberRepository,
                           ProjectAccessChecker accessChecker,
-                          EntityManager entityManager) {
+                          EntityManager entityManager, MeetingAttendanceService attendance) {
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
+        this.attendance = attendance;
     }
 
     // ── 내 프로젝트 목록 ────────────────────────────────────────────────────
@@ -105,9 +107,9 @@ public class ProjectService {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireLeader(project, user);
         try {
-            // delete(project)를 쓰지 않는다. 위의 권한 확인이 읽어 둔 멤버 행이 지워질 프로젝트를 가리켜
-            // Hibernate가 반영을 거부한다. 한 줄을 바로 지우면 점수·활동 기록·파일이 막는지도 여기서 알 수 있다
-            projectRepository.deleteRowById(projectId);
+            // 엔티티 remove는 권한 검사에서 읽은 멤버의 project 참조와 충돌한다.
+            // 단일 DELETE를 즉시 실행하고 DB의 기존 기록 보존 제약은 그대로 적용한다.
+            projectRepository.deleteProjectRow(projectId);
         } catch (DataIntegrityViolationException e) {
             // 지금은 삭제를 막고 이유만 응답한다. 보관(종료) 기능을 만들지는 A-03 보고서 7장에서 팀이 정한다
             throw new ResponseStatusException(HttpStatus.CONFLICT, "기록 보존을 위해 이 프로젝트는 삭제할 수 없습니다");
@@ -143,6 +145,7 @@ public class ProjectService {
         projectMemberRepository.save(member);
         entityManager.flush();
         entityManager.refresh(member);
+        attendance.enroll(project, user);
         return MemberResponse.from(member);
     }
 
@@ -177,6 +180,7 @@ public class ProjectService {
 
         target.setRole(req.role());
         projectMemberRepository.save(target);
+        attendance.enroll(project, target.getUser());
         return MemberResponse.from(target);
     }
 

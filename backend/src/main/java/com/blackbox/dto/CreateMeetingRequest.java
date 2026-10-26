@@ -8,5 +8,11 @@ import java.time.OffsetDateTime;
 public record CreateMeetingRequest(
         @Size(max = 255) String title,
         @NotNull OffsetDateTime meetingDate,
-        String purpose
-) {}
+        String purpose,
+        Integer attendanceGraceMinutes,
+        Integer attendanceWindowMinutes
+) {
+    public CreateMeetingRequest(String title, OffsetDateTime date, String purpose) {
+        this(title, date, purpose, null, null);
+    }
+}

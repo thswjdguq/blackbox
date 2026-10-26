@@ -9,5 +9,11 @@ public record UpdateMeetingRequest(
         OffsetDateTime meetingDate,
         String purpose,
         String notes,
-        String decisions
-) {}
+        String decisions,
+        Integer attendanceGraceMinutes,
+        Integer attendanceWindowMinutes
+) {
+    public UpdateMeetingRequest(String title, OffsetDateTime date, String purpose, String notes, String decisions) {
+        this(title, date, purpose, notes, decisions, null, null);
+    }
+}

@@ -191,15 +191,6 @@ docker compose up -d --build
   PowerShell에서는 `$env:NEXT_DEV_BACKEND='http://localhost:8080'; npm run dev`처럼 준다.
   백엔드는 CI와 같은 JDK 17로 실행한다. 기본 Java가 다른 버전이면 `JAVA_HOME`을 JDK 17로 지정한다. DB 사용자와 비밀번호는 `docker-compose.db-only.yml`에 적힌 값을 그대로 준다. 화면은 환경 변수를 주는 대신 `frontend/.env.example`을 `frontend/.env.local`로 복사해도 된다.
   파일 업로드까지 쓰려면 백엔드에 `FILE_UPLOAD_DIR`도 준다. 기본값 `/data/uploads`는 컨테이너 안의 경로라 로컬에서는 업로드가 500으로 실패한다. 저장소 밖의 폴더를 지정한다.
-- 두 브랜치를 함께 띄우려면(예: main으로 개발하면서 시연 브랜치를 확인) 브랜치를 옆 폴더에 받아 `docker-compose.second.yml`을 붙인다. 폴더 이름이 Compose의 프로젝트 이름이 되어 이미지, DB, 업로드 파일이 따로 만들어지고, 이 파일이 컨테이너 이름과 포트를 바꾼다.
-
-  ```bash
-  git worktree add ../blackbox-expo origin/shinguexpo
-  cd ../blackbox-expo && cp ../blackbox/.env .
-  docker compose -f docker-compose.yml -f ../blackbox/docker-compose.second.yml up -d --build    # https://localhost:8443
-  ```
-
-  한 폴더에서 `git switch`로 브랜치만 바꿔 띄우지 않는다. `up -d`는 이미지가 이미 있으면 다시 빌드하지 않아 이전 브랜치의 코드가 그대로 뜨고, DB에는 두 브랜치의 마이그레이션이 섞인다. 코드를 고친 뒤에는 `up -d --build`로 띄운다.
 - 헬스 체크: `GET /api/health`.
 
 ---
@@ -240,7 +231,6 @@ blackbox/
 - **프로젝트 컨텍스트:** [`md/claude.md`](md/claude.md)
 - **종합 기획서:** [`md/TeamBlackbox_기획서_v3.md`](md/TeamBlackbox_기획서_v3.md)
 - **API 표:** [`md/handover_log.md`](md/handover_log.md)
-- **AWS 시연 서버 배포:** [`docs/deploy-aws.md`](docs/deploy-aws.md)
 
 ---
 

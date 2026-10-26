@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -15,6 +16,7 @@ public class Deliverable {
     @Column(nullable = false, length = 255) private String title;
     @Column(columnDefinition = "TEXT") private String description;
     @Column(name = "due_date", nullable = false) private LocalDate dueDate;
+    @Column(name = "due_time") private LocalTime dueTime;
     @Column(name = "submission_method", length = 500) private String submissionMethod;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "owner_id") private User owner;
     @Column(name = "created_at", nullable = false) private OffsetDateTime createdAt = OffsetDateTime.now();

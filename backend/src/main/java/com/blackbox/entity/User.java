@@ -55,6 +55,19 @@ public class User implements UserDetails {
     @Column(name = "notion_page_id", length = 255)
     private String notionPageId;
 
+    @Column(name="university_id", length=64)
+    private String universityId;
+    @Column(name="university_name", length=150)
+    private String universityName;
+    @Column(name="department_id", length=64)
+    private String departmentId;
+    @Column(name="department_name", length=150)
+    private String departmentName;
+    @Column(name="affiliation_source", length=20)
+    private String affiliationSource;
+    @Column(name="affiliation_catalog_year")
+    private Integer affiliationCatalogYear;
+
     // ── UserDetails ──────────────────────────────────────────
 
     @Override

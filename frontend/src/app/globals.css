@@ -2,19 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 큰 화면에서 공통 AI 창의 자리만 확보한다. 업무 상세 창은 기존 z-50으로 그 위에 열린다. */
+@media (min-width: 1280px) {
+  html[data-agent-open] main { margin-right: 420px; }
+}
+
 /* ─── Design Tokens (CSS Custom Properties) ─────────────────────────── */
 :root {
   /* Light mode palette */
-  --bb-bg:        255 255 255;   /* #FFFFFF */
-  --bb-surface:   248 250 252;   /* #F8FAFC */
-  --bb-surface2:  241 245 249;   /* #F1F5F9 */
-  --bb-border:    226 232 240;   /* #E2E8F0 */
-  --bb-primary:   99 102 241;    /* #6366F1  indigo-500 */
-  --bb-primary-h: 79 70 229;     /* #4F46E5  indigo-600 */
+  --bb-bg:        249 249 248;   /* workspace canvas */
+  --bb-surface:   255 255 255;   /* workspace surface */
+  --bb-surface2:  241 241 239;   /* #F1F5F9 */
+  --bb-border:    233 233 231;   /* #E2E8F0 */
+  --bb-primary:   35 131 226;    /* primary action */
+  --bb-primary-h: 31 111 197;     /* primary hover */
   --bb-accent:    45 212 191;    /* #2DD4BF  teal-400 */
-  --bb-text:      15 23 42;      /* #0F172A */
-  --bb-text2:     100 116 139;   /* #64748B */
-  --bb-sidebar:   248 250 252;   /* #F8FAFC */
+  --bb-text:      55 53 47;      /* #0F172A */
+  --bb-text2:     95 94 91;   /* #64748B */
+  --bb-sidebar:   241 241 239;   /* workspace surface */
 }
 
 .dark {
@@ -33,7 +38,7 @@
 
 /* ─── Base Body Styles ──────────────────────────────────────────────── */
 body {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Pretendard Variable", "Malgun Gothic", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background-color: rgb(var(--bb-bg));
   color: rgb(var(--bb-text));
 }
@@ -87,9 +92,31 @@ body {
   font-weight: 600;
 }
 
-/* AI 도우미 창이 열려 있으면 큰 화면에서 본문을 창 폭만큼 줄인다. 그보다 작으면 창이 본문 위를 덮는다 */
-@media (min-width: 1280px) {
-  html[data-agent-open] main {
-    margin-right: 420px;
-  }
-}
+/* Bright workspace surfaces use the existing tokens, preserving dark mode. */
+body { letter-spacing: -0.015em; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid rgb(var(--bb-primary)); outline-offset: 3px; }
+main > .max-w-5xl { max-width: 1280px; margin-inline: auto; }
+html:not(.dark) .text-indigo-400, html:not(.dark) .text-teal-400, html:not(.dark) .text-green-400 { color: #167567; }
+html:not(.dark) .text-red-400 { color: #c4302f; }
+html:not(.dark) .text-orange-400, html:not(.dark) .text-amber-400, html:not(.dark) .text-yellow-400 { color: #946800; }
+html:not(.dark) .bg-indigo-600 { background-color: #2383e2; }
+html:not(.dark) .hover\:bg-indigo-700:hover { background-color: #1f6fc5; }
+
+/* Rich minutes remain readable without exposing raw Markdown syntax. */
+.minutes-document { min-height: 220px; padding: 24px; font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; outline: none; }
+.minutes-document > * + * { margin-top: .75em; }
+.minutes-document h1 { font-size: 1.7em; font-weight: 700; }
+.minutes-document h2 { font-size: 1.35em; font-weight: 700; margin-top: 1.4em; }
+.minutes-document h3 { font-size: 1.15em; font-weight: 600; }
+.minutes-document ul { list-style: disc; padding-left: 1.5em; }
+.minutes-document ol { list-style: decimal; padding-left: 1.5em; }
+.minutes-document ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.minutes-document li[data-type="taskItem"] { display: flex; gap: .65em; align-items: flex-start; }
+.minutes-document li[data-type="taskItem"] > div { flex: 1; }
+.minutes-document blockquote { border-left: 3px solid rgb(var(--bb-primary)); padding-left: 1em; color: rgb(var(--bb-text2)); }
+.minutes-document a { color: rgb(var(--bb-primary)); text-decoration: underline; }
+.minutes-document table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.minutes-document th, .minutes-document td { border: 1px solid rgb(var(--bb-border)); padding: .5em; min-width: 60px; }
+.minutes-document th { background: rgb(var(--bb-surface2)); font-weight: 600; }
+.minutes-document pre { background: rgb(var(--bb-surface2)); padding: 1em; overflow-x: auto; border-radius: 6px; }

@@ -22,6 +22,7 @@ public class ReviewRoundService implements ReviewRoundReader {
     // 형식으로만 주입받는다. 구현이 없거나 둘이면 서버가 뜨지 않아야 한다(K-10 5장)
     private final UnresolvedCommentCounter unresolvedComments;
     private final DeliverableStatuses statuses;
+    private final ReviewFeedbackNotifications notifications;
 
     @Transactional(readOnly = true)
     public ListResponse list(UUID projectId, UUID deliverableId, User user) {
@@ -45,7 +46,9 @@ public class ReviewRoundService implements ReviewRoundReader {
         if (req.fileId() != null) r.setFile(files.findByIdAndProject(req.fileId(), project)
                 .orElseThrow(() -> new NotFoundException("파일을 찾을 수 없습니다")));
         r.setOpenedBy(user);
-        return round(rounds.save(r), true);
+        rounds.save(r);
+        notifications.versionPosted(r,user);
+        return round(r, true);
     }
 
     public Round decide(UUID projectId, UUID deliverableId, UUID reviewId, String decision, User user) {

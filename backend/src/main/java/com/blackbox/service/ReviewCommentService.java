@@ -22,6 +22,7 @@ public class ReviewCommentService {
     private final ReviewRoundReader reviews;
     private final ActivityLogService activity;
     private final ObjectMapper json;
+    private final ReviewFeedbackNotifications notifications;
 
     @Transactional(readOnly = true)
     public List<Response> list(UUID projectId, UUID deliverableId, UUID reviewId, User user) {
@@ -45,6 +46,7 @@ public class ReviewCommentService {
         c.setAuthor(user); c.setContent(content);
         c = comments.save(c);
         record(c, user, "FEEDBACK_CREATE", Map.of("commentId", c.getId().toString()));
+        notifications.created(c);
         return Response.from(c);
     }
 
@@ -59,6 +61,7 @@ public class ReviewCommentService {
             c.setResolvedAt(java.time.OffsetDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
             c.setResolutionReason(reason);
             record(c, user, "FEEDBACK_RESOLVE", Map.of("commentId", c.getId().toString()));
+            notifications.resolved(c,user);
         }
         return Response.from(c);
     }
@@ -73,6 +76,7 @@ public class ReviewCommentService {
             previous.put("commentId", c.getId()); previous.put("resolvedBy", c.getResolvedBy().getId());
             previous.put("resolvedAt", c.getResolvedAt().toString()); previous.put("reason", c.getResolutionReason());
             record(c, user, "FEEDBACK_REOPEN", previous);
+            notifications.reopened(c,user);
             c.setResolvedBy(null); c.setResolvedAt(null); c.setResolutionReason(null);
         }
         return Response.from(c);
@@ -82,7 +86,7 @@ public class ReviewCommentService {
         // 승인과 코멘트 명령이 동일 제출물 잠금을 사용해야 검사와 저장 사이의 경쟁을 막는다.
         var view = reviews.lockForWrite(p, d, r);
         if ("APPROVED".equals(view.decision())) throw conflict("승인된 검토 회차는 변경할 수 없습니다");
-        if (DeliverableStatusReader.isConfirmed(view.deliverableStatus())) throw conflict(DeliverableStatusReader.CONFIRMED_DETAIL);
+        if (Set.of("CONFIRMED", "SUBMITTED").contains(view.deliverableStatus())) throw conflict("확정된 제출물은 변경할 수 없습니다");
         return view;
     }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { daysLeft, dueLabel, parseLocalDate, shortDate, DUE_TEXT, dueTone } from "@/lib/due";
+import { daysLeft, deliverableDue, parseLocalDate, shortDate } from "@/lib/due";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
 
@@ -31,14 +31,16 @@ interface Row {
   title: string;
   href: string | null;
   due: string | null;
+  dueTime?: string | null;
+  status?: Deliverable["status"];
   tasks: Task[];
   undated: number;
 }
 
 /**
- * 제출물 일정 보기 (C-50 7번, Flow 간트차트·캘린더 참고). 읽기 전용.
- * 업무에는 시작일이 없어 막대 대신 마감일에 점을 찍는다. 제출물 기한은 마름모, 오늘은 세로선.
- * 점을 누르면 업무 보드에서 그 업무가, 제출물 이름을 누르면 제출물 상세가 열린다.
+ * 최종 제출물 일정 보기 (C-50 7번, Flow 간트차트·캘린더 참고). 읽기 전용.
+ * 업무에는 시작일이 없어 막대 대신 마감일에 점을 찍는다. 최종 제출물 기한은 마름모, 오늘은 세로선.
+ * 점을 누르면 업무 보드에서 그 업무가, 최종 제출물 이름을 누르면 최종 제출물 상세가 열린다.
  */
 export default function DeliverableTimeline({ projectId, deliverables, tasks }: {
   projectId: string;
@@ -61,13 +63,13 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
     .map((d) => {
       const linked = tasks.filter((t) => t.deliverableId === d.id);
       return {
-        key: d.id, title: d.title, href: `/projects/${projectId}/deliverables/${d.id}`, due: d.dueDate,
+        key: d.id, title: d.title, href: `/projects/${projectId}/deliverables/${d.id}`, due: d.dueDate, dueTime: d.dueTime, status: d.status,
         tasks: linked.filter((t) => t.dueDate), undated: linked.filter((t) => !t.dueDate).length,
       };
     });
   const unlinked = tasks.filter((t) => !t.deliverableId);
   if (unlinked.some((t) => t.dueDate)) {
-    rows.push({ key: "unlinked", title: "제출물 미연결", href: null, due: null, tasks: unlinked.filter((t) => t.dueDate), undated: unlinked.filter((t) => !t.dueDate).length });
+    rows.push({ key: "unlinked", title: "최종 제출물 미연결", href: null, due: null, tasks: unlinked.filter((t) => t.dueDate), undated: unlinked.filter((t) => !t.dueDate).length });
   }
 
   // 오늘과 모든 날짜를 포함하는 범위
@@ -103,7 +105,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
         <div className="relative" style={{ width: labelW + totalDays * DAY, minWidth: "100%" }}>
           {/* 날짜 머리줄 */}
           <div className="sticky top-0 z-10 flex border-b border-bb-border bg-bb-surface text-[10px] text-bb-text2">
-            <div className="sticky left-0 z-20 flex shrink-0 items-end border-r border-bb-border bg-bb-surface px-3 py-1" style={{ width: labelW }}>제출물</div>
+            <div className="sticky left-0 z-20 flex shrink-0 items-end border-r border-bb-border bg-bb-surface px-3 py-1" style={{ width: labelW }}>최종 제출물</div>
             {days.map((d) => {
               const first = d.getDate() === 1 || d.getTime() === start.getTime();
               const weekend = d.getDay() === 0 || d.getDay() === 6;
@@ -128,7 +130,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
                   <span className="truncate text-sm text-bb-text2">{r.title}</span>
                 )}
                 <span className="truncate text-[11px] text-bb-text2">
-                  {r.due && <span className={DUE_TEXT[dueTone(r.due)]}>{dueLabel(r.due)}</span>}
+                  {r.due && <span className={deliverableDue({ dueDate: r.due, dueTime: r.dueTime, status: r.status }).cls}>{deliverableDue({ dueDate: r.due, dueTime: r.dueTime, status: r.status }).label}</span>}
                   {r.due && " · "}업무 {r.tasks.length + r.undated}개{r.undated > 0 && ` (기한 없음 ${r.undated})`}
                 </span>
               </div>
@@ -136,8 +138,8 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
                 {r.due && (
                   <span
                     role="img"
-                    aria-label={`${r.title} 제출 기한 ${shortDate(r.due)}`}
-                    title={`제출 기한 ${shortDate(r.due)} (${dueLabel(r.due)})`}
+                    aria-label={`${r.title} 제출 기한 ${shortDate(r.due)} · ${r.dueTime ? `${r.dueTime} (한국 시간)` : "시간 미지정"}`}
+                    title={`제출 기한 ${shortDate(r.due)} · ${r.dueTime ? `${r.dueTime} (한국 시간)` : "시간 미지정"} (${deliverableDue({ dueDate: r.due, dueTime: r.dueTime, status: r.status }).label})`}
                     className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-amber-400"
                     style={{ left: x(r.due) }}
                   />

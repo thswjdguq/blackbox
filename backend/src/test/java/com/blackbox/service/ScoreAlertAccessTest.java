@@ -107,4 +107,23 @@ class ScoreAlertAccessTest {
         assertEquals(List.of(), scoreService.recalculate(project.getId()));
         verify(members, never()).findByProjectAndUser(any(), any());
     }
+
+    @Test void scoreResponseExcludesObserverAndFormerMemberWithoutDeletingRows() {
+        grant("LEADER");
+        User observer = new User(); observer.setId(UUID.randomUUID());
+        User former = new User(); former.setId(UUID.randomUUID());
+        ProjectMember leaderMember = new ProjectMember(); leaderMember.setUser(actor); leaderMember.setRole("LEADER");
+        ProjectMember observerMember = new ProjectMember(); observerMember.setUser(observer); observerMember.setRole("OBSERVER");
+        when(members.findByProject(project)).thenReturn(List.of(leaderMember, observerMember));
+        List<ContributionScore> rows = new ArrayList<>();
+        for (User user : List.of(actor, observer, former)) {
+            ContributionScore row = new ContributionScore(); row.setUser(user); rows.add(row);
+        }
+        when(scores.findByProjectOrderByTotalScoreDesc(project)).thenReturn(rows);
+        var response = scoreService.getScores(project.getId(), actor);
+        assertEquals(1, response.size());
+        assertEquals(actor.getId(), response.get(0).userId());
+        assertEquals(3, rows.size());
+        verify(scores, never()).delete(any());
+    }
 }

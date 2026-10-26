@@ -24,7 +24,7 @@ public class ListDeliverablesTool implements ProjectTool {
     @Override public String name() { return NAME; }
     @Override public String label() { return "제출물과 요구사항 조회"; }
     @Override public String description() {
-        return "제출물을 기한이 빠른 순으로 돌려준다. 제출물마다 요구사항과, 요구사항이 충족됐다고 확인됐는지(met), 진행 단계(stage)가 들어 있다. "
+        return "dueTime은 한국 시간(Asia/Seoul)의 HH:mm이며 null은 시간 미지정이다. 제출물을 기한이 빠른 순으로 돌려준다. 제출물마다 요구사항과, 요구사항이 충족됐다고 확인됐는지(met), 진행 단계(stage)가 들어 있다. "
                 + "required가 true인 요구사항은 꼭 지켜야 하는 것(필수), false는 권장이다. 권장을 필수라고 쓰지 않는다. "
                 + "stage의 값: " + Arrays.stream(DeliverableStage.values())
                         .map(s -> s.name() + "(" + s.meaning() + ")").collect(Collectors.joining(", "));
@@ -34,10 +34,10 @@ public class ListDeliverablesTool implements ProjectTool {
         return stages.read(projectId, user).stream().map(s -> Item.from(s.deliverable(), s.stage())).toList();
     }
 
-    record Item(UUID id, String title, String description, LocalDate dueDate, String submissionMethod,
+    record Item(UUID id, String title, String description, LocalDate dueDate, String dueTime, String submissionMethod,
                 String ownerName, DeliverableStage stage, List<Requirement> requirements) {
         static Item from(DeliverableDtos.Response d, DeliverableStage stage) {
-            return new Item(d.id(), d.title(), d.description(), d.dueDate(), d.submissionMethod(), d.ownerName(), stage,
+            return new Item(d.id(), d.title(), d.description(), d.dueDate(), d.dueTime(), d.submissionMethod(), d.ownerName(), stage,
                     d.requirements().stream()
                             .map(r -> new Requirement(r.id(), r.content(), r.required(), r.assessment() != null)).toList());
         }
