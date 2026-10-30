@@ -155,14 +155,13 @@ COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml   # 서버 전용 overri
 
 - 처음 한 번 레지스트리의 패키지를 공개로 바꾼다(저장소 관리자: GitHub의 Packages → 패키지 설정 → Change visibility). 비공개로 두면 서버가 받지 못한다
 - 시연 직전처럼 바뀌면 안 될 때는 커밋이 붙은 태그로 고정한다(예: `IMAGE_TAG=main-1a2b3c4`). 확인을 마친 새 커밋을 반영할 때만 태그를 그 커밋으로 바꾸고 `sudo systemctl start blackbox-update`를 실행한다
-- 다른 브랜치(예: 엑스포 때의 `shinguexpo`)의 이미지를 띄우던 서버를 main으로 옮길 때는 DB를 새로 쓴다. 브랜치마다 마이그레이션 이력이 달라 이어 쓸 수 없다. 컨테이너 이름이 고정이라 옛 스택을 먼저 내린다(`-v` 없이. 옛 DB 볼륨은 남는다)
+- 다른 브랜치(예: 엑스포 때의 `shinguexpo`)의 이미지를 띄우던 서버를 main으로 옮길 때는 **새 DB로 띄우지 않는다.** 브랜치마다 마이그레이션 이력이 달라 옛 DB를 그대로 이어 쓸 수 없고, 새 DB로 띄우면 그동안 쌓인 프로젝트와 파일이 화면에서 사라진다(볼륨은 남지만 보이지 않는다). 순서는 이렇다
+  1. 옛 DB와 업로드 파일을 백업한다(8장)
+  2. main 이미지로 새 DB를 만들고 옛 DB의 자료를 옮긴다
+  3. 옮긴 DB로 프로젝트·업무·제출물이 보이는지, 파일이 내려받아지는지 확인한다
+  4. 확인한 뒤에 `.env`의 `IMAGE_TAG`를 main으로 바꾼다
 
-  ```bash
-  cd ~/blackbox && docker compose down    # .env의 옛 COMPOSE_PROJECT_NAME으로 내린다
-  sed -i -e 's#^IMAGE_TAG=.*#IMAGE_TAG=main#' -e 's#^COMPOSE_PROJECT_NAME=.*#COMPOSE_PROJECT_NAME=blackbox#' .env
-  sudo systemctl start blackbox-update && journalctl -u blackbox-update -n 20 --no-pager
-  ```
-
+  Flyway 이력을 고쳐 맞추거나(`repair`, 이력 행 교체) 볼륨을 지워 맞추지 않는다. 엑스포 서버의 실제 명령은 시연 브랜치를 main으로 옮기는 통합 작업에서 DB 사본으로 확인한 뒤 이 장에 더한다
 - 자동 백업은 `~/blackbox-backups/auto-*.dump`에 최근 10개를 둔다
 - 되돌릴 때 이미지만 되돌리고 DB는 되돌리지 않는다. 새 이미지가 마이그레이션을 먼저 적용했다면 옛 이미지가 새 스키마에서 돈다. 문제가 있으면 바꾸기 직전의 자동 백업(`auto-*.dump` 가운데 가장 최근 것)으로 8장의 복원 절차를 따른다
 - 교체했다가 상태가 나빠 되돌린 이미지는 `~/blackbox-backups/.failed-images`에 적어 두고, 같은 이미지가 다시 오면 건너뛴다. 새 커밋의 이미지가 오면 다시 시도한다
