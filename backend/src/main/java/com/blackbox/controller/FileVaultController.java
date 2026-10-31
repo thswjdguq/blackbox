@@ -63,13 +63,20 @@ public class FileVaultController {
             @PathVariable UUID fileId,
             @AuthenticationPrincipal User user) {
         FileVaultService.DownloadResult result = fileVaultService.download(fileId, user);
-        ContentDisposition disposition = ContentDisposition.attachment()
-                .filename(result.fileName(), StandardCharsets.UTF_8)
-                .build();
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header(HttpHeaders.CONTENT_DISPOSITION, attachment(result.fileName()))
                 .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(result.fileSize()))
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(result.resource());
+    }
+
+    /**
+     * 이름을 그대로 이어 붙이면 한글 이름을 브라우저가 읽지 못하고, 따옴표가 든 이름은 머리를 깨뜨린다.
+     * 영문 이름은 예전처럼 filename만 보내고, 그 밖의 이름은 filename*(RFC 5987)를 함께 보낸다.
+     */
+    static String attachment(String fileName) {
+        var disposition = ContentDisposition.attachment();
+        boolean ascii = StandardCharsets.US_ASCII.newEncoder().canEncode(fileName);
+        return (ascii ? disposition.filename(fileName) : disposition.filename(fileName, StandardCharsets.UTF_8)).build().toString();
     }
 }

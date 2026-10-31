@@ -1,0 +1,105 @@
+# 서버가 받아 갈 이미지(backend, frontend, nginx)를 만들어 GitHub 레지스트리(GHCR)에 올린다.
+# 서버의 자동 갱신(scripts/ec2-update.sh)이 이 이미지를 받는다. 절차는 docs/deploy-aws.md 7장
+#   - main: CI가 main에서 성공하면 만든다
+#   - 그 밖의 브랜치: 이 파일이 없는 브랜치도 만들 수 있게 일정과 수동 실행으로 만든다. 지금은 엑스포 브랜치(shinguexpo)다
+# 태그: <브랜치>(가장 최근 것, 서버가 따라감)와 <브랜치>-<커밋 7자>(고정). 같은 커밋은 다시 만들지 않는다
+name: 이미지
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '7,37 * * * *'   # 정각·30분은 GitHub 일정이 몰려 늦거나 빠진다. 피해서 7분·37분
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 만들 브랜치
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: images-${{ github.event_name }}-${{ inputs.branch || github.event.workflow_run.head_branch || 'scheduled' }}
+  cancel-in-progress: false
+
+env:
+  SCHEDULED_BRANCHES: shinguexpo   # 일정으로 살필 브랜치. 엑스포가 끝나면 비운다
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    outputs:
+      branches: ${{ steps.pick.outputs.branches }}
+    steps:
+      - id: pick
+        run: |
+          case "${{ github.event_name }}" in
+            workflow_run)      b="main" ;;
+            workflow_dispatch) b="${{ inputs.branch }}" ;;
+            *)                 b="$SCHEDULED_BRANCHES" ;;
+          esac
+          # shellcheck disable=SC2086  # 브랜치 목록을 공백으로 나눈다
+          echo "branches=$(printf '%s\n' $b | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.branches != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(needs.plan.outputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || matrix.branch }}
+
+      - name: 태그 정하기와 이미 만든 커밋인지 확인
+        id: tag
+        env:
+          BRANCH: ${{ matrix.branch }}
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+          slug=$(echo "$BRANCH" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')
+          fixed="$slug-$(git rev-parse --short=7 HEAD)"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          if docker buildx imagetools inspect "$repo/blackbox-backend:$fixed" >/dev/null 2>&1 \
+             && docker buildx imagetools inspect "$repo/blackbox-frontend:$fixed" >/dev/null 2>&1 \
+             && docker buildx imagetools inspect "$repo/blackbox-nginx:$fixed" >/dev/null 2>&1; then
+            echo "이미 만든 커밋이다: $fixed"; echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+          { echo "repo=$repo"; echo "slug=$slug"; echo "fixed=$fixed"; } >> "$GITHUB_OUTPUT"
+
+      - name: 빌드와 올리기
+        if: steps.tag.outputs.skip != 'true'
+        env:
+          REPO: ${{ steps.tag.outputs.repo }}
+          SLUG: ${{ steps.tag.outputs.slug }}
+          FIXED: ${{ steps.tag.outputs.fixed }}
+        run: |
+          # source 라벨로 패키지를 이 저장소에 잇는다. 이어져야 워크플로의 토큰이 다음 실행에서도 같은 패키지에 올릴 수 있다
+          for s in backend frontend nginx; do
+            docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" -t "$REPO/blackbox-$s:$FIXED" "$s"
+          done
+          for s in backend frontend nginx; do docker push -q "$REPO/blackbox-$s:$FIXED"; done
+          echo "올림: $REPO/blackbox-{backend,frontend,nginx}:$FIXED" >> "$GITHUB_STEP_SUMMARY"
+
+      # 서버가 따라가는 태그(<브랜치>)는 세 이미지가 모두 올라간 뒤에만, 그리고 건너뛴 실행에서도 커밋 태그에 맞춘다.
+      # 앞선 실행이 중간에 실패해 세 태그가 서로 다른 커밋을 가리키는 일을 다음 실행이 바로잡는다. 다시 빌드하지 않는다
+      - name: 따라가는 태그 맞추기
+        env:
+          REPO: ${{ steps.tag.outputs.repo }}
+          SLUG: ${{ steps.tag.outputs.slug }}
+          FIXED: ${{ steps.tag.outputs.fixed }}
+        run: |
+          for s in backend frontend nginx; do
+            docker buildx imagetools create -t "$REPO/blackbox-$s:$SLUG" "$REPO/blackbox-$s:$FIXED"
+          done
+          echo "$REPO/blackbox-*:$SLUG → $FIXED" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,11 @@
+# 정해진 시각(매일 06:00, 한국 시간)과 서버가 켜진 직후에 갱신한다. 시연 외에는 서버를 꺼 두므로 켜질 때 한 번 더 본다.
+# 시각을 바꾸면: sudo systemctl daemon-reload && sudo systemctl restart blackbox-update.timer
+[Unit]
+Description=Blackbox server update schedule
+
+[Timer]
+OnCalendar=*-*-* 06:00:00 Asia/Seoul
+OnBootSec=2min
+
+[Install]
+WantedBy=timers.target

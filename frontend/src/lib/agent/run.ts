@@ -8,8 +8,8 @@ export class AgentRunError extends Error {
   }
 }
 
-// 서버의 실행 시간 상한(240초)보다 조금 길게 기다린다
-const GIVE_UP_MS = 250_000;
+// 서버의 실행 시간 상한(120초)보다 조금 길게 기다린다
+const GIVE_UP_MS = 130_000;
 
 /**
  * 받은 글 덩어리에서 이벤트를 하나씩 꺼낸다. 덩어리가 어디서 잘려 와도 된다.
