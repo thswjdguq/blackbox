@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import FileDownloadLink from "@/components/FileDownloadLink";
 import type { Task } from "@/types/task";
 import type { TaskMessage } from "@/types/taskMessage";
 import type { TaskResource } from "./TaskResources";
@@ -94,7 +95,7 @@ export default function TaskDiscussion({ task, members, files, readOnly, focusMe
         {m.kind === "REQUEST" && <span className="text-bb-primary">{m.recipientName}님에게 의견 요청 · {m.answeredAt ? "응답 완료" : "답변 대기"}</span>}
         {m.kind === "REPLY" && <span className="text-bb-text2">{messages.find(p => p.id === m.parentId)?.authorName ?? "의견 요청"}에 대한 답글</span>}</div>
       <p className="mt-2 whitespace-pre-wrap break-words text-sm">{m.body}</p>
-      {m.fileId && <a href={`/api/files/${m.fileId}/download`} className="inline-block mt-2 text-xs text-bb-primary underline">{m.fileName} · 버전 {m.fileVersion}</a>}
+      {m.fileId && <FileDownloadLink fileId={m.fileId} fileName={m.fileName ?? "첨부 파일"} className="inline-block mt-2 text-xs text-bb-primary underline">{m.fileName} · 버전 {m.fileVersion}</FileDownloadLink>}
       {!readOnly && m.kind !== "REPLY" && <button type="button" disabled={busy} onClick={() => reply(m)} className="block mt-2 text-xs font-medium text-bb-primary">답변·수정 내용 남기기</button>}
     </li>)}</ol>
     {error && <p role="alert" className="text-sm text-red-600">{error} <button type="button" onClick={() => load()} className="underline">다시 조회</button></p>}

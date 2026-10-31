@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import FileDownloadLink from "@/components/FileDownloadLink";
 import type { Task } from "@/types/task";
 
 export interface TaskResource { taskId: string; taskTitle: string; file: {
@@ -55,7 +56,7 @@ export default function TaskResources({ task, readOnly, uploadLocked = false, on
     {loading ? <p className="text-sm text-bb-text2">파일을 불러오는 중…</p> : !files.length ? <p className="text-sm text-bb-text2">등록된 결과 파일이 없습니다.</p> :
       <ul className="space-y-2">{files.map(({ file }) => <li key={file.id} ref={file.id === focusFileId ? focusedFile : undefined} className={`border rounded-lg p-3 ${file.id === focusFileId ? "border-bb-primary bg-bb-primary/5" : "border-bb-border"}`}>
         {file.id === focusFileId && <p className="mb-1 text-xs text-bb-primary">알림에 연결된 버전</p>}
-        <a href={`/api/files/${file.id}/download`} className="text-sm text-bb-primary break-all underline">{file.fileName}</a>
+        <FileDownloadLink fileId={file.id} fileName={file.fileName} className="text-sm text-bb-primary break-all underline">{file.fileName}</FileDownloadLink>
         <p className="text-xs text-bb-text2 mt-1">버전 {file.version} · {file.uploaderName} · {new Date(file.uploadedAt).toLocaleString("ko-KR")}</p>
       </li>)}</ul>}
     {task.deliverableId && <Link href={`/projects/${task.projectId}/deliverables/${task.deliverableId}`} className="inline-block text-xs text-bb-primary underline">
