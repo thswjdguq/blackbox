@@ -45,10 +45,10 @@ JWT_SECRET=$(rand 64)
 # 접속 주소가 정해지면 적는다(예: https://이름.duckdns.org). 비어 있으면 서버가 뜨지 않는다
 APP_CORS_ORIGINS=
 FRONTEND_BASE_URL=
-# 띄울 이미지. 레지스트리에서 받으면 IMAGE_REPO에 주소를 적고(예: ghcr.io/thswjdguq/), 비우면 PC에서 보낸 이미지를 쓴다.
+# 띄울 이미지. main에 병합될 때마다 GitHub이 만들어 올린 이미지를 받는다. IMAGE_REPO를 비우면 PC에서 보낸 이미지를 쓴다.
 # 태그가 브랜치 이름(main)이면 자동 갱신이 따라가고, 커밋이 붙은 태그(main-1a2b3c4)면 고정된다(docs/deploy-aws.md 7장)
-IMAGE_REPO=
-IMAGE_TAG=
+IMAGE_REPO=ghcr.io/thswjdguq/
+IMAGE_TAG=main
 # 배포 설정(compose, nginx)을 받을 브랜치. 이미지를 어느 브랜치로 만들었든 설정은 여기서 받는다
 CONFIG_BRANCH=main
 # 서버에서 -f 없이 docker compose를 쓰면 이 파일들을 읽는다. 서버 전용 override를 더할 때는 :로 이어 붙인다
