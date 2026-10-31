@@ -163,7 +163,7 @@ COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml   # 서버 전용 overri
 
   Flyway 이력을 고쳐 맞추거나(`repair`, 이력 행 교체) 볼륨을 지워 맞추지 않는다. 엑스포 자료의 실제 명령은 아래 "엑스포 자료를 main DB로 옮기기"에 있다
 - 자동 백업은 `~/blackbox-backups/auto-*.dump`에 최근 10개를 둔다
-- 되돌릴 때 이미지만 되돌리고 DB는 되돌리지 않는다. 새 이미지가 마이그레이션을 먼저 적용했다면 옛 이미지가 새 스키마에서 돈다. 문제가 있으면 바꾸기 직전의 자동 백업(`auto-*.dump` 가운데 가장 최근 것)으로 8장의 복원 절차를 따른다
+- 되돌릴 때 이미지만 되돌리고 DB는 되돌리지 않는다. 새 이미지가 마이그레이션을 먼저 적용했다면 옛 이미지가 새 스키마에서 돈다. 옛 이미지는 오류 없이 뜰 수 있어 상태 확인이 정상이어도 안심하지 않는다. 문제가 있으면 바꾸기 직전의 자동 백업(`auto-*.dump` 가운데 가장 최근 것)으로 아래 "DB 되돌리기"를 따른다
 - 교체했다가 상태가 나빠 되돌린 이미지는 `~/blackbox-backups/.failed-images`에 적어 두고, 같은 이미지가 다시 오면 건너뛴다. 새 커밋의 이미지가 오면 다시 시도한다
 - 설정 브랜치를 받았는데 배포용 설정이 아니면(compose가 고른 이미지가 `.env`와 다르면) 받기 전으로 돌려놓고 아무것도 바꾸지 않는다
 - 10분을 기다리지 않고 바로 반영하려면: 이미지 빌드가 끝난 뒤 서버에서 `sudo systemctl start blackbox-update`를 실행한다
@@ -179,25 +179,55 @@ sudo systemctl daemon-reload && sudo systemctl enable --now blackbox-update.time
 
 ### 엑스포 자료를 main DB로 옮기기(서버)
 
-시연 브랜치를 main으로 합친 뒤(#143) 한 번 하는 일이다. 시연 DB의 Flyway 이력은 main과 달라 이어 쓸 수 없으므로, main 이미지가 마이그레이션을 적용한 DB에 자료만 넣는다. Flyway 이력 표는 옮기지 않는다.
+시연 브랜치를 main으로 합칠 때(#143) 한 번 하는 일이다. 시연 DB의 Flyway 이력은 main과 달라 이어 쓸 수 없으므로, 새 main 이미지가 V35까지 적용한 빈 DB에 자료만 넣는다. Flyway 이력 표는 옮기지 않는다.
 
-조건은 이렇다.
+- 시연 자료의 원본: 덤프 `~/blackbox-backups/expo-final-202610260450.dump`, 업로드 볼륨 `blackbox-expo_uploads`, PC의 백업. 읽기만 하고 지우지 않는다
+- 옮겨 넣는 곳: main DB(`blackbox_pgdata` 볼륨), 업로드 `blackbox_uploads` 볼륨
+- 2번부터 6번까지 서버는 접속되지 않는다. 7번부터는 주소로 접속할 수 있으므로 6번을 통과한 뒤에 넘어가고, 8번까지 공개를 알리지 않는다. 1번부터 8번 전까지 자동 갱신은 돌지 않는다
 
-- 서버가 통합 뒤의 main 이미지로 떠 있어 V35까지 적용되어 있다. 그보다 뒤의 마이그레이션이 생기기 전에 옮긴다. 뒤의 마이그레이션이 있으면 시연 DB와 구조가 같은지 다시 비교해야 한다
-- main DB에 계정이 없다. 같은 이메일이 있으면 복원이 실패하고, 한 트랜잭션이라 전부 취소된다
-- 시연 자료의 원본: 덤프 `~/blackbox-backups/expo-final-*.dump`, 업로드 볼륨 `blackbox-expo_uploads`. 둘 다 지우지 않는다
-
-1. 자동 갱신과 서비스를 멈추고, main DB가 비어 있는지 본다(0이어야 한다).
+**1. #143을 병합하기 전: 자동 갱신을 끄고 태그를 고정한다.** 타이머를 `stop`만 하면 서버를 다시 켤 때 돌아오므로 `disable`한다. 이후 main에 무엇이 병합되어도 서버는 바뀌지 않는다. 끝의 두 값이 `disabled`, `inactive`여야 한다.
 
 ```bash
-cd ~/blackbox && sudo systemctl stop blackbox-update.timer && docker compose stop backend frontend nginx
+cd ~/blackbox && sudo systemctl disable --now blackbox-update.timer && sed -i 's#^IMAGE_TAG=.*#IMAGE_TAG=main-86bc88f#' .env && systemctl is-enabled blackbox-update.timer; systemctl is-active blackbox-update.service
+```
+
+**2. #143 병합 뒤: 공개를 닫고 전환 전 백업을 만든다.** `main-<병합 커밋>` 이미지 세 개가 GHCR에 있는지 먼저 본다. 계정과 파일이 모두 0이어야 한다.
+
+```bash
+cd ~/blackbox && docker compose stop nginx frontend backend
 ```
 
 ```bash
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select count(*) from users"'
 ```
 
-2. 자료를 넣는다. 수정 방지 트리거와 외래 키 검사는 복원하는 세션에서만 끈다(`session_replication_role=replica`). 끝나면 복원에 쓴 파일을 지운다.
+```bash
+docker run --rm --network none -v blackbox_uploads:/d:ro postgres:16-alpine sh -c 'find /d -type f | wc -l'
+```
+
+```bash
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > ~/blackbox-backups/before-switch.dump
+```
+
+**3. 새 설정과 이미지로 백엔드만 띄워 V35까지 적용한다.** 마지막 값이 `34|35`여야 한다.
+
+```bash
+git fetch origin && git checkout --detach <병합 커밋> && sed -i 's#^IMAGE_TAG=.*#IMAGE_TAG=main-<병합 커밋 7자리>#' .env && docker compose config -q && docker compose pull backend frontend nginx && docker compose up -d db backend
+```
+
+```bash
+docker compose logs backend | grep -E 'Started BlackboxApplication|APPLICATION FAILED'
+```
+
+```bash
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select count(*), max(version::int) from flyway_schema_history where success"'
+```
+
+**4. 이관 직전 백업을 만들고 자료를 넣는다.** 수정 방지 트리거와 외래 키 검사는 복원하는 세션에서만 끈다(`session_replication_role=replica`). 한 트랜잭션이라 실패하면 전부 취소된다.
+
+```bash
+docker compose stop backend && docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > ~/blackbox-backups/before-import.dump
+```
 
 ```bash
 docker compose exec -T db sh -c 'cat > /tmp/expo.dump' < ~/blackbox-backups/expo-final-202610260450.dump
@@ -207,19 +237,13 @@ docker compose exec -T db sh -c 'cat > /tmp/expo.dump' < ~/blackbox-backups/expo
 docker compose exec -T db sh -c 'pg_restore -l /tmp/expo.dump | grep -v flyway_schema_history > /tmp/expo.list && PGOPTIONS="-c session_replication_role=replica" pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --data-only --single-transaction --exit-on-error -L /tmp/expo.list /tmp/expo.dump && rm /tmp/expo.dump /tmp/expo.list'
 ```
 
-3. 업로드 파일을 복사한다. 원본 볼륨은 읽기 전용으로 붙인다.
+**5. 업로드 파일을 복사한다.** 원본 볼륨은 읽기 전용으로 붙인다.
 
 ```bash
 docker run --rm --network none -v blackbox-expo_uploads:/s:ro postgres:16-alpine tar cf - -C /s . | docker run --rm -i --network none -v blackbox_uploads:/d postgres:16-alpine tar xf - -C /d
 ```
 
-4. 다시 띄우고 자동 갱신을 켠다.
-
-```bash
-docker compose up -d && sudo systemctl start blackbox-update.timer
-```
-
-5. 계정과 프로젝트 수가 시연 DB와 같은지(계정 59, 프로젝트 14), 파일이 없거나 바뀌지 않았는지 본다(`일치 211, 불일치 0, 없음 0`). 그다음 화면에서 시연 계정으로 로그인해 프로젝트를 열고 파일과 보고서를 내려받는다.
+**6. 공개하기 전에 수량과 파일을 본다.** `59|14`, `일치 211, 불일치 0, 없음 0`이어야 한다.
 
 ```bash
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select (select count(*) from users), (select count(*) from projects)"'
@@ -229,7 +253,65 @@ docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -F" " -c "select file_hash, storage_path from file_vault"' | docker run --rm -i --network none -v blackbox_uploads:/data/uploads:ro postgres:16-alpine sh -c 'ok=0; bad=0; miss=0; while read h p; do if [ ! -f "$p" ]; then miss=$((miss+1)); elif [ "$(sha256sum "$p" | cut -d" " -f1)" = "$h" ]; then ok=$((ok+1)); else bad=$((bad+1)); fi; done; echo "일치 $ok, 불일치 $bad, 없음 $miss"'
 ```
 
-잘못되면 main DB 볼륨을 지우지 말고 서비스를 멈춘 채 원인을 본다. 시연 자료의 원본은 그대로 남아 있다.
+**7. 띄워서 화면을 본다.** 이때부터 주소로 접속할 수 있다. 자동 갱신은 아직 끈 채로 둔다. 시연 계정으로 로그인해 프로젝트, 업무, 제출물, 회의를 열고 파일과 보고서를 내려받는다. 학교 AI로 팀 기록을 보내지 않도록 AI는 지어낸 프로젝트로 본다. 이때 나온 오류가 없는지 로그도 본다. 확인을 마치기 전에는 팀에 공개를 알리지 않는다.
+
+```bash
+docker compose up -d backend frontend nginx
+```
+
+```bash
+docker compose logs backend | grep -c ' ERROR '
+```
+
+**8. 공개를 다시 연다.** 설정을 main으로 돌리고 자동 갱신을 켠다. 이후 새 마이그레이션은 자동 갱신의 백업을 거쳐 평소대로 적용된다.
+
+```bash
+git checkout main && git merge --ff-only origin/main && sed -i 's#^IMAGE_TAG=.*#IMAGE_TAG=main#' .env && sudo systemctl enable --now blackbox-update.timer
+```
+
+#### 중단 기준과 되돌리기
+
+| 단계 | 멈추는 조건 | 되돌리는 방법 |
+| --- | --- | --- |
+| 2 | 이미지가 없음, 계정이나 파일이 0이 아님 | 바뀐 것이 없다. `docker compose up -d`로 다시 띄우고 원인을 본다. 있는 계정·파일을 지워 맞추지 않는다. 앞선 시도에서 복사한 파일만 있으면 계속해도 된다(6번에서 해시로 확인한다) |
+| 3 | 설정 오류, 이미지 받기 실패, 백엔드가 뜨지 않음, `34\|35`가 아님 | 전환 전 백업으로 DB를 되돌리고, 설정을 `86bc88f`, 태그를 `main-86bc88f`로 돌린다 |
+| 4 | 자료 넣기 오류 | 전부 취소되어 빈 V35 그대로다. 원인을 고친 뒤 넣기부터 다시 한다 |
+| 5·6·7 | 복사 오류, 수량이나 파일 불일치, `ERROR` 로그, 로그인·조회·내려받기·보고서 실패 | nginx를 내리고 이관 직전 백업으로 DB를 되돌린 뒤 4번의 넣기부터 다시 한다. 복사는 같은 파일을 덮어쓰므로 다시 해도 된다 |
+| 다시 해도 안 됨 | 원인을 찾지 못함, 시연 일정이 급함 | 아래 "엑스포 스택으로 돌아가기" |
+
+복사한 파일은 되돌릴 때 지우지 않는다. DB가 가리키지 않으면 쓰이지 않는다. 원본 볼륨은 읽기 전용으로만 붙이므로 바뀌지 않는다.
+
+8번 뒤에 가입·업로드가 생기면 백업으로 되돌릴 때 그 자료가 사라진다. 이때는 되돌리기 전에 팀에 알리고, 그동안의 자료를 먼저 덤프로 받는다.
+
+옛 이미지는 V35가 적용된 DB에서도 오류 없이 뜬다. 이미지만 되돌리고 상태 확인이 정상이라고 끝내지 않는다. 옛 코드가 새 스키마에서 도는 상태이므로 DB도 함께 되돌린다.
+
+#### DB 되돌리기
+
+`pg_restore --clean`은 쓰지 않는다. 백업보다 뒤의 마이그레이션이 만든 외래 키 때문에 실패한다. 지금 DB는 이름을 바꿔 남겨 두고, 새 DB에 백업을 푼다. 원인을 찾은 뒤 남겨 둔 DB는 지워도 된다.
+
+```bash
+docker compose stop nginx frontend backend
+```
+
+```bash
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "ALTER DATABASE \"$POSTGRES_DB\" RENAME TO failed_$(date +%Y%m%d%H%M)" -c "CREATE DATABASE \"$POSTGRES_DB\""'
+```
+
+```bash
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --single-transaction --exit-on-error' < ~/blackbox-backups/<before-switch 또는 before-import>.dump
+```
+
+#### 엑스포 스택으로 돌아가기
+
+main DB 볼륨은 그대로 남고, 엑스포 볼륨을 다시 쓴다. `.env`는 main 스택을 내린 뒤에 바꾼다. 서버에서 실행해 본 적은 없다(백업을 PC에서 엑스포 이미지로 복구하는 것만 확인했다). AI는 학교 키와 예산이 남아 있어야 동작한다.
+
+```bash
+cd ~/blackbox && sudo systemctl disable --now blackbox-update.timer && docker compose down
+```
+
+```bash
+git checkout --detach 960934a && cp ~/blackbox-backups/env-expo-final .env && sed -i 's#^IMAGE_TAG=.*#IMAGE_TAG=shinguexpo-e1ed24d#' .env && docker compose up -d
+```
 
 ### 이미지 만들고 보내기(PC)
 
@@ -303,7 +385,7 @@ ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'docker exec black
 ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'docker exec blackbox_backend tar czf - -C /data/uploads .' > ~/blackbox-backups/uploads-$D.tgz
 ```
 
-되돌릴 때는 업로드 파일을 먼저 넣고, backend를 멈춘 채 DB를 복원한 뒤 다시 띄운다. 복원은 백업에 있는 표의 내용을 백업 시점으로 바꾼다.
+되돌릴 때는 업로드 파일을 먼저 넣고, backend를 멈춘 채 DB를 복원한 뒤 다시 띄운다. 복원은 백업에 있는 표의 내용을 백업 시점으로 바꾼다. 백업 뒤에 새 마이그레이션이 적용됐으면 아래 명령의 `--clean`은 실패한다. 그때는 7장의 "DB 되돌리기"를 따른다.
 
 ```bash
 ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'docker exec -i blackbox_backend tar xzf - -C /data/uploads' < ~/blackbox-backups/uploads-<시각>.tgz
