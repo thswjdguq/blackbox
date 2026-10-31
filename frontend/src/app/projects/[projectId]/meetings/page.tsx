@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import { useMyRole } from "@/hooks/useMyRole";
 import { Meeting, CreateMeetingPayload } from "@/types/meeting";
 import {
   FileText,
@@ -25,7 +28,6 @@ import {
 } from "lucide-react";
 import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import SmartDateInput from "@/components/SmartDateInput";
-import { useMyRole } from "@/hooks/useMyRole";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
 function formatDate(iso: string | null): string {
@@ -711,11 +713,6 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
             <Calendar size={11} />
             {formatDate(meeting.meetingDate)}
           </span>
-          {/* 체크인 코드 미리보기 */}
-          <span className="flex items-center gap-1 text-xs text-slate-600 font-mono">
-            <Hash size={10} />
-            {meeting.checkinCode}
-          </span>
         </div>
         {meeting.purpose && (
           <p className="text-xs text-bb-text2 mt-1 truncate">{meeting.purpose}</p>
@@ -755,14 +752,14 @@ export default function MeetingsPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params?.projectId as string;
+  // 회의 만들기는 서버가 팀장에게만 허락한다(MeetingService.create). 팀원·관찰자에게는 버튼 대신 안내를 둔다
+  const role = useMyRole(projectId);
+  const isLeader = role === "LEADER";
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  // 회의 만들기는 지금 서버가 팀장만 받는다(MeetingService.createMeeting, #115). 팀원·관찰자에게는 버튼 대신 안내
-  const role = useMyRole(projectId);
-  const canCreate = role === "LEADER";
 
   const fetchMeetings = useCallback(async () => {
     setLoading(true);
@@ -797,6 +794,7 @@ export default function MeetingsPage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-36 mb-6" />
             {[...Array(4)].map((_, i) => (
@@ -813,22 +811,22 @@ export default function MeetingsPage() {
       <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-bb-text">회의록</h1>
+            <h1 className="text-2xl font-bold text-bb-text">회의</h1>
             <p className="text-sm text-bb-text2 mt-1">총 {meetings.length}개의 회의</p>
           </div>
-          {canCreate && (
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
-                         text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              <Plus size={15} />
-              새 회의
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2"><Link href={`/projects/${projectId}/schedule`} className="text-sm border border-bb-border rounded-lg px-3 py-2 text-bb-text2 hover:text-bb-primary">회의 시간 정하기</Link>
+          {isLeader && <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
+                       text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus size={15} />
+            새 회의
+          </button>}</div>
         </div>
 
         {/* 에러 */}
@@ -850,9 +848,9 @@ export default function MeetingsPage() {
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <span className="text-5xl mb-4">📅</span>
             <p className="text-sm font-semibold text-bb-text mb-1.5">아직 회의가 없어요</p>
-            {canCreate ? (
+            {isLeader ? (
               <>
-                <p className="text-xs text-bb-text2 mb-6">첫 회의를 만들고 체크인 코드로 팀원의 출석을 남기세요</p>
+                <p className="text-xs text-bb-text2 mb-6">팀원들과 첫 회의를 만들어보세요</p>
                 <button
                   onClick={() => setShowCreate(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500

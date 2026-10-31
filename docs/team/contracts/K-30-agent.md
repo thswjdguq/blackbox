@@ -93,6 +93,7 @@ PENDING ──(채택)──▶ ACCEPTED
 | `canDecide` | 불리언 | 요청한 사람이 제안 카드를 고치고 채택·거절할 수 있는가(팀장·팀원). 화면은 이 값으로 카드의 버튼을 정하고 역할을 따로 계산하지 않는다 |
 | `stages[]` | 배열 | 제출물마다의 단계. 기한이 빠른 순. 제출물이 없으면 빈 배열 |
 | `stages[].stage` | 아래 열한 값 | 서버가 규칙으로 계산한 단계 |
+| `stages[].dueTime` | `HH:mm` 또는 `null` | 제출물의 마감 시간(한국 시간). `null`이면 시간 미지정 |
 | `pendingProposalCount` | 0 이상 정수 | 채택이나 거절을 기다리는 카드 수 |
 
 **모델이 꺼져 있어도(`available: false`) `canDecide`, `stages`, `pendingProposalCount`는 온다.** 이미 만들어진 카드는 모델 없이도 고치고 결정할 수 있다. 단계는 규칙으로 계산하므로 키가 없는 환경에서도 프로젝트 홈의 카드가 이 값을 쓸 수 있다.
@@ -202,6 +203,7 @@ PENDING ──(채택)──▶ ACCEPTED
 | `deliverable.description` | 선택, 5000자까지 |
 | `deliverable.dueDate` | 필수, `YYYY-MM-DD`. 안내문에 기한이 없으면 모델이 `null`로 두고, 사람이 채워야 채택된다 |
 | `deliverable.submissionMethod` | 선택, 500자까지 |
+| `deliverable.dueTime` | 선택, `HH:mm`(한국 시간). 안내문에 마감 시간이 없으면 `null` |
 | `requirements[].key` | 카드 안에서만 쓰는 이름표. 업무가 요구사항을 가리킬 때 쓴다. 비어 있지 않고 카드 안에서 서로 달라야 한다 |
 | `requirements[].content` | 필수, 1000자까지 |
 | `requirements[].required` | 불리언 |

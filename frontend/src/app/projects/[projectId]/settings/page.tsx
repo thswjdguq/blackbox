@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import BeginnerGuide from "@/components/BeginnerGuide";
 import MemberSection from "./MemberSection";
@@ -33,11 +34,11 @@ interface DiscordSettings {
 }
 
 const TOGGLES: { key: keyof Omit<DiscordSettings, "webhookUrl">; label: string; desc: string }[] = [
-  { key: "notifyTaskAssign",       label: "업무 담당자 배정",   desc: "담당자가 배정되면 알림" },
-  { key: "notifyTaskDone",         label: "업무 완료",          desc: "업무가 완료되면 알림" },
+  { key: "notifyTaskAssign",       label: "업무 담당자 배정",     desc: "담당자가 배정되면 알림" },
+  { key: "notifyTaskDone",         label: "업무 완료",            desc: "업무가 완료되면 알림" },
   { key: "notifyMeetingCreate",    label: "회의 생성",            desc: "새 회의가 생성되면 알림" },
   { key: "notifyMeetingReminder",  label: "회의 10분 전",         desc: "회의 시작 10분 전 자동 알림" },
-  { key: "notifyAlert",            label: "경보 발생",            desc: "FREE_RIDE / DROPOUT / OVERLOAD 경보 시 알림" },
+  { key: "notifyAlert",            label: "참여 기록 알림",        desc: "참여 기록 확인·장기 활동 없음·업무 집중 알림" },
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -138,6 +139,7 @@ export default function ProjectSettingsPage() {
     <div className="flex min-h-screen bg-bb-bg">
       <Sidebar />
       <main className="md:ml-64 mt-14 md:mt-0 flex-1 p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         <div className="max-w-2xl">
 
           <h1 className="text-2xl font-bold text-bb-text mb-1">프로젝트 설정</h1>

@@ -61,7 +61,7 @@ export default function ReviewRoundCard({
   comments: ReviewComment[];
   /** false면 피드백 API(K-11)가 아직 없다. 회차·결정은 쓰고 피드백 칸만 준비 중으로 보인다 */
   commentsReady?: boolean;
-  /** CONFIRMED·SUBMITTED 제출물은 검토 기록을 바꾸지 않는다 */
+  /** CONFIRMED·SUBMITTED 최종 제출물은 검토 기록을 바꾸지 않는다 */
   locked: boolean;
   unresolvedCount: number;
   canWrite: boolean;
@@ -245,7 +245,7 @@ export default function ReviewRoundCard({
             const cfg = COMMENT_STATUS[c.status];
             const linkedTask = c.linkedTaskId ? tasks.find((t) => t.id === c.linkedTaskId) : undefined;
             return (
-              <li key={c.id} className="py-3">
+              <li key={c.id} id={`comment-${c.id}`} className="py-3 scroll-mt-24 target:bg-bb-primary/10">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className={`px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
                   <span className="text-bb-text">{c.author.name}</span>

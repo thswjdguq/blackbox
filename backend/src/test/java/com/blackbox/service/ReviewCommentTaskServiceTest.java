@@ -39,6 +39,10 @@ class ReviewCommentTaskServiceTest {
     ReviewCommentTaskDtos.Response convert() {return service.convert(p.getId(),d,r,c.getId(),new Request("  출처 보완  ","  검증 완료  "),user);}
     @Test void createsTodoWithoutAssigneesThenReturnsExisting() {
         assertTrue(convert().created()); assertSame(task,c.getLinkedTask());
+        var order=inOrder(taskService,reviews);
+        order.verify(taskService).lockProject(p);
+        order.verify(reviews).lockForWrite(p.getId(),d,r);
+        order.verify(taskService).createTask(eq(p.getId()),any(),eq(user));
         var captor=ArgumentCaptor.forClass(CreateTaskRequest.class);verify(taskService).createTask(eq(p.getId()),captor.capture(),eq(user));
         var req=captor.getValue();assertEquals("출처 보완",req.title());assertEquals("원문 피드백",req.description());
         assertEquals("TODO",req.status());assertEquals(d,req.deliverableId());assertNull(req.requirementId());assertTrue(req.assigneeIds().isEmpty());assertEquals("검증 완료",req.completionCriteria());
@@ -48,12 +52,12 @@ class ReviewCommentTaskServiceTest {
     @ParameterizedTest @ValueSource(strings={"CONFIRMED","SUBMITTED"})
     void existingLinkReadableAfterFinalizationButNewLinkBlocked(String status) {
         view(null,status); assertThrows(ResponseStatusException.class,this::convert);
-        c.setLinkedTask(task);assertFalse(convert().created());verifyNoInteractions(taskService,activity);
+        c.setLinkedTask(task);assertFalse(convert().created());verify(taskService,never()).createTask(any(),any(),any()); verifyNoInteractions(activity);
     }
     @Test void approvalAndResolutionBlockNewTask() {
         view("APPROVED","IN_REVIEW");assertThrows(ResponseStatusException.class,this::convert);
         view(null,"DRAFT");c.setResolvedAt(java.time.OffsetDateTime.now());assertThrows(ResponseStatusException.class,this::convert);
-        verifyNoInteractions(taskService,activity);
+        verify(taskService,never()).createTask(any(),any(),any()); verifyNoInteractions(activity);
     }
     @Test void observerAndOutsiderBlockedBeforeLock() {
         grant("OBSERVER");assertThrows(ForbiddenException.class,this::convert);
@@ -62,11 +66,11 @@ class ReviewCommentTaskServiceTest {
     }
     @Test void foreignCommentRejected() {
         assertThrows(NotFoundException.class,()->service.convert(p.getId(),d,r,UUID.randomUUID(),new Request("업무",null),user));
-        verifyNoInteractions(taskService,activity);
+        verify(taskService,never()).createTask(any(),any(),any()); verifyNoInteractions(activity);
     }
     @Test void titleAndCriteriaValidation() {
         for(String title:Arrays.asList(null,"  ","\u3000", "\u2003\t\u3000", "x".repeat(256))) assertEquals(400, assertThrows(ResponseStatusException.class,()->service.convert(p.getId(),d,r,c.getId(),new Request(title,null),user)).getStatusCode().value());
         assertThrows(ResponseStatusException.class,()->service.convert(p.getId(),d,r,c.getId(),new Request("업무","x".repeat(2001)),user));
-        verifyNoInteractions(taskService,activity);
+        verify(taskService,never()).createTask(any(),any(),any()); verifyNoInteractions(activity);
     }
 }

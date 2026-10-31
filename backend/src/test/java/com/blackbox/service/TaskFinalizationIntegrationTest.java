@@ -83,10 +83,14 @@ class TaskFinalizationIntegrationTest {
     }
 
     @Test void realUnresolvedCounterBlocksConfirmationUntilOldFeedbackIsResolved() throws Exception {
+        // 현재 업무 완료는 상태 직접 변경이 아니라 요청자와 다른 팀원의 확인을 거친다.
+        call(post(taskPath(linked) + "/completion-request"), member, 200);
+        call(put(taskPath(linked) + "/completion-decision")
+                .content("{\"approved\":true,\"criteriaConfirmed\":true}"), leader, 200);
         ReviewComment comment = new ReviewComment();
         comment.setProject(project); comment.setDeliverable(report); comment.setReview(previous);
         comment.setAuthor(member); comment.setContent("이전 회차의 미해결 의견");
-        comment.setLinkedTask(linked); linked.setStatus("DONE"); em.persist(comment); em.flush();
+        comment.setLinkedTask(linked); em.persist(comment); em.flush();
         assertEquals(1L, unresolved.countUnresolvedComments(project.getId(), report.getId()));
         call(put(confirmation()).content(reviewBody()), leader, 409);
         String comments = "/api/projects/" + project.getId() + "/deliverables/" + report.getId()

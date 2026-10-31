@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
+import { useMyRole } from "@/hooks/useMyRole";
 import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus } from "@/types/calendar";
 import { Meeting, CreateMeetingPayload } from "@/types/meeting";
 import {
@@ -150,6 +152,8 @@ export default function SchedulePage() {
   const params    = useParams();
   const router    = useRouter();
   const projectId = params?.projectId as string;
+  // 회의를 잡는 것은 서버가 팀장에게만 허락한다(MeetingService.create). 다른 역할에는 추천 시간만 보인다
+  const isLeader = useMyRole(projectId) === "LEADER";
 
   const [members,      setMembers]      = useState<MemberCalendarStatus[]>([]);
   const [loadingStatus,setLoadingStatus]= useState(true);
@@ -243,6 +247,7 @@ export default function SchedulePage() {
       )}
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         <div className="max-w-2xl">
 
           {/* 헤더 */}
@@ -481,14 +486,18 @@ export default function SchedulePage() {
                       <Users size={12} />
                       <span>연동 참여 {connectedCount}명 분석</span>
                     </div>
-                    <button
-                      onClick={() => setConfirmRec(rec)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500
-                                 text-white text-xs font-medium rounded-lg transition-all"
-                    >
-                      이 시간으로 회의 잡기
-                      <ArrowRight size={12} />
-                    </button>
+                    {isLeader ? (
+                      <button
+                        onClick={() => setConfirmRec(rec)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500
+                                   text-white text-xs font-medium rounded-lg transition-all"
+                      >
+                        이 시간으로 회의 잡기
+                        <ArrowRight size={12} />
+                      </button>
+                    ) : (
+                      <span className="text-xs text-bb-text2">회의는 팀장이 잡습니다</span>
+                    )}
                   </div>
                 </div>
               ))}

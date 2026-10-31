@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-
-  // AI 도우미의 실행 스트림은 이벤트 사이가 30초를 넘을 수 있다. 개발 프록시의 기본 대기(30초)를 넘기면
-  // 스트림이 끊기고 화면 쪽 연결은 열린 채 남는다(#102 코멘트). 서버 상한(120초)보다 넉넉히 둔다
+  // AI 실행 사이의 긴 대기 때문에 개발 프록시가 응답을 먼저 끊지 않도록 한다(K-30).
   experimental: { proxyTimeout: 150_000 },
 
   // 로컬 개발 전용 API 프록시

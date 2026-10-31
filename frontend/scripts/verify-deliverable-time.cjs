@@ -1,0 +1,15 @@
+const fs = require('fs'), ts = require('typescript'), assert = require('assert/strict');
+const compiled = ts.transpileModule(fs.readFileSync('src/lib/due.ts', 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+const mod = {exports:{}};
+new Function('exports', compiled)(mod.exports);
+const {deliverableDue, deliverableDeadline} = mod.exports;
+const deadline = {dueDate:'2026-11-05', dueTime:'18:00'};
+assert.equal(deliverableDue(deadline, new Date('2026-11-05T17:59:59+09:00')).label, '오늘 마감');
+assert.equal(deliverableDue(deadline, new Date('2026-11-05T18:00:00+09:00')).label, '기한 지남');
+assert.equal(deliverableDue(deadline, new Date('2026-11-05T18:00:01+09:00')).label, '기한 지남');
+assert.equal(deliverableDue({dueDate:'2026-11-05',dueTime:'00:00'}, new Date('2026-11-05T00:00:00+09:00')).label, '기한 지남');
+assert.equal(deliverableDue({...deadline,status:'CONFIRMED'}, new Date('2026-11-06T00:00:00+09:00')).label, '확정됨');
+assert.equal(deliverableDue({...deadline,status:'SUBMITTED'}, new Date('2026-11-06T00:00:00+09:00')).label, '제출 기록됨');
+assert.ok(deliverableDeadline({dueDate:'2026-11-05'}).includes('시간 미지정'));
+assert.ok(deliverableDeadline(deadline).includes('18:00 (한국 시간)'));
+console.log('제출물 시간 경계·자정·상태 우선·미지정 검사 통과');

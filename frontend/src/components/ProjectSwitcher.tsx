@@ -19,10 +19,9 @@ interface ProjectItem {
 let cache: ProjectItem[] | null = null;
 onSessionReset(() => { cache = null; });
 
-/** 다른 프로젝트로 옮길 때 같은 메뉴로 간다. 상세 화면(제출물·회의록 하나)은 목록으로 */
-function targetPath(pathname: string, projectId: string): string {
-  const m = pathname.match(/^\/projects\/[^/]+\/([^/]+)/);
-  return m ? `/projects/${projectId}/${m[1]}` : `/projects/${projectId}`;
+/** 프로젝트를 바꾸면 홈에서 해당 팀의 다음 할 일을 확인한다. */
+function targetPath(_pathname: string, projectId: string): string {
+  return `/projects/${projectId}`;
 }
 
 /** 사이드바 맨 위 프로젝트 전환 (C-50 1번, Flow의 왼쪽 프로젝트 목록 참고) */

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
-import { daysLeft, shortDate } from "@/lib/due";
+import { DUE_TEXT, dueLabel, dueTone, shortDate } from "@/lib/due";
+import { ALERT_TONE } from "@/lib/alertTone";
 import { apiError, blobApiError } from "@/lib/apiError";
 import { useMyRole } from "@/hooks/useMyRole";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
@@ -42,11 +44,11 @@ interface RiskData {
 const LEVEL_CONFIG = {
   FULL:    { label: "전체 참여", cls: "bg-teal-500/15 text-teal-400 border-teal-500/30", dot: "bg-teal-400" },
   PARTIAL: { label: "부분 참여", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", dot: "bg-yellow-400" },
-  NONE:    { label: "미참여",    cls: "bg-red-500/15 text-red-400 border-red-500/30",    dot: "bg-red-400" },
+  NONE:    { label: "집계 기록 적음",    cls: "bg-red-500/15 text-red-400 border-red-500/30",    dot: "bg-red-400" },
 } as const;
 
 const ALERT_CONFIG: Record<AlertType, { label: string; color: string; bg: string }> = {
-  FREE_RIDE: { label: "무임승차 의심",  color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-400/10 border-yellow-200 dark:border-yellow-400/20" },
+  FREE_RIDE: { label: "참여 기록 확인",  color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-400/10 border-yellow-200 dark:border-yellow-400/20" },
   OVERLOAD:  { label: "과부하 위험",    color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-400/10 border-orange-200 dark:border-orange-400/20" },
   DROPOUT:   { label: "이탈 감지",      color: "text-red-500",    bg: "bg-red-50 dark:bg-red-400/10 border-red-200 dark:border-red-400/20" },
   TAMPER:    { label: "파일 변조 의심", color: "text-red-500",    bg: "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20" },
@@ -181,6 +183,8 @@ export default function AnalyticsPage() {
   const partialCount = scores.filter((s) => s.participationLevel === "PARTIAL").length;
   const noneCount    = scores.filter((s) => s.participationLevel === "NONE").length;
   const unreadAlerts = alerts.filter((a) => !a.isResolved);
+  const participationNotes = unreadAlerts.filter((a) => a.alertType === "FREE_RIDE");
+  const otherAlerts = unreadAlerts.filter((a) => a.alertType !== "FREE_RIDE");
 
   // 위험도 게이지 데이터
   const riskGaugeData = risk ? [{ name: "위험도", value: risk.riskScore, fill: getRiskColor(risk.level) }] : [];
@@ -191,6 +195,7 @@ export default function AnalyticsPage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-bb-surface2 rounded w-48" />
             <div className="grid grid-cols-4 gap-4">
@@ -208,12 +213,13 @@ export default function AnalyticsPage() {
       <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <ProjectNav projectId={projectId} />
         {/* ── 헤더 ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-bb-text">기여도 분석</h1>
+            <h1 className="text-2xl font-bold text-bb-text">활동·기여 기록</h1>
             <p className="text-sm text-bb-text2 mt-1">
-              팀원별 역할 수행 여부 (참여 / 미참여) 기반 분석
+              자동 집계된 활동 기록입니다. 검토·답변 등 모든 기여를 포함하지 않으며 평가·감점 기준이 아닙니다.
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -224,7 +230,7 @@ export default function AnalyticsPage() {
                          hover:bg-bb-bg text-sm rounded-lg transition-all disabled:opacity-50 text-bb-text2 font-medium"
             >
               {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              PDF 리포트
+              기여 활동 보고서 PDF
             </button>
             {canRecalc && (
               <button
@@ -253,17 +259,28 @@ export default function AnalyticsPage() {
         {unreadAlerts.length > 0 && (
           <div className="mb-8">
             <SectionTitle>
-              <AlertTriangle size={14} className="text-red-500" />
-              활성 경보 ({unreadAlerts.length})
+              <AlertTriangle size={14} className="text-bb-text2" />
+              함께 확인할 기록
             </SectionTitle>
             <div className="space-y-2">
-              {unreadAlerts.map((alert) => {
+              {/* 참여 기록 확인은 같은 안내가 사람 수만큼 반복되므로 한 줄로 묶고 중립 색으로 보여 준다(평가·감점 아님). */}
+              {participationNotes.length > 0 && (
+                <div className="flex items-start gap-3 p-4 border border-bb-border bg-bb-surface rounded-xl">
+                  <AlertTriangle size={15} className="text-bb-text2 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-bb-text">참여 기록이 적은 팀원 {participationNotes.length}명 — 함께 확인해 주세요</p>
+                    <p className="text-xs text-bb-text2 mt-0.5">검토·답변 등 자동 집계에 반영되지 않은 활동이 있을 수 있습니다. 평가·감점 기준이 아닙니다.</p>
+                  </div>
+                </div>
+              )}
+              {otherAlerts.map((alert) => {
                 const cfg = ALERT_CONFIG[alert.alertType] ?? ALERT_CONFIG.FREE_RIDE;
+                const tone = ALERT_TONE[alert.severity] ?? ALERT_TONE.LOW;
                 return (
-                  <div key={alert.id} className={`flex items-start gap-3 p-4 border rounded-xl ${cfg.bg}`}>
-                    <AlertTriangle size={15} className={`${cfg.color} shrink-0 mt-0.5`} />
+                  <div key={alert.id} className={`flex items-start gap-3 p-4 border rounded-xl ${tone.bg}`}>
+                    <AlertTriangle size={15} className={`${tone.color} shrink-0 mt-0.5`} />
                     <div>
-                      <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
+                      <p className={`text-xs font-semibold ${tone.color}`}>{tone.label} · {cfg.label}</p>
                       <p className="text-xs text-bb-text2 mt-0.5">{alert.message}</p>
                     </div>
                   </div>
@@ -321,7 +338,7 @@ export default function AnalyticsPage() {
                 accent="#F59E0B"
               />
               <KpiCard
-                label="미참여"
+                label="집계 기록 적음"
                 value={noneCount}
                 sub="0~1개 항목 참여"
                 icon={TrendingDown}
@@ -434,7 +451,7 @@ export default function AnalyticsPage() {
                   <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />부분참여: 2~3개
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />미참여: 0~1개
+                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />집계 기록 적음: 0~1개
                 </span>
               </div>
             </section>
@@ -554,8 +571,6 @@ export default function AnalyticsPage() {
                           <div className="space-y-1.5">
                             {myTasks.map((task) => {
                               // 마감일이 지난 뒤부터 지연. 마감 당일은 지연이 아니다
-                              const overdue = task.dueDate && task.status !== "DONE"
-                                && daysLeft(task.dueDate) < 0;
                               return (
                                 <div key={task.id} className="flex items-center gap-2.5">
                                   <span className="shrink-0 text-sm">
@@ -567,9 +582,8 @@ export default function AnalyticsPage() {
                                     {task.title}
                                   </span>
                                   {task.dueDate && (
-                                    <span className={`text-[10px] shrink-0 ${overdue ? "text-red-400 font-medium" : "text-bb-text2"}`}>
-                                      {overdue ? "⚠️ " : ""}
-                                      {shortDate(task.dueDate)}
+                                    <span className={`text-[10px] shrink-0 ${task.status !== "DONE" ? DUE_TEXT[dueTone(task.dueDate)] : "text-bb-text2"}`}>
+                                      {shortDate(task.dueDate)}{task.status !== "DONE" && ` · ${dueLabel(task.dueDate)}`}
                                     </span>
                                   )}
                                 </div>
@@ -601,15 +615,15 @@ function StatRow({ label, value }: { label: string; value: string }) {
 }
 
 function getRiskColor(level: RiskData["level"]) {
-  return level === "CRITICAL" ? "#EF4444"
-       : level === "HIGH"     ? "#F97316"
-       : level === "MEDIUM"   ? "#F59E0B"
-       :                        "#2DD4BF";
+  return level === "CRITICAL" ? "#DC2626"
+       : level === "HIGH"     ? "#EF4444"
+       : level === "MEDIUM"   ? "#CA8A04"
+       :                        "#3B82F6";
 }
 
 function riskLevelKo(level: RiskData["level"]) {
-  return level === "CRITICAL" ? "위험"
-       : level === "HIGH"     ? "높음"
-       : level === "MEDIUM"   ? "보통"
-       :                        "낮음";
+  return level === "CRITICAL" ? "위험 · 즉시 확인"
+       : level === "HIGH"     ? "높음 · 긴급"
+       : level === "MEDIUM"   ? "보통 · 주의"
+       :                        "낮음 · 안정";
 }

@@ -32,6 +32,9 @@ public class MeetingAttendee {
     @Column(name = "checked_at")
     private OffsetDateTime checkedAt;
 
+    @Column(name = "attendance_status", length = 20)
+    private String attendanceStatus;
+
     @Column(name = "checked_in_date")
     private LocalDate checkedInDate;
 

@@ -9,7 +9,6 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -22,8 +21,6 @@ import java.util.UUID;
 @Service
 public class MeetingService {
 
-    private static final String CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final MeetingRepository meetingRepository;
     private final MeetingAttendeeRepository meetingAttendeeRepository;
@@ -73,25 +70,24 @@ public class MeetingService {
         meeting.setTitle(req.title());
         meeting.setMeetingDate(req.meetingDate());
         meeting.setPurpose(req.purpose());
-        meeting.setCheckinCode(generateUniqueCheckinCode());
+        configureAttendance(meeting, req.attendanceGraceMinutes(), req.attendanceWindowMinutes());
         meeting.setCreatedBy(creator);
         meetingRepository.save(meeting);
         entityManager.flush();
         entityManager.refresh(meeting);
 
-        // 모든 프로젝트 멤버를 attendee로 등록 (생성자는 자동 체크인)
+        // 팀장·팀원을 참석 대상에 등록한다. 회의 생성은 실제 참석 기록이 아니다.
         List<ProjectMember> members = projectMemberRepository.findByProject(project);
         for (ProjectMember pm : members) {
+            if ("OBSERVER".equals(pm.getRole())) continue;
             MeetingAttendee attendee = new MeetingAttendee();
             attendee.setMeeting(meeting);
             attendee.setUser(pm.getUser());
-            boolean isCreator = pm.getUser().getId().equals(creator.getId());
-            attendee.setCheckedIn(isCreator);
-            if (isCreator) attendee.setCheckedAt(OffsetDateTime.now());
+            attendee.setCheckedIn(false);
             meetingAttendeeRepository.save(attendee);
         }
 
-        activityLogService.record(project, creator, "MEETING_ATTEND",
+        activityLogService.record(project, creator, "MEETING_CREATE",
                 "{\"meetingId\":\"" + meeting.getId() + "\",\"title\":\"" + escapeJson(meeting.getTitle()) + "\"}");
 
         // 회의 생성 Discord 알림
@@ -122,9 +118,17 @@ public class MeetingService {
     public MeetingResponse updateMeeting(UUID projectId, UUID meetingId,
                                          UpdateMeetingRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
+        // 회의록 편집 API도 관찰자의 읽기 전용 권한을 유지한다.
+        accessChecker.requireContributor(project, user);
         Meeting meeting = findMeeting(meetingId, project);
 
+        if (req.meetingDate() != null || req.attendanceGraceMinutes() != null || req.attendanceWindowMinutes() != null) {
+            accessChecker.requireLeader(project, user);
+            if (meetingAttendeeRepository.findByMeeting(meeting).stream().anyMatch(a -> a.getAttendanceStatus() != null || a.isCheckedIn())) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "?? ??? ?? ??? ????? ??? ??? ? ????.");
+            }
+            configureAttendance(meeting, req.attendanceGraceMinutes(), req.attendanceWindowMinutes());
+        }
         if (req.title() != null)       meeting.setTitle(req.title());
         if (req.meetingDate() != null) meeting.setMeetingDate(req.meetingDate());
         if (req.purpose() != null)     meeting.setPurpose(req.purpose());
@@ -161,85 +165,6 @@ public class MeetingService {
         }
 
         meetingRepository.delete(meeting);
-    }
-
-    // ── 체크인 코드 재생성 ──────────────────────────────────────────────────
-
-    @Transactional
-    public MeetingResponse regenerateCheckinCode(UUID projectId, UUID meetingId, User user) {
-        Project project = accessChecker.getProject(projectId);
-        accessChecker.requireLeader(project, user);
-        Meeting meeting = findMeeting(meetingId, project);
-        meeting.setCheckinCode(generateUniqueCheckinCode());
-        meetingRepository.save(meeting);
-        return MeetingResponse.from(meeting);
-    }
-
-    // ── 체크인 ─────────────────────────────────────────────────────────────
-
-    @Transactional
-    public AttendeeResponse checkin(CheckinRequest req, User user) {
-        Meeting meeting = meetingRepository.findByCheckinCode(req.checkinCode())
-                .orElseThrow(() -> new NotFoundException("유효하지 않은 체크인 코드입니다"));
-
-        // 이미 attendee로 등록된 경우 그 레코드를 사용, 없으면 새로 추가
-        MeetingAttendee attendee = meetingAttendeeRepository
-                .findByMeetingAndUser(meeting, user)
-                .orElseGet(() -> {
-                    MeetingAttendee a = new MeetingAttendee();
-                    a.setMeeting(meeting);
-                    a.setUser(user);
-                    return a;
-                });
-
-        if (attendee.isCheckedInToday()) {
-            throw new ForbiddenException("오늘은 이미 체크인되었습니다");
-        }
-
-        attendee.setCheckedIn(true);
-        attendee.setCheckedAt(OffsetDateTime.now());
-        attendee.setCheckedInDate(LocalDate.now());
-        meetingAttendeeRepository.save(attendee);
-
-        // 프로젝트 멤버가 아니면 MEMBER로 자동 추가 — 이후 프로젝트 전체 접근 가능
-        Project project = meeting.getProject();
-        if (!projectMemberRepository.existsByProjectAndUser(project, user)) {
-            ProjectMember newMember = new ProjectMember();
-            newMember.setProject(project);
-            newMember.setUser(user);
-            newMember.setRole("MEMBER");
-            newMember.setConsentPlatform(true);
-            newMember.setConsentGithub(false);
-            newMember.setConsentDrive(false);
-            newMember.setConsentAiAnalysis(false);
-            projectMemberRepository.save(newMember);
-
-            // 기존 미등록 회의들에 attendee로 추가 (체크인 false)
-            meetingRepository.findByProjectOrderByMeetingDateDesc(project).forEach(m -> {
-                if (meetingAttendeeRepository.findByMeetingAndUser(m, user).isEmpty()) {
-                    MeetingAttendee a = new MeetingAttendee();
-                    a.setMeeting(m);
-                    a.setUser(user);
-                    a.setCheckedIn(false);
-                    meetingAttendeeRepository.save(a);
-                }
-            });
-        }
-
-        activityLogService.record(project, user, "CHECKIN",
-                "{\"meetingId\":\"" + meeting.getId() + "\",\"title\":\"" + escapeJson(meeting.getTitle()) + "\",\"checkedInAt\":\"" + attendee.getCheckedAt() + "\"}");
-
-        alertService.reevaluate(user, project);
-
-        return AttendeeResponse.from(attendee);
-    }
-
-    // ── 내 체크인 내역 (비멤버도 조회 가능) ───────────────────────────────────
-
-    @Transactional(readOnly = true)
-    public List<AttendeeResponse> myCheckins(User user) {
-        return meetingAttendeeRepository.findByUserAndCheckedInTrueOrderByCheckedAtDesc(user)
-                .stream().map(AttendeeResponse::from).toList();
     }
 
     // ── 참석자 목록 ────────────────────────────────────────────────────────
@@ -386,20 +311,13 @@ public class MeetingService {
         return meeting;
     }
 
-    private String generateUniqueCheckinCode() {
-        String code;
-        do {
-            code = generateCode();
-        } while (meetingRepository.existsByCheckinCode(code));
-        return code;
-    }
-
-    private String generateCode() {
-        StringBuilder sb = new StringBuilder(8);
-        for (int i = 0; i < 8; i++) {
-            sb.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
+    private void configureAttendance(Meeting meeting, Integer grace, Integer window) {
+        int g = grace == null ? meeting.getAttendanceGraceMinutes() : grace;
+        int w = window == null ? meeting.getAttendanceWindowMinutes() : window;
+        if (g < 0 || g > 120 || w <= g || w > 480) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "?? ??? 0~120?, ?? ??? ? ?? 480? ??? ?????.");
         }
-        return sb.toString();
+        meeting.setAttendanceGraceMinutes(g); meeting.setAttendanceWindowMinutes(w);
     }
 
     private String escapeJson(String s) {
