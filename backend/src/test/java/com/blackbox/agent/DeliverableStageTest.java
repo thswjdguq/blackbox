@@ -64,6 +64,7 @@ class DeliverableStageTest {
                 {"CONFIRMED", "APPROVED", "CONFIRMED"},
                 {"SUBMITTED", "APPROVED", "SUBMITTED"},
                 {"DRAFT", null, "TASKS_IN_PROGRESS"},   // 검토 전이면 예전처럼 업무로
+                {"DRAFT", "APPROVED", "TASKS_IN_PROGRESS"},   // 확정을 취소하면 검토 전 판정으로 돌아간다(K-20 0.3, K-30 0.8)
         };
         for (String[] c : cases) {
             assertEquals(DeliverableStage.valueOf(c[2]), DeliverableStage.of(deliverable(unchecked, c[0], c[1]), openTask),
