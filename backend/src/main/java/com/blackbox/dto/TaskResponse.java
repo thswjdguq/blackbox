@@ -34,7 +34,8 @@ public record TaskResponse(
         String completionRequestedByName,
         OffsetDateTime completionApprovedAt,
         String completionApprovedByName,
-        String completionRejectionReason
+        String completionRejectionReason,
+        UUID completionRequestedBy
 ) {
     public record AssigneeSummary(UUID userId, String name, String email) {}
 
@@ -61,7 +62,8 @@ public record TaskResponse(
                 t.getCompletionRequestedBy() == null ? null : t.getCompletionRequestedBy().getName(),
                 t.getCompletionApprovedAt(),
                 t.getCompletionApprovedBy() == null ? null : t.getCompletionApprovedBy().getName(),
-                t.getCompletionRejectionReason()
+                t.getCompletionRejectionReason(),
+                t.getCompletionRequestedBy() == null ? null : t.getCompletionRequestedBy().getId()
         );
     }
 }
