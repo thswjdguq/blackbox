@@ -9,11 +9,14 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class MeetingOutcomeService {
     public record Proposal(String text, String evidence) {}
     public record Outcomes(List<Proposal> decisions, List<Proposal> actions) {}
+    // 지시와 달리 응답 전체를 코드 블록으로 감싸는 모델이 있다(bedrock-haiku). 감싼 블록만 벗기고, 블록 밖의 글은 그대로 거부한다.
+    private static final Pattern CODE_BLOCK = Pattern.compile("^```(?:json)?\\s*(.*?)\\s*```$", Pattern.DOTALL);
     private final MeetingService meetings;
     private final ProjectAccessChecker access;
     private final AiService ai;
@@ -45,7 +48,8 @@ public class MeetingOutcomeService {
     // 근거가 없는 모델 출력을 저장 후보로 노출하지 않는다. 추출 자체는 DB를 변경하지 않는다.
     Outcomes parse(String response, String notes) {
         try {
-            JsonNode root = mapper.readTree(response);
+            var block = CODE_BLOCK.matcher(response.strip());
+            JsonNode root = mapper.readTree(block.matches() ? block.group(1) : response);
             if (root == null || !root.isObject()) throw new IllegalArgumentException();
             return new Outcomes(proposals(root.get("decisions"), notes), proposals(root.get("actions"), notes));
         } catch (Exception ex) {

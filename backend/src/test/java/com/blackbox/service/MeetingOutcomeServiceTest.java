@@ -50,6 +50,12 @@ class MeetingOutcomeServiceTest {
         verify(meetings).getMeeting(project.getId(), meetingId, user);
         verifyNoMoreInteractions(meetings);
     }
+    @Test void acceptsResponseWrappedInCodeBlock() {
+        String json = "{\"decisions\":[],\"actions\":[{\"text\":\"설문 작성\",\"evidence\":\"설문을 작성한다.\"}]}";
+        for (String response : new String[]{"```json\n" + json + "\n```", "```\n" + json + "\n```\n"}) {
+            assertEquals("설문 작성", service.parse(response, notes).actions().get(0).text());
+        }
+    }
     @Test void acceptsNoConclusions() {
         var result = service.parse("{\"decisions\":[],\"actions\":[]}", notes);
         assertTrue(result.decisions().isEmpty()); assertTrue(result.actions().isEmpty());
@@ -60,7 +66,8 @@ class MeetingOutcomeServiceTest {
         assertEquals(502, ex.getStatusCode().value());
     }
     @Test void rejectsMalformedOrMissingArrays() {
-        for (String response : new String[]{"not json", "null", "{}", "{\"decisions\":[],\"actions\":null}"}) {
+        for (String response : new String[]{"not json", "null", "{}", "{\"decisions\":[],\"actions\":null}",
+                "결과입니다.\n```json\n{\"decisions\":[],\"actions\":[]}\n```"}) {
             assertEquals(502, assertThrows(ResponseStatusException.class, () -> service.parse(response, notes)).getStatusCode().value());
         }
     }
