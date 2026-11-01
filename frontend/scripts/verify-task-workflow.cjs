@@ -41,7 +41,7 @@ async function main() {
   let closed = 0;
   const modal = harness('src/components/kanban/TaskModal.tsx', { mode: 'edit', task, members: [], onClose: () => closed++, onCreate() {}, onUpdate() {}, onDelete() {} }, {
     '@/types/task': { KANBAN_COLUMNS: [] }, '@/components/SmartDateInput': 'DateInput', '@/lib/apiError': {},
-    './TaskResources': 'Resources', './TaskCompletionPanel': 'Completion', './TaskSteps': 'Steps', './TaskDiscussion': 'Discussion', '@/lib/due': {},
+    './TaskResources': 'Resources', './TaskCompletionPanel': 'Completion', './TaskSteps': 'Steps', './TaskDiscussion': 'Discussion', '@/lib/due': {}, '@/hooks/useUnsavedGuard': { useUnsavedGuard() {} },
   });
   modal.render();
   assert.ok(modal.find(n => n.type === 'nav' && n.props['aria-label'] === '업무 안에서 바로 이동'));
@@ -54,7 +54,7 @@ async function main() {
   let created;
   const simple = harness('src/components/kanban/TaskModal.tsx', { mode: 'create', task: null, members: [], onClose() {}, onCreate: async value => { created = value; }, onUpdate() {}, onDelete() {} }, {
     '@/types/task': { KANBAN_COLUMNS: [] }, '@/components/SmartDateInput': 'DateInput', '@/lib/apiError': {},
-    './TaskResources': 'Resources', './TaskCompletionPanel': 'Completion', './TaskSteps': 'Steps', './TaskDiscussion': 'Discussion', '@/lib/due': {},
+    './TaskResources': 'Resources', './TaskCompletionPanel': 'Completion', './TaskSteps': 'Steps', './TaskDiscussion': 'Discussion', '@/lib/due': {}, '@/hooks/useUnsavedGuard': { useUnsavedGuard() {} },
   });
   simple.render();
   const advanced = simple.find(n => n.type === 'details'); assert.ok(advanced); assert.ok(!advanced.props.open);

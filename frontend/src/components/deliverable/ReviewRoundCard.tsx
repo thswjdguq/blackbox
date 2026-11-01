@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/review";
 import type { CommentStatus, ReviewComment, ReviewDecisionResult, ReviewRound } from "@/types/review";
 import type { Task } from "@/types/task";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 const COMMENT_STATUS: Record<CommentStatus, { label: string; cls: string }> = {
   OPEN: { label: "미해결", cls: "bg-amber-500/15 text-amber-400" },
@@ -78,6 +79,7 @@ export default function ReviewRoundCard({
   const [taskFormId, setTaskFormId] = useState<string | null>(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskCriteria, setTaskCriteria] = useState("");
+  useUnsavedGuard(!!(newComment.trim() || reason.trim() || taskTitle.trim() || taskCriteria.trim()), "검토 의견에 저장하지 않은 내용이 있습니다. 이 화면을 떠날까요?");
 
   const result = round.decision?.result ?? null;
   const approved = result === "APPROVED";

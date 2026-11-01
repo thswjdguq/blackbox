@@ -6,6 +6,7 @@ import { apiError } from "@/lib/apiError";
 import DatePicker from "@/components/DatePicker";
 import OptionalDeadlineTime from "@/components/OptionalDeadlineTime";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 
 export interface OwnerCandidate {
   userId: string;
@@ -36,6 +37,11 @@ export default function DeliverableFormModal({
   const [submissionMethod, setSubmissionMethod] = useState(initial?.submissionMethod ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [saving, setSaving] = useState(false);
+  const dirty = JSON.stringify([title, dueDate, dueTime, ownerId, submissionMethod, description]) !== JSON.stringify([
+    initial?.title ?? "", initial?.dueDate ?? "", initial?.dueTime ?? null, initial?.ownerId ?? "", initial?.submissionMethod ?? "", initial?.description ?? "",
+  ]);
+  useUnsavedGuard(dirty && !saving, "최종 제출물에 저장하지 않은 내용이 있습니다. 이 화면을 떠날까요?");
+  const close = () => { if (!dirty || window.confirm("입력한 내용을 저장하지 않고 닫을까요?")) onClose(); };
   const [error, setError] = useState("");
 
   // 기존 담당자가 관찰자로 바뀌었거나 나간 경우
@@ -80,7 +86,7 @@ export default function DeliverableFormModal({
           <h2 id="deliverable-form-title" className="text-base font-semibold text-bb-text">
             {initial ? "최종 제출물 수정" : "새 최종 제출물"}
           </h2>
-          <button type="button" onClick={onClose} disabled={saving} aria-label="닫기" className="text-bb-text2 hover:text-bb-text">
+          <button type="button" onClick={close} disabled={saving} aria-label="닫기" className="text-bb-text2 hover:text-bb-text">
             <X size={18} />
           </button>
         </div>
@@ -148,7 +154,7 @@ export default function DeliverableFormModal({
         </label>
 
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-bb-text2 hover:text-bb-text">
+          <button type="button" onClick={close} disabled={saving} className="px-4 py-2 text-sm text-bb-text2 hover:text-bb-text">
             취소
           </button>
           <button
