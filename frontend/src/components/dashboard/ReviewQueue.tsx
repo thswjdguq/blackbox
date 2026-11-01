@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ClipboardCheck, RefreshCw } from "lucide-react";
 import api from "@/lib/api";
+import { sessionGeneration } from "@/lib/sessionCache";
 import type { Task } from "@/types/task";
 
 interface ProjectRef {
@@ -28,24 +29,34 @@ function ago(iso: string, now = Date.now()): string {
  * 팀장·팀원인 프로젝트의 확인 요청 중 업무 가운데 내가 담당이 아닌 것만 추린 뒤,
  * 보드의 "내가 검토할 업무"와 같이 업무마다 서버의 canReview로 확정한다(한 번에 4개씩).
  * 요청이 없으면 아무것도 그리지 않는다. 일부를 못 불러오면 보이는 것은 두고 다시 시도를 둔다.
+ * 업무 창의 변경(task-feedback-changed), 화면 복귀, 30초 주기로 새로 고친다.
  */
 export default function ReviewQueue({ projects }: { projects: ProjectRef[] }) {
   const [items, setItems] = useState<Item[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // 늦게 온 옛 응답(이전 계정·이전 조회)은 버린다: 조회 번호, 세션 세대, 마운트 여부를 모두 본다
+  const sequence = useRef(0);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; sequence.current++; }; }, []);
 
   const load = useCallback(async () => {
-    setFailed(false);
+    const ticket = ++sequence.current;
+    const generation = sessionGeneration();
+    const current = () => alive.current && ticket === sequence.current && generation === sessionGeneration();
     const contributing = projects.filter((p) => p.myRole === "LEADER" || p.myRole === "MEMBER");
-    if (contributing.length === 0) { setItems([]); return; }
+    if (contributing.length === 0) { setItems([]); setFailed(false); return; }
     let myId: string;
     try {
       myId = (await api.get<{ id: string }>("/auth/profile")).data.id;
     } catch {
-      setFailed(true); setItems([]); return;
+      if (current()) { setFailed(true); setItems((prev) => prev ?? []); }
+      return;
     }
+    if (!current()) return;
     const lists = await Promise.allSettled(
       contributing.map((p) => api.get<Task[]>(`/projects/${p.id}/tasks`).then((r) => r.data.map((t) => ({ ...t, projectName: p.name })))),
     );
+    if (!current()) return;
     let miss = lists.some((r) => r.status === "rejected");
     const candidates = lists.flatMap((r) => (r.status === "fulfilled" ? r.value : []))
       .filter((t) => t.status !== "DONE" && t.completionRequestedAt && !t.assignees.some((a) => a.userId === myId));
@@ -53,6 +64,7 @@ export default function ReviewQueue({ projects }: { projects: ProjectRef[] }) {
     for (let i = 0; i < candidates.length; i += 4) {
       const checked = await Promise.allSettled(candidates.slice(i, i + 4).map((t) =>
         api.get<{ canReview: boolean }>(`/projects/${t.projectId}/tasks/${t.id}/completion`).then(({ data }) => (data.canReview ? t : null))));
+      if (!current()) return;
       for (const c of checked) {
         if (c.status === "rejected") miss = true;
         else if (c.value) found.push(c.value);
@@ -64,9 +76,16 @@ export default function ReviewQueue({ projects }: { projects: ProjectRef[] }) {
     setFailed(miss);
   }, [projects]);
 
+  // 프로젝트가 바뀌면 다시 부르고(비면 바로 비운다), 업무 창에서 요청·확인·취소가 일어나거나
+  // 화면으로 돌아오면, 그리고 30초마다 새로 부른다(피드백함과 같은 방식)
   useEffect(() => {
-    if (projects.length > 0) load();
-  }, [projects, load]);
+    load();
+    const update = () => { if (!document.hidden) load(); };
+    const timer = window.setInterval(update, 30000);
+    window.addEventListener("focus", update);
+    window.addEventListener("task-feedback-changed", update);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", update); window.removeEventListener("task-feedback-changed", update); };
+  }, [load]);
 
   if (!items || (items.length === 0 && !failed)) return null;
 
