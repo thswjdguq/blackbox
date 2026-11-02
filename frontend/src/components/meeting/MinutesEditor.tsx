@@ -29,7 +29,7 @@ export default function MinutesEditor({ value, onChange, label, readOnly = false
   const textStyle = useEditorState({ editor, selector: ({ editor }) =>
     editor?.isActive("heading", { level: 3 }) ? "3" : editor?.isActive("heading", { level: 2 }) ? "2" : "0" });
 
-  useEffect(() => { editor?.setEditable(!readOnly); }, [editor, readOnly]);
+  useEffect(() => { editor?.setEditable(!readOnly, false); }, [editor, readOnly]);
   useEffect(() => {
     // Only external changes replace the document; typing must retain the selection.
     if (editor && value !== editor.getMarkdown()) editor.commands.setContent(value, { contentType: "markdown", emitUpdate: false });
