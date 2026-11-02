@@ -26,12 +26,13 @@ public class ReviewCommentTaskService {
         Project project=access.getProject(projectId);
         access.requireContributor(project,user);
         String title=text(request.title(),255,true), criteria=text(request.completionCriteria(),2000,false);
+        taskService.lockProject(project);
         var view=reviews.lockForWrite(projectId,deliverableId,reviewId);
         ReviewComment c=comments.findByIdAndProjectIdAndDeliverableIdAndReviewId(commentId,projectId,deliverableId,reviewId)
                 .orElseThrow(()->new NotFoundException("피드백을 찾을 수 없습니다"));
         // 기존 연결은 읽기 응답이므로 승인·확정 뒤에도 재시도를 허용한다(K-12/K-20).
         if(c.getLinkedTask()!=null) return new Response(c.getId(),c.getLinkedTask().getId(),false);
-        if("APPROVED".equals(view.decision()) || DeliverableStatusReader.isConfirmed(view.deliverableStatus()))
+        if("APPROVED".equals(view.decision()) || Set.of("CONFIRMED","SUBMITTED").contains(view.deliverableStatus()))
             throw conflict("승인되거나 확정된 제출물에 새 업무를 연결할 수 없습니다");
         if(c.getResolvedAt()!=null) throw conflict("해결된 피드백은 업무로 전환할 수 없습니다");
         // 기존 업무 생성 규칙을 재사용하고 외부 알림 없이 담당자 미설정 TODO로 생성한다.

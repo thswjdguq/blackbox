@@ -1,6 +1,5 @@
 package com.blackbox.service;
 
-import com.blackbox.dto.UpdateTaskStatusRequest;
 import com.blackbox.entity.*;
 import com.blackbox.repository.*;
 import com.blackbox.scheduler.ScoreScheduler;
@@ -29,7 +28,7 @@ import static org.mockito.Mockito.doAnswer;
 @ActiveProfiles("test")
 class ScoreAsyncTransactionTest {
     @SpyBean ScoreService scores;
-    @Autowired TaskService tasks;
+    @Autowired TaskWorkflowService workflow;
     @Autowired UserRepository users;
     @Autowired ProjectRepository projects;
     @Autowired ProjectMemberRepository members;
@@ -43,7 +42,7 @@ class ScoreAsyncTransactionTest {
     @MockBean ScoreScheduler scheduler;
     Fixture fixture;
 
-    record Fixture(User user, Project project, Task task) {}
+    record Fixture(User user, User reviewer, Project project, Task task) {}
     record WorkerResult(boolean transactionActive, long threadId, int completion) {}
 
     Fixture seed() {
@@ -64,18 +63,28 @@ class ScoreAsyncTransactionTest {
             member.setUser(user);
             member.setRole("LEADER");
             members.save(member);
+            User reviewer = new User();
+            reviewer.setEmail("score-reviewer-" + UUID.randomUUID() + "@example.invalid");
+            reviewer.setName("결과 확인자");
+            reviewer.setPasswordHash("test-only-not-a-password");
+            reviewer.setRole("STUDENT");
+            users.save(reviewer);
+            ProjectMember reviewMember = new ProjectMember();
+            reviewMember.setProject(project); reviewMember.setUser(reviewer); reviewMember.setRole("MEMBER");
+            members.save(reviewMember);
             Task task = new Task();
             task.setProject(project);
             task.setCreatedBy(user);
             task.setTitle("검사용 업무");
-            task.setStatus("TODO");
+            task.setStatus("IN_PROGRESS");
+            task.setCompletionCriteria("결과 확인자가 수행 결과를 확인한다");
             task.setPriority("MEDIUM");
             taskRepository.save(task);
             TaskAssignee assignee = new TaskAssignee();
             assignee.setTask(task);
             assignee.setUser(user);
             assignees.save(assignee);
-            return new Fixture(user, project, task);
+            return new Fixture(user, reviewer, project, task);
         });
         return fixture;
     }
@@ -94,6 +103,7 @@ class ScoreAsyncTransactionTest {
             jdbc.update("DELETE FROM project_members WHERE project_id = ?", projectId);
             jdbc.update("DELETE FROM projects WHERE id = ?", projectId);
             jdbc.update("DELETE FROM users WHERE id = ?", fixture.user().getId());
+            jdbc.update("DELETE FROM users WHERE id = ?", fixture.reviewer().getId());
         });
         assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM projects WHERE id = ?", Integer.class, fixture.project().getId()));
         assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM users WHERE id = ?", Integer.class, fixture.user().getId()));
@@ -137,8 +147,7 @@ class ScoreAsyncTransactionTest {
         CompletableFuture<WorkerResult> completion = observe(fixture, false);
         long requestThread = Thread.currentThread().getId();
 
-        tasks.updateStatus(fixture.project().getId(), fixture.task().getId(),
-                new UpdateTaskStatusRequest("DONE"), fixture.user());
+        completeWithIndependentReview(fixture);
 
         WorkerResult worker = completion.get(10, TimeUnit.SECONDS);
         assertTrue(worker.transactionActive());
@@ -153,13 +162,17 @@ class ScoreAsyncTransactionTest {
         Fixture fixture = seed();
         CompletableFuture<WorkerResult> completion = observe(fixture, true);
 
-        tasks.updateStatus(fixture.project().getId(), fixture.task().getId(),
-                new UpdateTaskStatusRequest("DONE"), fixture.user());
+        completeWithIndependentReview(fixture);
 
         WorkerResult worker = completion.get(10, TimeUnit.SECONDS);
         assertTrue(worker.transactionActive());
         assertEquals(TransactionSynchronization.STATUS_ROLLED_BACK, worker.completion());
         assertTrue(scoreRepository.findByProjectAndUser(fixture.project(), fixture.user()).isEmpty());
         assertEquals("DONE", taskRepository.findById(fixture.task().getId()).orElseThrow().getStatus());
+    }
+    private void completeWithIndependentReview(Fixture fixture) {
+        // 직접 DONE으로 바꾸지 않고 실제 완료 요청·독립 확인을 거쳐 비동기 점수 트랜잭션을 검증한다.
+        workflow.request(fixture.project().getId(), fixture.task().getId(), fixture.user());
+        workflow.decide(fixture.project().getId(), fixture.task().getId(), true, true, null, fixture.reviewer());
     }
 }

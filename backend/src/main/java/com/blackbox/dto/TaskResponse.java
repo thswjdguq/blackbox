@@ -26,7 +26,16 @@ public record TaskResponse(
         String deliverableTitle,
         UUID requirementId,
         String requirementContent,
-        String completionCriteria
+        String completionCriteria,
+        UUID predecessorId,
+        String predecessorTitle,
+        boolean attachmentRequired,
+        OffsetDateTime completionRequestedAt,
+        String completionRequestedByName,
+        OffsetDateTime completionApprovedAt,
+        String completionApprovedByName,
+        String completionRejectionReason,
+        UUID completionRequestedBy
 ) {
     public record AssigneeSummary(UUID userId, String name, String email) {}
 
@@ -46,7 +55,15 @@ public record TaskResponse(
                 t.getDeliverable() == null ? null : t.getDeliverable().getTitle(),
                 t.getRequirement() == null ? null : t.getRequirement().getId(),
                 t.getRequirement() == null ? null : t.getRequirement().getContent(),
-                t.getCompletionCriteria()
+                t.getCompletionCriteria(),
+                t.getPredecessor() == null ? null : t.getPredecessor().getId(),
+                t.getPredecessor() == null ? null : t.getPredecessor().getTitle(),
+                t.isAttachmentRequired(), t.getCompletionRequestedAt(),
+                t.getCompletionRequestedBy() == null ? null : t.getCompletionRequestedBy().getName(),
+                t.getCompletionApprovedAt(),
+                t.getCompletionApprovedBy() == null ? null : t.getCompletionApprovedBy().getName(),
+                t.getCompletionRejectionReason(),
+                t.getCompletionRequestedBy() == null ? null : t.getCompletionRequestedBy().getId()
         );
     }
 }

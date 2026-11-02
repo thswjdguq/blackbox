@@ -13,8 +13,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,7 +36,8 @@ public class TaskService {
     private final EntityManager entityManager;
     private final DeliverableService deliverableService;
     private final ReviewCommentRepository reviewComments;
-    private final DeliverableStatusReader deliverableStatus;
+    private final TaskWorkflowService workflow;
+    private final NotificationService notifications;
 
     public TaskService(TaskRepository taskRepository,
                        TaskAssigneeRepository taskAssigneeRepository,
@@ -48,8 +51,8 @@ public class TaskService {
                        ScoreService scoreService,
                        EntityManager entityManager,
                        DeliverableService deliverableService,
-                       ReviewCommentRepository reviewComments,
-                       DeliverableStatusReader deliverableStatus) {
+                       ReviewCommentRepository reviewComments, TaskWorkflowService workflow,
+                       NotificationService notifications) {
         this.taskRepository = taskRepository;
         this.taskAssigneeRepository = taskAssigneeRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -63,16 +66,26 @@ public class TaskService {
         this.entityManager = entityManager;
         this.deliverableService = deliverableService;
         this.reviewComments = reviewComments;
-        this.deliverableStatus = deliverableStatus;
+        this.workflow = workflow;
+        this.notifications = notifications;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
+
+    /** 업무 생성으로 이어지는 호출도 제출물보다 프로젝트를 먼저 잠근다. 호출자의 트랜잭션 안에서 사용한다. */
+    public void lockProject(Project project) { workflow.lock(project); }
+    public void lockProject(UUID projectId,User user) {
+        Project project=accessChecker.getProject(projectId);
+        accessChecker.requireContributor(project,user);
+        lockProject(project);
+    }
 
     @Transactional
     public TaskResponse createTask(UUID projectId, CreateTaskRequest req, User creator) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, creator);
-        requireEditableDeliverable(projectId, req.deliverableId());
+        workflow.lock(project);
+        if ("DONE".equals(req.status())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "새 업무를 완료로 만들 수 없습니다. 다른 팀원의 결과 확인이 필요합니다.");
 
         Task task = new Task();
         task.setProject(project);
@@ -81,6 +94,7 @@ public class TaskService {
         applyDeliverable(task, project, req.deliverableId(), req.requirementId(), false, false);
         task.setCompletionCriteria(req.completionCriteria() == null ? null : req.completionCriteria().trim());
         task.setStatus(req.status() != null ? req.status() : "TODO");
+        workflow.configure(task, project, req.predecessorId(), false, req.attachmentRequired());
         task.setPriority(req.priority() != null ? req.priority() : "MEDIUM");
         task.setTag(req.tag());
         task.setDueDate(req.dueDate());
@@ -98,6 +112,7 @@ public class TaskService {
         if (!assignees.isEmpty()) {
             discordService.notifyTaskAssigned(task,
                     assignees.stream().map(TaskAssignee::getUser).toList(), project);
+            notifications.assigned(task, assignees.stream().map(TaskAssignee::getUser).toList(), creator);
         }
 
         return TaskResponse.from(task, assignees);
@@ -133,12 +148,14 @@ public class TaskService {
     public TaskResponse updateTask(UUID projectId, UUID taskId, UpdateTaskRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
 
-        lockEditableTask(projectId, task, req.deliverableId());
         applyDeliverable(task, project, req.deliverableId(), req.requirementId(),
                 Boolean.TRUE.equals(req.clearDeliverable()), Boolean.TRUE.equals(req.clearRequirement()));
         if (req.completionCriteria() != null) task.setCompletionCriteria(req.completionCriteria().trim());
+        workflow.configure(task, project, req.predecessorId(), Boolean.TRUE.equals(req.clearPredecessor()), req.attachmentRequired());
 
         if (req.title() != null)       task.setTitle(req.title());
         if (req.description() != null) task.setDescription(req.description());
@@ -156,7 +173,10 @@ public class TaskService {
     public void deleteTask(UUID projectId, UUID taskId, User user) {
         Project project = accessChecker.getProject(projectId);
         ProjectMember member = accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
+        if (taskRepository.existsByPredecessor(task)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "후속 업무가 참조하는 선행 업무는 삭제할 수 없습니다.");
 
         // 본인 생성 또는 LEADER만 삭제 가능
         boolean isCreator = task.getCreatedBy().getId().equals(user.getId());
@@ -165,7 +185,6 @@ public class TaskService {
             throw new ForbiddenException("태스크를 삭제할 권한이 없습니다");
         }
 
-        lockEditableTask(projectId, task, null);
         taskAssigneeRepository.deleteByTask(task);
         taskRepository.delete(task);
     }
@@ -177,34 +196,14 @@ public class TaskService {
                                      UpdateTaskStatusRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
 
-        lockEditableTask(projectId, task, null);
-        String oldStatus = task.getStatus();
-        task.setStatus(req.status());
-
-        if ("DONE".equals(req.status()) && !"DONE".equals(oldStatus)) {
-            task.setCompletedAt(OffsetDateTime.now());
-            taskRepository.save(task);
-            entityManager.flush();
-            entityManager.refresh(task);
-            activityLogService.record(project, user, "TASK_COMPLETE",
-                    "{\"taskId\":\"" + task.getId() + "\",\"title\":\"" + escapeJson(task.getTitle()) + "\",\"completedAt\":\"" + task.getCompletedAt() + "\"}");
-            alertService.reevaluate(user, project);
-            discordService.notifyTaskCompleted(task, user, project);
-            UUID projectIdForScore = project.getId();
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    scoreService.recalculateAsync(projectIdForScore);
-                }
-            });
-        } else {
-            if (!"DONE".equals(req.status())) task.setCompletedAt(null);
-            taskRepository.save(task);
-            entityManager.flush();
-            entityManager.refresh(task);
-        }
+        if ("DONE".equals(req.status())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "결과 제출 후 다른 팀원의 확인을 받아야 완료됩니다.");
+        if ("IN_PROGRESS".equals(req.status())) workflow.requirePredecessor(task);
+        task.setStatus(req.status()); task.setCompletedAt(null);
+        taskRepository.save(task); entityManager.flush(); entityManager.refresh(task);
 
         return TaskResponse.from(task, taskAssigneeRepository.findByTask(task));
     }
@@ -216,12 +215,18 @@ public class TaskService {
                                      AssignTaskRequest req, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireContributor(project, user);
+        workflow.lock(project);
         Task task = findTask(taskId, project);
+        workflow.requireEditable(task);
 
-        lockEditableTask(projectId, task, null);
+        Set<UUID> before = new HashSet<>();
+        taskAssigneeRepository.findByTask(task).forEach(a -> before.add(a.getUser().getId()));
         List<TaskAssignee> assignees = setAssigneesInternal(task, req.assigneeIds());
         entityManager.flush();
         entityManager.refresh(task);
+        // 앱 안 개인 알림은 새로 추가된 사람에게만 보낸다. 같은 목록 재저장으로 기존 담당자에게 다시 알리지 않는다.
+        notifications.assigned(task, assignees.stream().map(TaskAssignee::getUser)
+                .filter(u -> !before.contains(u.getId())).toList(), user);
 
         // 담당자 변경 알림 (명시적 배정 액션)
         if (!assignees.isEmpty()) {
@@ -256,34 +261,6 @@ public class TaskService {
     }
 
     // ── internal ──────────────────────────────────────────────────────────
-
-    /**
-     * 확정과 쓰기는 같은 제출물 잠금을 사용한다. 이동은 양쪽 ID 순으로 잠가 서로 반대 이동의 교착을 막는다.
-     * 그 다음 업무를 잠그고 다시 읽는다. 기다리는 사이 연결이 바뀌었다면 새 제출물 잠금을 뒤늦게
-     * 추가하지 않고 409로 재시도를 요청해 잠금 순서와 확정 후 불변성을 함께 유지한다.
-     */
-    private void lockEditableTask(UUID projectId, Task task, UUID nextDeliverableId) {
-        UUID previous = task.getDeliverable() == null ? null : task.getDeliverable().getId();
-        java.util.stream.Stream.of(previous, nextDeliverableId).filter(java.util.Objects::nonNull)
-                .distinct().sorted().forEach(id -> requireEditableDeliverable(projectId, id));
-        try {
-            entityManager.refresh(task, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
-        } catch (jakarta.persistence.EntityNotFoundException missing) {
-            throw new NotFoundException("태스크를 찾을 수 없습니다");
-        }
-        UUID current = task.getDeliverable() == null ? null : task.getDeliverable().getId();
-        if (!java.util.Objects.equals(previous, current)) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
-                    "업무의 제출물 연결이 바뀌었습니다. 새로고침 후 다시 시도해주세요");
-        }
-    }
-
-    private void requireEditableDeliverable(UUID projectId, UUID deliverableId) {
-        if (deliverableId != null && DeliverableStatusReader.isConfirmed(deliverableStatus.lockForWrite(projectId, deliverableId))) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
-                    DeliverableStatusReader.CONFIRMED_DETAIL);
-        }
-    }
 
     private Task findTask(UUID taskId, Project project) {
         return taskRepository.findByIdAndProject(taskId, project)
@@ -350,6 +327,7 @@ public class TaskService {
         }
         if (deliverableId != null) {
             Deliverable next = deliverableService.find(project, deliverableId);
+            workflow.requireDeliverableEditable(next);
             if (task.getDeliverable() == null || !next.getId().equals(task.getDeliverable().getId())) {
                 task.setRequirement(null);
             }

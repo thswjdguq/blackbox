@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ScoreService {
@@ -142,7 +143,10 @@ public class ScoreService {
         // 경보 감지
         alertService.checkAlerts(project, members, savedScores);
 
-        return savedScores.stream().map(ScoreResponse::from).toList();
+        // 산식·저장은 그대로 두고, 응답은 화면 경보와 같이 현재 팀장·팀원만 보여 준다(관찰자 제외).
+        Set<UUID> contributors = contributorIds(members);
+        return savedScores.stream().filter(s -> contributors.contains(s.getUser().getId()))
+                .map(ScoreResponse::from).toList();
     }
 
     // ── 태스크 완료 이벤트용 비동기 재계산 ─────────────────────────────────
@@ -162,8 +166,15 @@ public class ScoreService {
     public List<ScoreResponse> getScores(UUID projectId, User user) {
         Project project = accessChecker.getProject(projectId);
         accessChecker.requireMember(project, user);
+        Set<UUID> contributors = contributorIds(projectMemberRepository.findByProject(project));
         return scoreRepository.findByProjectOrderByTotalScoreDesc(project).stream()
+                .filter(s -> contributors.contains(s.getUser().getId()))
                 .map(ScoreResponse::from)
                 .toList();
+    }
+
+    private static Set<UUID> contributorIds(List<ProjectMember> members) {
+        return members.stream().filter(ProjectAccessChecker::canContribute)
+                .map(m -> m.getUser().getId()).collect(Collectors.toSet());
     }
 }

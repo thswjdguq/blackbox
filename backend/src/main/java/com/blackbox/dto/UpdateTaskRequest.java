@@ -16,5 +16,13 @@ public record UpdateTaskRequest(
         UUID requirementId,
         Boolean clearDeliverable,
         Boolean clearRequirement,
-        @Size(max = 2000) String completionCriteria
-) {}
+        @Size(max = 2000) String completionCriteria,
+        UUID predecessorId,
+        Boolean clearPredecessor,
+        Boolean attachmentRequired
+) {
+    public UpdateTaskRequest(String title, String description, String priority, String tag, LocalDate dueDate,
+            UUID deliverableId, UUID requirementId, Boolean clearDeliverable, Boolean clearRequirement, String criteria) {
+        this(title, description, priority, tag, dueDate, deliverableId, requirementId, clearDeliverable, clearRequirement, criteria, null, null, null);
+    }
+}

@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
-import { apiError, blobApiError } from "@/lib/apiError";
-import { downloadFile } from "@/lib/download";
+import { apiError } from "@/lib/apiError";
+import FileDownloadLink from "@/components/FileDownloadLink";
 import { useMyRole } from "@/hooks/useMyRole";
 import { FileRecord, FileUploadResult } from "@/types/vault";
 import {
@@ -65,22 +66,6 @@ function HistoryItem({
   projectId: string;
   isTampered: boolean;
 }) {
-  const [downloading, setDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState("");
-
-  const handleDownload = async () => {
-    if (downloading) return;
-    setDownloading(true);
-    setDownloadError("");
-    try {
-      await downloadFile(record.id, record.fileName);
-    } catch (err) {
-      setDownloadError(await blobApiError(err, "내려받지 못했습니다. 다시 시도해주세요."));
-    } finally {
-      setDownloading(false);
-    }
-  };
-
   const versionLabel = record.version === 1 ? "최초 업로드" : isTampered ? "파일 변경 내역" : `v${record.version} 재업로드`;
 
   return (
@@ -131,22 +116,11 @@ function HistoryItem({
       </div>
 
       {/* 다운로드 버튼 */}
-      <div className="flex shrink-0 items-center gap-2">
-        {downloadError && (
-          <span role="alert" className="max-w-[12rem] text-xs text-red-400">
-            {downloadError}
-          </span>
-        )}
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          title="다운로드"
-          aria-label={`${record.fileName} v${record.version} 다운로드`}
-          className="p-2 text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all disabled:opacity-50"
-        >
-          {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-        </button>
-      </div>
+      {/* 새 창으로 열면 로그인 갱신을 거치지 않아 30분 뒤 401 창이 뜬다(main #109) */}
+      <FileDownloadLink fileId={record.id} fileName={record.fileName} label={`${record.fileName} 내려받기`}
+        className="p-2 text-bb-text2 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all">
+        <Download size={14} />
+      </FileDownloadLink>
     </div>
   );
 }
@@ -363,15 +337,14 @@ export default function VaultPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params?.projectId as string;
+  // 관찰자의 업로드는 서버가 403으로 거절한다. 업로드 칸을 감추고 볼 수만 있다고 알린다
+  const readOnly = useMyRole(projectId) === "OBSERVER";
 
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   // 업로드 직후 변조 감지 알림
   const [tamperAlert, setTamperAlert] = useState<string | null>(null);
-  // 관찰자의 업로드는 서버가 403으로 거절한다. 업로드 칸을 감추고 볼 수만 있다고 알린다
-  const role = useMyRole(projectId);
-  const readOnly = role === "OBSERVER";
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
@@ -422,6 +395,7 @@ export default function VaultPage() {
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
         <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-32 mb-6" />
             <div className="h-32 bg-bb-surface rounded-xl" />
@@ -439,15 +413,16 @@ export default function VaultPage() {
       <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+<ProjectNav projectId={projectId} />
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2">
               <Files size={22} className="text-indigo-400" />
-              파일 금고
+              프로젝트 자료
             </h1>
             <p className="text-sm text-bb-text2 mt-1">
-              파일 변경 내역을 SHA-256 해시로 추적합니다
+              팀 자료를 모으고, 파일 버전별 변경 내역을 확인하세요.
             </p>
           </div>
         </div>
@@ -510,9 +485,7 @@ export default function VaultPage() {
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <span className="text-5xl mb-4">🔐</span>
             <p className="text-sm font-semibold text-bb-text mb-1.5">업로드된 파일이 없어요</p>
-            <p className="text-xs text-bb-text2">
-              {readOnly ? "팀원이 파일을 올리면 여기서 버전과 변경 내역을 볼 수 있습니다" : "파일을 업로드하면 SHA-256 해시로 자동 고정됩니다"}
-            </p>
+            <p className="text-xs text-bb-text2">{readOnly ? "팀원이 파일을 올리면 여기서 버전과 변경 내역을 볼 수 있습니다" : "파일을 업로드하면 SHA-256 해시로 자동 고정됩니다"}</p>
           </div>
         ) : (
           <div className="space-y-3">

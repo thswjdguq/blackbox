@@ -45,6 +45,7 @@ public class DeliverableService {
         d.setTitle(req.title().trim());
         d.setDescription(req.description());
         d.setDueDate(req.dueDate());
+        d.setDueTime(req.dueTime() == null ? null : java.time.LocalTime.parse(req.dueTime()));
         d.setSubmissionMethod(req.submissionMethod());
         User owner = req.ownerId() == null ? null : members.findByProject(project).stream()
                 .filter(m -> m.getUser().getId().equals(req.ownerId()) && !"OBSERVER".equals(m.getRole()))

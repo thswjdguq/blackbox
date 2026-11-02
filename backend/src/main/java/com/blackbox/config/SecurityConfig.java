@@ -1,6 +1,5 @@
 package com.blackbox.config;
 
-import jakarta.servlet.DispatcherType;
 import com.blackbox.repository.UserRepository;
 import com.blackbox.security.JwtAuthenticationFilter;
 import com.blackbox.security.JwtService;
@@ -47,9 +46,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 응답을 나눠 보내는 요청(이벤트 스트림)은 끝날 때 서버 안에서 한 번 더 지나간다. 처음 들어올 때 이미 인증을 확인했다
-                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
+                // 이미 인증/권한 검사를 통과한 SSE 응답의 비동기 재디스패치다. 최초 요청은 아래 인증 규칙을 따른다.
+                .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC).permitAll()
                 .requestMatchers("/api/health").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET,"/api/auth/affiliation/schools","/api/auth/affiliation/schools/*/departments").permitAll()
                 .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/google/callback").permitAll()
                 .anyRequest().authenticated()
             )

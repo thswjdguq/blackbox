@@ -119,6 +119,15 @@ public class AgentTestData {
 
     /** 이 도우미가 만든 사용자의 프로젝트와 거기 딸린 것을 모두 지운다. 중간에 죽은 실행이 남긴 것도 함께 지워진다 */
     public void cleanup() {
+        // 서버가 막 뜬 직후에는 점수 재계산이 한 번 돈다. 그 일이 아래의 점수 삭제와 프로젝트 삭제 사이에 점수를 써넣으면
+        // 프로젝트 삭제가 외래 키에 걸린다(이 클래스만 따로 돌릴 때 첫 테스트에서 가끔). 그때는 처음부터 다시 지운다
+        for (int attempt = 1; ; attempt++) {
+            try { deleteEverything(); return; }
+            catch (org.springframework.dao.DataIntegrityViolationException e) { if (attempt == 3) throw e; }
+        }
+    }
+
+    private void deleteEverything() {
         String like = "%" + EMAIL_DOMAIN;
         String projects = "(SELECT p.id FROM projects p JOIN users u ON u.id = p.created_by WHERE u.email LIKE ?)";
         jdbc.update("DELETE FROM agent_proposal_results WHERE proposal_id IN (SELECT id FROM agent_proposals WHERE project_id IN " + projects + ")", like);

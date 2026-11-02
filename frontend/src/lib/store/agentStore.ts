@@ -1,8 +1,10 @@
 import { create } from "zustand";
-import { getAgentStatus } from "@/lib/api/agent";
+import { getAgentOrigins, getAgentStatus, getProposals } from "@/lib/api/agent";
+import { getDeliverables } from "@/lib/api/deliverable";
 import { AgentRunError, runAgent } from "@/lib/agent/run";
 import { onSessionReset, sessionGeneration } from "@/lib/sessionCache";
-import type { AgentStatus, Proposal } from "@/types/agent";
+import type { AgentOrigins, AgentStatus, Proposal } from "@/types/agent";
+import type { Deliverable } from "@/types/deliverable";
 
 /**
  * AI 도우미 창의 상태 (화면 문서 3.4, 6.4).
@@ -24,15 +26,49 @@ export interface RunEntry {
   error: string | null;
 }
 
+export type ProposalFilter = Proposal["status"];
+
+export interface ProposalList {
+  filter: ProposalFilter;
+  ids: string[];
+  loading: boolean;
+  error: string;
+}
+
+/** 서버가 한 번에 주는 카드 수의 상한(4.8) */
+export const PROPOSAL_LIMIT = 50;
+
 interface AgentState {
   open: boolean;
+  tab: "assistant" | "proposals";
   /** 프로젝트 id로 찾는다. 불러오지 못했으면 undefined */
   status: Record<string, AgentStatus | undefined>;
+  statusErrors: Record<string, string | undefined>;
   runs: Record<string, RunEntry[]>;
-  /** 카드 id로 찾는다 */
+  /** 카드 id로 찾는다. 실행 기록과 제안 탭이 같은 것을 본다 */
   proposals: Record<string, Proposal>;
+  /** 프로젝트별 "제안" 탭 목록 */
+  proposalLists: Record<string, ProposalList | undefined>;
+  /** 업무 카드의 요구사항 이름을 찾으려고 읽는 제출물(요구사항은 stages에 없다, 4.7) */
+  deliverables: Record<string, Deliverable[] | undefined>;
+  /** 채택할 때마다 1씩 는다. 뒤 화면이 이 값을 보고 다시 읽는다(4.11) */
+  recordsVersion: number;
+  /** 채택으로 만들어진 기록의 id (GET /origins). 화면들이 같이 쓴다. AI가 꺼져 있어도 온다(4.10) */
+  origins: Record<string, AgentOrigins | undefined>;
+  /** 화면마다의 버튼이 연 입력 칸(입력이 필요한 실행). 창이 읽고 비운다 */
+  pendingInput: { projectId: string; skill: string } | null;
 
   setOpen(open: boolean): void;
+  setTab(tab: "assistant" | "proposals"): void;
+  loadProposals(projectId: string, filter: ProposalFilter): Promise<void>;
+  loadDeliverables(projectId: string): Promise<void>;
+  /** 수정·채택·거절의 응답으로 받은 카드를 넣는다. 화면은 카드 내용을 따로 들고 있지 않는다(2장 9번) */
+  putProposal(p: Proposal): void;
+  bumpRecords(): void;
+  /** 화면마다의 버튼이 부른다(4.9). 창을 열고, 입력이 다 있으면 실행까지 한다 */
+  openWith(projectId: string, skill: string, input?: object, titleExtra?: string): void;
+  clearPendingInput(): void;
+  loadOrigins(projectId: string): Promise<void>;
   loadStatus(projectId: string, force?: boolean): Promise<void>;
   run(projectId: string, skill: string, input: object, title: string): Promise<void>;
 }
@@ -42,12 +78,90 @@ const STATUS_TTL_MS = 30_000;
 const loadedAt = new Map<string, number>();
 let nextId = 0;
 
-const empty = { open: false, status: {}, runs: {}, proposals: {} };
+const empty = {
+  open: false,
+  tab: "assistant" as const,
+  status: {},
+  statusErrors: {},
+  runs: {},
+  proposals: {},
+  proposalLists: {},
+  deliverables: {},
+  recordsVersion: 0,
+  pendingInput: null,
+  origins: {},
+};
 
 export const useAgentStore = create<AgentState>((set, get) => ({
   ...empty,
 
   setOpen: (open) => set({ open }),
+  setTab: (tab) => set({ tab }),
+
+  loadProposals: async (projectId, filter) => {
+    const gen = sessionGeneration();
+    set((s) => ({
+      proposalLists: { ...s.proposalLists, [projectId]: { filter, ids: s.proposalLists[projectId]?.filter === filter ? s.proposalLists[projectId]!.ids : [], loading: true, error: "" } },
+    }));
+    try {
+      const { data } = await getProposals(projectId, filter);
+      if (gen !== sessionGeneration()) return;
+      set((s) => {
+        // 그 사이 다른 걸러 보기를 골랐으면 늦게 온 응답을 버린다
+        if (s.proposalLists[projectId]?.filter !== filter) return {};
+        const proposals = { ...s.proposals };
+        for (const p of data) proposals[p.id] = p;
+        return { proposals, proposalLists: { ...s.proposalLists, [projectId]: { filter, ids: data.map((p) => p.id), loading: false, error: "" } } };
+      });
+    } catch {
+      if (gen !== sessionGeneration()) return;
+      set((s) => ({
+        proposalLists: { ...s.proposalLists, [projectId]: { filter, ids: [], loading: false, error: "제안 목록을 불러오지 못했습니다." } },
+      }));
+    }
+  },
+
+  loadDeliverables: async (projectId) => {
+    if (get().deliverables[projectId]) return;
+    const gen = sessionGeneration();
+    try {
+      const { data } = await getDeliverables(projectId);
+      if (gen !== sessionGeneration()) return;
+      set((s) => ({ deliverables: { ...s.deliverables, [projectId]: data } }));
+    } catch {
+      // 요구사항 이름만 못 보일 뿐이라 오류를 띄우지 않는다
+    }
+  },
+
+  putProposal: (p) => set((s) => ({ proposals: { ...s.proposals, [p.id]: p } })),
+
+  openWith: (projectId, skill, input, titleExtra) => {
+    const status = get().status[projectId];
+    const label = status?.skills.find((s) => s.skill === skill)?.label ?? skill;
+    set({ open: true, tab: "assistant" });
+    if (input) {
+      get().run(projectId, skill, input, titleExtra ? `${label} · ${titleExtra}` : label);
+    } else {
+      set({ pendingInput: { projectId, skill } });
+    }
+  },
+  clearPendingInput: () => set({ pendingInput: null }),
+
+  loadOrigins: async (projectId) => {
+    const gen = sessionGeneration();
+    try {
+      const { data } = await getAgentOrigins(projectId);
+      if (gen !== sessionGeneration()) return;
+      set((s) => ({ origins: { ...s.origins, [projectId]: data } }));
+    } catch {
+      // 조회 실패를 새 출처 확인으로 보지 않는다. 이전 화면의 캐시로 출처 배지를 계속 붙이지 않는다.
+      if (gen !== sessionGeneration()) return;
+      set(s => ({origins:{...s.origins,[projectId]:undefined}}));
+    }
+  },
+
+  // 채택으로 제출물·요구사항이 생기므로 요구사항 이름 캐시도 비운다
+  bumpRecords: () => set((s) => ({ recordsVersion: s.recordsVersion + 1, deliverables: {} })),
 
   loadStatus: async (projectId, force = false) => {
     const at = loadedAt.get(projectId);
@@ -57,12 +171,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     try {
       const { data } = await getAgentStatus(projectId);
       if (gen !== sessionGeneration()) return;
-      set((s) => ({ status: { ...s.status, [projectId]: data } }));
+      set((s) => ({ status: { ...s.status, [projectId]: data }, statusErrors: { ...s.statusErrors, [projectId]: undefined } }));
     } catch {
-      // 실패해도 오류를 띄우지 않고 AI 버튼만 감춘다(2장 3번). 다음 화면에서 다시 부를 수 있게 시각을 지운다
+      // 기본 업무 화면에는 오류를 끼워 넣지 않고 도우미 창에서 연결 실패를 안내한다.
       loadedAt.delete(projectId);
       if (gen !== sessionGeneration()) return;
-      set((s) => ({ status: { ...s.status, [projectId]: undefined } }));
+      set((s) => ({ status: { ...s.status, [projectId]: undefined }, statusErrors: { ...s.statusErrors, [projectId]: "도우미 연결 상태를 확인하지 못했습니다." } }));
     }
   },
 
