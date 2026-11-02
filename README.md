@@ -1,247 +1,82 @@
 # Team Blackbox
 
-> 대학생 팀 프로젝트에서 **"누가 뭘 얼마나 했는지"**를 외부 도구 로그 + 플랫폼 내부 활동 기반으로 자동 산출하고, 교수 전용 대시보드로 제공하는 EdTech SaaS.
->
-> *Capstone Design 2026 — 팀 "손에 송잡고" (송병철 · 송승준 · 손정협 · 손정효)*
+[![CI](https://github.com/thswjdguq/blackbox/actions/workflows/ci.yml/badge.svg)](https://github.com/thswjdguq/blackbox/actions/workflows/ci.yml)
 
----
+대학생 팀 과제를 AI가 돕고, 서비스에 남은 진행 기록으로 팀원별 활동을 집계하는 웹 서비스입니다.
 
-## 1. 프로젝트 소개
+*2026 캡스톤 디자인 · 팀 "손에 송잡고"*
 
-대학 팀 프로젝트에는 반복되는 구조적 문제가 있다 — **무임승차 판별 불가**, **기록의 분산·조작 가능성**, **교수자의 평가 사각지대**.
+![AI 도우미가 과제 안내문으로 계획을 제안한 화면](docs/images/ai-plan.png)
 
-Team Blackbox의 설계 철학은 한 문장으로 요약된다:
+## 소개
 
-> **"우리가 데이터를 만들지 않는다. 외부 시스템이 이미 기록한 데이터를 읽어올 뿐이다."**
+팀 과제에서는 요구사항을 업무로 옮기기 어렵고, 기록이 흩어지며, 누가 무엇을 했는지 확인하기 어렵습니다.
 
-이 프레임이 두 가지를 동시에 푼다 — 감시가 아닌 **읽기(Read-only)**라 개인정보를 방어하고, 학생이 시스템에서 조작할 수 있는 게 없어 **논리적으로 무결**하다.
+Team Blackbox는 최종 제출물을 중심으로 과제를 끝까지 진행하게 합니다. AI는 계획과 업무를 제안하고 사람이 채택해야 반영됩니다. 사용자가 따로 입력하지 않아도 서비스에서 한 활동이 기록으로 남습니다.
 
-### 데이터 무결성 2계층
+## 아키텍처
 
-| 계층 | 대상 | 보증 |
-|---|---|---|
-| **Level 1 — 플랫폼 내부 증빙** | 업로드 파일·태스크·회의 체크인 | **강한 보증** — SHA-256 해시 고정 + DB 트리거로 수정 원천 차단 |
-| **Level 2 — 외부 시스템 로그** | GitHub 커밋, Google 활동 등 | **참조 수준** — 외부 API 데이터를 읽기 전용 수집 (GitHub·Google이 보증) |
+![시스템 배치도](docs/diagrams/배치도.svg)
 
----
+- 브라우저 요청은 nginx를 거쳐 화면은 Next.js, `/api`는 Spring Boot로 갑니다.
+- AI 도우미는 Spring AI로 모델과 읽기 전용 도구 6개를 호출하고, 진행 상황을 SSE로 보냅니다.
+- GitHub Actions가 테스트와 이미지 빌드를 하고, 서버는 GHCR에서 이미지를 받기만 합니다.
 
-## 2. 핵심 기능 (현행 구현 기준)
+처리 순서와 설계 판단은 [아키텍처 문서](docs/architecture.md)에 있습니다.
 
-- **인증** — 이메일/비밀번호 회원가입·로그인, JWT(access + refresh), Google OAuth 콜백. Spring Security 무상태(stateless).
-- **프로젝트** — 생성, 초대코드 발급/참여, 멤버·역할(LEADER/MEMBER/OBSERVER) 관리, 4단계 동의(consent) 구조.
-- **칸반 태스크** — 생성/수정/삭제, 드래그앤드롭 상태 변경, 담당자 지정.
-- **회의** — 생성, 체크인, 회의록, **AI 요약·액션아이템 추출**(Claude 우선, OpenAI 폴백) → 태스크 변환.
-- **Hash Vault** — 파일 업로드 시 SHA-256 해시 고정, DB 트리거로 UPDATE/DELETE 차단(불변), 같은 이름으로 다시 올리면 새 버전으로 기록하고 내용이 바뀐 것은 변경 내역으로 남김, 이력 조회.
-- **기여도·경보** — 팀원별 활동을 집계해 기여 현황을 산출하고, 무임승차/이탈/과부하 경보를 제공.
-- **무결성 리포트** — 증빙 PDF 다운로드, 증거 패키지 ZIP 다운로드(OpenPDF).
-- **외부 연동(선택적, 키 없으면 자동 비활성)** — GitHub App, Google Calendar, Notion, Discord 알림, Claude / OpenAI AI.
+## 주요 기능
 
----
+- **제출물과 검토:** 요구사항 관리, 파일 버전별 검토와 피드백, 조건을 통과한 최종본 확정과 수정 잠금, 제출 기록
+- **AI 도우미:** 과제 안내문으로 계획 만들기, 요구사항을 업무로 나누기, 지금 상태 살펴보기, 물어보기
+- **업무와 회의:** 칸반 보드, 담당자가 아닌 팀원의 완료 확인, 회의 체크인, AI 시간 추천, 회의록에서 결정사항·할 일 추출
+- **기록과 보고서:** SHA-256으로 고정한 파일 기록, 팀원별 활동 집계와 경보, 활동 보고서 PDF·ZIP
 
-## 3. 사용자 흐름
+전체 기능과 구현 현황은 [Use Case Diagram](docs/diagrams/usecase.svg)에 있습니다(2026-11-02 기준).
 
-2학기 개발 계획([`DEVELOPMENT_PLAN.md`](docs/team/DEVELOPMENT_PLAN.md)) 기준 최종 결과물의 흐름이다. 역할별 칸에는 그 역할만 할 수 있는 일을 둔다. 제출물·업무·검토는 팀장도 팀원 칸의 일을 똑같이 한다.
+## 기술 스택
 
-### 제출물 흐름
+| 영역 | 기술 | 쓰는 곳 |
+| --- | --- | --- |
+| 백엔드 | Java 17, Spring Boot 3.5, Spring Security, JPA | REST API, JWT(HttpOnly 쿠키) 인증, 역할별 권한 |
+| AI | Spring AI 1.1, AWS Bedrock(Claude Haiku 4.5), SSE | 모델 호출을 한 경계에 모아 공급자를 설정으로 교체, 진행 상황 스트리밍 |
+| 데이터 | PostgreSQL 16, Flyway | 스키마 이력 관리(V1~V35), 트리거로 파일 기록 수정·삭제 차단 |
+| 프론트엔드 | Next.js 16, React 18, TypeScript, Tailwind CSS, Zustand | 화면 전체, 칸반(@dnd-kit), 차트(Recharts) |
+| 인프라 | AWS EC2, Docker Compose, nginx, GitHub Actions, GHCR | HTTPS 프록시, CI, 이미지 빌드, 자동 갱신과 실패 시 복구 |
 
-```mermaid
-flowchart TB
-  subgraph LEAD["팀장"]
-    L1["프로젝트 생성·초대코드"]
-    L4["최종본 확정 요청"]
-  end
-  subgraph MEM["팀원 (팀장 포함)"]
-    M1["초대코드로 참여"]
-    M2["제출물·요구사항 등록"]
-    M3["업무 연결·수행"]
-    M4["초안·수정본 업로드"]
-    M5{"검토자 결정<br/>(업로더 제외)"}
-    M6["피드백 → 업무 전환"]
-    M7["요구사항 충족 확인"]
-    M8["제출 기록<br/>(제출 담당자)"]
-  end
-  subgraph SYS["시스템"]
-    S1["SHA-256 해시 고정<br/>새 버전은 새 검토 회차"]
-    S5["확정 조건 검사<br/>필수 요구사항 충족<br/>최신 회차 승인<br/>미해결 피드백 0건"]
-  end
+## 문제 해결
 
-  L1 --> M1 --> M2 --> M3 --> M4 --> S1 --> M5
-  M5 -- 수정 요청 --> M6 --> M3
-  M3 --> M7
-  M5 -- 승인 --> S5
-  M7 --> S5
-  L4 --> S5 -- 통과 · 이후 수정 잠금 --> M8
-```
+| 문제 | 원인 | 해결 | 결과 |
+| --- | --- | --- | --- |
+| 회의록 AI 추출이 매번 502 | 모델이 JSON을 코드 블록으로 감싸 파싱 실패 | 전체를 감싼 블록만 벗기고, 근거 검사는 유지 | 실제 호출 기준 4회 모두 실패 → 2회 모두 성공 |
+| 브랜치별 DB 이력이 갈라져 병합 불가 | 시연 브랜치와 main의 마이그레이션 번호·내용이 다름 | main 이력을 보존한 통합 경로, CI에서 이력 변경 검사 | 이관 시험에서 표 32개 4,477행과 파일 211개 일치 |
+| 이미지가 일부만 받아져 버전이 섞일 위험 | 서비스별로 받기·태그 갱신이 따로 실패 가능 | 세 이미지가 모두 올라간 뒤 태그 갱신, 하나라도 실패하면 교체 안 함 | 교체 전 DB 백업, 상태가 나쁘면 이전 이미지로 복구 |
+| 모델 응답을 기다리는 동안 연결이 끊길 위험 | 응답 전에는 SSE 이벤트가 없고 프록시가 응답을 모음 | 프록시 대기 시간과 버퍼링 설정, 서버 시간 상한 | 진행 상황을 바로 표시, 실행은 120초 안에 종료 |
 
-- 요구사항 충족 확인은 검토와 별개로 언제든 할 수 있다. 충족 확인, 검토 승인, 팀장의 확정 요청은 서버의 확정 조건 검사로 모인다.
-- 승인은 미해결 피드백이 0건일 때만 할 수 있고, 승인 뒤 추가 의견은 새 검토 회차에서 받는다.
-- 제출 기록은 학교 시스템에 직접 제출한 뒤 남기는 기록이다. 자동 제출하지 않는다.
+사례별 과정과 근거는 [문제 해결 기록](docs/problem-solving.md)에 있습니다.
 
-### 기록과 기여도
+## 시작하기
 
-```mermaid
-flowchart LR
-  subgraph LEAD["팀장"]
-    L2["역할 지정<br/>(교수·조교 → 관찰자)"]
-    L3["회의 생성"]
-  end
-  subgraph MEM["팀원 (팀장 포함)"]
-    M9["회의 체크인·회의록"]
-    A["업무 완료 · 체크인<br/>파일 업로드 · 액션아이템"]
-  end
-  subgraph SYS["시스템"]
-    S3["AI 요약·액션아이템<br/>(제안만)"]
-    S2["진척 계산"]
-    S4["기여도 산출 → 경보"]
-  end
-  subgraph OBS["관찰자 (읽기 전용)"]
-    O1["진척·기여도·경보 조회"]
-    O2["증빙 PDF/ZIP"]
-  end
-
-  L3 --> M9 --> S3 -- 업무로 전환 --> A
-  A --> S2 & S4 --> O1 --> O2
-  L2 --> O1
-```
-
-- 기여도는 팀원 활동 기록에서 나온다. 사용자가 따로 입력하지 않는다.
-- AI는 요약과 액션아이템을 제안만 하고 자동 승인하지 않는다.
-
-### 데이터 흐름 (DFD Level 0)
-
-```mermaid
-flowchart LR
-  T[팀 · 팀장·팀원]
-  O[관찰자 · 교수·조교]
-  AI[Claude / OpenAI]
-  N[Calendar · Notion · Discord]
-  BB((Team Blackbox))
-
-  T -- 제출물·요구사항·업무·파일·피드백·회의 --> BB
-  T -- 확정 · 팀장 --> BB
-  BB -- 진척·다음 행동·AI 제안 --> T
-  BB -- 회의록·프로젝트 현황 --> AI
-  AI -- 요약·다음 행동 제안 --> BB
-  BB -- 진척·기여 현황·경보·증빙 리포트 --> O
-  BB -- 일정·알림 --> N
-```
-
----
-
-## 4. 기술 스택
-
-| 영역 | 스택 |
-|---|---|
-| **백엔드** | Spring Boot 3.5.16 · Java 17 · Spring Web / Data JPA / Security / Validation · WebFlux(WebClient) · jjwt 0.12.6 · OpenPDF 1.3.30 |
-| **프론트엔드** | Next.js 16 · React 18 · TypeScript 5 · Tailwind CSS 3 · Zustand 5 · axios · @dnd-kit(칸반) · Recharts · date-fns |
-| **데이터베이스** | PostgreSQL 16 · Flyway 마이그레이션(V1~V18) |
-| **인프라** | Docker Compose · Nginx 리버스 프록시(HTTP→HTTPS, SSL) |
-
----
-
-## 5. 아키텍처
-
-```
-                    ┌───────────────────────────────┐
-  브라우저 ──443──▶ │  Nginx (리버스 프록시 + SSL)   │
-                    │   /api/  → backend:8080        │
-                    │   /uploads/ → 정적 파일         │
-                    │   /      → frontend:3000        │
-                    └──────┬───────────────┬─────────┘
-                           │               │
-                  ┌────────▼─────┐  ┌──────▼────────────┐
-                  │ Next.js (3000)│  │ Spring Boot (8080) │
-                  └───────────────┘  └──────┬─────────────┘
-                                            │ JDBC
-                                     ┌──────▼────────┐
-                                     │ PostgreSQL 16  │
-                                     └────────────────┘
-```
-
-- 80포트는 443으로 리다이렉트. 모든 API는 `/api/` 프리픽스로 백엔드에 프록시.
-- 인증은 JWT 무상태 — 프론트가 `Authorization: Bearer` 헤더로 호출.
-
----
-
-## 6. 빠른 시작
-
-**사전 요구:** Docker · Docker Compose.
+Docker와 Docker Compose가 필요합니다.
 
 ```bash
-# 1) 환경 변수 준비
-cp .env.example .env
-#   DB_PASSWORD · JWT_SECRET(32자 이상) 등을 채운다.
-#   외부 연동(GitHub/Google/Notion/Discord/AI) 키는 비워두면 해당 기능만 비활성.
-
-# 2) 전체 스택 기동 (db · backend · frontend · nginx)
+cp .env.example .env    # DB_PASSWORD, JWT_SECRET(32자 이상)을 채운다
 docker compose up -d --build
-
-# 3) 접속 (로컬은 self-signed 인증서)
-#   https://localhost
 ```
 
-- 컨테이너를 다시 빌드하지 않고 개발하려면(코드 수정이 바로 반영된다) 터미널 세 개에서:
+`https://localhost`로 접속합니다(자체 서명 인증서). 외부 연동 키는 비워 두면 해당 기능만 꺼집니다. 개발 환경과 환경 변수는 [개발 가이드](docs/development.md)에 있습니다.
 
-  ```bash
-  docker compose -f docker-compose.db-only.yml up -d                  # DB만
-  cd backend && ./gradlew bootRun                                     # SPRING_DATASOURCE_USERNAME·PASSWORD, JWT_SECRET을 환경 변수로 준다
-  cd frontend && NEXT_DEV_BACKEND=http://localhost:8080 npm run dev   # 이 값이 없으면 화면의 /api 호출이 실패한다
-  ```
+## 팀
 
-  PowerShell에서는 `$env:NEXT_DEV_BACKEND='http://localhost:8080'; npm run dev`처럼 준다.
-  백엔드는 CI와 같은 JDK 17로 실행한다. 기본 Java가 다른 버전이면 `JAVA_HOME`을 JDK 17로 지정한다. DB 사용자와 비밀번호는 `docker-compose.db-only.yml`에 적힌 값을 그대로 준다. 화면은 환경 변수를 주는 대신 `frontend/.env.example`을 `frontend/.env.local`로 복사해도 된다.
-  파일 업로드까지 쓰려면 백엔드에 `FILE_UPLOAD_DIR`도 준다. 기본값 `/data/uploads`는 컨테이너 안의 경로라 로컬에서는 업로드가 500으로 실패한다. 저장소 밖의 폴더를 지정한다.
-- 두 브랜치를 함께 띄우려면(예: main으로 개발하면서 시연 브랜치를 확인) 브랜치를 옆 폴더에 받아 `docker-compose.second.yml`을 붙인다. 폴더 이름이 Compose의 프로젝트 이름이 되어 이미지, DB, 업로드 파일이 따로 만들어지고, 이 파일이 컨테이너 이름과 포트를 바꾼다.
+| 이름 | 역할 | 담당 |
+| --- | --- | --- |
+| 송승준 | 팀장, 백엔드 | 최종 제출물·검토·확정, 인증·권한, AI 도우미 서버, DB·배포 |
+| 손정협 | 백엔드 | 업무·피드백, 진척·경보, 기여도 집계 |
+| 손정효 | 프론트엔드 | 전체 화면, 화면 상태, 사용자 흐름 |
 
-  ```bash
-  git worktree add ../blackbox-expo origin/shinguexpo
-  cd ../blackbox-expo && cp ../blackbox/.env .
-  docker compose -f docker-compose.yml -f ../blackbox/docker-compose.second.yml up -d --build    # https://localhost:8443
-  ```
+## 문서
 
-  한 폴더에서 `git switch`로 브랜치만 바꿔 띄우지 않는다. `up -d`는 이미지가 이미 있으면 다시 빌드하지 않아 이전 브랜치의 코드가 그대로 뜨고, DB에는 두 브랜치의 마이그레이션이 섞인다. 코드를 고친 뒤에는 `up -d --build`로 띄운다.
-- 헬스 체크: `GET /api/health`.
-
----
-
-## 7. 환경 변수
-
-`.env.example`이 정본 목록이다. 핵심:
-
-| 변수 | 용도 |
-|---|---|
-| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | PostgreSQL |
-| `JWT_SECRET` | JWT 서명 키 (최소 32자) |
-| `JWT_EXPIRATION_MS` / `JWT_REFRESH_EXPIRATION_MS` | 토큰 만료 |
-| `APP_CORS_ORIGINS` | CORS 허용 origin (로컬은 `*`) |
-| `NEXT_PUBLIC_API_URL` | Docker 빌드에 넘기는 값. 현재 화면 코드는 읽지 않는다(화면은 `/api`로 요청) |
-
-**선택 연동(비우면 비활성):** `GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`·`GITHUB_WEBHOOK_SECRET`, `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_REDIRECT_URI`, `CLAUDE_API_KEY`·`OPENAI_API_KEY`, `NOTION_API_KEY`·`NOTION_PARENT_PAGE_ID`·`NOTION_CALENDAR_DB_ID`, `DISCORD_WEBHOOK_URL`, `FRONTEND_BASE_URL`.
-
----
-
-## 8. 프로젝트 구조
-
-```
-blackbox/
-├── backend/      Spring Boot (controller · service · dto · entity · repository · security)
-│   └── src/main/resources/db/migration/   Flyway V1~V18
-├── frontend/     Next.js App Router (src/app · components · lib · types)
-├── nginx/        리버스 프록시 + SSL 설정
-├── docs/         아키텍처·운영 문서
-├── md/           프로젝트 컨텍스트(claude.md) · 기획서 · 핸드오버 로그
-└── docker-compose.yml
-```
-
----
-
-## 9. 문서
-
-- **프로젝트 컨텍스트:** [`md/claude.md`](md/claude.md)
-- **종합 기획서:** [`md/TeamBlackbox_기획서_v3.md`](md/TeamBlackbox_기획서_v3.md)
-- **API 표:** [`md/handover_log.md`](md/handover_log.md)
-- **AWS 시연 서버 배포:** [`docs/deploy-aws.md`](docs/deploy-aws.md)
-
----
-
-*Team Blackbox — 2026 Capstone Design. 학습·발표 목적의 캡스톤 프로젝트.*
+- [아키텍처](docs/architecture.md)
+- [문제 해결 기록](docs/problem-solving.md)
+- [개발 가이드](docs/development.md)
+- [AWS 배포](docs/deploy-aws.md)
+- [팀 작업 방식과 기능 계약](docs/team/README.md)

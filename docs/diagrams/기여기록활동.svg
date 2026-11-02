@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1090" height="402" viewBox="0 0 1090 402" font-family="Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"><defs><marker id="arrow-111827" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111827"/></marker><marker id="open-111827" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#111827" stroke-width="1.3"/></marker><marker id="tri-111827" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#111827" stroke-width="1.2"/></marker><marker id="arrow-2C5D8A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2C5D8A"/></marker><marker id="open-2C5D8A" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#2C5D8A" stroke-width="1.3"/></marker><marker id="tri-2C5D8A" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#2C5D8A" stroke-width="1.2"/></marker><marker id="arrow-4B5563" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4B5563"/></marker><marker id="open-4B5563" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#4B5563" stroke-width="1.3"/></marker><marker id="tri-4B5563" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#4B5563" stroke-width="1.2"/></marker><marker id="arrow-9CA3AF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker><marker id="open-9CA3AF" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#9CA3AF" stroke-width="1.3"/></marker><marker id="tri-9CA3AF" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#9CA3AF" stroke-width="1.2"/></marker></defs><rect width="100%" height="100%" fill="#fff"/><rect x="1" y="1" width="1088" height="323" rx="0" fill="#fff" stroke="#111827" stroke-width="1.3"/>
+<text font-size="13" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="33.0" y="37.5">팀장</tspan></text>
+<line x1="1" y1="66" x2="1089" y2="66" stroke="#111827" stroke-width="1"/>
+<text font-size="13" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="33.0" y="118.5">팀원</tspan></text>
+<line x1="1" y1="162" x2="1089" y2="162" stroke="#111827" stroke-width="1"/>
+<text font-size="13" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="33.0" y="214.6">시스템</tspan></text>
+<line x1="1" y1="258" x2="1089" y2="258" stroke="#111827" stroke-width="1"/>
+<text font-size="13" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="33.0" y="295.6">관찰자</tspan></text>
+<line x1="66" y1="1" x2="66" y2="324" stroke="#111827" stroke-width="1.3"/>
+<circle cx="87.0" cy="33.0" r="8" fill="#111827"/>
+<rect x="108.0" y="11.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="148.0" y="37.2">회의 생성</tspan></text>
+<rect x="200.0" y="92.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="240.0" y="110.7">체크인,</tspan><tspan x="240.0" y="125.7">회의록 작성</tspan></text>
+<polygon points="306.0,101.0 319.0,114.0 306.0,127.0 293.0,114.0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<rect x="332.0" y="188.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="372.0" y="206.7">AI 결정사항,</tspan><tspan x="372.0" y="221.7">할 일 추출</tspan></text>
+<rect x="424.0" y="92.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="464.0" y="110.7">필요한 것을</tspan><tspan x="464.0" y="125.7">업무로 등록</tspan></text>
+<polygon points="530.0,101.0 543.0,114.0 530.0,127.0 517.0,114.0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<rect x="556.0" y="92.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="596.0" y="110.7">업무 완료,</tspan><tspan x="596.0" y="125.7">파일 업로드</tspan></text>
+<rect x="648.0" y="92.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="688.0" y="110.7">집계 다시</tspan><tspan x="688.0" y="125.7">실행</tspan></text>
+<rect x="648.0" y="188.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="688.0" y="214.2">30분마다</tspan></text>
+<polygon points="754.0,197.0 767.0,210.0 754.0,223.0 741.0,210.0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<rect x="780.0" y="188.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="820.0" y="206.7">항목별 집계,</tspan><tspan x="820.0" y="221.7">경보 갱신</tspan></text>
+<rect x="872.0" y="269.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="912.0" y="287.7">기록과 경보</tspan><tspan x="912.0" y="302.7">조회</tspan></text>
+<rect x="964.0" y="269.0" width="80" height="44" rx="10" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="500" fill="#111827" text-anchor="middle"><tspan x="1004.0" y="287.7">보고서</tspan><tspan x="1004.0" y="302.7">PDF·ZIP</tspan></text>
+<circle cx="1067.0" cy="291.0" r="10" fill="#fff" stroke="#111827" stroke-width="1.5"/><circle cx="1067.0" cy="291.0" r="6" fill="#111827"/>
+<polyline points="95.0,33.0 101.5,33.0 101.5,33.0 108.0,33.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="188.0,33.0 240.0,33.0 240.0,92.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="280.0,114.0 286.5,114.0 286.5,114.0 293.0,114.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="306.0,127.0 306.0,210.0 332.0,210.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11.5" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="310.0" y="143.0">[AI 추출 사용]</tspan></text>
+<polyline points="372.0,188.0 372.0,156.0 464.0,156.0 464.0,136.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="504.0,114.0 510.5,114.0 510.5,114.0 517.0,114.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="306.0,101.0 306.0,74.0 530.0,74.0 530.0,101.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11.5" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="418.0" y="89.0">[사용 안 함]</tspan></text>
+<polyline points="543.0,114.0 549.5,114.0 549.5,114.0 556.0,114.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="596.0,136.0 596.0,250.0 754.0,250.0 754.0,223.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="728.0,114.0 754.0,114.0 754.0,197.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="728.0,210.0 734.5,210.0 734.5,210.0 741.0,210.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="767.0,210.0 773.5,210.0 773.5,210.0 780.0,210.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="860.0,210.0 912.0,210.0 912.0,269.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="952.0,291.0 958.0,291.0 958.0,291.0 964.0,291.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<polyline points="1044.0,291.0 1050.5,291.0 1050.5,291.0 1057.0,291.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<circle cx="11" cy="342" r="7" fill="#111827"/>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="26" y="346.2">시작</tspan></text>
+<circle cx="77.0" cy="342" r="9" fill="#fff" stroke="#111827" stroke-width="1.4"/><circle cx="77.0" cy="342" r="5" fill="#111827"/>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="94.0" y="346.2">끝</tspan></text>
+<rect x="124.0" y="333" width="32" height="18" rx="7" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="164.0" y="346.2">활동</tspan></text>
+<polyline points="206.0,342.0 238.0,342.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="246.0" y="346.2">흐름</tspan></text>
+<polygon points="299.0,331 310.0,342 299.0,353 288.0,342" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="318.0" y="346.2">판단·병합</tspan></text>
+<polyline points="396.0,346.0 436.0,346.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="10" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="416.0" y="339.5">[조건]</tspan></text>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="444.0" y="346.2">조건이 맞으면 진행</tspan></text>
+<rect x="565.2" y="332" width="36" height="20" rx="0" fill="#fff" stroke="#111827" stroke-width="1.1"/>
+<line x1="575.2" y1="332" x2="575.2" y2="352" stroke="#111827"/>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="609.2" y="346.2">레인: 활동하는 역할</tspan></text>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="4" y="374.2">집계 항목: 업무 완료, 회의 참석, 파일 업로드, 회의 할 일 완료. 기록이 있는 항목 수로 구분한다(4개, 2~3개, 1개 이하).</tspan></text>
+<text font-size="12" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="4" y="391.2">활동·기여 기록과 경보, 보고서는 팀원도 볼 수 있다. 검토·답변 등 모든 기여를 포함하지 않으며 평가·감점 기준이 아니다.</tspan></text></svg>

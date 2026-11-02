@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1010" height="480" viewBox="0 0 1010 480" font-family="Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"><defs><marker id="arrow-111827" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111827"/></marker><marker id="open-111827" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#111827" stroke-width="1.3"/></marker><marker id="tri-111827" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#111827" stroke-width="1.2"/></marker><marker id="arrow-2C5D8A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2C5D8A"/></marker><marker id="open-2C5D8A" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#2C5D8A" stroke-width="1.3"/></marker><marker id="tri-2C5D8A" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#2C5D8A" stroke-width="1.2"/></marker><marker id="arrow-4B5563" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4B5563"/></marker><marker id="open-4B5563" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#4B5563" stroke-width="1.3"/></marker><marker id="tri-4B5563" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#4B5563" stroke-width="1.2"/></marker><marker id="arrow-9CA3AF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker><marker id="open-9CA3AF" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#9CA3AF" stroke-width="1.3"/></marker><marker id="tri-9CA3AF" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#9CA3AF" stroke-width="1.2"/></marker></defs><rect width="100%" height="100%" fill="#fff"/><path data-shape="node" data-x="0" data-y="128" data-w="104" data-h="74" d="M0,136 L8,128 H104 V194 L96,202 H0 Z M0,136 H96 V202 M96,136 L104,128" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="48.0" y="157.6">«device»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="48.0" y="173.4">사용자 단말</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="48.0" y="188.1">브라우저</tspan></text>
+<path data-shape="node" data-x="148" data-y="4" data-w="556" data-h="344" d="M148,12 L156,4 H704 V340 L696,348 H148 Z M148,12 H696 V348 M696,12 L704,4" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="162" y="27.9">«device»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="start"><tspan x="162" y="43.4">AWS EC2 (Amazon Linux)</tspan></text>
+<path data-shape="node" data-x="160" data-y="56" data-w="528" data-h="212" d="M160,64 L168,56 H688 V260 L680,268 H160 Z M160,64 H680 V268 M680,64 L688,56" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="172" y="79.8">«execution environment»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="start"><tspan x="172" y="95.4">Docker Compose</tspan></text>
+<path data-shape="node" data-x="176" data-y="128" data-w="116" data-h="74" d="M176,136 L184,128 H292 V194 L284,202 H176 Z M176,136 H284 V202 M284,136 L292,128" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="230.0" y="157.6">«container»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="230.0" y="173.4">nginx</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="230.0" y="188.1">:80, :443</tspan></text>
+<path data-shape="node" data-x="336" data-y="84" data-w="130" data-h="62" d="M336,92 L344,84 H466 V138 L458,146 H336 Z M336,92 H458 V146 M458,92 L466,84" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="397.0" y="107.6">«container»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="397.0" y="123.4">Next.js</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="397.0" y="138.1">:3000</tspan></text>
+<path data-shape="node" data-x="336" data-y="162" data-w="130" data-h="70" d="M336,170 L344,162 H466 V224 L458,232 H336 Z M336,170 H458 V232 M458,170 L466,162" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="397.0" y="189.6">«container»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="397.0" y="205.4">Spring Boot</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="397.0" y="220.1">:8080</tspan></text>
+<path data-shape="node" data-x="520" data-y="66" data-w="150" data-h="62" d="M520,74 L528,66 H670 V120 L662,128 H520 Z M520,74 H662 V128 M662,74 L670,66" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="591.0" y="89.6">«container»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="591.0" y="105.4">PostgreSQL 16</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="591.0" y="120.1">:5432</tspan></text>
+<rect x="530" y="150" width="130" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="595.0" y="166.8">«volume»</tspan></text>
+<text font-size="12" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="595.0" y="182.2">pgdata</tspan></text>
+<rect x="530" y="206" width="130" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="595.0" y="222.8">«volume»</tspan></text>
+<text font-size="12" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="595.0" y="238.2">uploads</tspan></text>
+<polyline points="104.0,165.0 176.0,165.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="140" y="159.8">«HTTPS»</tspan></text>
+<polyline points="284.0,146.0 312.0,146.0 312.0,115.0 336.0,115.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="end"><tspan x="314" y="109.8">/</tspan></text>
+<polyline points="284.0,180.0 312.0,180.0 312.0,197.0 336.0,197.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="end"><tspan x="314" y="217.8">/api</tspan></text>
+<polyline points="458.0,180.0 504.0,180.0 504.0,97.0 520.0,97.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="end"><tspan x="500" y="158.8">«JDBC»</tspan></text>
+<polyline points="595.0,128.0 595.0,150.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="601" y="144.8">«mount»</tspan></text>
+<polyline points="458.0,222.0 530.0,222.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="494" y="217.8">«mount»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#4B5563" text-anchor="middle"><tspan x="872" y="24.4">외부 서비스</tspan></text>
+<path data-shape="node" data-x="790" data-y="30" data-w="216" data-h="62" d="M790,38 L798,30 H1006 V84 L998,92 H790 Z M790,38 H998 V92 M998,38 L1006,30" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="894.0" y="53.6">«external system»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="894.0" y="69.4">Google Calendar</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="894.0" y="84.1">OAuth, 일정 조회·등록</tspan></text>
+<path data-shape="node" data-x="790" data-y="104" data-w="216" data-h="62" d="M790,112 L798,104 H1006 V158 L998,166 H790 Z M790,112 H998 V166 M998,112 L1006,104" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="894.0" y="127.6">«external system»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="894.0" y="143.4">AWS Bedrock</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="894.0" y="158.1">Claude Haiku 4.5(서버 설정)</tspan></text>
+<path data-shape="node" data-x="790" data-y="178" data-w="216" data-h="62" d="M790,186 L798,178 H1006 V232 L998,240 H790 Z M790,186 H998 V240 M998,186 L1006,178" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="894.0" y="201.6">«external system», 선택</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="894.0" y="217.4">Notion, Discord</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="894.0" y="232.1">키가 있을 때만 동작</tspan></text>
+<polyline points="440.0,232.0 440.0,250.0 720.0,250.0 720.0,61.0 790.0,61.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="760" y="56.9">«HTTPS»</tspan></text>
+<polyline points="400.0,232.0 400.0,255.0 730.0,255.0 730.0,135.0 790.0,135.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="762" y="130.8">«HTTPS»</tspan></text>
+<polyline points="360.0,232.0 360.0,260.0 740.0,260.0 740.0,209.0 790.0,209.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="765" y="204.8">«HTTPS»</tspan></text>
+<rect x="530" y="284" width="158" height="46" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="609.0" y="303.9">«systemd timer»</tspan></text>
+<text font-size="12" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="609.0" y="319.2">ec2-update.sh</tspan></text>
+<path d="M166,278 H474 L484,288 V336 H166 Z M474,278 V288 H484" fill="#fff" stroke="#4B5563" stroke-width="1"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="176" y="297.1">부팅 2분 뒤와 매일 06:00에 자동 실행, 수동 실행도 가능.</tspan><tspan x="176" y="310.9">새 이미지가 있으면 DB 백업 후 교체,</tspan><tspan x="176" y="324.6">상태가 나쁘면 이전 이미지로 되돌림.</tspan></text>
+<line x1="484" y1="307" x2="530" y2="307" stroke="#4B5563" stroke-width="1" stroke-dasharray="4 3"/>
+<path data-shape="node" data-x="148" data-y="394" data-w="140" data-h="78" d="M148,402 L156,394 H288 V464 L280,472 H148 Z M148,402 H280 V472 M280,402 L288,394" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="214.0" y="425.6">«external system»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="214.0" y="441.4">GitHub</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="214.0" y="456.1">PR, 코드 리뷰</tspan></text>
+<path data-shape="node" data-x="348" data-y="394" data-w="170" data-h="78" d="M348,402 L356,394 H518 V464 L510,472 H348 Z M348,402 H510 V472 M510,402 L518,394" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="429.0" y="425.6">«external system»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="429.0" y="441.4">GitHub Actions</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="429.0" y="456.1">테스트, 이미지 빌드</tspan></text>
+<path data-shape="node" data-x="584" data-y="394" data-w="150" data-h="78" d="M584,402 L592,394 H734 V464 L726,472 H584 Z M584,402 H726 V472 M726,402 L734,394" fill="#fff" stroke="#111827" stroke-width="1.2" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="655.0" y="425.6">«external system»</tspan></text>
+<text font-size="12.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="655.0" y="441.4">GHCR</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="655.0" y="456.1">컨테이너 이미지</tspan></text>
+<polyline points="288.0,433.0 348.0,433.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="318" y="427.9">«trigger»</tspan></text>
+<polyline points="518.0,433.0 584.0,433.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="551" y="427.9">«push»</tspan></text>
+<polyline points="620.0,330.0 620.0,394.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="626" y="377.9">«pull» 이미지</tspan></text></svg>

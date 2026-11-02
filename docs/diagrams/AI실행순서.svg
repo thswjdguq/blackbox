@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="952" viewBox="0 0 980 952" font-family="Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"><defs><marker id="arrow-111827" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111827"/></marker><marker id="open-111827" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#111827" stroke-width="1.3"/></marker><marker id="tri-111827" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#111827" stroke-width="1.2"/></marker><marker id="arrow-2C5D8A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2C5D8A"/></marker><marker id="open-2C5D8A" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#2C5D8A" stroke-width="1.3"/></marker><marker id="tri-2C5D8A" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#2C5D8A" stroke-width="1.2"/></marker><marker id="arrow-4B5563" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4B5563"/></marker><marker id="open-4B5563" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#4B5563" stroke-width="1.3"/></marker><marker id="tri-4B5563" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#4B5563" stroke-width="1.2"/></marker><marker id="arrow-9CA3AF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker><marker id="open-9CA3AF" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#9CA3AF" stroke-width="1.3"/></marker><marker id="tri-9CA3AF" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L14,7 L0,14 z" fill="#fff" stroke="#9CA3AF" stroke-width="1.2"/></marker></defs><rect width="100%" height="100%" fill="#fff"/><rect data-shape="frame" data-label="sd AI 도우미 실행" data-tag-w="124" x="2" y="2" width="976" height="948" fill="none" stroke="#111827" stroke-width="1"/>
+<polygon data-skip="1" points="2,2 126,2 126,14 118,22 2,22" fill="#fff" stroke="#111827" stroke-width="1"/>
+<text data-skip="1" font-size="12" font-weight="700" fill="#111827" text-anchor="start"><tspan x="8" y="17">sd AI 도우미 실행</tspan></text>
+<rect data-shape="frame" data-label="loop" data-tag-w="50" x="494" y="316" width="452" height="200" fill="none" stroke="#4B5563" stroke-width="1"/>
+<polygon data-skip="1" points="494,316 544,316 544,328 536,336 494,336" fill="#fff" stroke="#4B5563" stroke-width="1"/>
+<text data-skip="1" font-size="12" font-weight="700" fill="#111827" text-anchor="start"><tspan x="500" y="331">loop</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="550.88" y="332.9">[모델이 도구를 요청하는 동안, 실행 하나에 12회까지]</tspan></text>
+<rect data-shape="frame" data-label="alt" data-tag-w="43" x="134" y="618" width="692" height="198" fill="none" stroke="#4B5563" stroke-width="1"/>
+<polygon data-skip="1" points="134,618 177,618 177,630 169,638 134,638" fill="#fff" stroke="#4B5563" stroke-width="1"/>
+<text data-skip="1" font-size="12" font-weight="700" fill="#111827" text-anchor="start"><tspan x="140" y="633">alt</tspan></text>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="184.16" y="634.9">[제안을 만드는 기능]</tspan></text>
+<line x1="134" y1="772" x2="826" y2="772" stroke="#4B5563" stroke-width="1" stroke-dasharray="6 4"/>
+<text font-size="11" font-weight="400" fill="#4B5563" text-anchor="start"><tspan x="140" y="787.9">[제안을 만들지 않는 기능]</tspan></text>
+<g stroke="#111827" stroke-width="1.4" fill="none"><circle cx="60" cy="30" r="6" fill="#fff"/><line x1="60" y1="36" x2="60" y2="50"/><line x1="51" y1="41" x2="69" y2="41"/><line x1="60" y1="50" x2="53" y2="60"/><line x1="60" y1="50" x2="67" y2="60"/></g>
+<text font-size="12" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="60" y="74.2">사용자</tspan></text>
+<line x1="60" y1="74" x2="60" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<rect x="125.0" y="34" width="110" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="180" y="58.0">AI 도우미 창</tspan></text>
+<line x1="180" y1="74" x2="180" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<rect x="245.0" y="34" width="110" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="10.5" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="300" y="50.7">«controller»</tspan></text>
+<text font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="300" y="66.0">AgentController</tspan></text>
+<line x1="300" y1="74" x2="300" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<rect x="365.0" y="34" width="110" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="10.5" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="420" y="50.7">«component»</tspan></text>
+<text font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="420" y="66.0">AgentRunner</tspan></text>
+<line x1="420" y1="74" x2="420" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<rect x="485.0" y="34" width="110" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="10.5" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="540" y="50.7">«Spring AI»</tspan></text>
+<text font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="540" y="66.0">ChatClient</tspan></text>
+<line x1="540" y1="74" x2="540" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<rect x="605.0" y="34" width="110" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="10.5" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="660" y="50.7">«component»</tspan></text>
+<text font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="660" y="66.0">조회 도구 6개</tspan></text>
+<line x1="660" y1="74" x2="660" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<rect x="725.0" y="34" width="110" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="10.5" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="780" y="50.7">«database»</tspan></text>
+<text font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="780" y="66.0">PostgreSQL</tspan></text>
+<line x1="780" y1="74" x2="780" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<rect x="845.0" y="34" width="110" height="40" rx="0" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+<text font-size="10.5" font-weight="400" fill="#4B5563" text-anchor="middle"><tspan x="900" y="50.7">«external»</tspan></text>
+<text font-size="11.5" font-weight="700" fill="#111827" text-anchor="middle"><tspan x="900" y="66.0">Bedrock</tspan></text>
+<line x1="900" y1="74" x2="900" y2="938" stroke="#4B5563" stroke-width="1" stroke-dasharray="5 4"/>
+<polyline points="60.0,100.0 180.0,100.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="120.0" y="96.8">기능 실행</tspan></text>
+<polyline points="180.0,128.0 300.0,128.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="240.0" y="124.8">POST /agent/runs</tspan></text>
+<polyline points="300.0,156.0 420.0,156.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="360.0" y="152.8">prepare()</tspan></text>
+<polyline points="420.0,184.0 780.0,184.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="600.0" y="180.8">권한, 실행 수 확인, 실행 기록 저장</tspan></text>
+<polyline points="420.0,212.0 300.0,212.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="360.0" y="208.8">준비 완료</tspan></text>
+<polyline points="300.0,240.0 180.0,240.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="240.0" y="236.8">SSE 스트림 열기</tspan></text>
+<polyline points="300.0,268.0 420.0,268.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="360.0" y="264.9">launch: execute()</tspan></text>
+<polyline points="420.0,296.0 540.0,296.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="480.0" y="292.9">generate()</tspan></text>
+<polyline points="540.0,360.0 900.0,360.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="720.0" y="356.9">모델 호출</tspan></text>
+<polyline points="900.0,388.0 540.0,388.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="720.0" y="384.9">도구 호출 요청</tspan></text>
+<polyline points="540.0,416.0 660.0,416.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="600.0" y="412.9">도구 실행</tspan></text>
+<polyline points="660.0,444.0 180.0,444.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="420.0" y="440.9">SSE step</tspan></text>
+<polyline points="660.0,472.0 780.0,472.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="720.0" y="468.9">프로젝트 기록 조회</tspan></text>
+<polyline points="660.0,500.0 540.0,500.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="600.0" y="496.9">결과</tspan></text>
+<polyline points="540.0,542.0 900.0,542.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="720.0" y="538.9">모델 호출</tspan></text>
+<polyline points="900.0,570.0 540.0,570.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="720.0" y="566.9">최종 답</tspan></text>
+<polyline points="540.0,598.0 420.0,598.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="480.0" y="594.9">최종 답</tspan></text>
+<polyline points="420.0,662.0 450.0,662.0 450.0,678.0 420.0,678.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="start"><tspan x="456" y="673.9">제안 형식 검사</tspan></text>
+<polyline points="420.0,702.0 540.0,702.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="480.0" y="698.9">형식 오류면 한 번 다시 요청(도구 없음)</tspan></text>
+<polyline points="420.0,730.0 780.0,730.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="600.0" y="726.9">제안 저장</tspan></text>
+<polyline points="420.0,758.0 180.0,758.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="300.0" y="754.9">SSE text, proposal</tspan></text>
+<polyline points="420.0,800.0 180.0,800.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="300.0" y="796.9">SSE text</tspan></text>
+<polyline points="420.0,842.0 780.0,842.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#arrow-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="600.0" y="838.9">실행 완료 기록</tspan></text>
+<polyline points="420.0,870.0 180.0,870.0" fill="none" stroke="#111827" stroke-width="1.2" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="300.0" y="866.9">SSE done</tspan></text>
+<polyline points="180.0,898.0 60.0,898.0" fill="none" stroke="#111827" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open-111827)" stroke-linejoin="round"/>
+<text font-size="11" font-weight="400" fill="#111827" text-anchor="middle"><tspan x="120.0" y="894.9">답과 제안 카드 표시</tspan></text></svg>
