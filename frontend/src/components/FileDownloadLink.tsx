@@ -35,7 +35,7 @@ export default function FileDownloadLink({ fileId, fileName, className = "", lab
       <button type="button" onClick={download} disabled={busy} aria-busy={busy} aria-label={label} title={label} className={`text-left disabled:opacity-60 ${className}`}>
         {children}
       </button>
-      {error && <span role="alert" className="block text-xs text-red-600 dark:text-red-400">{error}</span>}
+      {error && <span role="alert" className="block basis-full order-last text-xs text-red-600 dark:text-red-400">{error}</span>}
     </>
   );
 }

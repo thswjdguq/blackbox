@@ -70,7 +70,7 @@ function HistoryItem({
 
   return (
     <div
-      className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+      className={`flex flex-wrap items-center gap-4 p-4 rounded-xl border transition-all ${
         isTampered
           ? "bg-amber-500/5 border-amber-500/20"
           : "bg-bb-surface/50 border-bb-border/50"
