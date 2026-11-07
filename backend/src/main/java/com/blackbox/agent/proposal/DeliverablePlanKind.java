@@ -71,6 +71,7 @@ public class DeliverablePlanKind implements ProposalKind {
     }
 
     @Override public List<AgentProposal.Result> accept(UUID projectId, User user, JsonNode content) {
+        tasks.lockProject(projectId,user);
         Content c = json.convertValue(content, Content.class);
         List<AgentProposal.Result> created = new ArrayList<>();
         UUID deliverableId = deliverables.save(projectId, null, c.deliverable().toRequest(), user).id();
@@ -90,9 +91,9 @@ public class DeliverablePlanKind implements ProposalKind {
     }
 
     record Content(Deliverable deliverable, List<Requirement> requirements, List<Task> tasks) {}
-    record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod) {
+    record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod, String dueTime) {
         DeliverableDtos.SaveRequest toRequest() {
-            return new DeliverableDtos.SaveRequest(title, description, dueDate, submissionMethod, null);
+            return new DeliverableDtos.SaveRequest(title, description, dueDate, submissionMethod, null, dueTime);
         }
     }
     record Requirement(String key, String content, boolean required) {}

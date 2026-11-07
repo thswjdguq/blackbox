@@ -30,6 +30,12 @@ public class Meeting {
     @Column(name = "meeting_date", nullable = false)
     private OffsetDateTime meetingDate;
 
+    @Column(name = "attendance_grace_minutes", nullable = false)
+    private int attendanceGraceMinutes = 10;
+
+    @Column(name = "attendance_window_minutes", nullable = false)
+    private int attendanceWindowMinutes = 60;
+
     @Column(columnDefinition = "TEXT")
     private String purpose;
 

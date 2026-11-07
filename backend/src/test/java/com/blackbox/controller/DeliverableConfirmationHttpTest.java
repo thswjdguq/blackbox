@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -453,6 +454,25 @@ class DeliverableConfirmationHttpTest {
 
     private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request, String body) {
         return request.contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    @Test void confirmedDeliverableAlsoFreezesLinkedTasks() throws Exception {
+        String tasks="/api/projects/"+project.getId()+"/tasks";
+        String linkedBody=json.createObjectNode().put("title","연결 업무").put("deliverableId",report.getId().toString()).toString();
+        JsonNode existing=call(post(tasks).contentType(MediaType.APPLICATION_JSON).content(linkedBody),member,201);
+        JsonNode unlinked=call(post(tasks).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"미연결 업무\"}"),member,201);
+        confirmReport();
+        call(post(tasks).contentType(MediaType.APPLICATION_JSON).content(linkedBody),member,409);
+        call(patch(tasks+"/"+unlinked.get("id").asText()).contentType(MediaType.APPLICATION_JSON)
+                .content(json.createObjectNode().put("deliverableId",report.getId().toString()).toString()),member,409);
+        String task=tasks+"/"+existing.get("id").asText();
+        call(patch(task).contentType(MediaType.APPLICATION_JSON).content("{\"clearDeliverable\":true}"),member,409);
+        call(patch(task+"/status").contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"IN_PROGRESS\"}"),member,409);
+        call(put(task+"/assignees").contentType(MediaType.APPLICATION_JSON).content("{\"assigneeIds\":[]}"),member,409);
+        call(delete(task),member,409);
+        call(post(task+"/completion-request"),member,409);
+        call(post(task+"/reopen").contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"수정\"}"),leader,409);
+        assertFalse(call(get(task+"/completion"),member,200).get("canRequest").asBoolean());
     }
 
     /** 조건을 채워 팀장이 확정한 상태로 만든다. */

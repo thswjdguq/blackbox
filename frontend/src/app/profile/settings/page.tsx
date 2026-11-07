@@ -5,6 +5,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import BeginnerGuide from "@/components/BeginnerGuide";
 import api from "@/lib/api";
+import { useProfileStore } from "@/lib/store/profileStore";
+import { sessionGeneration } from "@/lib/sessionCache";
+import ProfileAffiliation from "@/components/auth/ProfileAffiliation";
+import type {CurrentProfile} from "@/lib/store/profileStore";
 import {
   UserCircle,
   Mail,
@@ -22,7 +26,7 @@ import {
 
 const GOOGLE_BLUE = "#4285F4";
 
-interface Profile { id: string; name: string; email: string; role: string; }
+type Profile = CurrentProfile;
 interface CalendarStatus { connected: boolean; members: { userId: string; name: string; email: string; connected: boolean }[] }
 
 const INPUT_CLS =
@@ -111,8 +115,11 @@ function ProfileSettingsContent() {
     if (!nameEdit.trim()) return;
     setSavingName(true);
     setNameMsg(null);
+    const generation = sessionGeneration();
     try {
       const { data } = await api.put<Profile>("/auth/profile", { name: nameEdit.trim() });
+      if (generation !== sessionGeneration()) return;
+      useProfileStore.getState().update(data);
       setProfile(data);
       setNameMsg({ ok: true, text: "이름이 변경되었습니다" });
     } catch {
@@ -252,6 +259,7 @@ function ProfileSettingsContent() {
             </div>
           </Section>
 
+          {profile&&<Section title="소속 대학교·학과"><ProfileAffiliation profile={profile} onSaved={updated=>{setProfile(updated);useProfileStore.getState().update(updated);}}/></Section>}
           {/* ② 보안 */}
           <Section title="보안">
             <div className="space-y-3">

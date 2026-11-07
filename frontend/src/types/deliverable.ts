@@ -1,5 +1,3 @@
-import type { DeliverableStatus, ReviewDecisionResult } from "@/types/review";
-
 // ── 요구사항 ──────────────────────────────────────────────────────────────
 
 /**
@@ -21,24 +19,19 @@ export interface DeliverableRequirement {
 // ── 제출물 ────────────────────────────────────────────────────────────────
 
 export interface Deliverable {
+  latestDecision?: "APPROVED" | "CHANGES_REQUESTED" | null;
   id: string;
   projectId: string;
+  /** K-20 응답이 없는 기존 UI 서버와 호환한다. 확정 이후 AI 업무 생성 진입점은 숨긴다. */
+  status?: "DRAFT" | "IN_REVIEW" | "CONFIRMED" | "SUBMITTED";
   title: string;
   description: string | null;
   dueDate: string;             // "YYYY-MM-DD" — due_at 으로 임의 변경 금지
+  dueTime?: string | null;     // HH:mm, Asia/Seoul. null/생략 = 시간 미지정
   submissionMethod: string | null;
   ownerId: string | null;
   ownerName: string | null;
   requirements: DeliverableRequirement[];
-  /** K-20 2장. A-20 이후 서버가 준다. 없으면 확정 전으로 본다 */
-  status?: DeliverableStatus;
-  /** 최신 회차의 결정. 회차가 없거나 결정 전이면 null */
-  latestDecision?: ReviewDecisionResult | null;
-}
-
-/** 확정·제출된 제출물은 내용과 연결 업무를 바꿀 수 없다 (K-20 4장). 서버도 409로 거절한다 */
-export function isDeliverableLocked(d?: Pick<Deliverable, "status"> | null): boolean {
-  return d?.status === "CONFIRMED" || d?.status === "SUBMITTED";
 }
 
 // ── 요청 페이로드 ─────────────────────────────────────────────────────────
@@ -47,6 +40,7 @@ export function isDeliverableLocked(d?: Pick<Deliverable, "status"> | null): boo
 export interface SaveDeliverablePayload {
   title: string;
   dueDate: string;
+  dueTime?: string | null;
   description: string;
   submissionMethod: string;
   ownerId: string | null;

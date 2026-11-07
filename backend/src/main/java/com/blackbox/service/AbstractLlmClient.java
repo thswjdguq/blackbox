@@ -4,7 +4,12 @@ import com.blackbox.dto.ActionItemDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.TextStyle;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * LLM 공급자 공통 로직 추상 클래스 (Task 26).
@@ -15,6 +20,8 @@ import java.util.List;
  *   - callModelWithSystem(systemPrompt, userPrompt, maxTokens)
  */
 public abstract class AbstractLlmClient implements LlmClient {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     // ── Template method — 각 provider가 구현 ─────────────────────────────
 
@@ -30,7 +37,7 @@ public abstract class AbstractLlmClient implements LlmClient {
     }
 
     @Override
-    public List<ActionItemDto> extractStructuredActionItems(String notes, String decisions) {
+    public List<ActionItemDto> extractStructuredActionItems(String notes, String decisions, OffsetDateTime meetingDate) {
         String systemPrompt =
             "너는 회의록에서 액션아이템을 추출하는 assistant야. " +
             "반드시 JSON 배열만 반환하고 다른 텍스트는 절대 포함하지 마.";
@@ -38,6 +45,7 @@ public abstract class AbstractLlmClient implements LlmClient {
             "아래 회의록에서 액션아이템을 추출해줘. " +
             "각 항목은 {\"title\": \"할 일 제목\", \"assignee\": \"담당자 이름 또는 null\", " +
             "\"due_date\": \"YYYY-MM-DD 또는 null\", \"priority\": \"HIGH/MEDIUM/LOW\"} 형식으로.\n\n" +
+            dateReference(meetingDate) +
             "회의록:\n" + nvl(notes) + "\n\n결정사항:\n" + nvl(decisions);
         String raw = callModelWithSystem(systemPrompt, userPrompt, 1200);
         return parseStructured(raw, systemPrompt, userPrompt);
@@ -49,6 +57,14 @@ public abstract class AbstractLlmClient implements LlmClient {
     }
 
     // ── 공통 프롬프트 빌더 ────────────────────────────────────────────────
+
+    /** 모델은 오늘이 며칠인지 모른다. 기준 날짜를 주지 않으면 "다음 주 수요일"을 엉뚱한 해의 날짜로 적는다 */
+    static String dateReference(OffsetDateTime meetingDate) {
+        if (meetingDate == null) return "";
+        LocalDate date = meetingDate.atZoneSameInstant(KST).toLocalDate();
+        return "회의 날짜는 " + date + "(" + date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN) + ")이다. "
+                + "\"다음 주 수요일\"처럼 돌려 말한 기한은 이 날짜를 기준으로 계산해 YYYY-MM-DD로 적고, 기한이 적혀 있지 않으면 null로 둔다.\n\n";
+    }
 
     protected String buildSummaryPrompt(String title, String purpose, String notes, String decisions) {
         return """

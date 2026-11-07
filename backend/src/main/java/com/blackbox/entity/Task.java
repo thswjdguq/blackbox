@@ -42,6 +42,30 @@ public class Task {
     @Column(name = "completion_criteria", length = 2000)
     private String completionCriteria;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "predecessor_id")
+    private Task predecessor;
+
+    @Column(name = "attachment_required", nullable = false)
+    private boolean attachmentRequired;
+
+    @Column(name = "completion_requested_at")
+    private OffsetDateTime completionRequestedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "completion_requested_by")
+    private User completionRequestedBy;
+
+    @Column(name = "completion_approved_at")
+    private OffsetDateTime completionApprovedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "completion_approved_by")
+    private User completionApprovedBy;
+
+    @Column(name = "completion_rejection_reason", length = 2000)
+    private String completionRejectionReason;
+
     // TODO | IN_PROGRESS | DONE
     @Column(nullable = false, length = 20)
     private String status;

@@ -14,11 +14,13 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     boolean existsByDeliverable(com.blackbox.entity.Deliverable deliverable);
     boolean existsByRequirement(com.blackbox.entity.DeliverableRequirement requirement);
     // 목록 응답에 쓰는 단일 연관을 함께 읽어 업무 수만큼 지연 조회가 늘지 않게 한다.
-    @EntityGraph(attributePaths = {"deliverable", "requirement", "createdBy"})
+    @EntityGraph(attributePaths = {"deliverable", "requirement", "createdBy", "predecessor", "completionRequestedBy", "completionApprovedBy"})
     List<Task> findByProjectOrderByCreatedAtDesc(Project project);
-    @EntityGraph(attributePaths = {"deliverable", "requirement", "createdBy"})
+    @EntityGraph(attributePaths = {"deliverable", "requirement", "createdBy", "predecessor", "completionRequestedBy", "completionApprovedBy"})
     List<Task> findByProjectAndStatusOrderByCreatedAtDesc(Project project, String status);
     Optional<Task> findByIdAndProject(UUID id, Project project);
+    boolean existsByPredecessor(Task task);
+    boolean existsByPredecessorAndStatusNot(Task task, String status);
     long countByProjectAndDeliverable(Project project, Deliverable deliverable);
     long countByProjectAndDeliverableAndStatus(Project project, Deliverable deliverable, String status);
 }

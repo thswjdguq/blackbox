@@ -244,7 +244,10 @@ class AgentToolboxTest {
 
     private Task task(String title, String status, LocalDate dueDate) {
         Task t = new Task(); t.setProject(project); t.setCreatedBy(leader); t.setTitle(title); t.setStatus(status);
-        t.setPriority("MEDIUM"); t.setDueDate(dueDate); em.persist(t); return t;
+        t.setPriority("MEDIUM"); t.setDueDate(dueDate);
+        // 완료 업무는 다른 팀원의 완료 확인 기록이 있어야 DB 규칙(task_done_requires_approval)을 통과한다
+        if ("DONE".equals(status)) { t.setCompletionApprovedAt(OffsetDateTime.now()); t.setCompletionApprovedBy(leader); }
+        em.persist(t); return t;
     }
 
     private void assign(Task task, User user) {

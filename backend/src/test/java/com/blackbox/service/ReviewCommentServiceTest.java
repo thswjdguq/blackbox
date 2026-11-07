@@ -22,7 +22,7 @@ class ReviewCommentServiceTest {
     final DeliverableRepository deliverables = mock(DeliverableRepository.class);
     final ReviewRoundReader reviews = mock(ReviewRoundReader.class);
     final ActivityLogService activity = mock(ActivityLogService.class);
-    final ReviewCommentService service = new ReviewCommentService(comments, rounds, deliverables, access, reviews, activity, new ObjectMapper());
+    final ReviewCommentService service = new ReviewCommentService(comments, rounds, deliverables, access, reviews, activity, new ObjectMapper(), mock(ReviewFeedbackNotifications.class));
     final Project p = new Project(); final User user = new User(); final Deliverable d = new Deliverable();
     final ReviewRound r = new ReviewRound(); final ReviewComment c = new ReviewComment();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Clock, Loader2, Plus, RefreshCw, TriangleAlert, X } from "lucide-react";
 import api from "@/lib/api";
@@ -22,10 +22,10 @@ interface VaultFile {
 }
 
 const STATUS_BADGE: Record<DeliverableStatus, { label: string; cls: string }> = {
-  DRAFT: { label: "초안", cls: "bg-bb-surface2 text-bb-text2" },
+  DRAFT: { label: "준비 중", cls: "bg-bb-surface2 text-bb-text2" },
   IN_REVIEW: { label: "검토 중", cls: "bg-indigo-500/15 text-indigo-400" },
-  CONFIRMED: { label: "확정", cls: "bg-teal-500/15 text-teal-400" },
-  SUBMITTED: { label: "제출 완료", cls: "bg-green-500/15 text-green-400" },
+  CONFIRMED: { label: "최종본 확정", cls: "bg-teal-500/15 text-teal-400" },
+  SUBMITTED: { label: "제출 기록 완료", cls: "bg-green-500/15 text-green-400" },
 };
 
 export default function ReviewPanel({
@@ -35,6 +35,7 @@ export default function ReviewPanel({
   myUserId,
   tasks,
   onTasksChanged,
+  onFinal,
 }: {
   projectId: string;
   deliverableId: string;
@@ -43,6 +44,7 @@ export default function ReviewPanel({
   tasks: Task[];
   /** 피드백을 업무로 만들면 상세 화면의 업무·진척도 다시 불러와야 한다 */
   onTasksChanged: () => void;
+  onFinal?: () => void;
 }) {
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
   const [comments, setComments] = useState<Record<string, ReviewComment[]>>({});
@@ -86,8 +88,14 @@ export default function ReviewPanel({
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (loading || !window.location.hash.startsWith("#comment-")) return;
+    document.getElementById(window.location.hash.slice(1))?.scrollIntoView({block:"center"});
+  }, [loading,comments]);
+
   const handleChanged = () => {
     load();
+    window.dispatchEvent(new Event("task-feedback-changed"));
     onTasksChanged();
   };
 
@@ -135,6 +143,7 @@ export default function ReviewPanel({
 
   return (
     <div className="space-y-4">
+      {onFinal && (locked || latest?.currentBasis) && <button type="button" onClick={onFinal} className="rounded-lg bg-bb-primary px-4 py-2.5 text-sm text-white">최종본 확정·제출 기록으로 →</button>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className={`text-xs px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
@@ -150,7 +159,7 @@ export default function ReviewPanel({
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-bb-primary hover:bg-bb-primary-h rounded-lg"
           >
             <Plus size={13} />
-            {latest ? "새 검토 회차 열기" : "검토 요청"}
+            {latest ? "새 버전 검토 요청" : "최종 파일·초안 검토 요청"}
           </button>
         )}
       </div>
@@ -165,7 +174,7 @@ export default function ReviewPanel({
               {summary.unresolvedCommentCount > 0 && `미해결 피드백 ${summary.unresolvedCommentCount}건을 반영하고 해결 처리한 뒤, `}
               수정본을{latest.file ? ` 같은 이름(${latest.file.fileName})으로` : ""}{" "}
               <Link href={`/projects/${projectId}/vault`} className="underline">
-                파일 금고
+                프로젝트 자료
               </Link>
               에 올리고 새 검토 회차를 여세요.
             </p>
@@ -179,7 +188,7 @@ export default function ReviewPanel({
           <p className="mt-1 text-xs text-bb-text2">
             초안을{" "}
             <Link href={`/projects/${projectId}/vault`} className="underline">
-              파일 금고
+              프로젝트 자료
             </Link>
             에 올린 뒤 검토를 요청하세요. 파일 없이 중간 검토를 열 수도 있습니다.
           </p>
@@ -247,6 +256,23 @@ function OpenRoundDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const mutation = useRef(false);
+  const initialFileSelected = useRef(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState("");
+  const upload = async (file: File) => {
+    if (mutation.current) return;
+    mutation.current = true; setUploading(true); setError(""); setUploadNotice("");
+    try {
+      const body = new FormData(); body.append("file", file);
+      const { data } = await api.post<{ id: string; fileName: string; fileHash: string; version: number; uploadedAt: string }>(`/projects/${projectId}/files`, body, { headers: { "Content-Type": "multipart/form-data" } });
+      setFiles(previous => [{ ...data, uploaderId: "", uploaderName: "방금 등록" }, ...(previous ?? []).filter(v => v.id !== data.id)]);
+      setFileName(data.fileName); setFileId(data.id);
+      setUploadNotice("파일을 등록했습니다. 아래에서 이 버전의 검토를 요청하세요.");
+    } catch (e) { setError(apiError(e, "파일을 등록하지 못했습니다.")); }
+    finally { mutation.current = false; setUploading(false); }
+  };
+
   useEffect(() => {
     api
       .get<VaultFile[]>(`/projects/${projectId}/files`)
@@ -254,7 +280,7 @@ function OpenRoundDialog({
       .catch((err) => setLoadError(apiError(err, "파일 목록을 불러오지 못했습니다.")));
   }, [projectId]);
 
-  // 파일 금고의 버전 사슬은 같은 이름 기준이다 (A-10 결정 (다))
+  // 프로젝트 자료의 버전 사슬은 같은 이름 기준이다 (A-10 결정 (다))
   const byName = useMemo(() => {
     const map = new Map<string, VaultFile[]>();
     for (const f of files ?? []) map.set(f.fileName, [...(map.get(f.fileName) ?? []), f]);
@@ -263,7 +289,9 @@ function OpenRoundDialog({
   }, [files]);
 
   useEffect(() => {
-    if (!files || fileName) return;
+    if (!files || initialFileSelected.current) return;
+    initialFileSelected.current = true;
+    if (fileName) return;
     const initial = previousFileName && byName.has(previousFileName) ? previousFileName : [...byName.keys()][0];
     if (initial) {
       setFileName(initial);
@@ -275,6 +303,8 @@ function OpenRoundDialog({
   const differentName = previousFileName != null && fileName !== "" && fileName !== previousFileName;
 
   const submit = async () => {
+    if (mutation.current) return;
+    mutation.current = true;
     setSaving(true);
     setError("");
     try {
@@ -284,6 +314,7 @@ function OpenRoundDialog({
       setError(apiError(err, "검토 회차를 열지 못했습니다. 다시 시도해주세요."));
       setSaving(false);
     }
+    finally { mutation.current = false; }
   };
 
   return (
@@ -291,9 +322,9 @@ function OpenRoundDialog({
       <section className="w-full max-w-lg bg-bb-surface border border-bb-border rounded-xl p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 id="open-round-title" className="text-base font-semibold text-bb-text">
-            검토 회차 열기
+            검토할 파일 등록·선택
           </h2>
-          <button onClick={onClose} disabled={saving} aria-label="닫기" className="text-bb-text2 hover:text-bb-text">
+          <button onClick={onClose} disabled={saving || uploading} aria-label="닫기" className="text-bb-text2 hover:text-bb-text">
             <X size={18} />
           </button>
         </div>
@@ -304,10 +335,16 @@ function OpenRoundDialog({
 
         {files && (
           <>
+            <label className="block rounded-lg border border-dashed border-bb-border p-3 text-sm">새 파일 또는 수정본 등록
+              <input type="file" disabled={saving || uploading} className="mt-2 block w-full text-sm" onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = ""; }} />
+            </label>
+            {uploading && <p role="status" className="text-sm text-bb-text2">파일을 등록하는 중…</p>}
+            {uploadNotice && <p role="status" className="text-sm text-bb-primary">{uploadNotice}</p>}
             <label className="block text-sm text-bb-text">
               검토할 파일
               <select
                 value={fileName}
+                disabled={saving || uploading}
                 onChange={(e) => {
                   setFileName(e.target.value);
                   setFileId(e.target.value ? byName.get(e.target.value)![0].id : "");
@@ -328,6 +365,7 @@ function OpenRoundDialog({
                 버전
                 <select
                   value={fileId}
+                  disabled={saving || uploading}
                   onChange={(e) => setFileId(e.target.value)}
                   className="mt-1.5 w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2 text-sm text-bb-text"
                 >
@@ -343,9 +381,9 @@ function OpenRoundDialog({
 
             {files.length === 0 && (
               <p className="text-xs text-bb-text2">
-                파일 금고에 올린 파일이 없습니다. 파일 없이 중간 검토를 열거나{" "}
+                프로젝트 자료에 올린 파일이 없습니다. 파일 없이 중간 검토를 열거나{" "}
                 <Link href={`/projects/${projectId}/vault`} className="underline">
-                  파일 금고
+                  프로젝트 자료
                 </Link>
                 에 먼저 올리세요.
               </p>
@@ -366,16 +404,16 @@ function OpenRoundDialog({
         )}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-bb-text2 hover:text-bb-text">
+          <button onClick={onClose} disabled={saving || uploading} className="px-4 py-2 text-sm text-bb-text2 hover:text-bb-text">
             취소
           </button>
           <button
             onClick={submit}
-            disabled={saving || !files}
+            disabled={saving || uploading || !files}
             className="flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-bb-primary hover:bg-bb-primary-h disabled:opacity-50 rounded-lg"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
-            회차 열기
+            선택한 버전 검토 요청
           </button>
         </div>
       </section>

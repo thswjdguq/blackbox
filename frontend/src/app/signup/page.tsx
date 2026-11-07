@@ -10,26 +10,25 @@ import {
   Eye,
   EyeOff,
   UserPlus,
-  Users,
-  GraduationCap,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
+import AffiliationFields, { affiliationPayload, affiliationReady, emptyAffiliation } from "@/components/auth/AffiliationFields";
 
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"STUDENT" | "PROFESSOR">("STUDENT");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
+  const [affiliation,setAffiliation] = useState(emptyAffiliation);
   const setTokens = useAuthStore((s) => s.setTokens);
 
   useEffect(() => {
-    const theme = localStorage.getItem("theme") || "dark";
+    const theme = localStorage.getItem("teamplay-ui-theme") || "light";
     setIsDark(theme === "dark");
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, []);
@@ -37,17 +36,18 @@ export default function SignupPage() {
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
-    localStorage.setItem("theme", next ? "dark" : "light");
+    localStorage.setItem("teamplay-ui-theme", next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(!affiliationReady(affiliation)){setError("소속 학교와 학과를 선택하거나 직접 입력해 주세요.");return;}
     setLoading(true);
     setError("");
 
     try {
-      await api.post("/auth/signup", { email, name, password });
+      await api.post("/auth/signup", { email, name, password, affiliation:affiliationPayload(affiliation) });
       setTokens();
       router.replace("/dashboard");
     } catch (err) {
@@ -102,13 +102,11 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label htmlFor="signup-name" className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
               이름
             </label>
             <input
               type="text"
-              id="signup-name"
-              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="홍길동"
@@ -120,13 +118,11 @@ export default function SignupPage() {
 
           {/* Email */}
           <div>
-            <label htmlFor="signup-email" className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
               이메일
             </label>
             <input
               type="email"
-              id="signup-email"
-              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@example.com"
@@ -137,14 +133,12 @@ export default function SignupPage() {
 
           {/* Password */}
           <div>
-            <label htmlFor="signup-password" className="block text-sm font-medium text-bb-text2 mb-1.5">
+            <label className="block text-sm font-medium text-bb-text2 mb-1.5">
               비밀번호
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                id="signup-password"
-                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="8자 이상 입력"
@@ -163,40 +157,8 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Role */}
-          <div>
-            <p id="signup-role" className="block text-sm font-medium text-bb-text2 mb-1.5">
-              역할
-            </p>
-            <div role="group" aria-labelledby="signup-role" className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRole("STUDENT")}
-                aria-pressed={role === "STUDENT"}
-                className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                  role === "STUDENT"
-                    ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
-                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
-                }`}
-              >
-                <Users size={16} aria-hidden="true" />
-                학생
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("PROFESSOR")}
-                aria-pressed={role === "PROFESSOR"}
-                className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                  role === "PROFESSOR"
-                    ? "bg-bb-primary/10 border-indigo-500 text-indigo-400"
-                    : "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-bb-text2 hover:border-slate-400 dark:hover:border-slate-500"
-                }`}
-              >
-                <GraduationCap size={16} aria-hidden="true" />
-                교수
-              </button>
-            </div>
-          </div>
+          <AffiliationFields value={affiliation} onChange={setAffiliation} disabled={loading}/>
+          <p className="text-xs text-bb-text2">프로젝트를 만들거나 초대를 받아 참여할 수 있습니다. 팀장·팀원·관찰자 권한은 프로젝트별로 정해집니다.</p>
 
           <button
             type="submit"
