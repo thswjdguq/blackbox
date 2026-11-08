@@ -9,7 +9,7 @@ import com.blackbox.entity.User;
 import com.blackbox.exception.ForbiddenException;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.service.ProjectAccessChecker;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;

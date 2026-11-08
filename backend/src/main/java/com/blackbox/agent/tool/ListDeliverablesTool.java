@@ -4,7 +4,7 @@ import com.blackbox.agent.DeliverableStage;
 import com.blackbox.agent.DeliverableStages;
 import com.blackbox.dto.DeliverableDtos;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
