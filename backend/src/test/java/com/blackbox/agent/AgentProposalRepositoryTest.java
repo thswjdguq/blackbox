@@ -1,14 +1,14 @@
 package com.blackbox.agent;
 
 import com.blackbox.entity.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.data.domain.Limit;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -39,14 +39,14 @@ class AgentProposalRepositoryTest {
         em.flush(); em.clear();
 
         AgentProposal loaded = proposals.findByIdAndProject(saved.getId(), project).orElseThrow();
-        assertEquals("초안 작성", loaded.getContent().at("/tasks/0/title").asText());
+        assertEquals("초안 작성", loaded.getContent().at("/tasks/0/title").asString());
         assertFalse(loaded.isEdited());
         loaded.edit(json.readTree("{\"tasks\":[{\"title\":\"고친 제목\"}]}"));
         em.flush(); em.clear();
 
         AgentProposal again = proposals.findByIdAndProject(saved.getId(), project).orElseThrow();
-        assertEquals("고친 제목", again.getContent().at("/tasks/0/title").asText());
-        assertEquals("초안 작성", again.getOriginal().at("/tasks/0/title").asText());
+        assertEquals("고친 제목", again.getContent().at("/tasks/0/title").asString());
+        assertEquals("초안 작성", again.getOriginal().at("/tasks/0/title").asString());
         assertTrue(again.isEdited());
     }
 

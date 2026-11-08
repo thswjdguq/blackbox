@@ -2,8 +2,8 @@ package com.blackbox.agent.tool;
 
 import com.blackbox.agent.AgentProperties;
 import com.blackbox.entity.*;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,20 +72,20 @@ class AgentToolboxTest {
         Map<String, AgentTool> tools = bind(leader);
 
         JsonNode p = call(tools, GetProjectTool.NAME, "{}");
-        assertEquals("캡스톤", p.path("name").asText());
-        assertEquals(today.toString(), p.path("today").asText());
+        assertEquals("캡스톤", p.path("name").asString());
+        assertEquals(today.toString(), p.path("today").asString());
         assertEquals(Map.of("김팀장", "LEADER", "이팀원", "MEMBER"), stream(p.path("members"))
-                .collect(Collectors.toMap(m -> m.path("name").asText(), m -> m.path("role").asText())));
+                .collect(Collectors.toMap(m -> m.path("name").asString(), m -> m.path("role").asString())));
 
         JsonNode deliverables = call(tools, ListDeliverablesTool.NAME, "");
         assertEquals(1, deliverables.path("total").asInt());
         assertFalse(deliverables.path("truncated").asBoolean());
         JsonNode d = deliverables.path("items").get(0);
-        assertEquals(report.getId().toString(), d.path("id").asText());
-        assertEquals(today.plusDays(7).toString(), d.path("dueDate").asText());
-        assertEquals("TASKS_IN_PROGRESS", d.path("stage").asText(), "필수 요구사항은 확인됐고 연결 업무 하나가 안 끝났다");
+        assertEquals(report.getId().toString(), d.path("id").asString());
+        assertEquals(today.plusDays(7).toString(), d.path("dueDate").asString());
+        assertEquals("TASKS_IN_PROGRESS", d.path("stage").asString(), "필수 요구사항은 확인됐고 연결 업무 하나가 안 끝났다");
         assertEquals(Map.of("문제 정의를 적는다", true, "분량은 10쪽 안팎", false), stream(d.path("requirements"))
-                .collect(Collectors.toMap(r -> r.path("content").asText(), r -> r.path("met").asBoolean())));
+                .collect(Collectors.toMap(r -> r.path("content").asString(), r -> r.path("met").asBoolean())));
 
         JsonNode progress = call(tools, GetProgressTool.NAME, "{\"deliverableId\":\"" + report.getId() + "\"}");
         assertEquals(2, progress.path("tasks").path("total").asInt());
@@ -95,23 +95,23 @@ class AgentToolboxTest {
         JsonNode tasks = call(tools, ListTasksTool.NAME, "{}");
         assertEquals(3, tasks.path("total").asInt());
         Map<String, JsonNode> byTitle = stream(tasks.path("items"))
-                .collect(Collectors.toMap(t -> t.path("title").asText(), Function.identity()));
+                .collect(Collectors.toMap(t -> t.path("title").asString(), Function.identity()));
         JsonNode late = byTitle.get("문제 정의 초안");
         assertTrue(late.path("overdue").asBoolean(), "끝나지 않았고 기한이 어제");
-        assertEquals("이팀원", late.path("assignees").get(0).asText());
-        assertEquals("중간 보고서", late.path("deliverableTitle").asText());
-        assertEquals(metRequirement.getId().toString(), late.path("requirementId").asText());
-        assertEquals("한 쪽으로 정리", late.path("completionCriteria").asText());
+        assertEquals("이팀원", late.path("assignees").get(0).asString());
+        assertEquals("중간 보고서", late.path("deliverableTitle").asString());
+        assertEquals(metRequirement.getId().toString(), late.path("requirementId").asString());
+        assertEquals("한 쪽으로 정리", late.path("completionCriteria").asString());
         assertFalse(byTitle.get("오늘 마감 업무").path("overdue").asBoolean(), "기한이 오늘이면 늦지 않았다");
         assertFalse(byTitle.get("끝난 업무").path("overdue").asBoolean(), "끝난 업무는 늦지 않았다");
 
         JsonNode alerts = call(tools, ListAlertsTool.NAME, "{}");
-        assertEquals("DROPOUT", alerts.path("items").get(0).path("type").asText());
-        assertEquals("HIGH", alerts.path("items").get(0).path("severity").asText());
+        assertEquals("DROPOUT", alerts.path("items").get(0).path("type").asString());
+        assertEquals("HIGH", alerts.path("items").get(0).path("severity").asString());
 
         JsonNode scores = call(tools, GetScoresTool.NAME, "{}");
-        assertEquals("이팀원", scores.path("items").get(0).path("name").asText());
-        assertEquals("PARTIAL", scores.path("items").get(0).path("participationLevel").asText());
+        assertEquals("이팀원", scores.path("items").get(0).path("name").asString());
+        assertEquals("PARTIAL", scores.path("items").get(0).path("participationLevel").asString());
     }
 
     @Test void noToolSendsAnEmailToTheModel() {
@@ -177,7 +177,7 @@ class AgentToolboxTest {
         assertFalse(json.readTree(tools.get(1).call("{}")).has("error"));
         // 상한은 도구마다가 아니라 한 번의 실행에서 부른 횟수를 합쳐 센다
         JsonNode third = json.readTree(tools.get(0).call("{}"));
-        assertTrue(third.path("error").asText().contains("더 부를 수 없습니다"), third.toString());
+        assertTrue(third.path("error").asString().contains("더 부를 수 없습니다"), third.toString());
         assertEquals(List.of("a", "b"), heard, "막힌 호출은 조회하지 않고 화면에도 알리지 않는다");
 
         // 다시 묶으면(다음 실행) 처음부터 센다

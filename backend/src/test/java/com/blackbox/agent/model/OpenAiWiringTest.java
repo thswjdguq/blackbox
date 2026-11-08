@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 실제 API 대신 이 테스트가 띄운 서버가 답한다. 키는 가짜다.
  */
 @SpringBootTest(properties = {"spring.ai.model.chat=openai", "spring.ai.openai.api-key=test-key-not-real",
-        "spring.ai.openai.chat.options.model=test-model", "app.agent.model-request-timeout=2s"})
+        "spring.ai.openai.chat.model=test-model", "app.agent.model-request-timeout=2s"})
 @ActiveProfiles("test")
 class OpenAiWiringTest {
     static final List<String> requests = new CopyOnWriteArrayList<>();
@@ -56,7 +56,7 @@ class OpenAiWiringTest {
     }
 
     @DynamicPropertySource static void gatewayAddress(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.openai.base-url", () -> "http://127.0.0.1:" + gateway.getAddress().getPort());
+        registry.add("spring.ai.openai.base-url", () -> "http://127.0.0.1:" + gateway.getAddress().getPort() + "/v1");
     }
 
     @AfterAll static void stop() { gateway.stop(0); }

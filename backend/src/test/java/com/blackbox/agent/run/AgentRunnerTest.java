@@ -9,8 +9,8 @@ import com.blackbox.agent.tool.ListDeliverablesTool;
 import com.blackbox.entity.*;
 import com.blackbox.exception.ForbiddenException;
 import com.blackbox.exception.NotFoundException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,8 +105,8 @@ class AgentRunnerTest {
         assertTrue(saved.stream().allMatch(AgentProposal::isPending));
         AgentProposal plan = saved.stream().filter(p -> p.getTitle().equals("중간 보고서 계획")).findFirst().orElseThrow();
         JsonNode task = plan.getContent().path("tasks").get(0);
-        assertEquals("문제 정의 초안", task.path("title").asText());
-        assertEquals("2026-10-13", task.path("dueDate").asText());
+        assertEquals("문제 정의 초안", task.path("title").asString());
+        assertEquals("2026-10-13", task.path("dueDate").asString());
         assertFalse(task.has("assignee"), "카드 종류가 모르는 칸은 저장하지 않는다. 담당자는 카드에 없다");
         AgentProposal talk = saved.stream().filter(p -> p.getTitle().equals("최종 발표 계획")).findFirst().orElseThrow();
         assertTrue(talk.getContent().path("deliverable").path("dueDate").isNull(), "기한이 없는 초안도 저장된다");
@@ -210,7 +210,7 @@ class AgentRunnerTest {
         Recorder ok = run(member, BreakDownTasksSkill.NAME, "{\"deliverableId\":\"" + report.getId() + "\"}");
         assertEquals("done 1", ok.seen.get(ok.seen.size() - 1));
         AgentProposal card = proposals.findByProjectOrderByCreatedAtDesc(project, Limit.of(1)).get(0);
-        assertEquals(report.getId().toString(), card.getContent().path("deliverableId").asText());
+        assertEquals(report.getId().toString(), card.getContent().path("deliverableId").asString());
         assertTrue(materials.get(0).contains(report.getId().toString()) && materials.get(0).contains("중간 보고서"));
 
         // 다른 제출물의 요구사항을 가리키면 저장하지 않는다
