@@ -3,9 +3,11 @@ package com.blackbox.service;
 import com.blackbox.dto.*;
 import com.blackbox.entity.GoogleCalendarToken;
 import com.blackbox.entity.User;
+import com.blackbox.entity.Project;
+import com.blackbox.exception.ForbiddenException;
+import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.GoogleCalendarTokenRepository;
 import com.blackbox.repository.ProjectMemberRepository;
-import com.blackbox.repository.ProjectRepository;
 import com.blackbox.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +44,9 @@ public class GoogleCalendarService {
 
     private final GoogleCalendarTokenRepository tokenRepo;
     private final UserRepository                userRepo;
-    private final ProjectRepository             projectRepo;
     private final ProjectMemberRepository       memberRepo;
     private final AiService                      aiService;
+    private final ProjectAccessChecker           access;
 
     private final WebClient webClient = WebClient.builder().build();
 
@@ -54,17 +56,17 @@ public class GoogleCalendarService {
             @Value("${external.google.redirect-uri:http://localhost/api/auth/google/callback}") String redirectUri,
             GoogleCalendarTokenRepository tokenRepo,
             UserRepository userRepo,
-            ProjectRepository projectRepo,
             ProjectMemberRepository memberRepo,
-            AiService aiService) {
+            AiService aiService,
+            ProjectAccessChecker access) {
         this.clientId     = clientId;
         this.clientSecret = clientSecret;
         this.redirectUri  = redirectUri;
         this.tokenRepo    = tokenRepo;
         this.userRepo     = userRepo;
-        this.projectRepo  = projectRepo;
         this.memberRepo   = memberRepo;
         this.aiService    = aiService;
+        this.access       = access;
     }
 
     public boolean isConfigured() {
@@ -73,7 +75,7 @@ public class GoogleCalendarService {
 
     // ── OAuth ─────────────────────────────────────────────────────────────
 
-    public String buildAuthorizationUrl(UUID userId) {
+    public String buildAuthorizationUrl(String state) {
         return UriComponentsBuilder.fromHttpUrl(GOOGLE_AUTH_URL)
                 .queryParam("client_id", clientId)
                 .queryParam("redirect_uri", redirectUri)
@@ -81,15 +83,14 @@ public class GoogleCalendarService {
                 .queryParam("scope", SCOPE)
                 .queryParam("access_type", "offline")
                 .queryParam("prompt", "consent")
-                .queryParam("state", userId.toString())
+                .queryParam("state", state)
                 .build().toUriString();
     }
 
     @Transactional
-    public void handleCallback(String code, String stateUserId) {
-        UUID userId = UUID.fromString(stateUserId);
+    public void handleCallback(String code, UUID userId) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다"));
 
         Map<?, ?> tokenResponse = exchangeCodeForTokens(code);
 
@@ -111,8 +112,8 @@ public class GoogleCalendarService {
 
     @Transactional(readOnly = true)
     public CalendarAvailabilityResponse getAvailability(UUID projectId, String date, User currentUser) {
-        var project = projectRepo.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+        var project = access.getProject(projectId);
+        access.requireMember(project, currentUser);
 
         List<User> members = memberRepo.findByProject(project).stream()
                 .map(pm -> pm.getUser())
@@ -146,11 +147,13 @@ public class GoogleCalendarService {
     // ── 캘린더 이벤트 등록 ────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public void createCalendarEvents(CalendarEventRequest req, User currentUser) {
+    public void createCalendarEvents(UUID projectId, CalendarEventRequest req, User currentUser) {
+        var project = access.getProject(projectId);
+        access.requireContributor(project, currentUser);
         List<UUID> attendeeIds = req.attendeeIds() != null ? req.attendeeIds() : List.of();
         List<User> attendees = attendeeIds.isEmpty()
                 ? List.of(currentUser)
-                : userRepo.findAllById(attendeeIds);
+                : projectAttendees(project, attendeeIds);
 
         for (User attendee : attendees) {
             tokenRepo.findByUser(attendee).ifPresent(tok -> {
@@ -177,12 +180,12 @@ public class GoogleCalendarService {
 
     @Transactional   // readOnly 제거 — ensureFreshToken 내부의 tokenRepo.save() 가 반영되어야 함
     public CalendarRecommendResponse recommendMeetingTimes(CalendarRecommendRequest req, User currentUser) {
-        var project = projectRepo.findById(req.projectId())
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+        var project = access.getProject(req.projectId());
+        access.requireMember(project, currentUser);
 
         boolean attendeesEmpty = req.attendeeIds() == null || req.attendeeIds().isEmpty();
         List<User> targetMembers = !attendeesEmpty
-                ? userRepo.findAllById(req.attendeeIds())
+                ? projectAttendees(project, req.attendeeIds())
                 : memberRepo.findByProject(project).stream().map(pm -> pm.getUser()).collect(Collectors.toList());
         // 참석자 미선택 시 전체 팀원으로 대체 — 사용자가 인지할 수 있도록 안내 메시지 동봉
         String warning = attendeesEmpty ? "참석자를 선택하지 않아 전체 팀원 기준으로 분석했습니다" : null;
@@ -278,10 +281,9 @@ public class GoogleCalendarService {
 
     @Transactional(readOnly = true)
     public CalendarConnectionStatusResponse getConnectionStatus(UUID projectId, User currentUser) {
+        var project = access.getProject(projectId);
+        access.requireMember(project, currentUser);
         boolean myConnected = tokenRepo.existsByUser(currentUser);
-
-        var project = projectRepo.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
 
         List<CalendarConnectionStatusResponse.MemberCalendarStatus> statuses =
                 memberRepo.findByProject(project).stream().map(pm -> {
@@ -299,6 +301,19 @@ public class GoogleCalendarService {
     }
 
     // ── private helpers ───────────────────────────────────────────────────
+
+    /** 전원을 먼저 검증한다. 일부만 등록한 뒤 다른 프로젝트 사용자를 발견하면 외부 쓰기를 되돌릴 수 없다. */
+    private List<User> projectAttendees(Project project, List<UUID> ids) {
+        Map<UUID, User> members = memberRepo.findByProject(project).stream()
+                .collect(Collectors.toMap(pm -> pm.getUser().getId(), pm -> pm.getUser()));
+        List<User> result = new ArrayList<>();
+        for (UUID id : new LinkedHashSet<>(ids)) {
+            User member = members.get(id);
+            if (member == null) throw new ForbiddenException("참석자는 이 프로젝트의 멤버만 선택할 수 있습니다.");
+            result.add(member);
+        }
+        return result;
+    }
 
     @SuppressWarnings("unchecked")
     private Map<?, ?> exchangeCodeForTokens(String code) {
