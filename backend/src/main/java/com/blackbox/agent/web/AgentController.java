@@ -6,7 +6,7 @@ import com.blackbox.agent.proposal.ProposalService;
 import com.blackbox.agent.run.AgentRunLauncher;
 import com.blackbox.agent.run.AgentRunner;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;

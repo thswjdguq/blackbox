@@ -17,10 +17,10 @@ import com.blackbox.entity.ProjectMember;
 import com.blackbox.entity.User;
 import com.blackbox.exception.ForbiddenException;
 import com.blackbox.service.ProjectAccessChecker;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -180,7 +180,7 @@ public class AgentRunner {
         try {
             // 모델이 코드 블록 표시나 앞뒤 말을 붙여도 객체만 읽는다
             root = json.readTree(answer.substring(answer.indexOf('{'), answer.lastIndexOf('}') + 1));
-        } catch (JsonProcessingException | IndexOutOfBoundsException e) {
+        } catch (JacksonException | IndexOutOfBoundsException e) {
             return new Answer("", List.of(), List.of("답이 JSON 객체 하나가 아니다"));
         }
         List<String> problems = new ArrayList<>();
@@ -190,9 +190,9 @@ public class AgentRunner {
         for (int i = 0; list.isArray() && i < list.size(); i++) {
             JsonNode item = list.get(i);
             String at = "proposals[" + i + "]";
-            String kind = item.path("kind").asText("");
-            String title = item.path("title").asText("").strip();
-            String rationale = item.path("rationale").asText("").strip();
+            String kind = item.path("kind").asString("");
+            String title = item.path("title").asString("").strip();
+            String rationale = item.path("rationale").asString("").strip();
             if (!allowedKinds.contains(kind)) { problems.add(at + ".kind: " + allowedKinds + " 중 하나여야 한다"); continue; }
             if (title.isEmpty()) problems.add(at + ".title: 비어 있다");
             if (rationale.isEmpty()) problems.add(at + ".rationale: 비어 있다");
@@ -203,7 +203,7 @@ public class AgentRunner {
             // 저장하는 것은 그 종류가 아는 칸만 남긴 내용이다
             drafts.add(new Draft(kind, title, rationale, checked.content()));
         }
-        String text = root.path("text").asText("").strip();
+        String text = root.path("text").asString("").strip();
         if (problems.isEmpty() && text.isEmpty() && drafts.isEmpty()) problems.add("text와 proposals가 모두 비어 있다");
         return new Answer(text, drafts, problems);
     }

@@ -40,7 +40,7 @@ public class SpringAiAgentModel implements AgentModel {
             ChatResponse response = ChatClient.create(chatModel).prompt()
                     .system(instructions)
                     .user(input)
-                    .toolCallbacks(tools.stream().map(SpringAiAgentModel::callback).toList())
+                    .tools(tools.stream().map(SpringAiAgentModel::callback).toList())
                     .call()
                     .chatResponse();
             logCall(response, started);

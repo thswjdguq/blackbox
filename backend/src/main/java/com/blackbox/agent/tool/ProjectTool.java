@@ -1,7 +1,7 @@
 package com.blackbox.agent.tool;
 
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 import java.util.UUID;
 

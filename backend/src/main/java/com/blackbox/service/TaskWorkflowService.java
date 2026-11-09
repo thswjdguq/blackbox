@@ -4,8 +4,8 @@ import com.blackbox.dto.TaskResponse;
 import com.blackbox.entity.*;
 import com.blackbox.exception.*;
 import com.blackbox.repository.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -235,7 +235,7 @@ public class TaskWorkflowService {
         metadata.put("predecessorId",task.getPredecessor()==null?null:task.getPredecessor().getId());
         metadata.put("fileIds",files.findByTaskOrderByCreatedAtDesc(task).stream().map(f->f.getFile().getId()).toList()); metadata.put("reason",reason);
         try { logs.record(task.getProject(),user,event,mapper.writeValueAsString(metadata)); }
-        catch(JsonProcessingException e) { throw new IllegalStateException("업무 승인 기록을 저장하지 못했습니다.",e); }
+        catch(JacksonException e) { throw new IllegalStateException("업무 승인 기록을 저장하지 못했습니다.",e); }
     }
     private ResponseStatusException conflict(String message) { return new ResponseStatusException(HttpStatus.CONFLICT,message); }
     private ResponseStatusException bad(String message) { return new ResponseStatusException(HttpStatus.BAD_REQUEST,message); }
