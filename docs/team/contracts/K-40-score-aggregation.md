@@ -1,17 +1,17 @@
 # K-40 · 기여도 집계의 항목 응답과 검토 활동
 
-- 버전: 0.2 / 상태: DRAFT (0.2에 B 생산자 검토(#163)를 반영했다: 업무 대화의 피드백, 응답의 계산 시점, 재가입, 이탈 경보의 전환, 커밋 뒤 재계산)
+- 버전: 0.3 / 상태: DRAFT (0.2에 B 생산자 검토(#163)를 반영했다: 업무 대화의 피드백, 응답의 계산 시점, 재가입, 이탈 경보의 전환, 커밋 뒤 재계산. 0.3에 업무 결과 확인(승인·보완 요청)과 마이그레이션 순서를 더했다)
 - 생산자: 손정협(B, 점수·경보 서버) / 초안 작성: 송승준(A) / 소비자: 손정효(C, 기여도 화면·프로젝트 홈·업무 보드), 송승준(A, 교수용 PDF·AI 도우미의 점수 도구)
-- 기능: S1 / 작성일: 2026-11-08 (0.2는 2026-11-09) / 기준 SHA: `9435eb2`
+- 기능: S1 / 작성일: 2026-11-08 (0.2와 0.3은 2026-11-09) / 기준 SHA: `9435eb2`
 - 근거: `docs/team/handoffs/A-score-criteria-20261019.md` 8장(#134 결정 기록)
 - 범위: 점수 응답에 항목 목록(`items`)을 더하고, 검토 활동을 횟수로 보인다. **판정 기준(전체·부분·미참여)은 이 버전에서 바꾸지 않는다.** 판정은 결국 바꾼다. 어떻게 바꿀지는 쌓이는 사용 기록을 보며 검토하고(#134 8.6), 정해지면 이 계약의 다음 버전에서 바꾼다(7장)
 
 ## 1. 무엇을 약속하는가
 
 - **판정은 이 버전에서 그대로다.** `participationLevel`은 지금처럼 네 항목(업무 완료, 회의 참석, 파일 업로드, 액션 아이템)으로 정한다
-- **검토 활동은 이 버전에서 보이기만 한다.** 회차 결정, 피드백 작성·해결, 요구사항 충족 확인, 업무 대화의 피드백을 횟수로 보이고 판정에는 넣지 않는다. 나중에 판정에 넣을 때는 그 항목의 `countsTowardLevel`과 판정 규칙만 바꾸고 응답의 모양은 그대로 둔다
+- **검토 활동은 이 버전에서 보이기만 한다.** 회차 결정, 피드백 작성·해결, 요구사항 충족 확인, 업무 대화의 피드백, 업무 결과 확인을 횟수로 보이고 판정에는 넣지 않는다. 나중에 판정에 넣을 때는 그 항목의 `countsTowardLevel`과 판정 규칙만 바꾸고 응답의 모양은 그대로 둔다
 - **검토만 한 팀원에게 무임승차 경보를 내지 않는다.** 판정을 바꾸기 전까지 쓰는 임시 규칙이다(4.2)
-- **사실은 도메인 자료에서 센다.** 검토 회차, 피드백, 요구사항 테이블에 이미 누가 언제 했는지가 있다. 활동 기록(`activity_logs`)으로 옮겨 세지 않으므로 과거 기록이 그대로 들어가고, 기록 호출이 빠져도 횟수가 틀리지 않는다
+- **사실은 도메인 자료에서 센다.** 검토 회차, 피드백, 요구사항 테이블에 이미 누가 언제 했는지가 있다. 활동 기록(`activity_logs`)으로 옮겨 세지 않으므로 과거 기록이 그대로 들어가고, 기록 호출이 빠져도 횟수가 틀리지 않는다. 예외는 업무의 보완 요청 하나다. 도메인 테이블에 남지 않아 활동 기록으로 센다(3장)
 - **응답은 한 번의 계산 결과다.** 판정, 항목, 기준 버전, 계산 시각을 같은 계산에서 정해 함께 저장하고 그대로 돌려준다(2장)
 - **문구는 서버 한 곳에서 정한다.** 항목 이름과 설명을 응답에 담고, 화면·PDF·AI 도구는 받은 것을 그린다
 - **세지 않는 것을 밝힌다.** 확정·제출 기록, AI 호출·채택 횟수, 같은 파일의 반복 업로드는 세지 않는다(#134 8.1)
@@ -37,13 +37,14 @@
     { "code": "MEETING_ATTENDANCE", "label": "회의 참석", "description": "체크인한 회의 수. 회의 수(total)의 절반 이상이면 충족", "count": 1, "total": 4, "passed": false, "countsTowardLevel": true },
     { "code": "FILE_UPLOAD", "label": "파일 업로드", "description": "올린 파일 수(같은 이름의 새 버전은 한 번으로 셈)", "count": 2, "passed": true, "countsTowardLevel": true },
     { "code": "ACTION_ITEM", "label": "회의 할 일", "description": "회의에서 나온 할 일 중 완료한 수", "count": 0, "passed": false, "countsTowardLevel": true },
-    { "code": "REVIEW_ACTIVITY", "label": "검토·피드백 참여", "description": "회차 결정, 피드백 작성·해결, 요구사항 충족 확인, 업무 대화의 의견·답글의 합. 판정에는 넣지 않는다", "count": 7, "passed": true, "countsTowardLevel": false,
+    { "code": "REVIEW_ACTIVITY", "label": "검토·피드백 참여", "description": "회차 결정, 피드백 작성·해결, 요구사항 충족 확인, 업무 대화의 의견·답글, 업무 결과 확인(승인·보완 요청)의 합. 판정에는 넣지 않는다", "count": 9, "passed": true, "countsTowardLevel": false,
       "details": [
         { "code": "REVIEW_DECISION", "label": "회차 결정", "count": 1 },
         { "code": "FEEDBACK_WRITTEN", "label": "피드백 작성", "count": 3 },
         { "code": "FEEDBACK_RESOLVED", "label": "피드백 해결", "count": 1 },
         { "code": "REQUIREMENT_ASSESSED", "label": "요구사항 충족 확인", "count": 0 },
-        { "code": "TASK_FEEDBACK", "label": "업무 대화의 의견·답글", "count": 2 }
+        { "code": "TASK_FEEDBACK", "label": "업무 대화의 의견·답글", "count": 2 },
+        { "code": "TASK_RESULT_REVIEW", "label": "업무 결과 확인", "count": 2 }
       ] }
   ]
 }
@@ -55,7 +56,16 @@
 - `criteriaVersion`: 판정 기준이나 항목 정의가 바뀌면 올린다. PDF와 AI 답에 함께 적어 어느 기준으로 센 것인지 남긴다
 - `period.from`은 그 멤버의 지금 가입 시각(`project_members.joined_at`), `to`는 `calculatedAt`이다. 회의 참석에만 쓴다(3장)
 - **한 번의 계산 결과다.** 네 불리언, `participationLevel`, `items`, `criteriaVersion`, `period`, `calculatedAt`은 같은 재계산에서 정해 함께 저장하고, GET은 저장된 것을 그대로 돌려준다. GET에서 `items`만 새로 세지 않는다. `calculatedAt` 뒤의 변경은 다음 재계산(5장)에서 반영된다
-- 저장: `contribution_scores`에 `items`(JSONB), `criteria_version`, `period_from`을 더한다. 마이그레이션 번호는 병합 직전에 A가 정한다
+- 저장: `contribution_scores`에 아래 세 칸을 더한다. 번호는 V37이다(아래 순서)
+
+```sql
+ALTER TABLE contribution_scores
+    ADD COLUMN items            JSONB,
+    ADD COLUMN criteria_version VARCHAR(32),
+    ADD COLUMN period_from      TIMESTAMPTZ;
+```
+
+- 마이그레이션 번호는 기능의 병합 순서대로 A가 정한다: 확정 취소(#133) V36 → 이 계약의 저장 V37 → 과제 안내문 저장(K-31) V38. 병합도 이 순서로 한다. 서버의 Flyway는 이미 적용된 번호보다 낮은 번호를 받지 않는다. 순서를 바꿔야 하면 바뀌는 PR들이 모두 병합 전일 때 번호를 함께 바꾼다
 - 이 버전이 배포되기 전에 계산된 행은 `items`·`criteriaVersion`·`period`가 `null`이다. 옛 값에 새 기준 버전을 붙이지 않는다. 30분 주기 계산이 서버가 뜨자마자 한 번 돌므로(`fixedRate`) 배포 직후 채워진다. 그 사이 화면은 `items`가 `null`이면 네 칸만 그린다
 - 관찰자는 응답에 없다(지금과 같다)
 
@@ -79,6 +89,14 @@
 | `FEEDBACK_RESOLVED` | 지금 해결 상태인 피드백 중 그 사람이 마지막으로 해결한 수. 다시 열렸다 다른 사람이 해결하면 그 사람의 것이 된다 | `review_comments.resolved_by` |
 | `REQUIREMENT_ASSESSED` | 지금 충족 확인 상태인 요구사항 중 그 사람이 확인한 수. 문구가 바뀌어 확인이 풀린 것은 세지 않는다(K-14) | `deliverable_requirements.assessed_by` |
 | `TASK_FEEDBACK` | 그 사람이 업무 대화에 쓴 의견(`COMMENT`)과 답글(`REPLY`) 수. 의견 요청(`REQUEST`)은 세지 않는다 | `task_messages.author_id`, `kind` |
+| `TASK_RESULT_REVIEW` | 그 사람이 한 업무 결과 확인의 수. 승인과 보완 요청을 함께 센다. 승인은 지금 승인 상태인 업무 중 그 사람이 승인한 수이고, 보완 요청은 그 사람이 보낸 보완 요청의 수다 | 승인: `tasks.completion_approved_by`. 보완 요청: 활동 기록 `TASK_COMPLETION_REJECT` |
+
+업무 결과 확인은 이렇게 센다.
+
+- 보완 요청도 센다. 결과를 보고 고칠 점을 찾아낸 것도 검토이고, 승인만 세면 확인 없이 승인하는 쪽이 더 많이 보이게 된다. 검토 회차도 승인과 수정 요청을 함께 센다(`REVIEW_DECISION`)
+- 업무를 재개하면 승인 칸이 비워지므로 그 승인은 빠진다(피드백 해결과 같다). 보완 요청은 이미 한 일이라 빠지지 않는다
+- 같은 업무에 보완 요청을 여러 번 보내면 각각 센다. 완료 확인 요청의 취소(`TASK_COMPLETION_CANCEL`)는 요청한 사람이 거두는 것이라 세지 않는다
+- 보완 요청은 도메인 테이블에 남지 않는다(사유 칸은 다음 요청 때 지워진다). 그래서 이 하나만 활동 기록으로 센다. 이 기록은 완료 확인 기능이 생길 때부터 본 동작과 같은 트랜잭션에서 남았으므로 빠진 과거가 없다
 
 업무 대화는 이렇게 센다.
 
@@ -102,7 +120,7 @@
 
 0.1은 빠진 경로에 활동 기록을 더하기로 했다. 그러면 배포 전의 회차 결정·충족 확인·업무 대화에는 기록이 없어, 첫 배포 때 최근 검토만 한 팀원이 여전히 경보를 받는다. 그래서 기록을 더하지 않고 최근 활동을 도메인 자료에서도 본다.
 
-- 최근 활동은 그 기간에 아래 중 하나라도 있는 것이다: 활동 기록, 회차 열기(`review_rounds.opened_at`)·결정(`decided_at`), 피드백 작성(`review_comments.created_at`)·해결(`resolved_at`), 충족 확인(`deliverable_requirements.assessed_at`), 업무 대화 작성(`task_messages.created_at`, 의견 요청 포함)
+- 최근 활동은 그 기간에 아래 중 하나라도 있는 것이다: 활동 기록, 회차 열기(`review_rounds.opened_at`)·결정(`decided_at`), 피드백 작성(`review_comments.created_at`)·해결(`resolved_at`), 충족 확인(`deliverable_requirements.assessed_at`), 업무 대화 작성(`task_messages.created_at`, 의견 요청 포함), 업무 결과 승인(`tasks.completion_approved_at`). 보완 요청은 이미 활동 기록에 있다
 - 도메인 자료에 과거 시각이 남아 있으므로 첫 배포 때부터 맞게 판정한다. 활동 기록을 소급해 만들지 않는다
 - 새 `actionType`을 더하지 않는다. 확정·제출 기록은 최근 활동에도 넣지 않는다(K-20 9장. 한 사람에게만 맡겨질 수 있다)
 - 해결·충족 확인처럼 다시 풀릴 수 있는 것은 지금 남아 있는 시각만 본다
@@ -146,7 +164,7 @@
 
 ## 8. 확인을 부탁하는 것
 
-- 손정협님: 3장의 업무 대화 세는 법, 2장의 저장 방식, 4.1의 최근 활동(활동 기록을 더하지 않음), 5장의 커밋 뒤 예약과 프로젝트 잠금
+- 손정협님: 3장의 업무 대화 세는 법, 2장의 저장 방식, 4.1의 최근 활동(활동 기록을 더하지 않음), 5장의 커밋 뒤 예약과 프로젝트 잠금. 0.3의 업무 결과 확인과 V37 SQL
 - 손정효님: 6장의 화면이 2장의 응답만으로 그려지는지. 배포 직후 `items`가 `null`인 경우도 포함
 
 ## 9. 수용 테스트
@@ -162,6 +180,7 @@
 - 업무 대화에 의견 2, 답글 1, 의견 요청 1을 쓴 팀원은 `TASK_FEEDBACK`이 3이다. 이것만 한 팀원(판정 `NONE`)에게는 무임승차 경보가 생기지 않는다
 - 회차를 결정한 팀원은 그 뒤 2주 안에 이탈 경보를 받지 않는다. 활동 기록이 없는 배포 전의 결정도 같다(4.1)
 - 의견 요청만 한 팀원은 `TASK_FEEDBACK`이 0이지만 이탈 경보는 받지 않는다
+- 다른 팀원의 업무를 한 번 승인하고 다른 업무에 보완 요청을 두 번 보낸 팀원은 `TASK_RESULT_REVIEW`가 3이다. 승인한 업무를 재개하면 재계산 뒤 2가 된다. 이것만 한 팀원(판정 `NONE`)에게는 무임승차 경보가 생기지 않는다
 - GET 응답의 네 불리언, `items`, `calculatedAt`은 같은 계산의 것이다. 계산 뒤 피드백을 더 써도 다음 계산 전의 GET은 그대로다
 - 배포 전에 계산된 행은 `items`·`criteriaVersion`이 `null`이다
 - 피드백을 쓴 트랜잭션이 롤백되면 재계산을 예약하지 않는다. 커밋되면 재계산 결과에 그 피드백이 들어 있다
