@@ -102,9 +102,9 @@ public class MeetingController {
             @PathVariable UUID projectId,
             @PathVariable UUID meetingId,
             @AuthenticationPrincipal User user) {
-        MeetingResponse meeting = meetingService.getMeeting(projectId, meetingId, user);
+        Meeting meeting = meetingService.getRawMeeting(projectId, meetingId, user);
         String summary = aiService.summarizeMeeting(
-                meeting.title(), meeting.purpose(), meeting.notes(), meeting.decisions());
+                meeting.getTitle(), meeting.getPurpose(), meeting.getNotes(), meeting.getDecisions());
         meetingService.saveAiSummary(projectId, meetingId, summary, user);
         return ResponseEntity.ok(new AiSummaryResponse(summary));
     }
