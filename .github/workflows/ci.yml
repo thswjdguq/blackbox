@@ -101,7 +101,7 @@ jobs:
         run: bash scripts/verify-db.sh
 
   frontend:
-    name: frontend (Node 24 · 타입체크 + 빌드)
+    name: frontend (Node 26 · 타입체크 + 빌드)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -109,10 +109,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Node 24 준비
+      - name: Node 26 준비
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '26'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
