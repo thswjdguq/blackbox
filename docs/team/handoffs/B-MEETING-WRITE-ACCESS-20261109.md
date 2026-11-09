@@ -18,3 +18,10 @@
 
 실제 AI/Notion 외부 호출·브라우저는 실행하지 않았다. provider 호출은 mock으로 거절 전 호출 여부를 검사했고, MVC 검사는 실제 PostgreSQL과 인증 필터를 썼다. 운영·시연 DB/서버/업로드·프론트·기여도 산식·migration 변경 없음.
 작성자 외 A 리뷰/병합 요청. #160 뒤에 병합하면 새 HTTP 테스트의 MockMvc 어노테이션 패키지를 일반 main merge 후 맞춰야 한다. #115는 이 PR이 main에 반영되고 C 확인 뒤 닫는다.
+
+## #160 병합 뒤 재검증
+
+- main `4b0834ba`(Java 25 / Spring Boot 4.1)를 일반 merge했다. 신규 MeetingExternalWriteHttpTest의 MockMvc import만 Boot 4 모듈로 맞췄고, 권한 검사·테스트 조건은 유지했다.
+- Java 25.0.3 / Gradle 9.8.2 / PostgreSQL 16 새 전용 DB `bb_b_meeting_boot4_20261109`: MeetingWriteAccessTest 5건 + MeetingExternalWriteHttpTest 2건, **7/7 통과**, 실패·오류·건너뜀 0. 2분 59초.
+- 테스트 본문에서 만드는 합성 자료는 롤백했다. AI·Notion은 mock이며 실제 외부 호출·브라우저·운영 적용 검증은 하지 않았다.
+- 위의 Java 17 전체 검사 기록과 이번 Boot 4 관련 검사 기록은 별도다. 최신 head의 전체 회귀는 PR CI로 확인한다. 앞서 남긴 Boot 4 패키지 대응 작업은 이 재검증으로 완료했고, A 서버 재검토와 작성자 외 병합이 남아 있다.
