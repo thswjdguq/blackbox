@@ -25,3 +25,4 @@
 - Java 25.0.3 / Gradle 9.8.2 / PostgreSQL 16 새 전용 DB `bb_b_meeting_boot4_20261109`: MeetingWriteAccessTest 5건 + MeetingExternalWriteHttpTest 2건, **7/7 통과**, 실패·오류·건너뜀 0. 2분 59초.
 - 테스트 본문에서 만드는 합성 자료는 롤백했다. AI·Notion은 mock이며 실제 외부 호출·브라우저·운영 적용 검증은 하지 않았다.
 - 위의 Java 17 전체 검사 기록과 이번 Boot 4 관련 검사 기록은 별도다. 최신 head의 전체 회귀는 PR CI로 확인한다. 앞서 남긴 Boot 4 패키지 대응 작업은 이 재검증으로 완료했고, A 서버 재검토와 작성자 외 병합이 남아 있다.
+- 이후 main `e6a8b6e4`의 #161(프론트 보안·Node 26)도 일반 merge했다. backend 변경은 없어 관련 검사를 반복하지 않았고, 최종 Java 25·Node 26·DB 회귀 결과는 PR CI에서 확인한다.
