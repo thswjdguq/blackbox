@@ -13,11 +13,17 @@ DB/기존 migration/의존성/프론트/공통 인증 파일은 변경하지 않
 
 ## 검증
 
-- Java 17, PostgreSQL 16 전용 DB `bb_b_calendar_20261109`: 신규 17/17 통과(상태 5, 서비스 권한 6, OAuth MVC 3, 실제 DB+인증 필터 MVC 3).
-- 전체 `./gradlew build`: 전용 DB `bb_b_calendar_full_20261109`, 총 390건 / 통과 388 / 실패·오류 0 / 실제 AI 키 테스트 2건 건너뜀. 2분 6초. 검사 결과는 `backend/build/calendar-full-20261109/`(미커밋 산출물).
+- 초기 Java 17, PostgreSQL 16 전용 DB `bb_b_calendar_20261109`: 신규 17/17 통과(상태 5, 서비스 권한 6, OAuth MVC 3, 실제 DB+인증 필터 MVC 3).
+- 초기 전체 `./gradlew build`: 전용 DB `bb_b_calendar_full_20261109`, 총 390건 / 통과 388 / 실패·오류 0 / 실제 AI 키 테스트 2건 건너뜀. 2분 6초.
 - 수정 전 main 소스에 같은 HTTP 권한 검사 2건을 넣어 전용 DB `bb_b_calendar_baseline_20261109`에서 실행: 두 건 모두 `expected 403, was 200`으로 실패. 수정본에서는 통과한다.
 - baseline 첫 시도는 다른 검증과 Gradle 캐시를 공유해 잠금 시간 초과로 테스트가 시작되지 않았다. 전체 검사 종료 뒤 순차 재실행해 위 결함을 재현했다. 첫 환경 실패를 코드 실패로 세지 않는다.
 - `verify-main-migration-history.cjs`: 기존 main SQL 24개 그대로, 전체 34개 버전 중복 없음. `git diff --check` 통과.
+
+## A 리뷰 반영
+
+#164 A 검토의 전역 한도 소진 문제를 수정했다. 공용 10,000개 한도를 제거하고 사용자마다 최신 발급 요청 하나만 남긴다. 재발급 시 이전 state를 무효화하고 만료 기록도 정리한다. 한 계정이 10,001회 반복 발급해도 다른 계정의 state가 유효한 회귀 검사를 추가했다.
+변경 후 같은 전용 DB에서 전체 build 재실행: **391건 / 통과 389 / 실패·오류 0 / 실제 AI 2건 건너뜀**. 신규 검사는 18건이다. 최종 검사 결과는 `backend/build/calendar-full-20261109/`에 있다.
+C에게 설정 화면의 결과를 버리는 authorize 호출이 state/쿠키를 덮을 수 있으므로 제거·확인을 요청했다. frontend는 동시에 수정하지 않았다. 실제 Google 승인 왕복과 콜백 오류/동의 취소 화면은 미검증·후속으로 유지한다.
 
 테스트 DB는 모두 새로 만들었고 기존 개발·시연 DB를 쓰지 않았다. Google API·실제 계정·유료 AI 호출은 하지 않았다. MVC 검사는 실제 네트워크 Google 승인 왕복과 다르다.
 
