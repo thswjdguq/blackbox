@@ -70,6 +70,20 @@ if [ -n "$IMAGE_REPO" ]; then
     log "이미지를 다 받지 못해 바꾸지 않는다: $(echo "$out" | grep -v -E 'Pull(ing|ed)' | tail -3 | tr '\n' ' ')"
     exit 1
   fi
+  # 따라가는 태그(main 등)를 쓰면 받은 이미지가 받은 설정과 같은 커밋으로 만든 것이어야 한다. 설정은 병합 즉시 바뀌고
+  # 이미지는 CI와 빌드가 끝난 뒤(약 5분) 바뀌므로, 그 사이에 옛 이미지를 새 설정으로 띄우지 않는다(11/9 #160 병합 때 겪음).
+  # 커밋 라벨이 없는 옛 이미지는 예전처럼 쓴다. 커밋으로 고정한 태그는 손으로 고른 것이라 보지 않는다
+  if [ "$IMAGE_TAG" = "$(echo "$CONFIG_BRANCH" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')" ]; then
+    config_sha=$(git rev-parse HEAD)
+    for s in $SERVICES; do
+      rev=$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${IMAGE_REPO}blackbox-$s:$IMAGE_TAG" 2>/dev/null)
+      [ -z "$rev" ] || [ "$rev" = "<no value>" ] || [ "$rev" = "$config_sha" ] && continue
+      for t in $SERVICES; do [ -n "${before[$t]}" ] && docker tag "blackbox-$t:previous" "${IMAGE_REPO}blackbox-$t:$IMAGE_TAG"; done
+      log "받은 $s 이미지(${rev:0:7})가 설정($(git rev-parse --short HEAD))과 다른 커밋으로 만든 것이다. 이미지 빌드를 기다리며 이번에는 바꾸지 않는다"
+      [ "$config_sha" != "$prev_sha" ] && restore
+      exit 0
+    done
+  fi
 fi
 
 # ── 3. 띄우기 ────────────────────────────────────────────────
