@@ -21,3 +21,10 @@ ScoreService 재계산 진입 시 `ProjectAccessChecker.canContribute`로 현재
 
 실제 개발·시연·운영 DB/업로드 변경, 기존 자료 삭제, 새 migration, 점수 snapshot/집계 확대, 라이브러리/프론트 변경은 없다. 합성 DB 자료는 테스트에서 롤백했다. 유료 AI/브라우저 호출 없음.
 K-40 0.2의 snapshot 컬럼은 C 소비자 확인과 A의 번호 배정/SQL 선행 뒤 별도 PR이다. 작성자 외 A 리뷰/병합을 요청한다. #160 이후에 병합한다면 신규 MVC 테스트의 어노테이션 패키지 등을 최신 main에 맞춰야 한다.
+
+## #160 병합 뒤 재검증
+
+- main `4b0834ba`(Java 25 / Spring Boot 4.1)를 일반 merge하고 신규 HTTP 테스트의 MockMvc import와 JSON 파서를 Boot 4/Jackson 3에 맞췄다. 역할 필터와 검사 조건은 바꾸지 않았다.
+- Java 25.0.3 / Gradle 9.8.2 / PostgreSQL 16 새 전용 DB `bb_b_score_boot4_20261109`: 단위 3건 + DB/HTTP 2건, **5/5 통과**, 실패·오류·건너뜀 0. 1분 34초. 합성 자료는 롤백했다.
+- 이 결과는 관련 검사이며 로컬 전체 회귀 검사는 아니다. 새 head의 전체 backend·DB·frontend 검사는 PR CI로 별도 확인한다. 앞서 남긴 Boot 4 대응은 완료했고, A 서버 재검토와 작성자 외 병합이 남아 있다.
+- K-40은 #163의 0.3으로 갱신됐고 A가 snapshot SQL을 V37로 배정했다. C의 최신 소비자 확인과 실제 SQL 선행 반영 뒤 별도 구현한다. 이번 PR은 새 컬럼/응답/산식을 추가하지 않는다.
