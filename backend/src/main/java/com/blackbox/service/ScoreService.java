@@ -82,7 +82,9 @@ public class ScoreService {
 
     @Transactional
     public List<ScoreResponse> recalculate(Project project) {
-        List<ProjectMember> members = projectMemberRepository.findByProject(project);
+        // 조회에서만 숨기지 않고 계산과 저장도 현재 팀장·팀원으로 한정한다. 옛 관찰자 기록은 삭제하지 않는다.
+        List<ProjectMember> members = projectMemberRepository.findByProject(project).stream()
+                .filter(ProjectAccessChecker::canContribute).toList();
         if (members.isEmpty()) return List.of();
 
         // 전체 회의 수 (회의 참석율 계산 기준)
@@ -143,7 +145,7 @@ public class ScoreService {
         // 경보 감지
         alertService.checkAlerts(project, members, savedScores);
 
-        // 산식·저장은 그대로 두고, 응답은 화면 경보와 같이 현재 팀장·팀원만 보여 준다(관찰자 제외).
+        // 응답도 화면 경보와 같이 현재 팀장·팀원만 보여 준다(관찰자 제외).
         Set<UUID> contributors = contributorIds(members);
         return savedScores.stream().filter(s -> contributors.contains(s.getUser().getId()))
                 .map(ScoreResponse::from).toList();
