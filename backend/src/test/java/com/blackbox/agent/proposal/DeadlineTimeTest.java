@@ -4,7 +4,7 @@ import com.blackbox.dto.DeliverableDtos;
 import com.blackbox.entity.User;
 import com.blackbox.service.DeliverableService;
 import com.blackbox.service.TaskService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
@@ -25,15 +25,15 @@ class DeadlineTimeTest {
 
     @Test void aiProposalKeepsExplicitTimeAndRejectsInvalidTime() throws Exception {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
-            var mapper = new ObjectMapper().findAndRegisterModules();
+            var mapper = new ObjectMapper();
             var kind = new DeliverablePlanKind(mapper, factory.getValidator(), mock(DeliverableService.class), mock(TaskService.class));
             var content = mapper.readTree("""
                 {"deliverable":{"title":"자료","dueDate":"2026-11-05","dueTime":"18:00"},"requirements":[],"tasks":[]}
                 """);
             var checked = kind.check(UUID.randomUUID(), new User(), content, true);
             assertTrue(checked.problems().isEmpty());
-            assertEquals("18:00", checked.content().path("deliverable").path("dueTime").asText());
-            ((com.fasterxml.jackson.databind.node.ObjectNode)content.path("deliverable")).put("dueTime", "24:00");
+            assertEquals("18:00", checked.content().path("deliverable").path("dueTime").asString());
+            ((tools.jackson.databind.node.ObjectNode)content.path("deliverable")).put("dueTime", "24:00");
             assertFalse(kind.check(UUID.randomUUID(), new User(), content, true).problems().isEmpty());
         }
     }

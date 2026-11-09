@@ -8,8 +8,8 @@ import com.blackbox.dto.DeliverableDtos;
 import com.blackbox.entity.User;
 import com.blackbox.service.DeliverableService;
 import com.blackbox.service.DeliverableStatusReader;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -34,7 +34,7 @@ public class BreakDownTasksSkill implements AgentSkill {
     @Override public String material(UUID projectId, User user, JsonNode input) {
         UUID id;
         try {
-            id = UUID.fromString(input.path(DELIVERABLE_ID).asText(""));
+            id = UUID.fromString(input.path(DELIVERABLE_ID).asString(""));
         } catch (IllegalArgumentException e) {
             throw AgentSkill.badInput("제출물을 골라주세요");
         }
@@ -46,6 +46,6 @@ public class BreakDownTasksSkill implements AgentSkill {
     }
 
     @Override public void complete(ObjectNode content, JsonNode input) {
-        content.put(DELIVERABLE_ID, input.path(DELIVERABLE_ID).asText());
+        content.put(DELIVERABLE_ID, input.path(DELIVERABLE_ID).asString());
     }
 }

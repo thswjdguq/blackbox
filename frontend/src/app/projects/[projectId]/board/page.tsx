@@ -6,10 +6,9 @@ import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
 import DeadlineNotice from "@/components/kanban/DeadlineNotice";
-import { Task, ScoreMap } from "@/types/task";
+import { Task } from "@/types/task";
 import api from "@/lib/api";
 import {
-  RefreshCw,
   ChevronDown,
   FolderKanban,
   AlertCircle,
@@ -36,11 +35,6 @@ interface ProjectInfo {
   semester: string | null;
 }
 
-interface ScoreEntry {
-  userId: string;
-  totalScore: number;
-}
-
 // ── Small stats banner ──────────────────────────────────────────────────────
 function StatPill({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
@@ -60,10 +54,8 @@ export default function BoardPage() {
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [scoreMap, setScoreMap] = useState<ScoreMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   // 동기화 실패는 보드 전체 오류(error)와 분리한다. 실패해도 보드는 그대로 보여야 한다
   const [myUserId, setMyUserId] = useState<string | null>(null);
   // 역할은 멤버 목록의 내 항목으로 판단한다. GET /projects/{id} 의 myRole 은 현재 항상 null 이다 (A 에 수정 요청)
@@ -98,18 +90,6 @@ export default function BoardPage() {
       setMembers(memberRes.data);
       setMyUserId(profileRes.data.id);
 
-      // Scores (may not exist yet — gracefully ignore 404)
-      try {
-        const scoreRes = await api.get<ScoreEntry[]>(`/projects/${projectId}/scores`);
-        const map: ScoreMap = {};
-        scoreRes.data.forEach((s) => {
-          const n = Number(s.totalScore);
-          if (!isNaN(n)) map[s.userId] = n;
-        });
-        setScoreMap(map);
-      } catch {
-        // No scores yet — leave scoreMap empty
-      }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) { router.replace("/login"); return; }
@@ -117,17 +97,6 @@ export default function BoardPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleRefreshScores() {
-    setRefreshing(true);
-    try {
-      const res = await api.post<ScoreEntry[]>(`/projects/${projectId}/scores/recalculate`);
-      const map: ScoreMap = {};
-      res.data.forEach((s) => { map[s.userId] = Number(s.totalScore); });
-      setScoreMap(map);
-    } catch { /* silent */ }
-    finally { setRefreshing(false); }
   }
 
 
@@ -206,7 +175,7 @@ export default function BoardPage() {
               )}
             </div>
 
-            {/* Stats + refresh */}
+            {/* Stats */}
             <div className="flex flex-wrap items-center gap-3">
               <StatPill label="할 일" value={todoCount} accent="bg-slate-500" />
               <StatPill label="진행 중" value={inProgressCount} accent="bg-indigo-500" />
@@ -225,19 +194,6 @@ export default function BoardPage() {
                 </div>
               </div>
 
-              {/* Score refresh — 수동 재계산은 팀장·팀원만(관찰자 403) */}
-              {!readOnly && (
-                <button
-                  onClick={handleRefreshScores}
-                  disabled={refreshing}
-                  title="기여도 점수 재계산"
-                  aria-label="기여도 점수 재계산"
-                  className="p-2 rounded-lg bg-bb-surface border border-bb-border text-bb-text2
-                             hover:text-teal-400 hover:border-teal-400/40 transition-all disabled:opacity-50"
-                >
-                  <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -327,7 +283,6 @@ export default function BoardPage() {
               members={members
                 .filter((m) => m.role !== "OBSERVER")
                 .map((m) => ({ userId: m.userId, name: m.name, email: m.email }))}
-              scoreMap={scoreMap}
               filter={filter}
               onTasksChange={setTasks}
               readOnly={readOnly}

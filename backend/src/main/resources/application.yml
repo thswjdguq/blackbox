@@ -17,19 +17,22 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # dialect는 정하지 않는다. Hibernate가 연결한 DB(PostgreSQL)를 보고 고르며, 정하면 폐기 예정 경고(HHH90000025)를 낸다
         format_sql: true
+        type:
+          # JSON 칸(jsonb)을 Jackson 3으로 읽고 쓴다. Hibernate는 Jackson 2가 있으면 그쪽을 먼저 고르는데, Jackson 2는
+          # jjwt와 OpenAI SDK가 안에서 쓰느라 빠지지 않는다. 그대로 두면 Jackson 3의 JsonNode 칸을 읽지 못한다
+          json_format_mapper: jackson3
 
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
 
-  http:
-    client:
-      # Spring AI의 OpenAI 공급자가 쓰는 HTTP 클라이언트의 응답 대기 시간. 기본은 제한이 없어 응답 없는 요청이 스레드를 끝없이 잡는다.
-      # 이 설정을 받는 클라이언트(RestClient)를 쓰는 곳은 지금 그 공급자뿐이다
-      read-timeout: ${app.agent.model-request-timeout}
+  jackson:
+    # Spring Boot 4부터 JSON은 Jackson 3으로 처리한다. 3의 기본값 일부(필드를 이름순으로 정렬, 원시 타입 칸의 null 거부 등)가
+    # 2와 달라 API 응답과 요청 해석이 바뀔 수 있으므로 Boot가 Jackson 2에 쓰던 기본값을 그대로 쓴다
+    use-jackson2-defaults: true
 
   # ── AI 에이전트(K-30)의 모델 ──────────────────────────────────────────
   # 공급자와 모델에 닿는 설정은 여기(spring.ai)에, 에이전트가 스스로 지키는 상한은 아래 app.agent에 둔다.
@@ -39,8 +42,8 @@ spring:
       # 공급자. none이면 키가 없어도 서버가 뜨고 에이전트만 꺼진다
       #   google-genai      + SPRING_AI_GOOGLE_GENAI_API_KEY
       #   bedrock-converse  + SPRING_AI_BEDROCK_AWS_REGION 과 AWS 자격 증명
-      #   openai            + SPRING_AI_OPENAI_API_KEY, SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL.
-      #                       OpenAI 호환 게이트웨이에 붙을 때는 SPRING_AI_OPENAI_BASE_URL도 준다(끝에 /v1 없이)
+      #   openai            + SPRING_AI_OPENAI_API_KEY, SPRING_AI_OPENAI_CHAT_MODEL.
+      #                       OpenAI 호환 게이트웨이에 붙을 때는 SPRING_AI_OPENAI_BASE_URL도 준다(Spring AI 2.0부터 끝에 /v1까지)
       chat: none
       # 쓰지 않는 종류다. OpenAI 스타터는 이 종류들의 빈도 기본으로 만들고 그때 키가 없으면 서버가 뜨지 않는다
       embedding: none
@@ -55,12 +58,19 @@ spring:
           # 쓰지 않는 기능이고, 켜 두면 Spring AI가 이 기능의 조건을 따지다가 모델 빈을 설정이 읽히기도 전에 만든다.
           # 그러면 그 빈이 쓰는 우리 설정(app.agent)이 빈 채로 굳는다. 끄면 모델 빈이 제때 만들어진다
           enable-cached-content: false
-          options:
-            # Spring AI 1.1.8이 기본으로 쓰는 모델은 폐기돼 404가 나므로 반드시 정한다.
-            # 무료 등급에서 Flash-Lite는 하루 500번, Flash는 하루 20번이다(2026-10 기준, docs/team/tasks/A-30.md)
-            model: gemini-3.5-flash-lite
-            # temperature와 thinking-level은 정하지 않는다. Gemini 3 계열은 temperature를 기본값(1.0)에서
-            # 낮추면 답이 나빠질 수 있다고 Google이 안내하고, Flash-Lite의 생각 수준은 기본이 가장 낮다
+          # Spring AI가 기본으로 쓰는 모델은 폐기돼 404가 나므로 반드시 정한다.
+          # 무료 등급에서 Flash-Lite는 하루 500번, Flash는 하루 20번이다(2026-10 기준, docs/team/tasks/A-30.md)
+          model: gemini-3.5-flash-lite
+          # temperature와 thinking-level은 정하지 않는다. Gemini 3 계열은 temperature를 기본값(1.0)에서
+          # 낮추면 답이 나빠질 수 있다고 Google이 안내하고, Flash-Lite의 생각 수준은 기본이 가장 낮다
+    openai:
+      # Spring AI 2.0부터 OpenAI 공급자는 OpenAI의 Java SDK로 부른다. 시간 제한과 다시 보내는 횟수도 SDK에 준다.
+      # 정하지 않으면 응답 없는 요청이 실행 스레드를 오래 잡는다
+      timeout: ${app.agent.model-request-timeout}
+      max-retries: 1   # 처음 요청을 뺀 횟수. app.agent.model-request-attempts(2)와 맞춘다
+      chat:
+        # 2.0부터 Spring AI가 기본으로 넣던 0.7이 없어졌다. 1.x 때와 같은 답을 내도록 그대로 준다
+        temperature: 0.7
     bedrock:
       aws:
         timeout: ${app.agent.model-request-timeout}   # 호출 하나의 전체 시간 제한
