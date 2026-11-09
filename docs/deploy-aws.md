@@ -166,6 +166,7 @@ COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml   # 서버 전용 overri
 - 되돌릴 때 이미지만 되돌리고 DB는 되돌리지 않는다. 새 이미지가 마이그레이션을 먼저 적용했다면 옛 이미지가 새 스키마에서 돈다. 옛 이미지는 오류 없이 뜰 수 있어 상태 확인이 정상이어도 안심하지 않는다. 문제가 있으면 바꾸기 직전의 자동 백업(`auto-*.dump` 가운데 가장 최근 것)으로 아래 "DB 되돌리기"를 따른다
 - 교체했다가 상태가 나빠 되돌린 이미지는 `~/blackbox-backups/.failed-images`에 적어 두고, 같은 이미지가 다시 오면 건너뛴다. 새 커밋의 이미지가 오면 다시 시도한다
 - 설정 브랜치를 받았는데 배포용 설정이 아니면(compose가 고른 이미지가 `.env`와 다르면) 받기 전으로 돌려놓고 아무것도 바꾸지 않는다
+- 따라가는 태그(`IMAGE_TAG=main`)를 쓰면 받은 이미지의 커밋(`org.opencontainers.image.revision` 라벨)이 받은 설정의 커밋과 같을 때만 띄운다. 다르면 이미지 빌드가 아직 끝나지 않은 것이므로 설정을 받기 전으로 돌려놓고 이번 회차는 바꾸지 않는다. 다음 10분 갱신에서 다시 본다. 설정과 이미지가 함께 바뀌는 PR을 병합한 직후 몇 분 동안 옛 이미지가 새 설정으로 뜨는 것을 막는다. 라벨이 없는 옛 이미지와 커밋으로 고정한 태그는 이 검사를 하지 않는다
 - 10분을 기다리지 않고 바로 반영하려면: 이미지 빌드가 끝난 뒤 서버에서 `sudo systemctl start blackbox-update`를 실행한다
 - 기록: `journalctl -u blackbox-update --since today`. 다음 실행: `systemctl list-timers blackbox-update.timer`
 - 시각을 바꾸려면 `scripts/systemd/blackbox-update.timer`의 `OnCalendar`를 고친다. 끄려면 `sudo systemctl disable --now blackbox-update.timer`
