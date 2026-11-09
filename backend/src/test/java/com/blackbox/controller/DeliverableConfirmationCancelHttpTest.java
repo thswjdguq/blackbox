@@ -5,15 +5,15 @@ import com.blackbox.repository.DeliverableConfirmationCancellationRepository;
 import com.blackbox.repository.DeliverableConfirmationRepository;
 import com.blackbox.security.JwtService;
 import com.blackbox.service.UnresolvedCommentCounter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,7 +42,7 @@ class DeliverableConfirmationCancelHttpTest {
     @Autowired JwtService jwt;
     @Autowired DeliverableConfirmationRepository confirmations;
     @Autowired DeliverableConfirmationCancellationRepository cancellations;
-    @MockBean UnresolvedCommentCounter unresolved;
+    @MockitoBean UnresolvedCommentCounter unresolved;
 
     User leader, member, observer;
     Project project;
@@ -60,16 +60,16 @@ class DeliverableConfirmationCancelHttpTest {
         ReviewRound first = confirmed(1, 'a');
 
         JsonNode body = cancel(leader, first.getId(), "  표지의 과목명 오타  ", 200);
-        assertEquals("DRAFT", body.get("status").asText());
+        assertEquals("DRAFT", body.get("status").asString());
         assertTrue(body.get("confirmation").isNull());
         assertFalse(body.get("canConfirm").asBoolean());
         assertEquals("1회차의 확정을 취소했습니다. 고친 파일로 새 회차를 열어주세요", detail(body, "APPROVED_FILE"));
         JsonNode record = single(body.get("cancellations"));
-        assertEquals(first.getId().toString(), record.get("reviewId").asText());
+        assertEquals(first.getId().toString(), record.get("reviewId").asString());
         assertEquals(1, record.get("roundNo").asInt());
-        assertEquals("송팀장", record.at("/confirmedBy/name").asText());
-        assertEquals("송팀장", record.at("/cancelledBy/name").asText());
-        assertEquals("표지의 과목명 오타", record.get("reason").asText(), "앞뒤 공백은 떼고 저장한다");
+        assertEquals("송팀장", record.at("/confirmedBy/name").asString());
+        assertEquals("송팀장", record.at("/cancelledBy/name").asString());
+        assertEquals("표지의 과목명 오타", record.get("reason").asString(), "앞뒤 공백은 떼고 저장한다");
         assertFalse(confirmations.existsById(report.getId()));
 
         // 같은 회차로 다시 보낸 것은 중복 클릭이다. 기록이 늘지 않고 처음 사유가 남는다
@@ -77,7 +77,7 @@ class DeliverableConfirmationCancelHttpTest {
         assertEquals(body, read(observer));
         assertEquals(1, cancellations.count());
 
-        assertEquals("1회차의 확정을 취소했습니다. 고친 파일로 새 회차를 열어주세요", confirm(first.getId(), 409).get("detail").asText());
+        assertEquals("1회차의 확정을 취소했습니다. 고친 파일로 새 회차를 열어주세요", confirm(first.getId(), 409).get("detail").asString());
     }
 
     /** 새 회차의 승인으로 다시 확정할 수 있고, 취소 기록은 쌓인다 */
@@ -87,23 +87,23 @@ class DeliverableConfirmationCancelHttpTest {
         ReviewRound second = round(em, report, 2, upload(2, 'b'), member, "APPROVED");
 
         JsonNode body = confirm(second.getId(), 200);
-        assertEquals("CONFIRMED", body.get("status").asText());
-        assertEquals(second.getId().toString(), body.at("/confirmation/reviewId").asText());
+        assertEquals("CONFIRMED", body.get("status").asString());
+        assertEquals(second.getId().toString(), body.at("/confirmation/reviewId").asString());
         assertEquals(1, body.get("cancellations").size());
 
         // 지난 회차로 다시 보낸 취소는 중복 클릭이다. 새 확정을 취소하지 않는다
         assertFalse(cancel(leader, first.getId(), "표지 오타", 200).get("confirmation").isNull());
         assertTrue(cancel(leader, second.getId(), "목차 번호", 200).get("confirmation").isNull());
-        assertEquals(List.of("표지 오타", "목차 번호"), read(member).get("cancellations").findValuesAsText("reason"));
+        assertEquals(List.of("표지 오타", "목차 번호"), read(member).get("cancellations").findValuesAsString("reason"));
     }
 
     @Test void cancelIsRefusedWithAReason() throws Exception {
         ReviewRound changes = round(em, report, 1, upload(1, 'a'), member, "CHANGES_REQUESTED");
-        assertEquals("확정되지 않은 제출물입니다", cancel(leader, changes.getId(), "사유", 409).get("detail").asText());
+        assertEquals("확정되지 않은 제출물입니다", cancel(leader, changes.getId(), "사유", 409).get("detail").asString());
 
         ReviewRound approved = round(em, report, 2, upload(2, 'b'), member, "APPROVED");
         confirm(approved.getId(), 200);
-        assertEquals("확정 취소는 팀장만 할 수 있습니다", cancel(member, approved.getId(), "사유", 403).get("detail").asText());
+        assertEquals("확정 취소는 팀장만 할 수 있습니다", cancel(member, approved.getId(), "사유", 403).get("detail").asString());
         cancel(observer, approved.getId(), "사유", 403);
         cancel(leader, approved.getId(), "   ", 400);
         cancel(leader, approved.getId(), "가".repeat(1001), 400);
@@ -112,11 +112,11 @@ class DeliverableConfirmationCancelHttpTest {
         cancel(leader, UUID.randomUUID(), "사유", 404);
         // 화면이 보여 준 확정과 다른 회차다
         assertEquals("취소하려는 확정이 바뀌었습니다. 새로고침해 다시 확인해주세요",
-                cancel(leader, changes.getId(), "사유", 409).get("detail").asText());
+                cancel(leader, changes.getId(), "사유", 409).get("detail").asString());
 
         call(put(BASE + "/submission", project.getId(), report.getId()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"submittedAt\":\"2026-10-01T09:30:00+09:00\"}"), member, 200);
-        assertEquals("제출을 기록한 제출물은 확정을 취소할 수 없습니다", cancel(leader, approved.getId(), "사유", 409).get("detail").asText());
+        assertEquals("제출을 기록한 제출물은 확정을 취소할 수 없습니다", cancel(leader, approved.getId(), "사유", 409).get("detail").asString());
         assertTrue(confirmations.existsById(report.getId()));
         assertEquals(0, cancellations.count());
     }
@@ -129,10 +129,10 @@ class DeliverableConfirmationCancelHttpTest {
 
         cancel(leader, first.getId(), "표지 오타", 200);
         JsonNode one = call(get("/api/projects/{p}/deliverables/{d}", project.getId(), report.getId()), observer, 200);
-        assertEquals("DRAFT", one.get("status").asText());
-        assertEquals("APPROVED", one.get("latestDecision").asText());
+        assertEquals("DRAFT", one.get("status").asString());
+        assertEquals("APPROVED", one.get("latestDecision").asString());
         for (JsonNode d : call(get("/api/projects/{p}/deliverables", project.getId()), observer, 200))
-            assertEquals("DRAFT", d.get("status").asText());
+            assertEquals("DRAFT", d.get("status").asString());
 
         JsonNode round = single(call(get(BASE + "/reviews", project.getId(), report.getId()), observer, 200).get("rounds"));
         assertTrue(round.get("confirmationCancelled").asBoolean());
@@ -156,7 +156,7 @@ class DeliverableConfirmationCancelHttpTest {
     }
 
     private static String detail(JsonNode body, String code) {
-        for (JsonNode check : body.get("checks")) if (code.equals(check.get("code").asText())) return check.get("detail").asText();
+        for (JsonNode check : body.get("checks")) if (code.equals(check.get("code").asString())) return check.get("detail").asString();
         return fail(code + " 검사가 응답에 없다");
     }
 

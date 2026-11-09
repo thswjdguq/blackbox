@@ -209,11 +209,11 @@ class DeliverableConfirmationConcurrencyTest {
         Set<String> recorded = new HashSet<>();
         for (Reply reply : replies) {
             assertEquals(200, reply.status(), String.valueOf(reply.body()));
-            assertEquals("DRAFT", reply.body().get("status").asText());
+            assertEquals("DRAFT", reply.body().get("status").asString());
             assertTrue(reply.body().get("confirmation").isNull());
             assertEquals(1, reply.body().get("cancellations").size(), reply.body().toString());
             JsonNode c = reply.body().at("/cancellations/0");
-            recorded.add(c.get("cancelledAt").asText() + " " + c.get("reason").asText());
+            recorded.add(c.get("cancelledAt").asString() + " " + c.get("reason").asString());
         }
         assertEquals(1, recorded.size(), "모두 같은 취소 기록을 받는다: " + recorded);
         assertEquals(0, count("deliverable_confirmations where deliverable_id = ?", ready.deliverable()));
@@ -236,7 +236,7 @@ class DeliverableConfirmationConcurrencyTest {
             assertTrue(cancelled == 200 && submitted == 409 || cancelled == 409 && submitted == 200,
                     "한쪽만 성공해야 한다: 취소 " + replies.get(0) + ", 제출 기록 " + replies.get(1));
             Reply refused = cancelled == 409 ? replies.get(0) : replies.get(1);
-            assertTrue(refused.body().get("detail").asText().contains(cancelled == 409 ? "제출을 기록한 제출물은" : "최종본을 확정한 뒤에"), refused.body().toString());
+            assertTrue(refused.body().get("detail").asString().contains(cancelled == 409 ? "제출을 기록한 제출물은" : "최종본을 확정한 뒤에"), refused.body().toString());
             boolean cancelWon = cancelled == 200;
             assertEquals(cancelWon ? 0 : 1, count("deliverable_confirmations where deliverable_id = ?", ready.deliverable()));
             assertEquals(cancelWon ? 1 : 0, count("deliverable_confirmation_cancellations where deliverable_id = ?", ready.deliverable()));
