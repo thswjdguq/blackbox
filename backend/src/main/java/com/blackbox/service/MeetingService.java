@@ -125,7 +125,7 @@ public class MeetingService {
         if (req.meetingDate() != null || req.attendanceGraceMinutes() != null || req.attendanceWindowMinutes() != null) {
             accessChecker.requireLeader(project, user);
             if (meetingAttendeeRepository.findByMeeting(meeting).stream().anyMatch(a -> a.getAttendanceStatus() != null || a.isCheckedIn())) {
-                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "?? ??? ?? ??? ????? ??? ??? ? ????.");
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "참석 기록이 있어 회의 일시나 출석 기준을 변경할 수 없습니다.");
             }
             configureAttendance(meeting, req.attendanceGraceMinutes(), req.attendanceWindowMinutes());
         }
@@ -204,7 +204,7 @@ public class MeetingService {
     @Transactional
     public void saveAiSummary(UUID projectId, UUID meetingId, String summary, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
+        accessChecker.requireContributor(project, user);
         Meeting meeting = findMeeting(meetingId, project);
         meeting.setAiSummary(summary);
         meetingRepository.save(meeting);
@@ -215,19 +215,19 @@ public class MeetingService {
     @Transactional
     public void saveNotionInfo(UUID projectId, UUID meetingId, String pageId, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
+        accessChecker.requireContributor(project, user);
         Meeting meeting = findMeeting(meetingId, project);
         meeting.setNotionPageId(pageId);  // URL이 아닌 실제 Notion page ID 저장
         meeting.setNotionSyncedAt(OffsetDateTime.now());
         meetingRepository.save(meeting);
     }
 
-    // ── 컨트롤러용 엔티티 직접 반환 (Notion 내보내기 등) ────────────────────
+    // 외부 쓰기(AI 요약·Notion 내보내기/캘린더 추가) 전에 권한을 확인한다.
 
     @Transactional(readOnly = true)
     public Meeting getRawMeeting(UUID projectId, UUID meetingId, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireMember(project, user);
+        accessChecker.requireContributor(project, user);
         return findMeeting(meetingId, project);
     }
 
@@ -315,7 +315,7 @@ public class MeetingService {
         int g = grace == null ? meeting.getAttendanceGraceMinutes() : grace;
         int w = window == null ? meeting.getAttendanceWindowMinutes() : window;
         if (g < 0 || g > 120 || w <= g || w > 480) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "?? ??? 0~120?, ?? ??? ? ?? 480? ??? ?????.");
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "지각 기준은 0~120분, 참석 확인 마감은 지각 기준보다 늦고 480분 이하여야 합니다.");
         }
         meeting.setAttendanceGraceMinutes(g); meeting.setAttendanceWindowMinutes(w);
     }
