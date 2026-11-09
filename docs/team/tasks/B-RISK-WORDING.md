@@ -13,3 +13,4 @@
 - #160이 병합된 main `4b0834ba`(Java 25 / Spring Boot 4.1)를 일반 merge했다. 이 PR의 변경은 RiskService 표시 문구 네 곳 그대로다.
 - diff 검사와 migration 이력 검사 통과: 기존 24개 SQL 보존, 전체 34개 버전 중복 없음. SQL 변경 없음.
 - 문구 변경의 별도 로컬 전체 검사는 반복하지 않는다. 새 head의 전체 검증은 PR CI로 확인하고 결과를 댓글에 기록한다. A의 서버 검토와 작성자 외 병합이 남아 있다.
+- 이어 main `e6a8b6e4`의 #161(프론트 보안·Node 26)도 일반 merge했다. 이 PR의 문구 변경 범위는 그대로이며 최종 CI는 Java 25·Node 26·DB 기준이다.
