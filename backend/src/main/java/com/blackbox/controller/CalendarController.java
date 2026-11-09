@@ -3,9 +3,13 @@ package com.blackbox.controller;
 import com.blackbox.dto.*;
 import com.blackbox.entity.User;
 import com.blackbox.service.GoogleCalendarService;
+import com.blackbox.service.CalendarOAuthStateService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,18 +20,24 @@ import java.util.UUID;
 public class CalendarController {
 
     private final GoogleCalendarService calendarService;
+    private final CalendarOAuthStateService states;
+    private static final String STATE_COOKIE = "calendarOAuthState";
+    private static final String CALLBACK_PATH = "/api/auth/google/callback";
 
-    public CalendarController(GoogleCalendarService calendarService) {
+    public CalendarController(GoogleCalendarService calendarService, CalendarOAuthStateService states) {
         this.calendarService = calendarService;
+        this.states = states;
     }
 
     // ── OAuth ─────────────────────────────────────────────────────────────
 
     /** Google OAuth 동의 화면 URL 반환 (인증 필요) */
     @GetMapping("/api/calendar/authorize")
-    public ResponseEntity<GoogleAuthUrlResponse> authorize(@AuthenticationPrincipal User user) {
-        String url = calendarService.buildAuthorizationUrl(user.getId());
-        return ResponseEntity.ok(new GoogleAuthUrlResponse(url));
+    public ResponseEntity<GoogleAuthUrlResponse> authorize(@AuthenticationPrincipal User user, HttpServletRequest request) {
+        String state = states.issue(user.getId());
+        String url = calendarService.buildAuthorizationUrl(state);
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, stateCookie(state, request,
+                CalendarOAuthStateService.LIFETIME.getSeconds())).body(new GoogleAuthUrlResponse(url));
     }
 
     /** Google OAuth 콜백 — 코드 수신 → 토큰 저장 → 프로필 설정으로 리다이렉트 */
@@ -35,8 +45,13 @@ public class CalendarController {
     public void callback(
             @RequestParam String code,
             @RequestParam String state,
+            @CookieValue(name = STATE_COOKIE, required = false) String browserState,
+            @AuthenticationPrincipal User user,
+            HttpServletRequest request,
             HttpServletResponse response) throws IOException {
-        calendarService.handleCallback(code, state);
+        UUID userId = states.consume(state, browserState, user == null ? null : user.getId());
+        response.addHeader(HttpHeaders.SET_COOKIE, stateCookie("", request, 0));
+        calendarService.handleCallback(code, userId);
         response.sendRedirect("/profile/settings?calendar=connected");
     }
 
@@ -81,7 +96,7 @@ public class CalendarController {
             @PathVariable UUID projectId,
             @RequestBody @Valid CalendarEventRequest req,
             @AuthenticationPrincipal User user) {
-        calendarService.createCalendarEvents(req, user);
+        calendarService.createCalendarEvents(projectId, req, user);
         return ResponseEntity.ok().build();
     }
 
@@ -105,6 +120,12 @@ public class CalendarController {
             @RequestBody @Valid CalendarRecommendRequest req,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(calendarService.recommendMeetingTimes(req, user));
+    }
+
+    private String stateCookie(String value, HttpServletRequest request, long maxAge) {
+        boolean secure = request.isSecure() || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+        return ResponseCookie.from(STATE_COOKIE, value).httpOnly(true).secure(secure).sameSite("Lax")
+                .path(CALLBACK_PATH).maxAge(maxAge).build().toString();
     }
 
 }
