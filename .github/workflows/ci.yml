@@ -40,6 +40,7 @@ jobs:
       SPRING_DATASOURCE_USERNAME: blackbox_test
       SPRING_DATASOURCE_PASSWORD: blackbox_test
       JWT_SECRET: ci-only-dummy-signing-key-not-a-real-secret-0123456789
+      JAVA_TOOL_OPTIONS: -Dspring.test.context.cache.maxSize=3
     steps:
       - uses: actions/checkout@v4
 
@@ -105,6 +106,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Node 20 준비
         uses: actions/setup-node@v4
@@ -116,6 +119,9 @@ jobs:
       - name: 의존성 설치
         working-directory: frontend
         run: npm ci
+
+      - name: 기존 main 마이그레이션 보존 검사
+        run: node scripts/verify-main-migration-history.cjs
 
       - name: 타입 검사
         working-directory: frontend

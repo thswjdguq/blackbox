@@ -22,7 +22,7 @@ export default function ConfirmDeleteDialog({
     try {
       await onConfirm();
     } catch (err) {
-      // 409 안내는 서버 detail 을 쓴다 (제출물·요구사항별로 문구가 다르다)
+      // 409 안내는 서버 detail 을 쓴다 (최종 제출물·요구사항별로 문구가 다르다)
       const status = (err as { response?: { status?: number } })?.response?.status;
       setError(
         apiError(

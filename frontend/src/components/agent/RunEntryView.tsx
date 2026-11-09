@@ -5,9 +5,8 @@ import Link from "next/link";
 import { Check, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { parseAnswer } from "@/lib/agent/answer";
 import type { RunEntry } from "@/lib/store/agentStore";
-import type { Proposal } from "@/types/agent";
-
-const KIND_LABEL: Record<string, string> = { DELIVERABLE_PLAN: "제출물 계획", TASKS: "업무" };
+import type { AgentStatus, Proposal } from "@/types/agent";
+import ProposalCard from "./ProposalCard";
 
 function useElapsed(startedAt: number, running: boolean) {
   const [now, setNow] = useState(Date.now());
@@ -24,12 +23,14 @@ export default function RunEntryView({
   entry,
   projectId,
   proposals,
+  status,
   onRetry,
   onNavigate,
 }: {
   entry: RunEntry;
   projectId: string;
   proposals: Record<string, Proposal>;
+  status: AgentStatus;
   onRetry: () => void;
   onNavigate: () => void;
 }) {
@@ -96,23 +97,12 @@ export default function RunEntryView({
         </div>
       )}
 
-      {/* 제안 카드: 1단계에서는 접힌 모양으로 보이기만 한다. 채택·거절은 2단계 */}
-      {entry.proposalIds.map((id) => {
-        const p = proposals[id];
-        if (!p) return null;
-        const count = p.kind === "TASKS" ? `업무 ${p.content.tasks.length}개` : `요구사항 ${p.content.requirements.length} · 업무 ${p.content.tasks.length}`;
-        return (
-          <div key={id} data-testid="agent-proposal" className="mt-3 rounded-lg border border-bb-border bg-bb-bg p-3">
-            <p className="flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="rounded bg-bb-surface2 px-1.5 py-0.5 text-bb-text2">{KIND_LABEL[p.kind] ?? "제안"}</span>
-              <span className="rounded bg-bb-primary/10 px-1.5 py-0.5 text-bb-primary">AI 제안</span>
-              <span className="text-bb-text2">{count}</span>
-            </p>
-            <p className="mt-1 text-sm font-medium text-bb-text">{p.title}</p>
-            {p.rationale && <p className="mt-1 text-xs text-bb-text2">근거: {p.rationale}</p>}
-          </div>
-        );
-      })}
+      {/* 제안 카드: 실행 기록과 "제안" 탭이 같은 카드(저장소)를 본다. 한쪽에서 채택하면 다른 쪽도 바뀐다 */}
+      {entry.proposalIds.map((id) =>
+        proposals[id] ? (
+          <ProposalCard key={id} proposal={proposals[id]} projectId={projectId} status={status} onNavigate={onNavigate} />
+        ) : null
+      )}
 
       {entry.state === "failed" && entry.error && (
         <div className="mt-3">

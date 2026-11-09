@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import AgentButton from "@/components/agent/AgentButton";
+import { useAgentStore } from "@/lib/store/agentStore";
+import { suggestFor } from "@/lib/agent/skills";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import type { Deliverable } from "@/types/deliverable";
 import type { Task } from "@/types/task";
-import { daysLeft, dueLabel } from "@/lib/due";
+import { deliverableDue } from "@/lib/due";
 
 interface Step {
   title: string;
@@ -14,8 +18,7 @@ interface Step {
 }
 
 /**
- * 제출물 → 요구사항 → 업무 → 충족 확인 → 검토 → 확정 → 제출 기록 순서에서 아직 안 끝난 첫 단계를 고른다.
- * 검토가 시작된 뒤에는 서버의 status·latestDecision(K-20 2장)으로 고른다.
+ * 최종 제출물 → 요구사항 → 업무 → 충족 확인 → 검토 순서에서 아직 안 끝난 첫 단계를 고른다.
  * 화면이 판단하는 안내일 뿐이며, 충족·승인은 사람이 확인한다 (CONTRACTS 3장 1항).
  * 요구사항–업무 연결은 선택이므로, 충족 확인이 끝난 요구사항에는 업무를 요구하지 않는다.
  * canWrite=false(관찰자)에게는 할 일을 시키지 않고 현재 상태만 알린다.
@@ -27,69 +30,14 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
   const required = d.requirements.filter((r) => r.required);
   const unchecked = required.filter((r) => r.assessment == null);
   const uncovered = unchecked.filter((r) => !linked.some((t) => t.requirementId === r.id));
-  const view = "제출물 보기";
-  const reviewTab = `${base}?tab=review`;
-  const submitTab = `${base}?tab=submit`;
+  const view = "최종 제출물 보기";
 
-  if (d.status === "SUBMITTED") {
-    return { title: "제출을 기록했습니다", detail: "이 제출물은 끝났습니다.", href: submitTab, action: view };
-  }
-  if (d.status === "CONFIRMED") {
-    return canWrite
-      ? {
-          title: "학교에 내고 제출을 기록하세요",
-          detail: "최종본이 확정됐습니다. 정한 곳에 낸 뒤 최종 제출 탭에서 제출했다고 기록하세요.",
-          href: submitTab,
-          action: "최종 제출 탭 열기",
-        }
-      : {
-          title: "제출 기록을 기다리고 있습니다",
-          detail: "최종본이 확정됐습니다. 팀원이 제출하고 기록하면 여기에 표시됩니다.",
-          href: submitTab,
-          action: view,
-        };
-  }
-  // 수정 요청을 받으면 status는 DRAFT(보완 중)로 돌아간다(K-20 2장). 확정 전이면 결정으로 고른다
-  if (d.latestDecision === "CHANGES_REQUESTED") {
-    const left = open.length > 0 ? ` 연결 업무 ${open.length}개가 아직 끝나지 않았습니다.` : "";
-    return canWrite
-      ? {
-          title: "수정 요청을 반영하세요",
-          detail: `검토에서 수정 요청을 받았습니다.${left} 고친 파일을 파일 금고에 올리고 검토 탭에서 새 회차를 여세요.`,
-          href: reviewTab,
-          action: "검토 탭 열기",
-        }
-      : {
-          title: "수정 요청을 반영하고 있습니다",
-          detail: `검토에서 수정 요청을 받았습니다.${left}`,
-          href: reviewTab,
-          action: view,
-        };
-  }
+  if (d.status === "SUBMITTED") return { title: "제출 기록이 완료됐습니다", detail: "확정된 파일과 제출 경로·시각을 확인할 수 있습니다.", href: `${base}?tab=submit`, action: "제출 기록 보기" };
+  if (d.status === "CONFIRMED") return { title: "학교에 제출한 뒤 기록을 남기세요", detail: "최종본이 확정됐습니다. 학교 시스템에 직접 제출한 뒤 제출 기록을 남기세요.", href: `${base}?tab=submit`, action: canWrite ? "확정본·제출 기록" : "확정본 보기" };
   if (d.status === "IN_REVIEW") {
-    if (d.latestDecision === "APPROVED") {
-      return {
-        title: canWrite ? "승인된 최종본을 확정하세요" : "최종본 확정을 기다리고 있습니다",
-        detail: canWrite
-          ? "검토에서 승인됐습니다. 팀장이 최종 제출 탭에서 준비 목록을 확인하고 확정합니다."
-          : "검토에서 승인됐습니다. 팀장이 확정하면 제출 단계로 넘어갑니다.",
-        href: submitTab,
-        action: canWrite ? "최종 제출 탭 열기" : view,
-      };
-    }
-    return canWrite
-      ? {
-          title: "검토가 진행 중입니다",
-          detail: "검토 탭에서 피드백을 남기고 승인하거나 수정을 요청하세요. 파일을 올린 사람은 결정할 수 없습니다.",
-          href: reviewTab,
-          action: "검토 탭 열기",
-        }
-      : {
-          title: "검토가 진행 중입니다",
-          detail: "팀원이 검토 탭에서 피드백을 남기고 결정합니다.",
-          href: reviewTab,
-          action: view,
-        };
+    if (d.latestDecision === "APPROVED") return { title: "검토한 최종본을 확정할 차례입니다", detail: "팀장이 필수 요구사항과 승인된 파일을 확인한 뒤 최종본을 확정합니다.", href: `${base}?tab=submit`, action: "최종본 확인" };
+    if (d.latestDecision === "CHANGES_REQUESTED") return { title: "검토 의견을 반영해 다시 요청하세요", detail: "미해결 피드백을 보완하고 수정한 파일 버전으로 검토를 요청하세요.", href: `${base}?tab=review`, action: "보완할 내용 보기" };
+    return { title: "최종 파일 검토를 기다리고 있습니다", detail: "파일을 올린 사람 외의 팀원이 결과를 확인해 주세요.", href: `${base}?tab=review`, action: "검토 이어가기" };
   }
 
   if (d.requirements.length === 0) {
@@ -135,10 +83,10 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
     return {
       title: `진행 중인 업무 ${open.length}개`,
       detail: `연결 업무 ${linked.length}개 중 ${linked.length - open.length}개 완료. ${
-        canWrite ? "업무 보드에서 진행 상황을 바꾸세요." : "업무 보드에서 진행 상황을 볼 수 있습니다."
+        canWrite ? "업무에서 진행 상태를 바꾸고 자료를 등록하세요." : "업무에서 진행 상황을 확인할 수 있습니다."
       }`,
       href: `/projects/${projectId}/board?deliverable=${d.id}`,
-      action: "업무 보드 열기",
+      action: "업무 이어하기",
     };
   }
   if (unchecked.length > 0) {
@@ -160,9 +108,9 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
   return canWrite
     ? {
         title: "검토를 요청할 준비가 됐습니다",
-        detail: "업무와 필수 요구사항 확인이 끝났습니다. 초안을 파일 금고에 올리고 검토를 요청하세요.",
+        detail: "업무와 필수 요구사항 확인이 끝났습니다. 업무에서 자료를 등록하고, 최종 제출물에서 검토를 요청하세요.",
         href: base,
-        action: "제출물 열기",
+        action: "최종 제출물 열기",
       }
     : {
         title: "검토 요청 준비가 끝났습니다",
@@ -183,71 +131,59 @@ export default function NextStepCard({
   tasks: Task[];
   canWrite: boolean;
 }) {
+  const agentStatus = useAgentStore(s => s.status[projectId]);
+  const loadAgentStatus = useAgentStore(s => s.loadStatus);
+  useEffect(() => { loadAgentStatus(projectId); }, [projectId,loadAgentStatus]);
+  const help = agentStatus?.available ? suggestFor(agentStatus) : null;
   if (deliverables.length === 0) {
     return (
-      <Link
-        href={`/projects/${projectId}/deliverables`}
-        className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15"
+      <section
+        className="mb-6 block rounded-xl border border-blue-500/30 bg-blue-500/10 p-5 hover:bg-blue-500/15"
       >
-        <p className="text-xs font-semibold text-teal-500">다음 할 일</p>
-        <h2 className="mt-1 font-semibold text-bb-text">{canWrite ? "제출물부터 계획하기" : "아직 제출물이 없습니다"}</h2>
+        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">다음 할 일</p>
+        <h2 className="mt-1 font-semibold text-bb-text">{canWrite ? "최종 제출물부터 계획하기" : "아직 최종 제출물이 없습니다"}</h2>
         <p className="mt-2 text-sm text-bb-text2">
           {canWrite
             ? "제출 기한과 요구사항을 정하고, 필요한 업무를 팀원에게 연결하세요."
-            : "팀원이 제출물을 등록하면 여기에 다음 할 일이 표시됩니다."}
+            : "팀원이 최종 제출물을 등록하면 여기에 다음 할 일이 표시됩니다."}
         </p>
-        <span className="mt-3 inline-block text-sm font-medium text-teal-500">{canWrite ? "제출물 열기" : "제출물 목록 보기"} →</span>
-      </Link>
+        <div className="mt-3 flex flex-wrap gap-3"><Link href={`/projects/${projectId}/deliverables`} className="text-sm font-medium text-blue-700 dark:text-blue-300">{canWrite ? "최종 제출물 열기" : "최종 제출물 목록 보기"} →</Link><AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" /></div>
+      </section>
     );
   }
 
-  // 마감이 가장 가까운 제출물부터 본다. 기한이 지난 제출물도 포함하고, 제출을 기록한 것은 뺀다
-  const sorted = deliverables
-    .filter((d) => d.status !== "SUBMITTED")
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  if (sorted.length === 0) {
-    return (
-      <Link
-        href={`/projects/${projectId}/deliverables`}
-        className="mb-6 block rounded-xl border border-teal-500/40 bg-teal-500/10 p-5 hover:bg-teal-500/15"
-      >
-        <p className="text-xs font-semibold text-teal-500">다음 할 일</p>
-        <h2 className="mt-1 font-semibold text-bb-text">모든 제출물의 제출을 기록했습니다</h2>
-        <p className="mt-2 text-sm text-bb-text2">
-          {canWrite ? "과제가 더 생기면 제출물을 추가하세요." : "팀원이 제출물을 더 등록하면 여기에 다음 할 일이 표시됩니다."}
-        </p>
-        <span className="mt-3 inline-block text-sm font-medium text-teal-500">제출물 목록 보기 →</span>
-      </Link>
-    );
-  }
-  const target = sorted[0];
+  // 마감이 가장 가까운 최종 제출물부터 본다. 기한이 지난 최종 제출물도 포함한다
+  const sorted = [...deliverables].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const target = sorted.find(d => d.status !== "SUBMITTED") ?? sorted[0];
   const step = nextStepFor(projectId, target, tasks, canWrite);
-  const overdue = daysLeft(target.dueDate) < 0;
+  const due = deliverableDue(target);
 
   return (
-    <section className="mb-6 rounded-xl border border-teal-500/40 bg-teal-500/10 p-5" aria-labelledby="next-step-title">
+    <section className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 p-5" aria-labelledby="next-step-title">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-semibold text-teal-500">다음 할 일</span>
+        <span className="font-semibold text-blue-700 dark:text-blue-300">다음 할 일</span>
         <span className="flex items-center gap-1 text-bb-text2">
           <ClipboardList size={12} />
           {target.title}
         </span>
-        <span className={overdue ? "text-red-400 font-medium" : "text-bb-text2"}>{dueLabel(target.dueDate)}</span>
+        {/* 목록·상세와 같은 기준: 확정·제출 기록이면 그 상태, 마감 시간이 있으면 시간까지 본다(#138) */}
+        <span className={`rounded border px-2 py-0.5 font-medium ${due.badge}`}>{due.label}</span>
       </div>
       <h2 id="next-step-title" className="mt-1.5 font-semibold text-bb-text">
         {step.title}
       </h2>
       <p className="mt-1 text-sm text-bb-text2">{step.detail}</p>
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        <Link href={step.href} className="inline-flex items-center gap-1 text-sm font-medium text-teal-500 hover:underline">
+        <Link href={step.href} className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline">
           {step.action}
           <ArrowRight size={14} />
         </Link>
-        {deliverables.length > 1 && (
+        {sorted.length > 1 && (
           <Link href={`/projects/${projectId}/deliverables`} className="text-xs text-bb-text2 hover:text-bb-text">
-            다른 제출물 {deliverables.length - 1}개 보기
+            다른 최종 제출물 {sorted.length - 1}개 보기
           </Link>
         )}
+        {help && <AgentButton projectId={projectId} skill={help.skill} input={help.skill === "BREAK_DOWN_TASKS" ? help.input : undefined} titleExtra={help.deliverable?.title} />}
       </div>
     </section>
   );

@@ -23,6 +23,7 @@ public class ReviewRoundService implements ReviewRoundReader {
     private final UnresolvedCommentCounter unresolvedComments;
     private final DeliverableStatuses statuses;
     private final DeliverableConfirmationCancellationRepository cancellations;
+    private final ReviewFeedbackNotifications notifications;
 
     @Transactional(readOnly = true)
     public ListResponse list(UUID projectId, UUID deliverableId, User user) {
@@ -46,7 +47,9 @@ public class ReviewRoundService implements ReviewRoundReader {
         if (req.fileId() != null) r.setFile(files.findByIdAndProject(req.fileId(), project)
                 .orElseThrow(() -> new NotFoundException("파일을 찾을 수 없습니다")));
         r.setOpenedBy(user);
-        return round(rounds.save(r), true);
+        rounds.save(r);
+        notifications.versionPosted(r,user);
+        return round(r, true);
     }
 
     public Round decide(UUID projectId, UUID deliverableId, UUID reviewId, String decision, User user) {

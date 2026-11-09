@@ -15,5 +15,6 @@ public record SignupRequest(
 
         @NotBlank(message = "비밀번호는 필수입니다")
         @Size(min = 8, max = 100, message = "비밀번호는 8자 이상이어야 합니다")
-        String password
+        String password,
+        @jakarta.validation.Valid @jakarta.validation.constraints.NotNull(message="소속 학교와 학과를 입력해 주세요") AffiliationRequest affiliation
 ) {}

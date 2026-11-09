@@ -28,7 +28,7 @@ class ReviewRoundServiceTest {
     final DeliverableConfirmationCancellationRepository cancellations = mock(DeliverableConfirmationCancellationRepository.class);
     final ProjectAccessChecker access = new ProjectAccessChecker(projects, members);
     final DeliverableStatuses statuses = new DeliverableStatuses(access, deliveries, rounds, confirmations, submissions, cancellations);
-    final ReviewRoundService service = new ReviewRoundService(rounds, deliveries, files, access, unresolved, statuses, cancellations);
+    final ReviewRoundService service = new ReviewRoundService(rounds, deliveries, files, access, unresolved, statuses, cancellations, mock(ReviewFeedbackNotifications.class));
     final Project project = new Project();
     final Deliverable delivery = new Deliverable();
     final User reviewer = user("LEADER"), uploader = user("MEMBER"), observer = user("OBSERVER");
@@ -206,6 +206,7 @@ class ReviewRoundServiceTest {
         context.registerBean(ProjectAccessChecker.class, () -> new ProjectAccessChecker(projects, members));
         context.registerBean(DeliverableStatuses.class, () -> statuses);
         context.registerBean(DeliverableConfirmationCancellationRepository.class, () -> cancellations);
+        context.registerBean(ReviewFeedbackNotifications.class, () -> mock(ReviewFeedbackNotifications.class));
         context.register(ReviewRoundService.class);
         if (counters.length > 0) context.register(counters);
         context.refresh();

@@ -1,0 +1,31 @@
+const fs = require('fs'), ts = require('typescript'), assert = require('assert/strict');
+let generation = 0, reset, calls = [];
+const api = Object.fromEntries(['get','put'].map(method => [method, url => new Promise((resolve,reject) => calls.push({ method,url,resolve,reject }))]));
+const m = { exports: {} };
+const code = ts.transpileModule(fs.readFileSync('src/lib/store/notificationStore.ts','utf8'), { compilerOptions: { module:ts.ModuleKind.CommonJS, esModuleInterop:true } }).outputText;
+new Function('require','module','exports',code)(n => ({ '@/lib/api':api, '@/lib/apiError':{apiError:()=> '조회 실패'}, '@/lib/sessionCache':{onSessionReset:f=>reset=f,sessionGeneration:()=>generation} }[n] ?? require(n)), m,m.exports);
+const store = m.exports.useNotificationStore;
+const item = {id:'n1',readAt:null};
+const page = {items:[item],nextCursor:'next',unreadCount:2};
+async function main() {
+  const load = store.getState().load('p'); await store.getState().load('p'); assert.equal(calls.length,1);
+  calls.shift().resolve({data:page}); await load;
+  const more = store.getState().load('p',true); assert.ok(calls[0].url.includes('cursor=next'));
+  calls.shift().resolve({data:{...page,items:[item,{id:'n2',readAt:null}],nextCursor:null}}); await more;
+  assert.equal(store.getState().projects.p.page.items.length,2);
+  const refresh = store.getState().load('p'); const fetchCall = calls.shift();
+  const read = store.getState().read('p','n1'); calls.shift().resolve({data:{id:'n1',readAt:'now'}}); await read;
+  const countCall = calls.shift(); countCall.resolve({data:{unreadCount:1}}); await new Promise(setImmediate);
+  fetchCall.resolve({data:page}); await refresh;
+  assert.equal(store.getState().projects.p.page.items[0].readAt,'now');
+  assert.equal(store.getState().projects.p.count,1,'늦은 목록 응답이 읽음 후 숫자를 덮어쓰지 않음');
+  const failed = store.getState().read('p','n2'); calls.shift().reject(Error('offline')); await failed;
+  assert.equal(store.getState().projects.p.failedReadId,'n2'); assert.ok(store.getState().projects.p.readError);
+  calls.shift().resolve({data:{unreadCount:1}}); await new Promise(setImmediate);
+  const old = store.getState().load('old'); const oldCall = calls.shift(); generation++; reset();
+  oldCall.resolve({data:page}); await old; assert.deepEqual(store.getState().projects,{});
+  const absent = store.getState().load('missing'); calls.shift().reject(Error('404')); await absent;
+  assert.ok(store.getState().projects.missing.error); assert.equal(store.getState().projects.missing.page,null);
+  console.log('알림 상태 검사 통과: 중복 조회·페이지 병합·읽음 경합·실패 재시도 상태·세션 초기화·404 오류 표시');
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});

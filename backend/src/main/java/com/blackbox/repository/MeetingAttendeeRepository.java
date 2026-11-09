@@ -15,6 +15,10 @@ import java.util.Optional;
 public interface MeetingAttendeeRepository extends JpaRepository<MeetingAttendee, MeetingAttendeeId> {
     List<MeetingAttendee> findByMeeting(Meeting meeting);
     Optional<MeetingAttendee> findByMeetingAndUser(Meeting meeting, User user);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM MeetingAttendee a WHERE a.meeting = :meeting AND a.user = :user")
+    Optional<MeetingAttendee> findForAttendanceUpdate(@Param("meeting") Meeting meeting, @Param("user") User user);
     List<MeetingAttendee> findByUserAndCheckedInTrueOrderByCheckedAtDesc(User user);
 
     /** 해당 프로젝트에서 유저가 실제 체크인한 회의 수 */

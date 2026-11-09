@@ -3,6 +3,7 @@ package com.blackbox.service;
 import com.blackbox.dto.ActionItemDto;
 import org.springframework.stereotype.Service;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -34,8 +35,8 @@ public class AiService {
         return active().summarizeMeeting(title, purpose, notes, decisions);
     }
 
-    public List<ActionItemDto> extractStructuredActionItems(String notes, String decisions) {
-        return active().extractStructuredActionItems(notes, decisions);
+    public List<ActionItemDto> extractStructuredActionItems(String notes, String decisions, OffsetDateTime meetingDate) {
+        return active().extractStructuredActionItems(notes, decisions, meetingDate);
     }
 
     public String rawCall(String userPrompt, int maxTokens) {
