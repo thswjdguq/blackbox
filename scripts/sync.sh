@@ -53,6 +53,6 @@ if ! git diff --cached --quiet; then
 fi
 
 echo "✅ 전방통합 완료. 빌드 검증 후 push 하세요:"
-echo "   (backend) cd backend && JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ./gradlew compileJava"
+echo "   (backend) cd backend && JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./gradlew compileJava"
 echo "   (frontend) cd frontend && npm run type-check"
 echo "   git push origin refactor/main"
