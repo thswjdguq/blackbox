@@ -4,7 +4,7 @@ import com.blackbox.dto.*;
 import com.blackbox.entity.*;
 import com.blackbox.exception.*;
 import com.blackbox.repository.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -12,7 +12,6 @@ import {
   Task,
   TaskStatus,
   TaskPriority,
-  ScoreMap,
   KANBAN_COLUMNS,
   CreateTaskPayload,
 } from "@/types/task";
@@ -37,7 +36,6 @@ interface KanbanBoardProps {
   onResetFilters: () => void;
   initialTasks: Task[];
   members: { userId: string; name: string; email: string }[];
-  scoreMap: ScoreMap;
   filter?: KanbanFilter;
   onTasksChange?: (tasks: Task[]) => void;
   /** 관찰자: 서버가 업무 쓰기를 거절하므로 추가·상태 변경·수정을 숨긴다 */
@@ -52,7 +50,6 @@ export default function KanbanBoard({
   onResetFilters,
   initialTasks,
   members,
-  scoreMap,
   filter,
   onTasksChange,
   readOnly = false,
@@ -374,7 +371,6 @@ export default function KanbanBoard({
                 key={col.id}
                 column={col.id === "DONE" && !preferences.showDone ? { ...col, label: "완료 · 숨김" } : col}
                 tasks={tasksByStatus(col.id)}
-                scoreMap={scoreMap}
                 onAddTask={openCreate}
                 onEditTask={openEdit}
                 onMoveTask={handleMoveTask}

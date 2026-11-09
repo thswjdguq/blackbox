@@ -5,7 +5,7 @@ import com.blackbox.entity.*;
 import com.blackbox.exception.ForbiddenException;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;

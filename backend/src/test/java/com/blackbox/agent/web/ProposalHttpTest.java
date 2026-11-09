@@ -7,8 +7,8 @@ import com.blackbox.dto.CreateTaskRequest;
 import com.blackbox.entity.*;
 import com.blackbox.security.JwtService;
 import com.blackbox.service.TaskService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,11 +86,11 @@ class ProposalHttpTest {
         assertEquals(400, send("GET", "?status=WRONG", member, null).statusCode());
 
         JsonNode card = body(send("GET", "/" + first.getId(), observer, null));
-        assertEquals("PENDING", card.path("status").asText());
-        assertEquals("이팀원", card.path("requestedBy").path("name").asText());
+        assertEquals("PENDING", card.path("status").asString());
+        assertEquals("이팀원", card.path("requestedBy").path("name").asString());
         assertFalse(card.path("edited").asBoolean());
         assertTrue(card.has("decision") && card.path("decision").isNull() && card.has("results") && card.path("results").isNull());
-        assertEquals("문제 정의 초안", card.path("content").path("tasks").get(0).path("title").asText());
+        assertEquals("문제 정의 초안", card.path("content").path("tasks").get(0).path("title").asString());
 
         // 다른 프로젝트의 카드는 없는 카드와 똑같이 보인다
         HttpResponse<String> foreign = send("GET", "/" + secret.getId(), member, null);
@@ -111,18 +111,18 @@ class ProposalHttpTest {
 
         assertTrue(saved.path("edited").asBoolean());
         JsonNode task = body(send("GET", "/" + card.getId(), observer, null)).path("content").path("tasks").get(0);
-        assertEquals("문제 정의 최종본", task.path("title").asText());
+        assertEquals("문제 정의 최종본", task.path("title").asString());
         assertFalse(task.has("assignee"), "담당자는 카드에 없다");
         assertTrue(jdbc.queryForObject("SELECT original::text FROM agent_proposals WHERE id = ?", String.class, card.getId()).contains("문제 정의 초안"),
                 "모델이 만든 원본은 그대로다");
 
         HttpResponse<String> tooLong = send("PUT", "/" + card.getId(), member, "{\"content\":" + PLAN.replace("중간 보고서", "가".repeat(300)) + "}");
         assertEquals(400, tooLong.statusCode());
-        assertTrue(json.readTree(tooLong.body()).path("detail").asText().contains("deliverable.title"), "어느 칸인지 알려 준다: " + tooLong.body());
+        assertTrue(json.readTree(tooLong.body()).path("detail").asString().contains("deliverable.title"), "어느 칸인지 알려 준다: " + tooLong.body());
         assertEquals(400, send("PUT", "/" + card.getId(), member, "{}").statusCode());
         HttpResponse<String> refused = send("PUT", "/" + card.getId(), observer, "{\"content\":" + PLAN + "}");
         assertEquals(403, refused.statusCode());
-        assertEquals("관찰자는 제안을 만들거나 채택할 수 없습니다", json.readTree(refused.body()).path("detail").asText());
+        assertEquals("관찰자는 제안을 만들거나 채택할 수 없습니다", json.readTree(refused.body()).path("detail").asString());
     }
 
     @Test void acceptingAPlanCreatesTheDeliverableItsRequirementsAndTasksOnce() throws Exception {
@@ -130,30 +130,30 @@ class ProposalHttpTest {
 
         JsonNode accepted = body(post(card, "/accept", leader));
 
-        assertEquals("ACCEPTED", accepted.path("status").asText());
-        assertEquals("ACCEPTED", accepted.path("decision").path("result").asText());
-        assertEquals("김팀장", accepted.path("decision").path("decidedBy").path("name").asText());
+        assertEquals("ACCEPTED", accepted.path("status").asString());
+        assertEquals("ACCEPTED", accepted.path("decision").path("result").asString());
+        assertEquals("김팀장", accepted.path("decision").path("decidedBy").path("name").asString());
         JsonNode results = accepted.path("results");
-        String deliverableId = results.path("deliverableId").asText();
+        String deliverableId = results.path("deliverableId").asString();
         assertEquals(2, results.path("requirementIds").size());
         assertEquals(2, results.path("taskIds").size());
 
         // 만들어진 것은 기존 API로 조회된다. 채택한 사람이 만든 것으로 남고, 업무는 요구사항에 연결돼 있다
         JsonNode deliverable = json.readTree(api("GET", "/api/projects/" + project.getId() + "/deliverables/" + deliverableId, observer, null).body());
-        assertEquals("중간 보고서", deliverable.path("title").asText());
-        assertEquals("2026-10-18", deliverable.path("dueDate").asText());
-        assertEquals("LMS 과제함", deliverable.path("submissionMethod").asText());
+        assertEquals("중간 보고서", deliverable.path("title").asString());
+        assertEquals("2026-10-18", deliverable.path("dueDate").asString());
+        assertEquals("LMS 과제함", deliverable.path("submissionMethod").asString());
         assertEquals(2, deliverable.path("requirements").size());
         JsonNode tasks = json.readTree(api("GET", "/api/projects/" + project.getId() + "/tasks", observer, null).body());
         assertEquals(2, tasks.size());
         JsonNode draft = find(tasks, "문제 정의 초안");
-        assertEquals(deliverableId, draft.path("deliverableId").asText());
-        assertEquals("문제 정의를 적는다", draft.path("requirementContent").asText());
-        assertEquals("한 쪽으로 정리", draft.path("completionCriteria").asText());
-        assertEquals("2026-10-13", draft.path("dueDate").asText());
-        assertEquals(leader.getId().toString(), draft.path("createdBy").asText());
+        assertEquals(deliverableId, draft.path("deliverableId").asString());
+        assertEquals("문제 정의를 적는다", draft.path("requirementContent").asString());
+        assertEquals("한 쪽으로 정리", draft.path("completionCriteria").asString());
+        assertEquals("2026-10-13", draft.path("dueDate").asString());
+        assertEquals(leader.getId().toString(), draft.path("createdBy").asString());
         assertEquals(0, draft.path("assignees").size(), "에이전트는 사람을 배정하지 않는다");
-        assertEquals(deliverableId, find(tasks, "표지 만들기").path("deliverableId").asText());
+        assertEquals(deliverableId, find(tasks, "표지 만들기").path("deliverableId").asString());
         assertTrue(find(tasks, "표지 만들기").path("requirementId").isNull());
 
         // 다시 눌러도 지금 카드를 돌려줄 뿐 새로 만들지 않는다
@@ -172,10 +172,10 @@ class ProposalHttpTest {
         assertEquals(403, api("GET", "/api/projects/" + project.getId() + "/agent/origins", outsider, null).statusCode());
         assertEquals(401, api("GET", "/api/projects/" + project.getId() + "/agent/origins", null, null).statusCode());
 
-        assertTrue(origin.createdFromProposal(project.getId(), "TASK", UUID.fromString(draft.path("id").asText())));
+        assertTrue(origin.createdFromProposal(project.getId(), "TASK", UUID.fromString(draft.path("id").asString())));
         assertTrue(origin.createdFromProposal(project.getId(), "DELIVERABLE", UUID.fromString(deliverableId)));
         assertFalse(origin.createdFromProposal(project.getId(), "TASK", UUID.randomUUID()));
-        assertFalse(origin.createdFromProposal(otherProject.getId(), "TASK", UUID.fromString(draft.path("id").asText())));
+        assertFalse(origin.createdFromProposal(otherProject.getId(), "TASK", UUID.fromString(draft.path("id").asString())));
     }
 
     @Test void twoAcceptsAtTheSameTimeCreateTheRecordsOnce() throws Exception {
@@ -196,9 +196,9 @@ class ProposalHttpTest {
         AgentProposal noDate = data.card(project, member, "DELIVERABLE_PLAN", "기한 없음", PLAN.replace("\"2026-10-18\"", "null"));
         HttpResponse<String> refused = post(noDate, "/accept", member);
         assertEquals(400, refused.statusCode());
-        assertTrue(json.readTree(refused.body()).path("detail").asText().contains("deliverable.dueDate"), refused.body());
+        assertTrue(json.readTree(refused.body()).path("detail").asString().contains("deliverable.dueDate"), refused.body());
         assertEquals(0, count("deliverables"));
-        assertEquals("PENDING", body(send("GET", "/" + noDate.getId(), member, null)).path("status").asText());
+        assertEquals("PENDING", body(send("GET", "/" + noDate.getId(), member, null)).path("status").asString());
         body(send("PUT", "/" + noDate.getId(), member, "{\"content\":" + PLAN + "}"));
         assertEquals(200, post(noDate, "/accept", member).statusCode());
         assertEquals(1, count("deliverables"));
@@ -214,7 +214,7 @@ class ProposalHttpTest {
         assertEquals(400, post(midway, "/accept", member).statusCode());
         assertEquals(1, count("deliverables"), "기말 보고서는 만들어지지 않았다");
         assertEquals(2, count("tasks"));
-        assertEquals("PENDING", body(send("GET", "/" + midway.getId(), member, null)).path("status").asText());
+        assertEquals("PENDING", body(send("GET", "/" + midway.getId(), member, null)).path("status").asString());
         assertTrue(body(send("GET", "/" + midway.getId(), member, null)).path("results").isNull());
     }
 
@@ -230,8 +230,8 @@ class ProposalHttpTest {
         assertTrue(results.path("deliverableId").isNull(), "새로 만든 제출물은 없다");
         assertEquals(1, results.path("taskIds").size());
         JsonNode task = json.readTree(api("GET", "/api/projects/" + project.getId() + "/tasks", member, null).body()).get(0);
-        assertEquals(report.getId().toString(), task.path("deliverableId").asText());
-        assertEquals(requirement.getId().toString(), task.path("requirementId").asText());
+        assertEquals(report.getId().toString(), task.path("deliverableId").asString());
+        assertEquals(requirement.getId().toString(), task.path("requirementId").asString());
 
         // 카드를 만든 뒤 요구사항이 지워졌다면 채택되지 않는다
         AgentProposal stale = data.card(project, member, "TASKS", "낡은 카드", content.replace(requirement.getId().toString(), UUID.randomUUID().toString()));
@@ -254,16 +254,16 @@ class ProposalHttpTest {
             String pointing = content.replace(mine.getId().toString(), outside);
             HttpResponse<String> edited = send("PUT", "/" + card.getId(), member, "{\"content\":" + pointing + "}");
             assertEquals(400, edited.statusCode(), edited.body());
-            assertTrue(json.readTree(edited.body()).path("detail").asText().contains("deliverableId"), edited.body());
+            assertTrue(json.readTree(edited.body()).path("detail").asString().contains("deliverableId"), edited.body());
             assertFalse(edited.body().contains("남의 비밀 보고서"), edited.body());
-            assertEquals(mine.getId().toString(), body(send("GET", "/" + card.getId(), member, null)).path("content").path("deliverableId").asText(), "카드는 그대로다");
+            assertEquals(mine.getId().toString(), body(send("GET", "/" + card.getId(), member, null)).path("content").path("deliverableId").asString(), "카드는 그대로다");
 
             // 그런 내용이 이미 들어 있는 카드를 채택하는 경우
             AgentProposal planted = data.card(project, member, "TASKS", "밖을 가리키는 카드", pointing);
             HttpResponse<String> accepted = post(planted, "/accept", member);
             assertEquals(400, accepted.statusCode(), accepted.body());
             assertFalse(accepted.body().contains("남의 비밀 보고서"), accepted.body());
-            assertEquals("PENDING", body(send("GET", "/" + planted.getId(), member, null)).path("status").asText());
+            assertEquals("PENDING", body(send("GET", "/" + planted.getId(), member, null)).path("status").asString());
         }
         assertEquals(0, count("tasks"), "아무 업무도 만들어지지 않았다");
     }
@@ -274,14 +274,14 @@ class ProposalHttpTest {
         assertEquals(403, post(rejected, "/accept", observer).statusCode());
 
         JsonNode decision = body(post(rejected, "/reject", leader));
-        assertEquals("REJECTED", decision.path("status").asText());
-        assertEquals("REJECTED", decision.path("decision").path("result").asText());
+        assertEquals("REJECTED", decision.path("status").asString());
+        assertEquals("REJECTED", decision.path("decision").path("result").asString());
         assertTrue(decision.path("results").isNull());
         assertEquals(200, post(rejected, "/reject", member).statusCode(), "거절을 다시 눌러도 그대로다");
 
         HttpResponse<String> late = post(rejected, "/accept", member);
         assertEquals(409, late.statusCode());
-        assertEquals(DECIDED, json.readTree(late.body()).path("detail").asText());
+        assertEquals(DECIDED, json.readTree(late.body()).path("detail").asString());
         assertEquals(409, send("PUT", "/" + rejected.getId(), member, "{\"content\":" + PLAN + "}").statusCode());
         assertEquals(0, count("deliverables"));
 
@@ -289,7 +289,7 @@ class ProposalHttpTest {
         assertEquals(200, post(accepted, "/accept", member).statusCode());
         assertEquals(409, post(accepted, "/reject", member).statusCode());
         assertEquals(409, send("PUT", "/" + accepted.getId(), member, "{\"content\":" + PLAN + "}").statusCode());
-        assertEquals("ACCEPTED", body(send("GET", "/" + accepted.getId(), member, null)).path("status").asText());
+        assertEquals("ACCEPTED", body(send("GET", "/" + accepted.getId(), member, null)).path("status").asString());
     }
 
     private int count(String table) {
@@ -297,19 +297,19 @@ class ProposalHttpTest {
     }
 
     private static JsonNode find(JsonNode tasks, String title) {
-        for (JsonNode task : tasks) if (task.path("title").asText().equals(title)) return task;
+        for (JsonNode task : tasks) if (task.path("title").asString().equals(title)) return task;
         throw new AssertionError("업무가 없다: " + title);
     }
 
     private static List<String> texts(JsonNode array) {
         List<String> out = new ArrayList<>();
-        array.forEach(n -> out.add(n.asText()));
+        array.forEach(n -> out.add(n.asString()));
         return out;
     }
 
     private static List<String> titles(JsonNode cards) {
         List<String> titles = new ArrayList<>();
-        cards.forEach(c -> titles.add(c.path("title").asText()));
+        cards.forEach(c -> titles.add(c.path("title").asString()));
         return titles;
     }
 

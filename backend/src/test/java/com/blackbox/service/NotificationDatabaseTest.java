@@ -9,10 +9,10 @@ import com.blackbox.repository.UserNotificationRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -52,12 +52,12 @@ class NotificationDatabaseTest {
     @Autowired TaskFileService taskFiles;
     @Autowired PlatformTransactionManager txManager;
     @Autowired DataSource dataSource;
-    @MockBean ActivityLogService activity;
-    @MockBean AlertService alerts;
-    @MockBean DiscordNotificationService discord;
-    @MockBean ScoreService scores;
-    @MockBean FileVaultService storage;
-    @MockBean ReviewRoundService reviews;
+    @MockitoBean ActivityLogService activity;
+    @MockitoBean AlertService alerts;
+    @MockitoBean DiscordNotificationService discord;
+    @MockitoBean ScoreService scores;
+    @MockitoBean FileVaultService storage;
+    @MockitoBean ReviewRoundService reviews;
 
     /** 팀장 민지, 팀원 현우(담당)·유나·지호, 관찰자, 다른 프로젝트 사용자. */
     class Team {

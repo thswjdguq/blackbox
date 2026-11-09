@@ -3,7 +3,7 @@ package com.blackbox.agent.skill;
 import com.blackbox.agent.AgentProperties;
 import com.blackbox.agent.tool.AgentToolbox;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;

@@ -2,7 +2,7 @@ package com.blackbox.agent.proposal;
 
 import com.blackbox.agent.AgentProposal;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import jakarta.validation.Validator;
 
 import java.util.List;

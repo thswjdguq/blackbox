@@ -1,7 +1,7 @@
 package com.blackbox.agent;
 
 import com.blackbox.entity.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -111,7 +111,7 @@ public class AgentTestData {
                 AgentProposal card = AgentProposal.propose(run, kind, title, "테스트 근거", new ObjectMapper().readTree(contentJson), OffsetDateTime.now());
                 em.persist(card);
                 return card;
-            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            } catch (tools.jackson.core.JacksonException e) {
                 throw new IllegalArgumentException(e);
             }
         });

@@ -76,7 +76,7 @@ public class GoogleCalendarService {
     // ── OAuth ─────────────────────────────────────────────────────────────
 
     public String buildAuthorizationUrl(String state) {
-        return UriComponentsBuilder.fromHttpUrl(GOOGLE_AUTH_URL)
+        return UriComponentsBuilder.fromUriString(GOOGLE_AUTH_URL)
                 .queryParam("client_id", clientId)
                 .queryParam("redirect_uri", redirectUri)
                 .queryParam("response_type", "code")
@@ -478,7 +478,7 @@ public class GoogleCalendarService {
 
         // + 기호가 포함된 timeMin/timeMax를 URL-safe하게 인코딩
         String uri = UriComponentsBuilder
-                .fromHttpUrl(GOOGLE_CAL_URL + "/calendars/primary/events")
+                .fromUriString(GOOGLE_CAL_URL + "/calendars/primary/events")
                 .queryParam("timeMin", timeMin)
                 .queryParam("timeMax", timeMax)
                 .queryParam("singleEvents", "true")
