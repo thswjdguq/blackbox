@@ -132,7 +132,7 @@ flowchart LR
 
 | 영역 | 스택 |
 |---|---|
-| **백엔드** | Spring Boot 3.5.16 · Java 17 · Spring Web / Data JPA / Security / Validation · WebFlux(WebClient) · jjwt 0.12.6 · OpenPDF 1.3.30 |
+| **백엔드** | Spring Boot 3.5.16 · Java 25 · Spring Web / Data JPA / Security / Validation · WebFlux(WebClient) · jjwt 0.12.6 · OpenPDF 1.3.30 |
 | **프론트엔드** | Next.js 16 · React 18 · TypeScript 5 · Tailwind CSS 3 · Zustand 5 · axios · @dnd-kit(칸반) · Recharts · date-fns |
 | **데이터베이스** | PostgreSQL 16 · Flyway 마이그레이션(V1~V18) |
 | **인프라** | Docker Compose · Nginx 리버스 프록시(HTTP→HTTPS, SSL) |
@@ -189,7 +189,7 @@ docker compose up -d --build
   ```
 
   PowerShell에서는 `$env:NEXT_DEV_BACKEND='http://localhost:8080'; npm run dev`처럼 준다.
-  백엔드는 CI와 같은 JDK 17로 실행한다. 기본 Java가 다른 버전이면 `JAVA_HOME`을 JDK 17로 지정한다. DB 사용자와 비밀번호는 `docker-compose.db-only.yml`에 적힌 값을 그대로 준다. 화면은 환경 변수를 주는 대신 `frontend/.env.example`을 `frontend/.env.local`로 복사해도 된다.
+  백엔드는 CI와 같은 JDK 25로 실행한다. 기본 Java가 다른 버전이면 `JAVA_HOME`을 JDK 25로 지정한다. DB 사용자와 비밀번호는 `docker-compose.db-only.yml`에 적힌 값을 그대로 준다. 화면은 환경 변수를 주는 대신 `frontend/.env.example`을 `frontend/.env.local`로 복사해도 된다.
   파일 업로드까지 쓰려면 백엔드에 `FILE_UPLOAD_DIR`도 준다. 기본값 `/data/uploads`는 컨테이너 안의 경로라 로컬에서는 업로드가 500으로 실패한다. 저장소 밖의 폴더를 지정한다.
 - 두 브랜치를 함께 띄우려면(예: main으로 개발하면서 시연 브랜치를 확인) 브랜치를 옆 폴더에 받아 `docker-compose.second.yml`을 붙인다. 폴더 이름이 Compose의 프로젝트 이름이 되어 이미지, DB, 업로드 파일이 따로 만들어지고, 이 파일이 컨테이너 이름과 포트를 바꾼다.
 
