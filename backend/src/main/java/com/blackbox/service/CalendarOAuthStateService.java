@@ -28,11 +28,8 @@ public class CalendarOAuthStateService {
 
     public synchronized String issue(UUID userId) {
         Instant now = clock.instant();
-        pending.values().removeIf(p -> !p.expiresAt().isAfter(now));
-        if (pending.size() >= 10000) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "잠시 후 캘린더 연동을 다시 시작해 주세요.");
-        }
+        // 브라우저 쿠키도 마지막 요청으로 바뀐다. 사용자별 이전 요청을 지워 한 계정의 반복 발급이 다른 사용자를 막지 않게 한다.
+        pending.values().removeIf(p -> p.userId().equals(userId) || !p.expiresAt().isAfter(now));
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         String state = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);

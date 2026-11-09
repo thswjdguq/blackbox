@@ -21,7 +21,7 @@ class CalendarOAuthStateServiceTest {
     @Test void missingWrongOrForgedBrowserStateNeverConsumesTheRequest() {
         String state = states.issue(owner);
         assertThrows(ForbiddenException.class, () -> states.consume(state, null, owner));
-        assertThrows(ForbiddenException.class, () -> states.consume(state, states.issue(owner), owner));
+        assertThrows(ForbiddenException.class, () -> states.consume(state, states.issue(UUID.randomUUID()), owner));
         assertThrows(ForbiddenException.class, () -> states.consume(owner.toString(), owner.toString(), owner));
         assertThrows(ForbiddenException.class, () -> states.consume("x".repeat(43), "x".repeat(43), owner));
         assertEquals(owner, states.consume(state, state, owner));
@@ -30,6 +30,14 @@ class CalendarOAuthStateServiceTest {
         String state = states.issue(owner);
         assertThrows(ForbiddenException.class, () -> states.consume(state, state, UUID.randomUUID()));
         assertEquals(owner, states.consume(state, state, owner));
+    }
+    @Test void repeatedIssuanceKeepsOnlyLatestRequestAndCannotBlockAnotherAccount() {
+        UUID teammate = UUID.randomUUID(); String peerState = states.issue(teammate);
+        String oldState = states.issue(owner), latest = oldState;
+        for (int i = 0; i < 10001; i++) latest = states.issue(owner);
+        assertThrows(ForbiddenException.class, () -> states.consume(oldState, oldState, owner));
+        assertEquals(owner, states.consume(latest, latest, owner));
+        assertEquals(teammate, states.consume(peerState, peerState, teammate));
     }
     @Test void expiresAtTenMinutesAndDoesNotSurviveServerRestart() {
         String state = states.issue(owner);
