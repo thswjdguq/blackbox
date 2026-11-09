@@ -3,16 +3,16 @@ package com.blackbox.controller;
 import com.blackbox.entity.*;
 import com.blackbox.security.JwtService;
 import com.blackbox.service.UnresolvedCommentCounter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,7 +50,7 @@ class DeliverableConfirmationConcurrencyTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
     // 쓰지는 않는다. HTTP 테스트와 구성이 같아야 서버를 한 번만 띄운다
-    @MockBean UnresolvedCommentCounter unresolved;
+    @MockitoBean UnresolvedCommentCounter unresolved;
 
     final ExecutorService threads = Executors.newCachedThreadPool();
     TransactionTemplate tx;
@@ -150,7 +150,7 @@ class DeliverableConfirmationConcurrencyTest {
         Set<String> confirmedAt = new HashSet<>();
         for (Reply reply : replies) {
             assertEquals(200, reply.status(), String.valueOf(reply.body()));
-            confirmedAt.add(reply.body().at("/confirmation/confirmedAt").asText());
+            confirmedAt.add(reply.body().at("/confirmation/confirmedAt").asString());
         }
         assertEquals(1, confirmedAt.size(), "모두 같은 확정 기록을 받는다: " + confirmedAt);
         assertEquals(1, count("deliverable_confirmations where deliverable_id = ?", ready.deliverable()));
@@ -186,12 +186,12 @@ class DeliverableConfirmationConcurrencyTest {
             Reply confirmed = replies.get(0);
             JsonNode now = call(get(BASE + "/confirmation", project.getId(), ready.deliverable()), member).body();
             if (confirmed.status() == 200) {
-                assertEquals(ready.review().toString(), now.at("/confirmation/reviewId").asText());
+                assertEquals(ready.review().toString(), now.at("/confirmation/reviewId").asString());
                 assertEquals(1, now.at("/confirmation/file/version").asInt(), "확정본은 승인된 회차의 버전이다");
                 assertFalse(now.at("/confirmation/fileStillLatest").asBoolean());
             } else {
                 assertEquals(409, confirmed.status(), String.valueOf(confirmed.body()));
-                assertTrue(confirmed.body().get("detail").asText().contains("최신 버전과 내용이 다릅니다"), confirmed.body().toString());
+                assertTrue(confirmed.body().get("detail").asString().contains("최신 버전과 내용이 다릅니다"), confirmed.body().toString());
                 assertTrue(now.get("confirmation").isNull());
             }
         }

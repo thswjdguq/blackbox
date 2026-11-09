@@ -3,7 +3,7 @@ package com.blackbox.agent.skill;
 import com.blackbox.dto.DeliverableDtos;
 import com.blackbox.entity.User;
 import com.blackbox.service.DeliverableService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -37,7 +37,7 @@ class BreakDownTasksSkillTest {
         }
     }
 
-    private com.fasterxml.jackson.databind.JsonNode input() throws Exception {
+    private tools.jackson.databind.JsonNode input() throws Exception {
         return new ObjectMapper().readTree("{\"deliverableId\":\"" + deliverable + "\"}");
     }
 

@@ -9,8 +9,8 @@ import com.blackbox.agent.tool.AgentTool;
 import com.blackbox.agent.tool.ListDeliverablesTool;
 import com.blackbox.entity.*;
 import com.blackbox.security.JwtService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,12 +101,12 @@ class AgentHttpTest {
         assertTrue(forMember.path("available").asBoolean());
         assertTrue(forMember.path("unavailableReason").isNull());
         assertEquals(List.of("PLAN_FROM_BRIEF:true", "BREAK_DOWN_TASKS:true", "STATUS_BRIEF:true", "ASK:true"), skills(forMember));
-        assertEquals("과제 안내문으로 계획 만들기", forMember.path("skills").get(0).path("label").asText());
+        assertEquals("과제 안내문으로 계획 만들기", forMember.path("skills").get(0).path("label").asString());
         JsonNode stage = forMember.path("stages").get(0);
-        assertEquals(report.getId().toString(), stage.path("deliverableId").asText());
-        assertEquals("중간 보고서", stage.path("title").asText());
-        assertEquals(LocalDate.now().plusDays(7).toString(), stage.path("dueDate").asText());
-        assertEquals("NO_TASK", stage.path("stage").asText());
+        assertEquals(report.getId().toString(), stage.path("deliverableId").asString());
+        assertEquals("중간 보고서", stage.path("title").asString());
+        assertEquals(LocalDate.now().plusDays(7).toString(), stage.path("dueDate").asString());
+        assertEquals("NO_TASK", stage.path("stage").asString());
         assertEquals(0, forMember.path("pendingProposalCount").asInt());
         assertTrue(forMember.path("canDecide").asBoolean(), "팀원은 카드를 고치고 결정할 수 있다");
         assertTrue(body(get("/status", leader)).path("canDecide").asBoolean(), "팀장도 같다");
@@ -128,9 +128,9 @@ class AgentHttpTest {
         when(model.available()).thenReturn(false);
         JsonNode off = body(get("/status", member));
         assertFalse(off.path("available").asBoolean());
-        assertEquals("AI 기능이 설정되지 않았습니다", off.path("unavailableReason").asText());
+        assertEquals("AI 기능이 설정되지 않았습니다", off.path("unavailableReason").asString());
         // 모델이 꺼져 있어도 단계는 준다. 화면의 "다음 할 일" 카드가 이것을 쓴다
-        assertEquals("NO_TASK", off.path("stages").get(0).path("stage").asText());
+        assertEquals("NO_TASK", off.path("stages").get(0).path("stage").asString());
         // 이미 만들어진 카드는 모델이 꺼진 뒤에도 결정할 수 있으므로 역할은 그대로 온다
         assertTrue(off.path("canDecide").asBoolean());
     }
@@ -146,32 +146,32 @@ class AgentHttpTest {
         assertTrue(response.body().startsWith(":start"), "첫 줄은 화면이 무시하는 주석이다");
         List<Event> events = events(response.body());
         assertEquals(List.of("step", "text", "proposal", "done"), events.stream().map(Event::name).toList());
-        assertEquals("list_deliverables", events.get(0).data().path("tool").asText());
-        assertEquals("제출물과 요구사항 조회", events.get(0).data().path("label").asText());
-        assertEquals("제출물 하나를 찾았습니다.", events.get(1).data().path("text").asText());
+        assertEquals("list_deliverables", events.get(0).data().path("tool").asString());
+        assertEquals("제출물과 요구사항 조회", events.get(0).data().path("label").asString());
+        assertEquals("제출물 하나를 찾았습니다.", events.get(1).data().path("text").asString());
 
         JsonNode card = events.get(2).data();
-        assertEquals("DELIVERABLE_PLAN", card.path("kind").asText());
-        assertEquals("PENDING", card.path("status").asText());
-        assertEquals("기말 보고서", card.path("content").path("deliverable").path("title").asText());
-        assertEquals("2026-12-01", card.path("content").path("deliverable").path("dueDate").asText());
+        assertEquals("DELIVERABLE_PLAN", card.path("kind").asString());
+        assertEquals("PENDING", card.path("status").asString());
+        assertEquals("기말 보고서", card.path("content").path("deliverable").path("title").asString());
+        assertEquals("2026-12-01", card.path("content").path("deliverable").path("dueDate").asString());
         assertFalse(card.path("edited").asBoolean());
-        assertEquals("이팀원", card.path("requestedBy").path("name").asText());
+        assertEquals("이팀원", card.path("requestedBy").path("name").asString());
         assertFalse(card.path("requestedBy").has("email"));
         assertTrue(card.has("decision") && card.path("decision").isNull(), "결정 전에도 필드는 있다");
         assertTrue(card.has("results") && card.path("results").isNull());
-        assertTrue(card.path("createdAt").asText().matches(".*([+-]\\d\\d:\\d\\d|Z)$"), "시각에 시간대가 있다");
+        assertTrue(card.path("createdAt").asString().matches(".*([+-]\\d\\d:\\d\\d|Z)$"), "시각에 시간대가 있다");
 
         JsonNode done = events.get(3).data();
-        assertEquals(card.path("runId").asText(), done.path("runId").asText());
-        assertEquals(card.path("id").asText(), done.path("proposalIds").get(0).asText());
+        assertEquals(card.path("runId").asString(), done.path("runId").asString());
+        assertEquals(card.path("id").asString(), done.path("proposalIds").get(0).asString());
         assertEquals(1, body(get("/status", member)).path("pendingProposalCount").asInt());
     }
 
     @Test void whatIsWrongBeforeTheStreamIsAnHttpErrorWithAReadableDetail() throws Exception {
         HttpResponse<String> forbidden = post("/runs", observer, BRIEF);
         assertEquals(403, forbidden.statusCode());
-        assertEquals("관찰자는 제안을 만들거나 채택할 수 없습니다", json.readTree(forbidden.body()).path("detail").asText());
+        assertEquals("관찰자는 제안을 만들거나 채택할 수 없습니다", json.readTree(forbidden.body()).path("detail").asString());
         assertEquals(200, post("/runs", observer, ASK).statusCode());
 
         assertEquals(400, post("/runs", member, "{\"skill\":\"NOPE\",\"input\":{}}").statusCode());
@@ -188,7 +188,7 @@ class AgentHttpTest {
         when(model.available()).thenReturn(false);
         HttpResponse<String> off = post("/runs", member, ASK);
         assertEquals(503, off.statusCode());
-        assertEquals("AI 기능이 설정되지 않았습니다", json.readTree(off.body()).path("detail").asText());
+        assertEquals("AI 기능이 설정되지 않았습니다", json.readTree(off.body()).path("detail").asString());
     }
 
     @Test void oneRunPerPersonAndNoMoreThanTheServerCanHold() throws Exception {
@@ -199,7 +199,7 @@ class AgentHttpTest {
 
         HttpResponse<String> again = post("/runs", member, ASK);
         assertEquals(409, again.statusCode());
-        assertEquals("앞의 요청이 끝난 뒤 다시 시도해주세요", json.readTree(again.body()).path("detail").asText());
+        assertEquals("앞의 요청이 끝난 뒤 다시 시도해주세요", json.readTree(again.body()).path("detail").asString());
 
         // 서버가 동시에 돌리는 수(이 테스트에서는 2)가 찼다. 받지 못한 실행은 실패로 끝나 다음 요청을 막지 않는다
         assertEquals(429, post("/runs", observer, ASK).statusCode());
@@ -242,7 +242,7 @@ class AgentHttpTest {
         List<CompletableFuture<HttpResponse<String>>> refused = awaitDone(all, 2);
         for (CompletableFuture<HttpResponse<String>> one : refused) {
             assertEquals(429, one.get().statusCode(), one.get().body());
-            assertEquals("잠시 뒤 다시 시도해주세요", json.readTree(one.get().body()).path("detail").asText());
+            assertEquals("잠시 뒤 다시 시도해주세요", json.readTree(one.get().body()).path("detail").asString());
         }
         assertEquals(properties.getRunsPerHour(), jdbc.queryForObject("SELECT count(*) FROM agent_runs WHERE project_id = ?", Integer.class, project.getId()),
                 "상한을 넘겨 기록된 실행이 없다");
@@ -302,7 +302,7 @@ class AgentHttpTest {
         answer = "{\"text\":\"\",\"proposals\":[{\"kind\":\"DELIVERABLE_PLAN\",\"title\":\"x\",\"rationale\":\"y\",\"content\":{}}]}";
         List<Event> events = events(post("/runs", member, BRIEF).body());
         assertEquals("error", events.get(events.size() - 1).name());
-        assertEquals("AI 응답을 받지 못했습니다. 다시 시도해주세요", events.get(events.size() - 1).data().path("detail").asText());
+        assertEquals("AI 응답을 받지 못했습니다. 다시 시도해주세요", events.get(events.size() - 1).data().path("detail").asString());
         assertEquals(0, cards());
         assertEquals(0, body(get("/status", member)).path("pendingProposalCount").asInt());
     }
@@ -349,7 +349,7 @@ class AgentHttpTest {
 
             List<Event> events = events(response.body());
             assertEquals("error", events.get(events.size() - 1).name());
-            assertEquals("AI 응답을 받지 못했습니다. 다시 시도해주세요", events.get(events.size() - 1).data().path("detail").asText());
+            assertEquals("AI 응답을 받지 못했습니다. 다시 시도해주세요", events.get(events.size() - 1).data().path("detail").asString());
 
             release.countDown();   // 늦게 온 답은 저장하지 않는다
             AgentRun run = awaitEnd();
@@ -402,7 +402,7 @@ class AgentHttpTest {
 
     private static List<String> skills(JsonNode status) {
         List<String> out = new ArrayList<>();
-        status.path("skills").forEach(s -> out.add(s.path("skill").asText() + ":" + s.path("allowed").asBoolean()));
+        status.path("skills").forEach(s -> out.add(s.path("skill").asString() + ":" + s.path("allowed").asBoolean()));
         return out;
     }
 

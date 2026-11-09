@@ -1,8 +1,8 @@
 package com.blackbox.service;
 
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -60,8 +60,8 @@ public class MeetingOutcomeService {
         if (array == null || !array.isArray() || array.size() > 20) throw new IllegalArgumentException();
         List<Proposal> result = new ArrayList<>();
         for (JsonNode item : array) {
-            if (!item.path("text").isTextual() || !item.path("evidence").isTextual()) throw new IllegalArgumentException();
-            String text = item.get("text").asText().trim(), evidence = item.get("evidence").asText().trim();
+            if (!item.path("text").isString() || !item.path("evidence").isString()) throw new IllegalArgumentException();
+            String text = item.get("text").asString().trim(), evidence = item.get("evidence").asString().trim();
             if (text.isBlank() || text.length() > 255 || evidence.isBlank() || !notes.contains(evidence)) throw new IllegalArgumentException();
             result.add(new Proposal(text, evidence));
         }

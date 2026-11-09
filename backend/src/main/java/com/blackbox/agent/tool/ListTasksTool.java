@@ -5,7 +5,7 @@ import com.blackbox.agent.TaskStatus;
 import com.blackbox.dto.TaskResponse;
 import com.blackbox.entity.User;
 import com.blackbox.service.TaskService;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

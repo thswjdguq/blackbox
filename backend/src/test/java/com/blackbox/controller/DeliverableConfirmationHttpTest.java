@@ -5,15 +5,15 @@ import com.blackbox.repository.DeliverableConfirmationRepository;
 import com.blackbox.repository.DeliverableSubmissionRepository;
 import com.blackbox.security.JwtService;
 import com.blackbox.service.UnresolvedCommentCounter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -54,7 +54,7 @@ class DeliverableConfirmationHttpTest {
     @Autowired JwtService jwt;
     @Autowired DeliverableConfirmationRepository confirmations;
     @Autowired DeliverableSubmissionRepository submissions;
-    @MockBean UnresolvedCommentCounter unresolved;
+    @MockitoBean UnresolvedCommentCounter unresolved;
 
     User leader, member, observer, outsider;
     Project project;
@@ -69,12 +69,12 @@ class DeliverableConfirmationHttpTest {
 
     @Test void deliverableWithoutRoundsIsNotReady() throws Exception {
         JsonNode body = read(member);
-        assertEquals("DRAFT", body.get("status").asText());
+        assertEquals("DRAFT", body.get("status").asString());
         assertFalse(body.get("canConfirm").asBoolean());
-        assertEquals(List.of("REQUIRED_REQUIREMENTS", "APPROVED_FILE", "NO_UNRESOLVED_COMMENTS"), body.get("checks").findValuesAsText("code"));
-        assertEquals(List.of("true", "false", "true"), body.get("checks").findValuesAsText("passed"));
+        assertEquals(List.of("REQUIRED_REQUIREMENTS", "APPROVED_FILE", "NO_UNRESOLVED_COMMENTS"), body.get("checks").findValuesAsString("code"));
+        assertEquals(List.of("true", "false", "true"), body.get("checks").findValuesAsString("passed"));
         assertEquals(List.of("필수 요구사항이 없습니다", "검토 회차가 없습니다. 파일을 골라 검토를 요청해주세요", "미해결 피드백이 없습니다"),
-                body.get("checks").findValuesAsText("detail"));
+                body.get("checks").findValuesAsString("detail"));
         assertFalse(body.get("soleContributor").asBoolean());
         // 값이 없어도 필드는 생략하지 않는다
         for (String field : List.of("candidate", "confirmation", "submission")) assertTrue(body.get(field).isNull(), field);
@@ -87,12 +87,12 @@ class DeliverableConfirmationHttpTest {
         ReviewRound approved = round(em, report, 2, revised, member, "APPROVED");
 
         JsonNode body = read(observer);
-        assertEquals("IN_REVIEW", body.get("status").asText());
+        assertEquals("IN_REVIEW", body.get("status").asString());
         assertTrue(body.get("canConfirm").asBoolean());
         assertEquals(List.of("필수 요구사항 2개를 모두 확인했습니다", "2회차에서 중간보고서.pdf 2버전이 승인됐습니다", "미해결 피드백이 없습니다"),
-                body.get("checks").findValuesAsText("detail"));
+                body.get("checks").findValuesAsString("detail"));
         JsonNode candidate = body.get("candidate");
-        assertEquals(approved.getId().toString(), candidate.get("reviewId").asText());
+        assertEquals(approved.getId().toString(), candidate.get("reviewId").asString());
         assertEquals(2, candidate.get("roundNo").asInt());
         assertEquals(json.readTree("{\"fileId\":\"" + revised.getId() + "\",\"fileName\":\"" + FILE + "\",\"version\":2,\"shortHash\":\"bbbbbbb\","
                 + "\"uploaderId\":\"" + member.getId() + "\",\"uploaderName\":\"손팀원\"}"), candidate.get("file"));
@@ -171,17 +171,17 @@ class DeliverableConfirmationHttpTest {
         confirmations.save(DeliverableConfirmation.of(approved, leader, NOW));
 
         JsonNode body = read(member);
-        assertEquals("CONFIRMED", body.get("status").asText());
+        assertEquals("CONFIRMED", body.get("status").asString());
         assertFalse(body.get("canConfirm").asBoolean());
         assertTrue(body.get("checks").isArray() && body.get("checks").isEmpty());
         assertTrue(body.get("candidate").isNull());
         assertTrue(body.get("submission").isNull());
         JsonNode confirmation = body.get("confirmation");
-        assertEquals(approved.getId().toString(), confirmation.get("reviewId").asText());
+        assertEquals(approved.getId().toString(), confirmation.get("reviewId").asString());
         assertEquals(1, confirmation.get("roundNo").asInt());
-        assertEquals(approvedFile.getId().toString(), confirmation.at("/file/fileId").asText());
+        assertEquals(approvedFile.getId().toString(), confirmation.at("/file/fileId").asString());
         assertEquals(json.readTree("{\"userId\":\"" + leader.getId() + "\",\"name\":\"송팀장\"}"), confirmation.get("confirmedBy"));
-        assertEquals(NOW.toInstant(), OffsetDateTime.parse(confirmation.get("confirmedAt").asText()).toInstant());
+        assertEquals(NOW.toInstant(), OffsetDateTime.parse(confirmation.get("confirmedAt").asString()).toInstant());
         assertTrue(confirmation.get("fileStillLatest").asBoolean());
 
         upload(3, 'c');   // 확정 뒤에 내용이 다른 새 버전이 올라와도 확정본은 그대로다
@@ -192,12 +192,12 @@ class DeliverableConfirmationHttpTest {
         submissions.save(DeliverableSubmission.of(confirmations.getReferenceById(report.getId()),
                 "학교 LMS 과제함", NOW.plusHours(12), "접수 번호 2026-1234", member, NOW.plusHours(13)));
         body = read(observer);
-        assertEquals("SUBMITTED", body.get("status").asText());
+        assertEquals("SUBMITTED", body.get("status").asString());
         JsonNode submission = body.get("submission");
-        assertEquals("학교 LMS 과제함", submission.get("channel").asText());
-        assertEquals("접수 번호 2026-1234", submission.get("note").asText());
-        assertEquals(NOW.plusHours(12).toInstant(), OffsetDateTime.parse(submission.get("submittedAt").asText()).toInstant());
-        assertEquals(NOW.plusHours(13).toInstant(), OffsetDateTime.parse(submission.get("recordedAt").asText()).toInstant());
+        assertEquals("학교 LMS 과제함", submission.get("channel").asString());
+        assertEquals("접수 번호 2026-1234", submission.get("note").asString());
+        assertEquals(NOW.plusHours(12).toInstant(), OffsetDateTime.parse(submission.get("submittedAt").asString()).toInstant());
+        assertEquals(NOW.plusHours(13).toInstant(), OffsetDateTime.parse(submission.get("recordedAt").asString()).toInstant());
         assertEquals(json.readTree("{\"userId\":\"" + member.getId() + "\",\"name\":\"손팀원\"}"), submission.get("recordedBy"));
         assertFalse(body.get("confirmation").isNull());
     }
@@ -206,19 +206,19 @@ class DeliverableConfirmationHttpTest {
         requirement(em, report, true, member);
         FileVault file = upload(1, 'a');
         ReviewRound approved = round(em, report, 1, file, member, "APPROVED");
-        String candidate = read(leader).at("/candidate/reviewId").asText();
+        String candidate = read(leader).at("/candidate/reviewId").asString();
         OffsetDateTime before = OffsetDateTime.now();
 
         JsonNode body = confirm(leader, candidate, 200);
-        assertEquals("CONFIRMED", body.get("status").asText());
+        assertEquals("CONFIRMED", body.get("status").asString());
         assertFalse(body.get("canConfirm").asBoolean());
         assertTrue(body.get("checks").isEmpty() && body.get("candidate").isNull() && body.get("submission").isNull());
         JsonNode confirmation = body.get("confirmation");
-        assertEquals(approved.getId().toString(), confirmation.get("reviewId").asText());
-        assertEquals(file.getId().toString(), confirmation.at("/file/fileId").asText());
-        assertEquals("송팀장", confirmation.at("/confirmedBy/name").asText());
+        assertEquals(approved.getId().toString(), confirmation.get("reviewId").asString());
+        assertEquals(file.getId().toString(), confirmation.at("/file/fileId").asString());
+        assertEquals("송팀장", confirmation.at("/confirmedBy/name").asString());
         assertTrue(confirmation.get("fileStillLatest").asBoolean());
-        OffsetDateTime confirmedAt = OffsetDateTime.parse(confirmation.get("confirmedAt").asText());
+        OffsetDateTime confirmedAt = OffsetDateTime.parse(confirmation.get("confirmedAt").asString());
         assertTrue(Duration.between(before, confirmedAt).abs().toSeconds() < 5, "확정 시각은 서버의 지금이다");
 
         // 같은 회차로 다시 보낸 것은 중복 클릭이다. 처음의 응답과 글자까지 같은 객체를 돌려준다
@@ -230,7 +230,7 @@ class DeliverableConfirmationHttpTest {
         requirement(em, report, true, member);
         ReviewRound approved = round(em, report, 1, upload(1, 'a'), member, "APPROVED");
 
-        assertEquals("최종본 확정은 팀장만 할 수 있습니다", confirm(member, approved.getId(), 403).get("detail").asText());
+        assertEquals("최종본 확정은 팀장만 할 수 있습니다", confirm(member, approved.getId(), 403).get("detail").asString());
         confirm(observer, approved.getId(), 403);
         confirm(outsider, approved.getId(), 403);
         confirm(null, approved.getId(), 401);
@@ -270,7 +270,7 @@ class DeliverableConfirmationHttpTest {
 
         assertRefused(earlier, "확정하려는 대상이 바뀌었습니다. 새로고침해 다시 확인해주세요");
         // 이 제출물의 회차가 아니면 다른 프로젝트의 것이든 없는 것이든 404다
-        assertEquals("검토 회차를 찾을 수 없습니다", confirm(leader, foreignRound.getId(), 404).get("detail").asText());
+        assertEquals("검토 회차를 찾을 수 없습니다", confirm(leader, foreignRound.getId(), 404).get("detail").asString());
         confirm(leader, UUID.randomUUID(), 404);
         call(put(PATH, project.getId(), foreign.getId()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"reviewId\":\"" + foreignRound.getId() + "\"}"), leader, 404);
@@ -279,13 +279,13 @@ class DeliverableConfirmationHttpTest {
         assertNotConfirmed();
 
         confirm(leader, approved.getId(), 200);
-        assertEquals("이미 확정된 제출물입니다", confirm(leader, earlier.getId(), 409).get("detail").asText());
+        assertEquals("이미 확정된 제출물입니다", confirm(leader, earlier.getId(), 409).get("detail").asString());
         confirm(leader, UUID.randomUUID(), 404);
-        assertEquals(approved.getId().toString(), read(leader).at("/confirmation/reviewId").asText());
+        assertEquals(approved.getId().toString(), read(leader).at("/confirmation/reviewId").asString());
     }
 
     @Test void submissionIsRefusedBeforeConfirmation() throws Exception {
-        assertEquals("최종본을 확정한 뒤에 제출을 기록할 수 있습니다", submit(member, submission(null, PAST, null), 409).get("detail").asText());
+        assertEquals("최종본을 확정한 뒤에 제출을 기록할 수 있습니다", submit(member, submission(null, PAST, null), 409).get("detail").asString());
         assertNotSubmitted();
     }
 
@@ -295,14 +295,14 @@ class DeliverableConfirmationHttpTest {
         OffsetDateTime before = OffsetDateTime.now();
 
         JsonNode body = submit(member, submission(null, PAST, "접수 번호 2026-1234"), 200);
-        assertEquals("SUBMITTED", body.get("status").asText());
+        assertEquals("SUBMITTED", body.get("status").asString());
         assertFalse(body.get("confirmation").isNull());
         JsonNode submission = body.get("submission");
-        assertEquals("학교 LMS 과제함", submission.get("channel").asText(), "낸 곳을 비우면 제출물의 제출 경로가 들어간다");
-        assertEquals("접수 번호 2026-1234", submission.get("note").asText());
-        assertEquals(PAST.toInstant(), OffsetDateTime.parse(submission.get("submittedAt").asText()).toInstant());
-        assertEquals("손팀원", submission.at("/recordedBy/name").asText());
-        assertTrue(Duration.between(before, OffsetDateTime.parse(submission.get("recordedAt").asText())).abs().toSeconds() < 5);
+        assertEquals("학교 LMS 과제함", submission.get("channel").asString(), "낸 곳을 비우면 제출물의 제출 경로가 들어간다");
+        assertEquals("접수 번호 2026-1234", submission.get("note").asString());
+        assertEquals(PAST.toInstant(), OffsetDateTime.parse(submission.get("submittedAt").asString()).toInstant());
+        assertEquals("손팀원", submission.at("/recordedBy/name").asString());
+        assertTrue(Duration.between(before, OffsetDateTime.parse(submission.get("recordedAt").asString())).abs().toSeconds() < 5);
         assertEquals(body, read(observer));
     }
 
@@ -316,7 +316,7 @@ class DeliverableConfirmationHttpTest {
         assertEquals(body, submit(leader, submission(" 학교 LMS 과제함 ", PAST.withOffsetSameInstant(ZoneOffset.UTC), "접수 번호 2026-1234"), 200));
         for (String different : List.of(submission("이메일", PAST, "접수 번호 2026-1234"),
                 submission("학교 LMS 과제함", PAST.plusMinutes(1), "접수 번호 2026-1234"), submission("학교 LMS 과제함", PAST, null)))
-            assertEquals("이미 제출이 기록됐습니다", submit(leader, different, 409).get("detail").asText());
+            assertEquals("이미 제출이 기록됐습니다", submit(leader, different, 409).get("detail").asString());
         assertEquals(body, read(observer));
     }
 
@@ -332,7 +332,7 @@ class DeliverableConfirmationHttpTest {
     @Test void invalidSubmissionIsRefusedAndLeavesNothing() throws Exception {
         confirmReport();
         OffsetDateTime now = OffsetDateTime.now();
-        assertEquals("제출 시각은 지금보다 뒤일 수 없습니다", submit(member, submission(null, now.plusMinutes(10), null), 400).get("detail").asText());
+        assertEquals("제출 시각은 지금보다 뒤일 수 없습니다", submit(member, submission(null, now.plusMinutes(10), null), 400).get("detail").asString());
         for (String invalid : List.of("{}", "{\"submittedAt\":null}", "{\"submittedAt\":\"어제\"}",
                 submission("가".repeat(501), PAST, null), submission(null, PAST, "가".repeat(1001))))
             submit(member, invalid, 400);
@@ -352,7 +352,7 @@ class DeliverableConfirmationHttpTest {
     @Test void submissionTimeMayBeSlightlyAheadOrBeforeTheConfirmation() throws Exception {
         confirmReport();
         JsonNode body = submit(member, submission(null, OffsetDateTime.now().plusMinutes(4), null), 200);
-        assertEquals("SUBMITTED", body.get("status").asText());
+        assertEquals("SUBMITTED", body.get("status").asString());
 
         Deliverable poster = deliverable(em, project, "포스터");
         ReviewRound approved = round(em, poster, 1, file(em, project, member, "포스터.pdf", 1, 'p'), member, "APPROVED");
@@ -360,8 +360,8 @@ class DeliverableConfirmationHttpTest {
                 .content("{\"reviewId\":\"" + approved.getId() + "\"}"), leader, 200);
         body = call(put(SUBMISSION, project.getId(), poster.getId()).contentType(MediaType.APPLICATION_JSON)
                 .content(submission(null, PAST, null)), member, 200);
-        assertTrue(OffsetDateTime.parse(body.at("/submission/submittedAt").asText())
-                .isBefore(OffsetDateTime.parse(body.at("/confirmation/confirmedAt").asText())));
+        assertTrue(OffsetDateTime.parse(body.at("/submission/submittedAt").asString())
+                .isBefore(OffsetDateTime.parse(body.at("/confirmation/confirmedAt").asString())));
     }
 
     private void assertNotSubmitted() {
@@ -390,12 +390,12 @@ class DeliverableConfirmationHttpTest {
         String list = "/api/projects/" + project.getId() + "/deliverables";
         JsonNode one = call(get(list + "/" + report.getId()), observer, 200), all = call(get(list), observer, 200);
         JsonNode listed = null, poster = null;
-        for (JsonNode d : all) if (d.get("id").asText().equals(report.getId().toString())) listed = d; else poster = d;
+        for (JsonNode d : all) if (d.get("id").asString().equals(report.getId().toString())) listed = d; else poster = d;
         for (JsonNode d : List.of(one, listed)) {
-            assertEquals(status, d.get("status").asText());
-            assertEquals(latestDecision, d.get("latestDecision").isNull() ? null : d.get("latestDecision").asText());
+            assertEquals(status, d.get("status").asString());
+            assertEquals(latestDecision, d.get("latestDecision").isNull() ? null : d.get("latestDecision").asString());
         }
-        assertEquals("DRAFT", poster.get("status").asText());
+        assertEquals("DRAFT", poster.get("status").asString());
         assertTrue(poster.get("latestDecision").isNull());
     }
 
@@ -417,7 +417,7 @@ class DeliverableConfirmationHttpTest {
         Deliverable poster = deliverable(em, project, "포스터");
         String base = "/api/projects/" + project.getId() + "/deliverables/" + poster.getId();
         call(json(put(base), "{\"title\":\"발표 포스터\",\"dueDate\":\"2026-10-20\"}"), member, 200);
-        String requirement = call(json(post(base + "/requirements"), "{\"content\":\"A1 크기\",\"required\":true}"), member, 201).get("id").asText();
+        String requirement = call(json(post(base + "/requirements"), "{\"content\":\"A1 크기\",\"required\":true}"), member, 201).get("id").asString();
         call(put(base + "/requirements/" + requirement + "/assessment"), leader, 200);
         call(json(post(base + "/reviews"), "{}"), member, 201);
     }
@@ -437,7 +437,7 @@ class DeliverableConfirmationHttpTest {
                 json(put(decision), "{\"decision\":\"CHANGES_REQUESTED\"}"),
                 json(put(decision), "{\"decision\":\"APPROVED\"}"));
         for (MockHttpServletRequestBuilder change : changes)
-            assertEquals("확정된 제출물은 변경할 수 없습니다", call(change, leader, 409).get("detail").asText());
+            assertEquals("확정된 제출물은 변경할 수 없습니다", call(change, leader, 409).get("detail").asString());
     }
 
     /** 제출물, 요구사항, 회차의 지금 내용. 거절된 요청 앞뒤로 같아야 한다. */
@@ -463,9 +463,9 @@ class DeliverableConfirmationHttpTest {
         JsonNode unlinked=call(post(tasks).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"미연결 업무\"}"),member,201);
         confirmReport();
         call(post(tasks).contentType(MediaType.APPLICATION_JSON).content(linkedBody),member,409);
-        call(patch(tasks+"/"+unlinked.get("id").asText()).contentType(MediaType.APPLICATION_JSON)
+        call(patch(tasks+"/"+unlinked.get("id").asString()).contentType(MediaType.APPLICATION_JSON)
                 .content(json.createObjectNode().put("deliverableId",report.getId().toString()).toString()),member,409);
-        String task=tasks+"/"+existing.get("id").asText();
+        String task=tasks+"/"+existing.get("id").asString();
         call(patch(task).contentType(MediaType.APPLICATION_JSON).content("{\"clearDeliverable\":true}"),member,409);
         call(patch(task+"/status").contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"IN_PROGRESS\"}"),member,409);
         call(put(task+"/assignees").contentType(MediaType.APPLICATION_JSON).content("{\"assigneeIds\":[]}"),member,409);
@@ -494,7 +494,7 @@ class DeliverableConfirmationHttpTest {
     }
 
     private void assertRefused(ReviewRound target, String detail) throws Exception {
-        assertEquals(detail, confirm(leader, target.getId(), 409).get("detail").asText());
+        assertEquals(detail, confirm(leader, target.getId(), 409).get("detail").asString());
         assertNotConfirmed();
     }
 
@@ -511,7 +511,7 @@ class DeliverableConfirmationHttpTest {
     }
 
     private static String detail(JsonNode body, String code) {
-        for (JsonNode check : body.get("checks")) if (code.equals(check.get("code").asText())) return check.get("detail").asText();
+        for (JsonNode check : body.get("checks")) if (code.equals(check.get("code").asString())) return check.get("detail").asString();
         return fail(code + " 검사가 응답에 없다");
     }
 
