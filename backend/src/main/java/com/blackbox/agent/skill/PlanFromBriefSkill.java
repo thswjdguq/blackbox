@@ -5,7 +5,7 @@ import com.blackbox.agent.proposal.DeliverablePlanKind;
 import com.blackbox.agent.tool.GetProjectTool;
 import com.blackbox.agent.tool.ListDeliverablesTool;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;

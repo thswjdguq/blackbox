@@ -7,7 +7,7 @@ import com.blackbox.service.AlertService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -59,8 +59,8 @@ class ScoreContributorHttpTest {
         assertEquals(200, response.getStatus());
         // MVC도 테스트의 바깥 트랜잭션에 참여한다. refresh 전에 실제 요청 커밋에 해당하는 flush를 해야 갱신을 버리지 않는다.
         em.flush();
-        var json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getContentAsByteArray());
-        Set<UUID> ids = new HashSet<>(); json.forEach(r -> ids.add(UUID.fromString(r.path("userId").asText()))); return ids;
+        var json = new tools.jackson.databind.ObjectMapper().readTree(response.getContentAsByteArray());
+        Set<UUID> ids = new HashSet<>(); json.forEach(r -> ids.add(UUID.fromString(r.path("userId").asString()))); return ids;
     }
     private long count(Project p, User user) {
         return em.createQuery("select count(s) from ContributionScore s where s.project=:p and s.user=:u", Long.class)

@@ -1,8 +1,8 @@
 package com.blackbox.agent.skill;
 
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -38,7 +38,7 @@ public interface AgentSkill {
     default void complete(ObjectNode content, JsonNode input) {}
 
     static String requiredText(JsonNode input, String field, String label, int maxLength) {
-        String text = input.path(field).asText("").strip();
+        String text = input.path(field).asString("").strip();
         if (text.isEmpty()) throw badInput(label + " 입력이 필요합니다");
         if (text.length() > maxLength) throw badInput(label + " 길이는 최대 " + maxLength + "자입니다");
         return text;

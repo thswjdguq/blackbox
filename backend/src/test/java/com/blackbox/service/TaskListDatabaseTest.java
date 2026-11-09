@@ -5,9 +5,9 @@ import jakarta.persistence.EntityManager;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -25,14 +25,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class TaskListDatabaseTest {
     @Autowired EntityManager em;
     @Autowired TaskService service;
-    @MockBean ActivityLogService activity;
-    @MockBean NotionService notion;
-    @MockBean AlertService alerts;
-    @MockBean DiscordNotificationService discord;
-    @MockBean ScoreService scores;
-    @MockBean DeliverableService deliverables;
-    @MockBean TaskWorkflowService workflow;
-    @MockBean NotificationService notifications;
+    @MockitoBean ActivityLogService activity;
+    @MockitoBean NotionService notion;
+    @MockitoBean AlertService alerts;
+    @MockitoBean DiscordNotificationService discord;
+    @MockitoBean ScoreService scores;
+    @MockitoBean DeliverableService deliverables;
+    @MockitoBean TaskWorkflowService workflow;
+    @MockitoBean NotificationService notifications;
 
     @Test void databaseRejectsNewDoneWithoutApproval() {
         User leader = user("approval-constraint");

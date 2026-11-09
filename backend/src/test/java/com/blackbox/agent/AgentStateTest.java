@@ -2,8 +2,8 @@ package com.blackbox.agent;
 
 import com.blackbox.entity.Project;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 import java.time.OffsetDateTime;
@@ -37,7 +37,7 @@ class AgentStateTest {
         AgentProposal p = AgentProposal.propose(run(), "TASKS", "제목", "근거", content, NOW);
         content.put("title", "밖에서 고침");   // 넘겨준 객체를 나중에 고쳐도 원본은 그대로여야 한다
 
-        assertEquals("원본", p.getOriginal().get("title").asText());
+        assertEquals("원본", p.getOriginal().get("title").asString());
         assertTrue(p.isEdited());
     }
 

@@ -4,8 +4,8 @@ import com.blackbox.dto.ReviewCommentDtos.*;
 import com.blackbox.entity.*;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -102,7 +102,7 @@ public class ReviewCommentService {
     }
     private void record(ReviewComment c, User user, String action, Map<String, ?> metadata) {
         try { activity.record(c.getProject(), user, action, json.writeValueAsString(metadata)); }
-        catch (JsonProcessingException e) { throw new IllegalStateException("피드백 활동 기록 직렬화 실패", e); }
+        catch (JacksonException e) { throw new IllegalStateException("피드백 활동 기록 직렬화 실패", e); }
     }
     private static ResponseStatusException conflict(String detail) { return new ResponseStatusException(HttpStatus.CONFLICT, detail); }
 }

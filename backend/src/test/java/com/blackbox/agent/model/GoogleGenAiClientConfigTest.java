@@ -91,8 +91,8 @@ class GoogleGenAiClientConfigTest {
                 .run(context -> {
                     var chatModel = org.springframework.ai.google.genai.GoogleGenAiChatModel.builder()
                             .genAiClient(client(Duration.ofSeconds(5), 2))
-                            .defaultOptions(org.springframework.ai.google.genai.GoogleGenAiChatOptions.builder().model("gemini-test").build())
-                            .retryTemplate(context.getBean(org.springframework.retry.support.RetryTemplate.class)).build();
+                            .options(org.springframework.ai.google.genai.GoogleGenAiChatOptions.builder().model("gemini-test").build())
+                            .retryTemplate(context.getBean(org.springframework.core.retry.RetryTemplate.class)).build();
 
                     assertThrows(RuntimeException.class, () -> chatModel.call(new org.springframework.ai.chat.prompt.Prompt("안녕")));
                     assertEquals(2, requests.get(), "SDK가 정한 횟수만 나간다. Spring AI의 재시도는 Gemini의 실패에 걸리지 않는다");

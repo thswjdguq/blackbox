@@ -7,8 +7,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.SpyBean;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.doAnswer;
 @SpringBootTest
 @ActiveProfiles("test")
 class ScoreAsyncTransactionTest {
-    @SpyBean ScoreService scores;
+    @MockitoSpyBean ScoreService scores;
     @Autowired TaskWorkflowService workflow;
     @Autowired UserRepository users;
     @Autowired ProjectRepository projects;
@@ -37,9 +37,9 @@ class ScoreAsyncTransactionTest {
     @Autowired ContributionScoreRepository scoreRepository;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired JdbcTemplate jdbc;
-    @SpyBean AlertService alerts;
+    @MockitoSpyBean AlertService alerts;
     // 시작 직후의 전체 재계산이 비동기 업무 이벤트 대신 관찰 조건을 채우면 회귀를 놓친다.
-    @MockBean ScoreScheduler scheduler;
+    @MockitoBean ScoreScheduler scheduler;
     Fixture fixture;
 
     record Fixture(User user, User reviewer, Project project, Task task) {}
@@ -117,7 +117,7 @@ class ScoreAsyncTransactionTest {
             UUID projectId = invocation.getArgument(0);
             if (!projectId.equals(fixture.project().getId())) return invocation.callRealMethod();
             boolean active = TransactionSynchronizationManager.isActualTransactionActive();
-            long thread = Thread.currentThread().getId();
+            long thread = Thread.currentThread().threadId();
             if (active) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override public void afterCompletion(int completion) {
@@ -145,7 +145,7 @@ class ScoreAsyncTransactionTest {
     @Test void taskCompletionCommitsScoreOnAsyncWorker() throws Exception {
         Fixture fixture = seed();
         CompletableFuture<WorkerResult> completion = observe(fixture, false);
-        long requestThread = Thread.currentThread().getId();
+        long requestThread = Thread.currentThread().threadId();
 
         completeWithIndependentReview(fixture);
 
