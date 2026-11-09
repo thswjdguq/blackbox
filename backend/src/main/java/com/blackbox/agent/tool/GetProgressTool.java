@@ -2,7 +2,7 @@ package com.blackbox.agent.tool;
 
 import com.blackbox.entity.User;
 import com.blackbox.service.DeliverableProgressService;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +26,7 @@ public class GetProgressTool implements ProjectTool {
     }
 
     @Override public Object read(UUID projectId, User user, JsonNode arguments) {
-        String id = arguments.path(DELIVERABLE_ID).asText("");
+        String id = arguments.path(DELIVERABLE_ID).asString("");
         if (id.isBlank()) throw new BadArguments(DELIVERABLE_ID + "가 필요합니다");
         UUID deliverableId;
         try {

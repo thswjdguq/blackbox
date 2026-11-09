@@ -2,7 +2,7 @@ package com.blackbox.agent;
 
 import com.blackbox.entity.Project;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

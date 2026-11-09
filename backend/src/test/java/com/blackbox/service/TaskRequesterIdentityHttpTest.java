@@ -2,12 +2,12 @@ package com.blackbox.service;
 
 import com.blackbox.entity.*;
 import com.blackbox.security.JwtService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,13 +39,13 @@ class TaskRequesterIdentityHttpTest {
         String path = base + "/" + task.getId();
         assertTrue(call(get(path), requester).path("completionRequestedBy").isNull());
         JsonNode requested = call(post(path + "/completion-request"), requester);
-        assertEquals(requester.getId().toString(), requested.path("completionRequestedBy").asText());
-        assertEquals("김민지", requested.path("completionRequestedByName").asText());
-        assertEquals(requester.getId().toString(), call(get(path), reviewer).path("completionRequestedBy").asText());
-        assertEquals(requester.getId().toString(), call(get(base), reviewer).get(0).path("completionRequestedBy").asText());
+        assertEquals(requester.getId().toString(), requested.path("completionRequestedBy").asString());
+        assertEquals("김민지", requested.path("completionRequestedByName").asString());
+        assertEquals(requester.getId().toString(), call(get(path), reviewer).path("completionRequestedBy").asString());
+        assertEquals(requester.getId().toString(), call(get(base), reviewer).get(0).path("completionRequestedBy").asString());
         JsonNode completion = call(get(path + "/completion"), reviewer);
         assertTrue(completion.path("canReview").asBoolean(), "동명이인인 다른 팀원도 확인할 수 있다");
-        assertEquals(requester.getId().toString(), completion.path("task").path("completionRequestedBy").asText());
+        assertEquals(requester.getId().toString(), completion.path("task").path("completionRequestedBy").asString());
         assertTrue(call(post(path + "/completion-cancel").content("{\"reason\":\"수정 후 재요청\"}"), requester)
                 .path("completionRequestedBy").isNull());
         call(post(path + "/completion-request"), requester);
@@ -53,7 +53,7 @@ class TaskRequesterIdentityHttpTest {
                 .path("completionRequestedBy").isNull());
         call(post(path + "/completion-request"), requester);
         JsonNode done = call(put(path + "/completion-decision").content("{\"approved\":true,\"criteriaConfirmed\":true}"), reviewer);
-        assertEquals("DONE", done.path("status").asText());
+        assertEquals("DONE", done.path("status").asString());
         assertTrue(done.path("completionRequestedBy").isNull());
     }
 

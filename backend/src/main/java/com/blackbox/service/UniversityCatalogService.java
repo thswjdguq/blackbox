@@ -2,7 +2,7 @@ package com.blackbox.service;
 
 import com.blackbox.dto.AffiliationRequest;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

@@ -40,9 +40,6 @@ export interface Task {
   completionRejectionReason: string | null;
 }
 
-export interface ScoreMap {
-  [userId: string]: number; // totalScore (BigDecimal → number)
-}
 
 // ── Request Types ─────────────────────────────────────────────────────────
 

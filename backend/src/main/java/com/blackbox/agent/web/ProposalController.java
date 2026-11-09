@@ -3,7 +3,7 @@ package com.blackbox.agent.web;
 import com.blackbox.agent.proposal.ProposalResponse;
 import com.blackbox.agent.proposal.ProposalService;
 import com.blackbox.entity.User;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;

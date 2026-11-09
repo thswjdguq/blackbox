@@ -97,7 +97,7 @@ volumes:
 
 ```dockerfile
 # backend/Dockerfile
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /app
 COPY gradle/ gradle/
 COPY gradlew build.gradle settings.gradle ./
@@ -105,7 +105,7 @@ RUN ./gradlew dependencies --no-daemon || true
 COPY src/ src/
 RUN ./gradlew bootJar --no-daemon -x test
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 RUN mkdir -p /data/uploads
 COPY --from=builder /app/build/libs/*.jar app.jar
@@ -117,7 +117,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
 ```dockerfile
 # frontend/Dockerfile
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
@@ -126,7 +126,7 @@ ARG NEXT_PUBLIC_API_URL=/api
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs

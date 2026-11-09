@@ -1,13 +1,12 @@
 "use client";
 
-import { Task, TaskStatus, KanbanColumn as ColumnMeta, ScoreMap } from "@/types/task";
+import { Task, TaskStatus, KanbanColumn as ColumnMeta } from "@/types/task";
 import TaskCard from "./TaskCard";
 import { Plus } from "lucide-react";
 
 interface KanbanColumnProps {
   column: ColumnMeta;
   tasks: Task[];
-  scoreMap: ScoreMap;
   onAddTask: (status: TaskStatus) => void;
   onEditTask: (task: Task) => void;
   onMoveTask: (taskId: string, newStatus: TaskStatus) => Promise<void>;
@@ -21,7 +20,6 @@ interface KanbanColumnProps {
 export default function KanbanColumn({
   column,
   tasks,
-  scoreMap,
   onAddTask,
   onEditTask,
   onMoveTask,
@@ -65,7 +63,6 @@ export default function KanbanColumn({
             <TaskCard
               key={task.id}
               task={task}
-              scoreMap={scoreMap}
               onEdit={onEditTask}
               onMove={onMoveTask}
               readOnly={readOnly}
