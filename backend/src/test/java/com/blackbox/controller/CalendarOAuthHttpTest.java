@@ -2,6 +2,7 @@ package com.blackbox.controller;
 
 import com.blackbox.entity.User;
 import com.blackbox.exception.GlobalExceptionHandler;
+import com.blackbox.exception.ForbiddenException;
 import com.blackbox.service.CalendarOAuthStateService;
 import com.blackbox.service.GoogleCalendarService;
 import jakarta.servlet.http.Cookie;
@@ -41,22 +42,53 @@ class CalendarOAuthHttpTest {
     @Test void callbackRequiresBrowserCookieAndOnlyExchangesCodeOnce() throws Exception {
         var user = account(); String state = states.issue(user.getId());
         var path = "/api/auth/google/callback";
-        assertEquals(403, mvc.perform(get(path).param("code", "synthetic-code").param("state", state)).andReturn().getResponse().getStatus());
+        var missingCookie = mvc.perform(get(path).param("code", "synthetic-code").param("state", state)).andReturn().getResponse();
+        assertEquals(302, missingCookie.getStatus()); assertEquals("/profile/settings?calendar=error", missingCookie.getRedirectedUrl());
         verifyNoInteractions(calendar);
         var response = mvc.perform(get(path).param("code", "synthetic-code").param("state", state)
                 .cookie(new Cookie("calendarOAuthState", state))).andReturn().getResponse();
         assertEquals(302, response.getStatus()); assertEquals("/profile/settings?calendar=connected", response.getRedirectedUrl());
         assertTrue(response.getHeader("Set-Cookie").contains("Max-Age=0"));
         verify(calendar).handleCallback("synthetic-code", user.getId());
-        assertEquals(403, mvc.perform(get(path).param("code", "synthetic-code").param("state", state)
-                .cookie(new Cookie("calendarOAuthState", state))).andReturn().getResponse().getStatus());
+        var replay = mvc.perform(get(path).param("code", "synthetic-code").param("state", state)
+                .cookie(new Cookie("calendarOAuthState", state))).andReturn().getResponse();
+        assertEquals(302, replay.getStatus()); assertEquals("/profile/settings?calendar=error", replay.getRedirectedUrl());
         verifyNoMoreInteractions(calendar);
     }
     @Test void accountSwitchCannotLinkEarlierUsersCalendar() throws Exception {
         var owner = account(); String state = states.issue(owner.getId()); signIn(account());
         var response = mvc.perform(get("/api/auth/google/callback").param("code", "synthetic-code").param("state", state)
                 .cookie(new Cookie("calendarOAuthState", state))).andReturn().getResponse();
-        assertEquals(403, response.getStatus()); verifyNoInteractions(calendar);
+        assertEquals(302, response.getStatus()); assertEquals("/profile/settings?calendar=error", response.getRedirectedUrl());
+        verifyNoInteractions(calendar);
+    }
+    @Test void deniedConsentConsumesValidRequestAndReturnsToSettingsWithoutExchangingCode() throws Exception {
+        var owner = account(); String state = states.issue(owner.getId());
+        var response = mvc.perform(get("/api/auth/google/callback").param("state", state).param("error", "access_denied")
+                .cookie(new Cookie("calendarOAuthState", state))).andReturn().getResponse();
+        assertEquals(302, response.getStatus()); assertEquals("/profile/settings?calendar=error", response.getRedirectedUrl());
+        assertTrue(response.getHeader("Set-Cookie").contains("Max-Age=0")); verifyNoInteractions(calendar);
+        assertThrows(ForbiddenException.class, () -> states.consume(state, state, owner.getId()));
+    }
+    @Test void missingParamsAndBlankCodeReturnToSettingsWithoutProviderCall() throws Exception {
+        var missing = mvc.perform(get("/api/auth/google/callback")).andReturn().getResponse();
+        assertEquals(302, missing.getStatus()); assertEquals("/profile/settings?calendar=error", missing.getRedirectedUrl());
+        var owner = account(); String state = states.issue(owner.getId());
+        var blank = mvc.perform(get("/api/auth/google/callback").param("code", " ").param("state", state)
+                .cookie(new Cookie("calendarOAuthState", state))).andReturn().getResponse();
+        assertEquals(302, blank.getStatus()); assertEquals("/profile/settings?calendar=error", blank.getRedirectedUrl());
+        verifyNoInteractions(calendar);
+    }
+    @Test void providerFailureDoesNotExposeErrorTextOrAllowCodeReplay() throws Exception {
+        var owner = account(); String state = states.issue(owner.getId());
+        doThrow(new IllegalStateException("synthetic-sensitive-provider-detail")).when(calendar).handleCallback("synthetic-code", owner.getId());
+        var response = mvc.perform(get("/api/auth/google/callback").param("code", "synthetic-code").param("state", state)
+                .cookie(new Cookie("calendarOAuthState", state))).andReturn().getResponse();
+        assertEquals(302, response.getStatus()); assertEquals("/profile/settings?calendar=error", response.getRedirectedUrl());
+        assertFalse(response.getContentAsString().contains("synthetic-sensitive-provider-detail"));
+        assertFalse(response.getRedirectedUrl().contains(state)); assertTrue(response.getHeader("Set-Cookie").contains("Max-Age=0"));
+        assertThrows(ForbiddenException.class, () -> states.consume(state, state, owner.getId()));
+        verify(calendar, times(1)).handleCallback("synthetic-code", owner.getId());
     }
     private User account() { var user = new User(); user.setId(UUID.randomUUID()); return user; }
     private void signIn(User user) { SecurityContextHolder.getContext().setAuthentication(

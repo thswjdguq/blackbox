@@ -52,7 +52,7 @@ class CalendarProjectAccessHttpTest {
     }
     @Test void uuidStateAndMissingBrowserCookieAreRejectedWithoutGoogleConfiguration() throws Exception {
         var leader = user(em, "합성 사용자"); em.flush();
-        assertEquals(403, call(get("/api/auth/google/callback").param("code", "synthetic-code")
+        assertEquals(302, call(get("/api/auth/google/callback").param("code", "synthetic-code")
                 .param("state", leader.getId().toString()), leader));
         assertEquals(401, mvc.perform(get("/api/calendar/authorize")).andReturn().getResponse().getStatus());
     }
