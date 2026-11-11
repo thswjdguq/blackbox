@@ -1,5 +1,6 @@
 package com.blackbox.controller;
 
+import com.blackbox.dto.ConfirmationDtos.CancelRequest;
 import com.blackbox.dto.ConfirmationDtos.ConfirmRequest;
 import com.blackbox.dto.ConfirmationDtos.Response;
 import com.blackbox.dto.ConfirmationDtos.SubmitRequest;
@@ -22,6 +23,10 @@ public class DeliverableConfirmationController {
     @PutMapping("/confirmation") public Response confirm(@PathVariable UUID projectId, @PathVariable UUID deliverableId,
             @Valid @RequestBody ConfirmRequest req, @AuthenticationPrincipal User user) {
         return service.confirm(projectId, deliverableId, req.reviewId(), user);
+    }
+    @PostMapping("/confirmation/cancellation") public Response cancel(@PathVariable UUID projectId,
+            @PathVariable UUID deliverableId, @Valid @RequestBody CancelRequest req, @AuthenticationPrincipal User user) {
+        return service.cancel(projectId, deliverableId, req.reviewId(), req.reason(), user);
     }
     @PutMapping("/submission") public Response submit(@PathVariable UUID projectId, @PathVariable UUID deliverableId,
             @Valid @RequestBody SubmitRequest req, @AuthenticationPrincipal User user) {

@@ -88,7 +88,7 @@ class DeliverableConfirmationConcurrencyTest {
         UUID id = project.getId();
         jdbc.update("delete from deliverable_submissions where deliverable_id in (select id from deliverables where project_id = ?)", id);
         // 점수, 경보, 활동 기록은 프로젝트를 지워도 따라 지워지지 않는다
-        for (String table : List.of("deliverable_confirmations", "review_rounds", "activity_logs", "contribution_scores", "alerts"))
+        for (String table : List.of("deliverable_confirmations", "deliverable_confirmation_cancellations", "review_rounds", "activity_logs", "contribution_scores", "alerts"))
             jdbc.update("delete from " + table + " where project_id = ?", id);
         // 파일 금고는 수정과 삭제를 트리거로 막는다. 테스트가 만든 줄을 지우는 동안만 끈다.
         // 테이블 변경도 이 트랜잭션에 묶여, 중간에 실패하면 트리거가 꺼진 채로 남지 않는다
@@ -100,7 +100,7 @@ class DeliverableConfirmationConcurrencyTest {
     }
 
     /**
-     * 확정, 제출 기록, 제출물·요구사항·충족 확인·회차의 쓰기는 모두 무엇을 쓰기 전에 같은 제출물 줄부터 잠근다(K-20 6장).
+     * 확정, 확정 취소, 제출 기록, 제출물·요구사항·충족 확인·회차의 쓰기는 모두 무엇을 쓰기 전에 같은 제출물 줄부터 잠근다(K-20 6장).
      * 테스트가 그 줄을 잠근 채 요청을 보내고, 요청들이 DB에서 무엇을 기다리는지 본다.
      * 잠금을 건너뛴 명령은 끝나 버리거나, 제출물 줄이 아닌 다른 문장에서 멈춰 있어서 드러난다.
      */
@@ -109,6 +109,7 @@ class DeliverableConfirmationConcurrencyTest {
         Object[] ids = {project.getId(), ready.deliverable()};
         Map<String, Callable<Reply>> writes = new LinkedHashMap<>();
         writes.put("확정", () -> confirm(ready));
+        writes.put("확정 취소", () -> cancel(ready, "잠금"));
         writes.put("제출 기록", () -> call(json(put(BASE + "/submission", ids), "{\"submittedAt\":\"2026-10-01T09:30:00+09:00\"}"), member));
         writes.put("제출물 수정", () -> call(json(put(BASE, ids), "{\"title\":\"바뀐 제목\",\"dueDate\":\"2026-10-20\"}"), member));
         writes.put("요구사항 추가", () -> call(json(post(BASE + "/requirements", ids), "{\"content\":\"새 요구사항\",\"required\":false}"), member));
@@ -197,6 +198,52 @@ class DeliverableConfirmationConcurrencyTest {
         }
     }
 
+    /** 같은 확정을 동시에 여러 번 취소해도 취소 기록은 하나이고, 확정했던 회차·사람이 그대로 옮겨진다(K-20 0.3 중복 요청). */
+    @Test void simultaneousCancellationsRecordOne() throws Exception {
+        Ready ready = ready("취소 한꺼번에");
+        assertEquals(200, confirm(ready).status());
+        List<Callable<Reply>> requests = new ArrayList<>();
+        for (int i = 0; i < 8; i++) { String reason = "사유 " + i; requests.add(() -> cancel(ready, reason)); }
+
+        List<Reply> replies = race(requests);
+        Set<String> recorded = new HashSet<>();
+        for (Reply reply : replies) {
+            assertEquals(200, reply.status(), String.valueOf(reply.body()));
+            assertEquals("DRAFT", reply.body().get("status").asString());
+            assertTrue(reply.body().get("confirmation").isNull());
+            assertEquals(1, reply.body().get("cancellations").size(), reply.body().toString());
+            JsonNode c = reply.body().at("/cancellations/0");
+            recorded.add(c.get("cancelledAt").asString() + " " + c.get("reason").asString());
+        }
+        assertEquals(1, recorded.size(), "모두 같은 취소 기록을 받는다: " + recorded);
+        assertEquals(0, count("deliverable_confirmations where deliverable_id = ?", ready.deliverable()));
+        assertEquals(1, count("deliverable_confirmation_cancellations where deliverable_id = ?", ready.deliverable()));
+        assertEquals(1, jdbc.queryForObject("select count(*) from deliverable_confirmation_cancellations where review_id = ? and confirmed_by = ? and cancelled_by = ?",
+                Integer.class, ready.review(), leader.getId(), leader.getId()));
+    }
+
+    /**
+     * 확정 취소와 제출 기록이 겹치면 한쪽만 성공한다. 취소가 먼저면 제출 기록이 409(확정 전), 제출 기록이 먼저면 취소가 409다.
+     * 제출 기록이 있는데 확정이 없는 제출물이나, 취소 기록과 제출 기록이 함께 있는 제출물은 생기지 않는다.
+     */
+    @Test void cancellationAndSubmissionNeverBothSucceed() throws Exception {
+        for (int i = 0; i < ROUNDS; i++) {
+            Ready ready = ready("취소와 제출 " + i);
+            assertEquals(200, confirm(ready).status());
+            List<Reply> replies = race(List.of(() -> cancel(ready, "표지 오타"),
+                    () -> call(json(put(BASE + "/submission", project.getId(), ready.deliverable()), "{\"submittedAt\":\"2026-10-01T09:30:00+09:00\"}"), member)));
+            int cancelled = replies.get(0).status(), submitted = replies.get(1).status();
+            assertTrue(cancelled == 200 && submitted == 409 || cancelled == 409 && submitted == 200,
+                    "한쪽만 성공해야 한다: 취소 " + replies.get(0) + ", 제출 기록 " + replies.get(1));
+            Reply refused = cancelled == 409 ? replies.get(0) : replies.get(1);
+            assertTrue(refused.body().get("detail").asString().contains(cancelled == 409 ? "제출을 기록한 제출물은" : "최종본을 확정한 뒤에"), refused.body().toString());
+            boolean cancelWon = cancelled == 200;
+            assertEquals(cancelWon ? 0 : 1, count("deliverable_confirmations where deliverable_id = ?", ready.deliverable()));
+            assertEquals(cancelWon ? 1 : 0, count("deliverable_confirmation_cancellations where deliverable_id = ?", ready.deliverable()));
+            assertEquals(cancelWon ? 0 : 1, count("deliverable_submissions where deliverable_id = ?", ready.deliverable()));
+        }
+    }
+
     /** 조건을 모두 채운 제출물을 커밋해 둔다. 파일 이름은 제출물마다 달라 서로의 최신 버전에 영향을 주지 않는다. */
     private Ready ready(String title) {
         return tx.execute(status -> {
@@ -212,6 +259,11 @@ class DeliverableConfirmationConcurrencyTest {
 
     private Reply confirm(Ready ready) throws Exception {
         return call(json(put(BASE + "/confirmation", project.getId(), ready.deliverable()), "{\"reviewId\":\"" + ready.review() + "\"}"), leader);
+    }
+
+    private Reply cancel(Ready ready, String reason) throws Exception {
+        return call(json(post(BASE + "/confirmation/cancellation", project.getId(), ready.deliverable()),
+                "{\"reviewId\":\"" + ready.review() + "\",\"reason\":\"" + reason + "\"}"), leader);
     }
 
     private Reply call(MockHttpServletRequestBuilder request, User as) throws Exception {

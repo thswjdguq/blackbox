@@ -4,6 +4,7 @@ import com.blackbox.entity.Deliverable;
 import com.blackbox.entity.Project;
 import com.blackbox.entity.ReviewRound;
 import com.blackbox.exception.NotFoundException;
+import com.blackbox.repository.DeliverableConfirmationCancellationRepository;
 import com.blackbox.repository.DeliverableConfirmationRepository;
 import com.blackbox.repository.DeliverableRepository;
 import com.blackbox.repository.DeliverableSubmissionRepository;
@@ -30,6 +31,7 @@ public class DeliverableStatuses implements DeliverableStatusReader {
     private final ReviewRoundRepository rounds;
     private final DeliverableConfirmationRepository confirmations;
     private final DeliverableSubmissionRepository submissions;
+    private final DeliverableConfirmationCancellationRepository cancellations;
 
     /** latestDecision은 최신 회차의 결정이다. 회차가 없거나 결정 전이면 null */
     public record Status(String status, String latestDecision) {}
@@ -41,17 +43,24 @@ public class DeliverableStatuses implements DeliverableStatusReader {
     /** 최신 회차를 이미 읽은 쪽이 쓴다. */
     public Status of(Deliverable deliverable, Optional<ReviewRound> latest) {
         boolean submitted = submissions.existsById(deliverable.getId());
-        return status(submitted, submitted || confirmations.existsById(deliverable.getId()), latest);
+        boolean confirmed = submitted || confirmations.existsById(deliverable.getId());
+        boolean cancelled = !confirmed && latest.filter(r -> "APPROVED".equals(r.getDecision()))
+                .map(r -> cancellations.existsByReviewId(r.getId())).orElse(false);
+        return status(submitted, confirmed, cancelled, latest);
     }
 
-    /** 프로젝트의 제출물들. 제출물이 몇 개든 조회는 세 번이다. */
+    /** 프로젝트의 제출물들. 제출물이 몇 개든 조회는 네 번이다. */
     public Map<UUID, Status> of(Project project, Collection<Deliverable> deliverables) {
         Set<UUID> submitted = submissions.findDeliverableIdsByProject(project);
         Set<UUID> confirmed = confirmations.findDeliverableIdsByProject(project);
+        Set<UUID> cancelled = cancellations.findReviewIdsByProject(project);
         Map<UUID, ReviewRound> latest = rounds.findLatestByProject(project).stream()
                 .collect(Collectors.toMap(r -> r.getDeliverable().getId(), r -> r));
-        return deliverables.stream().collect(Collectors.toMap(Deliverable::getId, d -> status(
-                submitted.contains(d.getId()), confirmed.contains(d.getId()), Optional.ofNullable(latest.get(d.getId())))));
+        return deliverables.stream().collect(Collectors.toMap(Deliverable::getId, d -> {
+            Optional<ReviewRound> last = Optional.ofNullable(latest.get(d.getId()));
+            return status(submitted.contains(d.getId()), confirmed.contains(d.getId()),
+                    last.map(r -> cancelled.contains(r.getId())).orElse(false), last);
+        }));
     }
 
     /**
@@ -81,12 +90,12 @@ public class DeliverableStatuses implements DeliverableStatusReader {
         return new NotFoundException("제출물을 찾을 수 없습니다");
     }
 
-    // K-20 2장의 표. 위에서부터 먼저 맞는 것이 상태다
-    private static Status status(boolean submitted, boolean confirmed, Optional<ReviewRound> latest) {
+    // K-20 2장의 표. 위에서부터 먼저 맞는 것이 상태다. latestCancelled는 최신 회차의 확정을 취소했는가
+    private static Status status(boolean submitted, boolean confirmed, boolean latestCancelled, Optional<ReviewRound> latest) {
         String decision = latest.map(ReviewRound::getDecision).orElse(null);
         if (submitted) return new Status(SUBMITTED, decision);
         if (confirmed) return new Status(CONFIRMED, decision);
-        if (latest.isEmpty() || "CHANGES_REQUESTED".equals(decision)) return new Status(DRAFT, decision);
+        if (latest.isEmpty() || latestCancelled || "CHANGES_REQUESTED".equals(decision)) return new Status(DRAFT, decision);
         return new Status(IN_REVIEW, decision);
     }
 }

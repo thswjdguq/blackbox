@@ -22,12 +22,12 @@ public final class ReviewDtos {
     }
     public record Decision(String result, Person decidedBy, OffsetDateTime decidedAt) {}
     public record Round(UUID id, int roundNo, boolean latest, FileSummary file, Person openedBy,
-            OffsetDateTime openedAt, Decision decision, boolean currentBasis) {
-        public static Round from(ReviewRound r, boolean latest, boolean currentBasis) {
+            OffsetDateTime openedAt, Decision decision, boolean currentBasis, boolean confirmationCancelled) {
+        public static Round from(ReviewRound r, boolean latest, boolean currentBasis, boolean confirmationCancelled) {
             FileSummary file = r.getFile() == null ? null : FileSummary.of(r.getFile());
             Decision decision = r.getDecision() == null ? null
                     : new Decision(r.getDecision(), Person.of(r.getDecidedBy()), r.getDecidedAt());
-            return new Round(r.getId(), r.getRoundNo(), latest, file, Person.of(r.getOpenedBy()), r.getOpenedAt(), decision, currentBasis);
+            return new Round(r.getId(), r.getRoundNo(), latest, file, Person.of(r.getOpenedBy()), r.getOpenedAt(), decision, currentBasis, confirmationCancelled);
         }
     }
     public record ListResponse(String deliverableStatus, long unresolvedCommentCount, List<Round> rounds) {}

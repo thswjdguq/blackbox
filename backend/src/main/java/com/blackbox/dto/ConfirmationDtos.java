@@ -3,8 +3,10 @@ package com.blackbox.dto;
 import com.blackbox.dto.ReviewDtos.FileSummary;
 import com.blackbox.dto.ReviewDtos.Person;
 import com.blackbox.entity.DeliverableConfirmation;
+import com.blackbox.entity.DeliverableConfirmationCancellation;
 import com.blackbox.entity.DeliverableSubmission;
 import com.blackbox.entity.ReviewRound;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -13,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 최종 확정과 제출 기록(K-20 3장). 조회, 확정, 제출 기록이 같은 객체를 돌려준다.
+ * 최종 확정과 제출 기록(K-20 3장). 조회, 확정, 제출 기록, 확정 취소가 같은 객체를 돌려준다.
  * 값이 없는 candidate·confirmation·submission은 생략하지 않고 null로 내보낸다.
  */
 public final class ConfirmationDtos {
@@ -23,6 +25,8 @@ public final class ConfirmationDtos {
     // channel을 비우면 제출물의 제출 경로를 쓴다. submittedAt은 실제로 낸 시각이다
     public record SubmitRequest(@Size(max = 500) String channel, @NotNull OffsetDateTime submittedAt,
             @Size(max = 1000) String note) {}
+    // reviewId는 화면이 보여 준 확정본의 회차(confirmation.reviewId)다. 사유는 필수다
+    public record CancelRequest(@NotNull UUID reviewId, @NotBlank @Size(max = 1000) String reason) {}
     public record Check(String code, boolean passed, String detail) {}
     /** 지금 확정하면 확정본이 될 회차와 파일. file의 모양은 K-10 3장과 같다. */
     public record Candidate(UUID reviewId, int roundNo, FileSummary file) {
@@ -43,15 +47,26 @@ public final class ConfirmationDtos {
             return new Submission(s.getChannel(), s.getSubmittedAt(), s.getNote(), Person.of(s.getRecordedBy()), s.getRecordedAt());
         }
     }
+    /** 취소한 확정(K-20 0.3). 확정했던 회차와 사람·시각, 취소한 사람·시각·사유 */
+    public record Cancellation(UUID reviewId, int roundNo, Person confirmedBy, OffsetDateTime confirmedAt,
+            Person cancelledBy, OffsetDateTime cancelledAt, String reason) {
+        public static Cancellation from(DeliverableConfirmationCancellation c) {
+            return new Cancellation(c.getReview().getId(), c.getReview().getRoundNo(), Person.of(c.getConfirmedBy()),
+                    c.getConfirmedAt(), Person.of(c.getCancelledBy()), c.getCancelledAt(), c.getReason());
+        }
+    }
     public record Response(String status, boolean canConfirm, List<Check> checks, Candidate candidate,
-            boolean soleContributor, Confirmation confirmation, Submission submission) {
+            boolean soleContributor, Confirmation confirmation, Submission submission, List<Cancellation> cancellations) {
         /** 확정 전. 세 검사를 모두 통과해야 확정할 수 있다. */
-        public static Response pending(String status, List<Check> checks, Candidate candidate, boolean soleContributor) {
-            return new Response(status, checks.stream().allMatch(Check::passed), checks, candidate, soleContributor, null, null);
+        public static Response pending(String status, List<Check> checks, Candidate candidate, boolean soleContributor,
+                                       List<Cancellation> cancellations) {
+            return new Response(status, checks.stream().allMatch(Check::passed), checks, candidate, soleContributor, null, null,
+                    cancellations);
         }
         /** 확정 뒤. 검사와 확정 대상은 더 내보내지 않는다. submission은 기록 전이면 null이다. */
-        public static Response confirmed(String status, boolean soleContributor, Confirmation confirmation, Submission submission) {
-            return new Response(status, false, List.of(), null, soleContributor, confirmation, submission);
+        public static Response confirmed(String status, boolean soleContributor, Confirmation confirmation, Submission submission,
+                                         List<Cancellation> cancellations) {
+            return new Response(status, false, List.of(), null, soleContributor, confirmation, submission, cancellations);
         }
     }
 }
