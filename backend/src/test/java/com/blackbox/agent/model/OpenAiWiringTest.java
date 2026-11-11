@@ -73,15 +73,19 @@ class OpenAiWiringTest {
         assertTrue(requests.get(0).contains("\"model\":\"test-model\""), requests.get(0));
     }
 
-    /** 응답이 없는 게이트웨이가 실행 스레드를 끝없이 잡지 않는다: 요청마다 시간 제한(여기서는 2초)이 걸리고 정해 둔 횟수(2번)만 보낸다 */
+    /**
+     * 응답이 없는 게이트웨이가 실행 스레드를 끝없이 잡지 않는다: 요청마다 시간 제한(여기서는 2초)이 걸리고 정해 둔 횟수(2번)만 보낸다.
+     * 정상이면 2번의 시간 제한과 재시도 대기를 합쳐 약 6초다. 시간 제한이 없으면 첫 요청만으로 30초를 기다린다.
+     * 기준(20초)을 둘 사이에 넉넉히 두어, 전체 테스트의 부하로 몇 초 늦어져도 실패하지 않게 한다
+     */
     @Test void aSilentGatewayIsGivenUpOnWithinTheTimeLimit() {
-        delayMillis = 8_000;
+        delayMillis = 30_000;
         long started = System.nanoTime();
 
         assertThrows(AgentModelException.class, () -> model.generate("지시", "질문", List.of()));
 
         long seconds = (System.nanoTime() - started) / 1_000_000_000;
-        assertTrue(seconds < 8, "시간 제한이 걸리지 않았다: " + seconds + "초");
+        assertTrue(seconds < 20, "시간 제한이 걸리지 않았다: " + seconds + "초");
         assertTrue(requests.size() <= 2, "다시 보낸 횟수: " + requests.size());
     }
 }
