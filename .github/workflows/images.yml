@@ -78,9 +78,12 @@ jobs:
           SLUG: ${{ steps.tag.outputs.slug }}
           FIXED: ${{ steps.tag.outputs.fixed }}
         run: |
-          # source 라벨로 패키지를 이 저장소에 잇는다. 이어져야 워크플로의 토큰이 다음 실행에서도 같은 패키지에 올릴 수 있다
+          # source 라벨로 패키지를 이 저장소에 잇는다. 이어져야 워크플로의 토큰이 다음 실행에서도 같은 패키지에 올릴 수 있다.
+          # revision 라벨은 만든 커밋이다. 서버는 이 값이 받은 설정의 커밋과 같을 때만 띄운다(scripts/ec2-update.sh)
+          rev=$(git rev-parse HEAD)
           for s in backend frontend nginx; do
-            docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" -t "$REPO/blackbox-$s:$FIXED" "$s"
+            docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$rev" -t "$REPO/blackbox-$s:$FIXED" "$s"
           done
           for s in backend frontend nginx; do docker push -q "$REPO/blackbox-$s:$FIXED"; done
           echo "올림: $REPO/blackbox-{backend,frontend,nginx}:$FIXED" >> "$GITHUB_STEP_SUMMARY"
