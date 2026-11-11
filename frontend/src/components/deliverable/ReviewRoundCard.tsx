@@ -39,6 +39,7 @@ export function fmtRelative(iso: string): string {
 /** 확정 근거가 아닌 승인의 사유. 응답만으로 정해진다 (K-10 7장) */
 function notBasisReason(round: ReviewRound): string {
   if (!round.latest) return "이후 새 회차가 열려";
+  if (round.confirmationCancelled) return "팀장이 확정을 취소해";
   if (round.file == null) return "파일 없는 회차라";
   return "같은 이름의 최신 버전과 내용이 달라";
 }
@@ -164,6 +165,9 @@ export default function ReviewRoundCard({
           >
             승인
           </span>
+        )}
+        {round.confirmationCancelled && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">확정 취소</span>
         )}
         {result === "CHANGES_REQUESTED" && (
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">수정 요청</span>

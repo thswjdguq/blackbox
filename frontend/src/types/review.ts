@@ -46,6 +46,8 @@ export interface ReviewRound {
    * 승인 + 최신 회차 + 파일 있음 + 같은 이름의 최신 버전과 내용(해시)이 같음
    */
   currentBasis: boolean;
+  /** 이 회차로 한 확정을 팀장이 취소했는가 (K-10 0.3). true 면 currentBasis 는 false. 0.3 이전 서버는 보내지 않는다 */
+  confirmationCancelled?: boolean;
 }
 
 /** CONFIRMED·SUBMITTED 는 K-20 이 추가한다 */

@@ -34,6 +34,8 @@ export function nextStepFor(projectId: string, d: Deliverable, tasks: Task[], ca
 
   if (d.status === "SUBMITTED") return { title: "제출 기록이 완료됐습니다", detail: "확정된 파일과 제출 경로·시각을 확인할 수 있습니다.", href: `${base}?tab=submit`, action: "제출 기록 보기" };
   if (d.status === "CONFIRMED") return { title: "학교에 제출한 뒤 기록을 남기세요", detail: "최종본이 확정됐습니다. 학교 시스템에 직접 제출한 뒤 제출 기록을 남기세요.", href: `${base}?tab=submit`, action: canWrite ? "확정본·제출 기록" : "확정본 보기" };
+  // K-20 0.3: 확정을 취소하면 DRAFT 로 돌아가고 최신 결정은 APPROVED 로 남는다
+  if (d.status === "DRAFT" && d.latestDecision === "APPROVED") return { title: "확정을 취소했습니다. 고친 파일로 다시 검토받으세요", detail: "고친 파일을 올리고 새 검토 회차를 열어 승인받은 뒤 최종본을 다시 확정합니다.", href: `${base}?tab=review`, action: "검토 이어가기" };
   if (d.status === "IN_REVIEW") {
     if (d.latestDecision === "APPROVED") return { title: "검토한 최종본을 확정할 차례입니다", detail: "팀장이 필수 요구사항과 승인된 파일을 확인한 뒤 최종본을 확정합니다.", href: `${base}?tab=submit`, action: "최종본 확인" };
     if (d.latestDecision === "CHANGES_REQUESTED") return { title: "검토 의견을 반영해 다시 요청하세요", detail: "미해결 피드백을 보완하고 수정한 파일 버전으로 검토를 요청하세요.", href: `${base}?tab=review`, action: "보완할 내용 보기" };
