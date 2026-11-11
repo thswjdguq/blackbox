@@ -6,7 +6,9 @@ const old={id:'task',projectId:'project',status:'IN_PROGRESS',completionRequeste
 function render(task,completion) {
   let index=0; const state=[completion,'',false,false,'']; const module={exports:{}};
   const mockedRequire=name=>name==='react'?{...React,useState:()=>[state[index++],()=>{}],useEffect:()=>{},useCallback:f=>f,useRef:v=>({current:v})}:
-    name==='@/hooks/useMyRole'?{useMyRole:()=> 'LEADER'}:name==='@/lib/api'?{default:{}}:name==='@/lib/apiError'?{apiError:()=>''}:require(name);
+    name==='@/hooks/useMyRole'?{useMyRole:()=> 'LEADER'}:name==='@/lib/api'?{default:{}}:name==='@/lib/apiError'?{apiError:()=>''}:
+    name==='@/lib/sessionCache'?{sessionGeneration:()=>0}:name==='@/lib/api/member'?{getMembers:async()=>({data:[]})}:
+    name==='@/lib/reviewers'?{eligibleReviewers:()=>[]}:require(name);
   new Function('require','module','exports',compiled)(mockedRequire,module,module.exports);
   return renderToStaticMarkup(React.createElement(module.exports.default,{task,disabled:false,onChanged:()=>{},onBusy:()=>{}}));
 }
