@@ -4,9 +4,9 @@ import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { DayPicker } from "react-day-picker";
 import { format, parse, isValid } from "date-fns";
-import { ko } from "date-fns/locale";
+import { ko } from "react-day-picker/locale";
 import { Calendar } from "lucide-react";
-import "react-day-picker/dist/style.css";
+import "react-day-picker/style.css";
 
 interface DatePickerProps {
   value: string;           // "YYYY-MM-DD" or ""
@@ -231,11 +231,12 @@ export default function DatePicker({
           <DayPicker
             mode="single"
             selected={selected}
+            defaultMonth={selected}
             onSelect={handleDaySelect}
             locale={ko}
-            captionLayout="dropdown-buttons"
-            fromYear={2020}
-            toYear={2035}
+            captionLayout="dropdown"
+            startMonth={new Date(2020, 0)}
+            endMonth={new Date(2035, 11)}
             showOutsideDays
           />
         </div>, document.body
