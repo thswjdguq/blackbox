@@ -68,13 +68,13 @@ public class RiskService {
         // 1. 완료율 (최대 35점)
         if (total == 0) {
             score += 10;
-            reasons.add("등록된 태스크가 없습니다");
+            reasons.add("등록된 업무가 없습니다");
         } else if (completionRate < 30) {
             score += 35;
-            reasons.add("태스크 완료율이 " + completionRate + "%로 매우 낮습니다");
+            reasons.add("업무 완료율이 " + completionRate + "%로 매우 낮습니다");
         } else if (completionRate < 60) {
             score += 20;
-            reasons.add("태스크 완료율이 " + completionRate + "%입니다");
+            reasons.add("업무 완료율이 " + completionRate + "%입니다");
         } else if (completionRate < 80) {
             score += 8;
         }
@@ -83,7 +83,7 @@ public class RiskService {
         if (overdue > 0) {
             int overdueScore = Math.min(overdue * 10, 30);
             score += overdueScore;
-            reasons.add("기한이 지난 태스크 " + overdue + "개");
+            reasons.add("기한이 지난 업무 " + overdue + "개");
         }
 
         // 3. 남은 기간 (최대 25점)

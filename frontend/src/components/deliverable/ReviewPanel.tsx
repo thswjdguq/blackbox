@@ -164,6 +164,23 @@ export default function ReviewPanel({
         )}
       </div>
 
+      {/* 확정 취소 안내: 취소한 회차로는 다시 확정할 수 없다 (K-20 2장) */}
+      {latest?.confirmationCancelled && !locked && (
+        <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+          <TriangleAlert size={16} className="text-amber-400 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-300">{latest.roundNo}회차의 확정을 취소했습니다</p>
+            <p className="mt-1 text-xs text-amber-400/90">
+              고친 파일을{latest.file ? ` 같은 이름(${latest.file.fileName})으로` : ""}{" "}
+              <Link href={`/projects/${projectId}/vault`} className="underline">
+                프로젝트 자료
+              </Link>
+              에 올리고 새 검토 회차를 열어 승인받은 뒤 다시 확정하세요.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 수정본 안내: 수정 요청을 받은 뒤 다음에 할 일 */}
       {latest?.decision?.result === "CHANGES_REQUESTED" && !locked && (
         <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">

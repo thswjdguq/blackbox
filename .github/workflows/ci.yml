@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   backend:
-    name: backend (Java 17 · PostgreSQL 16)
+    name: backend (Java 25 · PostgreSQL 16)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -44,11 +44,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: JDK 17 준비
+      - name: JDK 25 준비
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '25'
           cache: gradle
 
       - name: 빌드 + 테스트
@@ -89,11 +89,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: JDK 17 준비
+      - name: JDK 25 준비
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '25'
           cache: gradle
 
       - name: 마이그레이션 검증
@@ -101,7 +101,7 @@ jobs:
         run: bash scripts/verify-db.sh
 
   frontend:
-    name: frontend (Node 20 · 타입체크 + 빌드)
+    name: frontend (Node 26 · 타입체크 + 빌드)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -109,10 +109,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Node 20 준비
+      - name: Node 26 준비
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '26'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 

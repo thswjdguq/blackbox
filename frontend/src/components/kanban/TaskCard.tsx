@@ -1,7 +1,7 @@
 "use client";
 
 import TaskStatusControl from "./TaskStatusControl";
-import { Task, TaskStatus, ScoreMap } from "@/types/task";
+import { Task, TaskStatus } from "@/types/task";
 import AiBadge from "@/components/agent/AiBadge";
 import { DUE_BADGE, DUE_BAR, DUE_TEXT, dueTone, dueLabel, shortDate } from "@/lib/due";
 import {
@@ -11,13 +11,11 @@ import {
   Minus,
   ChevronDown,
   ChevronsUp,
-  Star,
   Check,
 } from "lucide-react";
 
 interface TaskCardProps {
   task: Task;
-  scoreMap: ScoreMap;
   onEdit: (task: Task) => void;
   onMove: (taskId: string, newStatus: TaskStatus) => Promise<void>;
   busy?: boolean;
@@ -59,27 +57,11 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-function ScoreChip({ score }: { score: number }) {
-  const color =
-    score >= 120 ? "text-teal-300 bg-teal-400/10" :
-    score >= 80  ? "text-indigo-300 bg-indigo-400/10" :
-    score >= 50  ? "text-bb-text bg-bb-surface2" :
-                   "text-rose-400 bg-rose-400/10";
-  return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${color}`}>
-      <Star size={9} />
-      {score.toFixed(0)}
-    </span>
-  );
-}
-
-export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = false, isAi = false, busy, locked = false }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onMove, readOnly = false, isAi = false, busy, locked = false }: TaskCardProps) {
   const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
   const PriorityIcon = priority.icon;
   const dueInfo = formatDue(task.dueDate, task.status === "DONE");
   const dueWarning = getDueWarning(task.dueDate, task.status === "DONE");
-  const representativeScore =
-    task.assignees.length > 0 ? scoreMap[task.assignees[0].userId] : undefined;
   const isDone = task.status === "DONE";
 
   return (
@@ -169,11 +151,8 @@ export default function TaskCard({ task, scoreMap, onEdit, onMove, readOnly = fa
           )}
         </div>
 
-        {/* Score + Due + IN_PROGRESS → Done 버튼 */}
+        {/* Due + IN_PROGRESS → Done 버튼 */}
         <div className="flex items-center gap-2">
-          {representativeScore !== undefined && (
-            <ScoreChip score={representativeScore} />
-          )}
           {dueInfo && (
             <span className={`flex items-center gap-1 text-[10px] font-medium ${dueInfo.cls}`}>
               <Calendar size={9} />

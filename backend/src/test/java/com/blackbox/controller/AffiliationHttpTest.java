@@ -3,11 +3,11 @@ package com.blackbox.controller;
 import com.blackbox.entity.User;
 import com.blackbox.security.JwtService;
 import com.blackbox.service.UniversityCatalogService;
-import com.fasterxml.jackson.databind.*;
+import tools.jackson.databind.*;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -45,14 +45,14 @@ class AffiliationHttpTest {
     @Test void selectedAffiliationUsesCanonicalNamesAndPersists() throws Exception {
         var school=catalog.list().schools().get(0);var department=catalog.departments(school.id()).get(0);
         var profile=signup(Map.of("source","CATALOG","schoolId",school.id(),"departmentId",department.id(),"schoolName","위조 이름"),201);
-        assertEquals(school.name(),profile.at("/affiliation/schoolName").asText());
-        assertEquals(department.name(),profile.at("/affiliation/departmentName").asText());
-        assertEquals("CATALOG",profile.at("/affiliation/source").asText());
+        assertEquals(school.name(),profile.at("/affiliation/schoolName").asString());
+        assertEquals(department.name(),profile.at("/affiliation/departmentName").asString());
+        assertEquals("CATALOG",profile.at("/affiliation/source").asString());
     }
     @Test void manualAffiliationIsSavedWithoutClaimingCatalogMatch() throws Exception {
         var profile=signup(Map.of("source","SELF_REPORTED","schoolName","  합성 신규대학교  ","departmentName"," 신설융합전공 "),201);
-        assertEquals("합성 신규대학교",profile.at("/affiliation/schoolName").asText());
-        assertEquals("SELF_REPORTED",profile.at("/affiliation/source").asText());
+        assertEquals("합성 신규대학교",profile.at("/affiliation/schoolName").asString());
+        assertEquals("SELF_REPORTED",profile.at("/affiliation/source").asString());
         assertTrue(profile.at("/affiliation/schoolId").isNull());assertTrue(profile.at("/affiliation/catalogYear").isNull());
     }
     @Test void rejectsUnknownSchoolForeignDepartmentAndMissingAffiliation() throws Exception {

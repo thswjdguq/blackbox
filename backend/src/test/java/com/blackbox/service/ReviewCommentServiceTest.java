@@ -4,7 +4,7 @@ import com.blackbox.dto.ReviewCommentDtos.*;
 import com.blackbox.entity.*;
 import com.blackbox.exception.*;
 import com.blackbox.repository.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

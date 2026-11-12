@@ -64,30 +64,40 @@ body {
 }
 
 /* ─── react-day-picker Calendar Overrides ───────────────────────────── */
-.rdp {
+/* v9 클래스. 칸 크기는 v8 기본(40px)을 유지한다.
+   달력의 style.css가 이 파일보다 늦게 들어오므로 .rdp-root 아래로 한 단계 더 구체적으로 쓴다 */
+div.rdp-root {
   --rdp-accent-color: rgb(var(--bb-primary));
-  --rdp-background-color: rgb(var(--bb-primary) / 0.1);
+  --rdp-accent-background-color: rgb(var(--bb-primary) / 0.1);
+  --rdp-day-height: 40px;
+  --rdp-day-width: 40px;
+  --rdp-day_button-height: 38px;
+  --rdp-day_button-width: 38px;
+  --rdp-day_button-border-radius: 6px;
   margin: 0;
 }
 
-.rdp-day_selected,
-.rdp-day_selected:focus-visible,
-.rdp-day_selected:hover {
+.rdp-root .rdp-selected {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.rdp-root .rdp-selected .rdp-day_button,
+.rdp-root .rdp-selected .rdp-day_button:hover {
   background-color: rgb(var(--bb-primary));
+  border-color: transparent;
   color: white;
-  border-radius: 6px;
 }
 
-.rdp-day:hover:not(.rdp-day_selected) {
+.rdp-root .rdp-day:not(.rdp-selected) .rdp-day_button:hover {
   background-color: rgb(var(--bb-primary) / 0.1);
-  border-radius: 6px;
 }
 
-.rdp-button:focus-visible {
+.rdp-root .rdp-day_button:focus-visible {
   outline: 2px solid rgb(var(--bb-primary));
 }
 
-.rdp-day_today:not(.rdp-day_selected) {
+.rdp-root .rdp-today:not(.rdp-selected) {
   color: rgb(var(--bb-primary));
   font-weight: 600;
 }

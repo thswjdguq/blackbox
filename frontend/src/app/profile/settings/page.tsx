@@ -73,18 +73,9 @@ function ProfileSettingsContent() {
 
   // ── 데이터 로드 ───────────────────────────────────────────────────────────
   const fetchCalendar = useCallback(async () => {
-    try {
-      const { data } = await api.get<CalendarStatus>("/calendar/authorize").catch(() =>
-        // 연동 상태만 조회: /calendar/authorize 는 URL을 반환. 다른 endpoint 사용
-        ({ data: null as unknown as CalendarStatus })
-      );
-      void data; // fallback below
-    } catch { /* ignore */ }
-
-    // 실제 연동 상태: 모든 프로젝트와 무관한 개인 상태는 별도 endpoint가 없어
-    // /calendar/authorize 를 호출해 URL을 받는 게 가능한지로 판단 대신,
-    // 내 프로필 정보와 함께 캘린더 상태를 body로 포함하는 간단한 방식으로 대체.
-    // 여기서는 프로젝트 무관 상태 확인: 첫 번째 프로젝트의 status에서 내 연동 여부 읽기
+    // 내 연동 여부만 본다. /calendar/authorize는 부를 때마다 일회성 연동 요청(state)과 쿠키를 새로 만들어
+    // 연동 버튼이 받은 요청을 무효로 만들 수 있으므로, 연동 버튼을 누를 때만 부른다(K-CALENDAR-SECURITY).
+    // 개인 연동 상태 API가 따로 없어 첫 프로젝트의 status에서 내 연동 여부를 읽는다
     try {
       const projRes = await api.get<{ id: string }[]>("/projects");
       if (projRes.data.length > 0) {
@@ -107,6 +98,8 @@ function ProfileSettingsContent() {
 
     if (searchParams.get("calendar") === "connected") {
       showToast("Google 캘린더가 연동되었습니다!");
+    } else if (searchParams.get("calendar") === "error") {
+      showToast("Google 캘린더 연동을 마치지 못했습니다. 다시 연동해 주세요.");
     }
   }, [fetchCalendar, router, searchParams]);
 
@@ -156,6 +149,7 @@ function ProfileSettingsContent() {
       window.location.href = data.authUrl;
     } catch {
       setConnecting(false);
+      showToast("연동 페이지를 열지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
 

@@ -5,11 +5,11 @@ import com.blackbox.entity.*;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.blackbox.scheduler.ScoreScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -25,8 +25,8 @@ class ReviewCommentTaskRollbackTest {
     @Autowired EntityManager em;
     @Autowired PlatformTransactionManager transactions;
     @Autowired ReviewCommentTaskService service;
-    @SpyBean ActivityLogService activity;
-    @MockBean ScoreScheduler scheduler;
+    @MockitoSpyBean ActivityLogService activity;
+    @MockitoBean ScoreScheduler scheduler;
     private UUID projectId, userId;
 
     @AfterEach void removeFixture() {

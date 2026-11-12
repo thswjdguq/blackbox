@@ -8,6 +8,7 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.tool.ToolCallback;
@@ -20,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 경계가 우리 타입과 Spring AI 사이를 제대로 잇는지 본다. 실제 모델은 부르지 않는다.
- * 모델이 도구를 부르고 그 결과로 다시 답하는 반복은 공급자 구현 안에서 돌기 때문에, 실제 모델로 따로 확인한다.
+ * 모델이 도구를 부르고 그 결과로 다시 답하는 반복은 Spring AI(ChatClient의 도구 호출 advisor)가 돌리므로, 실제 모델로 따로 확인한다.
  */
 class SpringAiAgentModelTest {
     @Test void withoutAProviderItIsUnavailableAndRefusesToRun() {
@@ -80,8 +81,15 @@ class SpringAiAgentModelTest {
         assertEquals(AgentModelException.Reason.FAILED, empty.reason());
     }
 
+    /** 실제 공급자처럼 도구를 받을 수 있는 옵션을 내놓는다. Spring AI 2.0은 모델의 옵션이 이 모양일 때 도구를 실어 보낸다 */
     private static ChatModel stub(List<Prompt> seen, String answer) {
-        return prompt -> { seen.add(prompt); return new ChatResponse(List.of(new Generation(new AssistantMessage(answer)))); };
+        return new ChatModel() {
+            @Override public ChatResponse call(Prompt prompt) {
+                seen.add(prompt);
+                return new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+            }
+            @Override public ChatOptions getOptions() { return ToolCallingChatOptions.builder().build(); }
+        };
     }
 
     private static String text(Prompt prompt, MessageType type) {

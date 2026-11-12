@@ -1,6 +1,6 @@
 package com.blackbox;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class MainMigrationCompatibilityTest {
     }
     @Test void emptyDatabaseMigratesAndRepeatedMigrationDoesNothing() throws Exception {
         var f = flyway(null); f.migrate(); f.validate();
-        assertEquals("35", f.info().current().getVersion().toString());
+        assertEquals("36", f.info().current().getVersion().toString());
         assertEquals(0, f.migrate().migrationsExecuted);
         try (var c = connection()) {
             assertEquals("1", scalar(c, "SELECT count(*) FROM flyway_schema_history WHERE version='25' AND script='V25__agent_proposals.sql'"));
