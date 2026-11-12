@@ -23,7 +23,7 @@ class DeliverableServiceTest {
     final DeliverableConfirmationRepository confirmations = mock(DeliverableConfirmationRepository.class);
     final DeliverableService service = new DeliverableService(deliveries, requirements, tasks, rounds, members, access,
             new DeliverableStatuses(access, deliveries, rounds, confirmations, mock(DeliverableSubmissionRepository.class),
-                    mock(DeliverableConfirmationCancellationRepository.class)));
+                    mock(DeliverableConfirmationCancellationRepository.class)), mock(DeliverableBriefRepository.class));
     final Project project = new Project();
     final User user = new User();
     final Deliverable delivery = new Deliverable();
