@@ -3,8 +3,8 @@
 name: CI
 
 on:
+  # base가 main이 아닌 PR(앞 PR 위에 쌓은 PR)도 리뷰 때 검사 결과가 붙게 base를 가리지 않는다
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
