@@ -151,7 +151,7 @@ class AgentHttpTest {
         assertEquals("과제 안내문을 안내문 공간에 저장했습니다: " + brief.path("briefTitle").asString(), brief.path("label").asString());
         assertTrue(brief.path("tool").isNull(), "모델이 부른 도구가 아니다");
         assertTrue(brief.path("briefCreated").asBoolean());
-        assertTrue(brief.path("briefTitle").asString().startsWith("과제 안내문 "));
+        assertEquals("기말 보고서를 12월 1일까지 낸다", brief.path("briefTitle").asString(), "제목이 없으면 본문의 첫 줄이다");
         assertEquals("list_deliverables", events.get(1).data().path("tool").asString());
         assertEquals("제출물과 요구사항 조회", events.get(1).data().path("label").asString());
         assertEquals("제출물 하나를 찾았습니다.", events.get(2).data().path("text").asString());
