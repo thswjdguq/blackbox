@@ -145,6 +145,7 @@ public class AgentRunner {
         String guide = instructions.forRun(p.skill(), allowedKinds, projectId);
         // 안내문과 질문은 자료로만 넘긴다. 그 안의 지시는 따르지 않게 공통 지시문이 막는다
         String material = instructions.material(p.material());
+        JsonNode input = p.skill().begin(projectId, user, p.input(), events);
 
         String answer = model.generate(guide, material, toolbox.bind(projectId, user, p.skill().tools(), events::step));
         requireInTime(p);
@@ -153,18 +154,19 @@ public class AgentRunner {
             return List.of();
         }
 
-        Answer read = read(answer, p, allowedKinds);
+        Answer read = read(answer, p, input, allowedKinds);
         if (!read.problems().isEmpty()) {
             // 한 번만 다시 요청한다(K-30 6장). 기록은 다시 조회하지 않고 형식만 고치게 한다
-            read = read(model.generate(guide, instructions.repair(material, answer, read.problems()), List.of()), p, allowedKinds);
+            read = read(model.generate(guide, instructions.repair(material, answer, read.problems()), List.of()), p, input, allowedKinds);
             requireInTime(p);
             if (!read.problems().isEmpty()) throw new IllegalStateException("형식에 맞지 않는 응답: " + read.problems());
         }
         if (!read.text().isBlank()) events.text(read.text());
         List<UUID> ids = new ArrayList<>();
         for (Draft draft : read.drafts()) {
-            AgentProposal saved = proposals.save(AgentProposal.propose(
-                    p.run(), draft.kind(), draft.title(), draft.rationale(), draft.content(), OffsetDateTime.now()));
+            AgentProposal card = AgentProposal.propose(p.run(), draft.kind(), draft.title(), draft.rationale(), draft.content(), OffsetDateTime.now());
+            card.cite(kinds.get(draft.kind()).briefIds(draft.content()));
+            AgentProposal saved = proposals.save(card);
             events.proposal(saved);
             ids.add(saved.getId());
         }
@@ -175,7 +177,7 @@ public class AgentRunner {
     private record Answer(String text, List<Draft> drafts, List<String> problems) {}
 
     /** 모델의 답을 읽는다. 형식에 맞지 않는 곳이 있으면 problems에 담고, 그때는 아무것도 저장하지 않는다 */
-    private Answer read(String answer, Prepared p, List<String> allowedKinds) {
+    private Answer read(String answer, Prepared p, JsonNode input, List<String> allowedKinds) {
         JsonNode root;
         try {
             // 모델이 코드 블록 표시나 앞뒤 말을 붙여도 객체만 읽는다
@@ -197,7 +199,7 @@ public class AgentRunner {
             if (title.isEmpty()) problems.add(at + ".title: 비어 있다");
             if (rationale.isEmpty()) problems.add(at + ".rationale: 비어 있다");
             if (!(item.path("content") instanceof ObjectNode content)) { problems.add(at + ".content: 객체여야 한다"); continue; }
-            p.skill().complete(content, p.input());
+            p.skill().complete(content, input);
             ProposalKind.Checked checked = kinds.get(kind).check(p.run().getProject().getId(), p.run().getRequestedBy(), content, false);
             checked.problems().forEach(problem -> problems.add(at + ".content." + problem));
             // 저장하는 것은 그 종류가 아는 칸만 남긴 내용이다
