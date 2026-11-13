@@ -145,12 +145,19 @@ class AgentHttpTest {
         assertEquals("no", response.headers().firstValue("X-Accel-Buffering").orElse(""), "프록시가 응답을 모아 두지 않게 알린다");
         assertTrue(response.body().startsWith(":start"), "첫 줄은 화면이 무시하는 주석이다");
         List<Event> events = events(response.body());
-        assertEquals(List.of("step", "text", "proposal", "done"), events.stream().map(Event::name).toList());
-        assertEquals("list_deliverables", events.get(0).data().path("tool").asString());
-        assertEquals("제출물과 요구사항 조회", events.get(0).data().path("label").asString());
-        assertEquals("제출물 하나를 찾았습니다.", events.get(1).data().path("text").asString());
+        assertEquals(List.of("step", "step", "text", "proposal", "done"), events.stream().map(Event::name).toList());
+        // 첫 step은 실행이 쓴 안내문이다(K-31 4장). 붙여 넣은 글은 모델을 부르기 전에 안내문 공간에 저장된다
+        JsonNode brief = events.get(0).data();
+        assertEquals("과제 안내문을 안내문 공간에 저장했습니다: " + brief.path("briefTitle").asString(), brief.path("label").asString());
+        assertTrue(brief.path("tool").isNull(), "모델이 부른 도구가 아니다");
+        assertTrue(brief.path("briefCreated").asBoolean());
+        assertTrue(brief.path("briefTitle").asString().startsWith("과제 안내문 "));
+        assertEquals("list_deliverables", events.get(1).data().path("tool").asString());
+        assertEquals("제출물과 요구사항 조회", events.get(1).data().path("label").asString());
+        assertEquals("제출물 하나를 찾았습니다.", events.get(2).data().path("text").asString());
 
-        JsonNode card = events.get(2).data();
+        JsonNode card = events.get(3).data();
+        assertEquals(brief.path("briefId").asString(), card.path("content").path("briefId").asString(), "카드가 그 안내문을 가리킨다");
         assertEquals("DELIVERABLE_PLAN", card.path("kind").asString());
         assertEquals("PENDING", card.path("status").asString());
         assertEquals("기말 보고서", card.path("content").path("deliverable").path("title").asString());
@@ -162,7 +169,7 @@ class AgentHttpTest {
         assertTrue(card.has("results") && card.path("results").isNull());
         assertTrue(card.path("createdAt").asString().matches(".*([+-]\\d\\d:\\d\\d|Z)$"), "시각에 시간대가 있다");
 
-        JsonNode done = events.get(3).data();
+        JsonNode done = events.get(4).data();
         assertEquals(card.path("runId").asString(), done.path("runId").asString());
         assertEquals(card.path("id").asString(), done.path("proposalIds").get(0).asString());
         assertEquals(1, body(get("/status", member)).path("pendingProposalCount").asInt());
