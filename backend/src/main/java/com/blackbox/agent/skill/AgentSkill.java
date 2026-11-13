@@ -1,5 +1,6 @@
 package com.blackbox.agent.skill;
 
+import com.blackbox.agent.run.AgentEvents;
 import com.blackbox.entity.User;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -34,7 +35,13 @@ public interface AgentSkill {
     /** 입력을 검증하고 모델에 자료로 넘길 글을 만든다. 입력이 틀리면 400, 다른 프로젝트의 id면 404가 되는 예외를 던진다 */
     String material(UUID projectId, User user, JsonNode input);
 
-    /** 모델이 만든 카드 내용 중 서버가 이미 아는 값을 채운다 */
+    /**
+     * 실행이 자리를 얻은 뒤(409·429를 지난 뒤), 모델을 부르기 전에 한 번 부른다. 막힌 실행에서는 하지 않을 일을 여기서 한다
+     * (예: 안내문 저장). 돌려준 입력을 complete가 받는다
+     */
+    default JsonNode begin(UUID projectId, User user, JsonNode input, AgentEvents events) { return input; }
+
+    /** 모델이 만든 카드 내용 중 서버가 이미 아는 값을 채운다. input은 begin이 돌려준 것이다 */
     default void complete(ObjectNode content, JsonNode input) {}
 
     static String requiredText(JsonNode input, String field, String label, int maxLength) {

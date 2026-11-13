@@ -58,7 +58,8 @@ public class ProposalService implements AgentOriginReader {
         AgentProposal proposal = lockForDecision(projectId, user, proposalId);
         if (!proposal.isPending()) throw new ResponseStatusException(HttpStatus.CONFLICT, DECIDED);
         if (content == null || !content.isObject()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "content가 필요합니다");
-        proposal.edit(checked(projectId, user, proposal.getKind(), content, false));
+        JsonNode kept = kinds.get(proposal.getKind()).keepFixed(proposal.getContent(), content);
+        proposal.edit(checked(projectId, user, proposal.getKind(), kept, false));
         return ProposalResponse.from(proposal);
     }
 
