@@ -4,11 +4,13 @@ import com.blackbox.agent.AgentProposal;
 import com.blackbox.dto.CreateTaskRequest;
 import com.blackbox.dto.DeliverableDtos;
 import com.blackbox.entity.User;
+import com.blackbox.service.BriefService;
 import com.blackbox.service.DeliverableService;
 import com.blackbox.service.TaskService;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -32,6 +34,7 @@ public class DeliverablePlanKind implements ProposalKind {
     private final Validator validator;
     private final DeliverableService deliverables;
     private final TaskService tasks;
+    private final BriefService briefs;
 
     @Override public String name() { return NAME; }
 
@@ -44,7 +47,7 @@ public class DeliverablePlanKind implements ProposalKind {
         }
         if (read.deliverable() == null) return new Checked(content, List.of("deliverable: 없다"));
         Content c = new Content(read.deliverable(),
-                read.requirements() == null ? List.of() : read.requirements(), read.tasks() == null ? List.of() : read.tasks());
+                read.requirements() == null ? List.of() : read.requirements(), read.tasks() == null ? List.of() : read.tasks(), read.briefId());
 
         Deliverable d = c.deliverable();
         // 안내문에 기한이 없으면 모델이 비워 두고 사람이 채운다. 채택할 때는 있어야 한다
@@ -70,12 +73,27 @@ public class DeliverablePlanKind implements ProposalKind {
         return new Checked(json.valueToTree(c), problems);
     }
 
+    @Override public Set<UUID> briefIds(JsonNode content) {
+        String id = content.path("briefId").asString(null);
+        return id == null ? Set.of() : Set.of(UUID.fromString(id));
+    }
+
+    /** 어느 안내문에서 나온 카드인지는 서버가 정한다. 사람이 고쳐도 그대로 둔다 */
+    @Override public JsonNode keepFixed(JsonNode before, JsonNode edited) {
+        if (!(edited instanceof ObjectNode e)) return edited;
+        ObjectNode kept = e.deepCopy();
+        kept.set("briefId", before.get("briefId"));
+        return kept;
+    }
+
     @Override public List<AgentProposal.Result> accept(UUID projectId, User user, JsonNode content) {
         tasks.lockProject(projectId,user);
         Content c = json.convertValue(content, Content.class);
         List<AgentProposal.Result> created = new ArrayList<>();
         UUID deliverableId = deliverables.save(projectId, null, c.deliverable().toRequest(), user).id();
         created.add(new AgentProposal.Result(TargetTypes.DELIVERABLE, deliverableId));
+        // 이 계획을 만든 안내문을 새 제출물에 건다(K-31 4장). 이전에 만든 카드에는 안내문이 없다
+        if (c.briefId() != null) briefs.link(projectId, deliverableId, c.briefId(), user);
         Map<String, UUID> requirementIds = new HashMap<>();
         for (Requirement r : c.requirements()) {
             UUID id = deliverables.saveRequirement(projectId, deliverableId, null,
@@ -90,7 +108,7 @@ public class DeliverablePlanKind implements ProposalKind {
         return created;
     }
 
-    record Content(Deliverable deliverable, List<Requirement> requirements, List<Task> tasks) {}
+    record Content(Deliverable deliverable, List<Requirement> requirements, List<Task> tasks, UUID briefId) {}
     record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod, String dueTime) {
         DeliverableDtos.SaveRequest toRequest() {
             return new DeliverableDtos.SaveRequest(title, description, dueDate, submissionMethod, null, dueTime);
