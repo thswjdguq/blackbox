@@ -177,7 +177,7 @@ export default function AgentDock() {
           }}
           className="mt-2 space-y-2"
         >
-          <label htmlFor="agent-brief" className="block text-xs text-bb-text2">과제 안내문을 그대로 붙여 넣으세요. 원문은 저장하지 않습니다.</label>
+          <label htmlFor="agent-brief" className="block text-xs text-bb-text2">과제 안내문을 그대로 붙여 넣으세요. 붙여 넣은 글은 안내문 공간에 저장되어 팀원이 다시 쓸 수 있습니다. 개인정보는 적지 마세요.</label>
           <textarea
             id="agent-brief"
             value={brief}
