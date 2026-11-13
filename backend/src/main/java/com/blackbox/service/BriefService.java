@@ -15,9 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -32,7 +30,7 @@ public class BriefService {
     private final ProjectAccessChecker access;
     private final DeliverableStatuses statuses;
     private final AgentProperties properties;
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final int FIRST_LINE_MAX = 60;   // 제목이 없을 때 본문 첫 줄에서 쓰는 글자 수
 
     @Transactional(readOnly = true)
     public List<Response> list(UUID projectId, User user) {
@@ -125,14 +123,25 @@ public class BriefService {
         return Used.of(find(project, briefId), false);
     }
 
-    /** 본문이 같은 안내문이 있으면 그것을 쓰고(가장 먼저 만든 것), 없으면 저장한다. 제목이 없으면 "과제 안내문 yyyy-MM-dd"다 */
+    /** 본문이 같은 안내문이 있으면 그것을 쓰고(가장 먼저 만든 것), 없으면 저장한다. 제목이 없으면 본문의 첫 줄이다(K-31 0.4 4장) */
     public Used useForPlan(UUID projectId, PlanInput input, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
         Optional<ProjectBrief> same = briefs.findFirstByProjectAndBodyHashOrderByCreatedAtAsc(project, ProjectBrief.hash(input.body()));
         if (same.isPresent()) return Used.of(same.get(), false);
-        String title = input.title() != null ? input.title() : "과제 안내문 " + LocalDate.now(KST);
+        String title = input.title() != null ? input.title() : firstLine(input.body());
         return Used.of(briefs.save(ProjectBrief.create(project, title, input.body(), null, user, now())), true);
+    }
+
+    /**
+     * 안내문의 첫 줄은 보통 제목이다("[캡스톤디자인] 중간 보고서 제출 안내"). 날짜로 정하면 같은 날 붙여 넣은 안내문끼리 제목이 같아진다.
+     * 정규화한 본문은 공백으로 시작하지 않으므로 첫 줄은 비지 않는다. 길면 앞 60자(코드 포인트)에 "…"를 붙인다.
+     * 표시가 없으면 "…10월 18"처럼 잘린 글이 다른 뜻으로 읽힌다
+     */
+    private static String firstLine(String body) {
+        String line = body.lines().findFirst().orElseThrow();
+        if (line.codePointCount(0, line.length()) <= FIRST_LINE_MAX) return ProjectBrief.normalize(line);
+        return ProjectBrief.normalize(line.substring(0, line.offsetByCodePoints(0, FIRST_LINE_MAX))) + "…";
     }
 
     /** DB에서 다시 읽은 값과 같은 모양(UTC, 마이크로초)이라, 저장한 요청의 응답과 다음 조회의 응답이 같다 */
