@@ -15,12 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.text.Normalizer;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /** 과제 안내문 공간과 제출물 연결(K-31 2·3장) */
@@ -32,6 +32,7 @@ public class BriefService {
     private final ProjectAccessChecker access;
     private final DeliverableStatuses statuses;
     private final AgentProperties properties;
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     @Transactional(readOnly = true)
     public List<Response> list(UUID projectId, User user) {
@@ -100,6 +101,40 @@ public class BriefService {
         return summaries(deliverable);
     }
 
+    /**
+     * 계획 만들기(K-31 4장)가 실행 전에 입력을 확인한다. 안내문 공간과 같은 규칙으로 맞춘 본문을 돌려주고, 맞지 않으면 400이다.
+     * 저장은 하지 않는다. 막힌 실행(409·429)으로 안내문이 쌓이지 않게, 저장은 실행이 자리를 얻은 뒤 useForPlan이 한다
+     */
+    public PlanInput checkForPlan(String title, String body) {
+        return new PlanInput(title == null || ProjectBrief.normalize(title).isEmpty() ? null : title(title), body(body, "과제 안내문"));
+    }
+
+    /** 계획 만들기의 입력. title이 null이면 저장할 때 날짜로 정한다 */
+    public record PlanInput(String title, String body) {}
+
+    /** 계획 만들기가 쓴 안내문. created는 이번에 새로 저장했는가다 */
+    public record Used(UUID id, String title, String body, boolean created) {
+        static Used of(ProjectBrief b, boolean created) { return new Used(b.getId(), b.getTitle(), b.getBody(), created); }
+    }
+
+    /** 저장된 안내문으로 계획을 만든다. 다른 프로젝트의 안내문이면 404다 */
+    @Transactional(readOnly = true)
+    public Used findForPlan(UUID projectId, UUID briefId, User user) {
+        Project project = access.getProject(projectId);
+        access.requireContributor(project, user);
+        return Used.of(find(project, briefId), false);
+    }
+
+    /** 본문이 같은 안내문이 있으면 그것을 쓰고(가장 먼저 만든 것), 없으면 저장한다. 제목이 없으면 "과제 안내문 yyyy-MM-dd"다 */
+    public Used useForPlan(UUID projectId, PlanInput input, User user) {
+        Project project = access.getProject(projectId);
+        access.requireContributor(project, user);
+        Optional<ProjectBrief> same = briefs.findFirstByProjectAndBodyHashOrderByCreatedAtAsc(project, ProjectBrief.hash(input.body()));
+        if (same.isPresent()) return Used.of(same.get(), false);
+        String title = input.title() != null ? input.title() : "과제 안내문 " + LocalDate.now(KST);
+        return Used.of(briefs.save(ProjectBrief.create(project, title, input.body(), null, user, now())), true);
+    }
+
     /** DB에서 다시 읽은 값과 같은 모양(UTC, 마이크로초)이라, 저장한 요청의 응답과 다음 조회의 응답이 같다 */
     private static OffsetDateTime now() {
         return OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
@@ -125,28 +160,27 @@ public class BriefService {
         return deliverables.stream().map(d -> "'" + d.title() + "'").collect(Collectors.joining(", "));
     }
 
-    private static String title(SaveRequest req) {
-        String title = required(req.title(), "제목");
+    private static String title(SaveRequest req) { return title(req.title()); }
+
+    private static String title(String value) {
+        String title = required(value, "제목");
         if (title.length() > 200) throw badRequest("제목은 최대 200자입니다. 지금 " + title.length() + "자입니다");
         return title;
     }
 
-    private String body(SaveRequest req) {
-        String body = required(req.body(), "본문");
+    private String body(SaveRequest req) { return body(req.body(), "본문"); }
+
+    /** label은 화면에서 그 칸을 부르는 말이다. 안내문 공간은 "본문", 계획 만들기는 "과제 안내문" */
+    private String body(String value, String label) {
+        String body = required(value, label);
         int max = properties.getBriefMaxLength();
-        if (body.length() > max) throw badRequest("본문은 최대 " + max + "자입니다. 지금 " + body.length() + "자입니다");
+        if (body.length() > max) throw badRequest(label + "은 최대 " + max + "자입니다. 지금 " + body.length() + "자입니다");
         return body;
     }
 
-    // 유니코드 공백(전각 공백, 웹에서 복사한 줄바꿈 없는 공백 포함)과 파일 앞의 BOM. String.strip()은 뒤의 둘을 떼지 않는다
-    private static final Pattern EDGE_BLANKS = Pattern.compile("^[\\p{IsWhite_Space}\\uFEFF]+|[\\p{IsWhite_Space}\\uFEFF]+$");
-
-    /**
-     * 저장할 모양으로 맞춘 값(K-31 2.5). 눈에 같은 글이 같은 해시가 되도록 유니코드 NFC(macOS에서 붙여 넣은 한글의 풀어쓴 자모를 모은다)와
-     * 줄바꿈(\r\n, \r → \n)을 맞추고 앞뒤 공백을 뗀다. 줄 안의 글자는 원문 그대로 둔다
-     */
+    /** 저장할 모양으로 맞춘 값(ProjectBrief.normalize). 비었으면 400 */
     private static String required(String value, String label) {
-        String text = EDGE_BLANKS.matcher(Normalizer.normalize(value, Normalizer.Form.NFC).replace("\r\n", "\n").replace('\r', '\n')).replaceAll("");
+        String text = value == null ? "" : ProjectBrief.normalize(value);
         if (text.isEmpty()) throw badRequest(label + "을 입력해 주세요");
         return text;
     }
