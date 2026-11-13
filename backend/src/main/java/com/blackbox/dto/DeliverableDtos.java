@@ -26,22 +26,31 @@ public final class DeliverableDtos {
     }
     public record Assessment(Assessor assessedBy, OffsetDateTime assessedAt) {}
     public record Assessor(UUID userId, String name) {}
+    public record BriefSummary(UUID id, String title, String bodyHash, OffsetDateTime linkedAt) {
+        public static BriefSummary from(DeliverableBrief l) {
+            return new BriefSummary(l.getBrief().getId(), l.getBrief().getTitle(), l.getBrief().getBodyHash(), l.getLinkedAt());
+        }
+    }
     public record Response(UUID id, UUID projectId, String title, String description,
             LocalDate dueDate, String submissionMethod, UUID ownerId, String ownerName,
             List<RequirementResponse> requirements,
             // K-20 2장. latestDecision은 최신 회차의 결정이고 회차가 없거나 결정 전이면 null
-            String status, String latestDecision, String dueTime) {
+            String status, String latestDecision, String dueTime,
+            // K-31 3장. 건 안내문의 요약, 건 순서
+            List<BriefSummary> briefs) {
         public Response(UUID id, UUID projectId, String title, String description, LocalDate dueDate,
                 String submissionMethod, UUID ownerId, String ownerName, List<RequirementResponse> requirements,
                 String status, String latestDecision) {
-            this(id, projectId, title, description, dueDate, submissionMethod, ownerId, ownerName, requirements, status, latestDecision, null);
+            this(id, projectId, title, description, dueDate, submissionMethod, ownerId, ownerName, requirements, status, latestDecision, null, List.of());
         }
-        public static Response from(Deliverable d, List<DeliverableRequirement> requirements, String status, String latestDecision) {
+        public static Response from(Deliverable d, List<DeliverableRequirement> requirements, String status, String latestDecision,
+                List<DeliverableBrief> briefs) {
             return new Response(d.getId(), d.getProject().getId(), d.getTitle(), d.getDescription(),
                     d.getDueDate(), d.getSubmissionMethod(), d.getOwner() == null ? null : d.getOwner().getId(),
                     d.getOwner() == null ? null : d.getOwner().getName(),
                     requirements.stream().map(RequirementResponse::from).toList(), status, latestDecision,
-                    d.getDueTime() == null ? null : d.getDueTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+                    d.getDueTime() == null ? null : d.getDueTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")),
+                    briefs.stream().map(BriefSummary::from).toList());
         }
     }
 }
