@@ -135,6 +135,7 @@ class ScoreSnapshotHttpTest {
         Project p = t.project();
         file(em, p, t.worker(), "합성 보고서.pdf", 1, 'a'); file(em, p, t.worker(), "합성 보고서.pdf", 2, 'b');
         file(em, p, t.worker(), "합성 보고서.pdf", 3, 'c'); file(em, p, t.worker(), "합성 발표.pdf", 1, 'd');
+        file(em, p, t.observer(), "합성 관찰 자료.pdf", 1, 'f');
         Project other = project(em, t.leader()); file(em, other, t.worker(), "다른 프로젝트.pdf", 1, 'e');
         Deliverable d = deliverable(em, p, "합성 제출물");
         ReviewRound r = round(em, d, 1, t.leader(), null); r.decide("APPROVED", t.reviewer());

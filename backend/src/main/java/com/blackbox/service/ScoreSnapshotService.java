@@ -33,8 +33,9 @@ public class ScoreSnapshotService {
         Map<UUID, Long> files = new HashMap<>();
         for (Object[] row : em.createQuery("""
                 select f.uploader.id, count(distinct f.fileName) from FileVault f
-                where f.project = :project group by f.uploader.id
-                """, Object[].class).setParameter("project", project).getResultList()) {
+                where f.project = :project and f.uploader.id in :users group by f.uploader.id
+                """, Object[].class).setParameter("project", project)
+                .setParameter("users", activity.keySet()).getResultList()) {
             files.put((UUID) row[0], ((Number) row[1]).longValue());
         }
         Map<UUID, Extra> result = new HashMap<>();
