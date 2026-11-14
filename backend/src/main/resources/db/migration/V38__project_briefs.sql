@@ -13,7 +13,9 @@ CREATE TABLE project_briefs (
     created_by     UUID NOT NULL REFERENCES users(id),
     created_at     TIMESTAMPTZ NOT NULL,
     updated_by     UUID NOT NULL REFERENCES users(id),
-    updated_at     TIMESTAMPTZ NOT NULL
+    updated_at     TIMESTAMPTZ NOT NULL,
+    -- 1부터 시작해 고칠 때마다 1씩 는다. 수정 요청의 값과 다르면 다른 사람이 먼저 고친 것이다(K-31 2.3)
+    version        INTEGER NOT NULL
 );
 
 CREATE INDEX idx_project_briefs_project_hash ON project_briefs (project_id, body_hash);

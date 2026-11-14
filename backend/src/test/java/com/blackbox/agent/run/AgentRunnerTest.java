@@ -312,7 +312,7 @@ class AgentRunnerTest {
     }
 
     @Test void aSavedBriefIsUsedById() throws Exception {
-        UUID saved = briefs.create(project.getId(), new BriefDtos.SaveRequest("저장된 안내문", "기말 발표는 7분", null), member).id();
+        UUID saved = briefs.create(project.getId(), new BriefDtos.SaveRequest("저장된 안내문", "기말 발표는 7분", null), member).brief().id();
         answers.add("{\"text\":\"발표 하나를 찾았습니다.\",\"proposals\":[]}");
 
         Recorder events = run(member, PlanFromBriefSkill.NAME, "{\"briefId\":\"" + saved + "\"}");
@@ -321,7 +321,7 @@ class AgentRunnerTest {
         assertEquals("<자료>\n기말 발표는 7분\n</자료>", materials.get(0));
         assertEquals(1, briefCount());
 
-        UUID foreignBrief = briefs.create(foreign.getProject().getId(), new BriefDtos.SaveRequest("남의 안내문", "본문", null), outsider).id();
+        UUID foreignBrief = briefs.create(foreign.getProject().getId(), new BriefDtos.SaveRequest("남의 안내문", "본문", null), outsider).brief().id();
         assertThrows(NotFoundException.class, () -> prepare(member, PlanFromBriefSkill.NAME, "{\"briefId\":\"" + foreignBrief + "\"}"));
         assertEquals(400, status(() -> prepare(member, PlanFromBriefSkill.NAME, "{\"briefId\":\"" + saved + "\",\"briefText\":\"둘 다\"}")));
         assertEquals(400, status(() -> prepare(member, PlanFromBriefSkill.NAME, "{\"briefId\":\"abc\"}")));
@@ -337,11 +337,11 @@ class AgentRunnerTest {
      * 모델이 답하는 사이에 다시 고치면 카드의 해시가 안내문의 지금 해시와 달라 옛 본문으로 만든 카드임을 알 수 있다
      */
     @Test void theModelReadsTheSameBriefTheCardsPointTo() throws Exception {
-        UUID saved = briefs.create(project.getId(), new BriefDtos.SaveRequest("중간 과제", "10월 18일까지 중간 보고서를 낸다", null), member).id();
+        UUID saved = briefs.create(project.getId(), new BriefDtos.SaveRequest("중간 과제", "10월 18일까지 중간 보고서를 낸다", null), member).brief().id();
         AgentRunner.Prepared prepared = prepare(member, PlanFromBriefSkill.NAME, "{\"briefId\":\"" + saved + "\"}");
-        briefs.update(project.getId(), saved, new BriefDtos.SaveRequest("중간 과제", "10월 25일까지 중간 보고서를 낸다", null), member);
+        briefs.update(project.getId(), saved, new BriefDtos.UpdateRequest("중간 과제", "10월 25일까지 중간 보고서를 낸다", null, 1), member);
         String read = briefs.get(project.getId(), saved, member).bodyHash();
-        duringModel = () -> briefs.update(project.getId(), saved, new BriefDtos.SaveRequest("중간 과제", "11월 1일까지 중간 보고서를 낸다", null), member);
+        duringModel = () -> briefs.update(project.getId(), saved, new BriefDtos.UpdateRequest("중간 과제", "11월 1일까지 중간 보고서를 낸다", null, 2), member);
         answers.add(PLAN);
 
         runner.execute(prepared, new Recorder());
@@ -477,7 +477,7 @@ class AgentRunnerTest {
         // 근거의 원문은 카드에 남는다. 요구사항이나 안내문이 바뀌어도 카드의 문구와 해시는 실행 때 그대로다
         deliverableService.saveRequirement(project.getId(), report.getId(), requirement.getId(),
                 new com.blackbox.dto.DeliverableDtos.RequirementRequest("문제 정의를 두 쪽으로 적는다", true), member);
-        briefs.update(project.getId(), brief, new BriefDtos.SaveRequest("중간 과제 안내", GUIDE_BODY + "\n추가 공지", null), member);
+        briefs.update(project.getId(), brief, new BriefDtos.UpdateRequest("중간 과제 안내", GUIDE_BODY + "\n추가 공지", null, 1), member);
         JsonNode later = card("보고서 형식").getContent();
         assertEquals("문제 정의를 적는다", later.at("/evidenceRequirements/" + r1 + "/content").asString());
         assertNotEquals(briefs.get(project.getId(), brief, member).bodyHash(), later.at("/evidenceText/B1-S2/bodyHash").asString(),
@@ -507,7 +507,7 @@ class AgentRunnerTest {
     @Test void theModelSeesTheSameNumbersTheCardsQuote() throws Exception {
         UUID brief = linkedBrief(report, "중간 과제 안내", GUIDE_BODY);
         AgentRunner.Prepared prepared = prepare(member, FindRequirementGapsSkill.NAME, "{\"deliverableId\":\"" + report.getId() + "\"}");
-        briefs.update(project.getId(), brief, new BriefDtos.SaveRequest("중간 과제 안내", "발표는 10분이다.\n" + GUIDE_BODY, null), member);
+        briefs.update(project.getId(), brief, new BriefDtos.UpdateRequest("중간 과제 안내", "발표는 10분이다.\n" + GUIDE_BODY, null, 1), member);
         deliverableService.saveRequirement(project.getId(), report.getId(), requirement.getId(),
                 new com.blackbox.dto.DeliverableDtos.RequirementRequest("문제 정의를 두 쪽으로 적는다", true), member);
         answers.add("""
@@ -570,7 +570,7 @@ class AgentRunnerTest {
 
     private UUID linkedBrief(Deliverable deliverable, String title, String body) {
         return data.inTransaction(() -> {
-            UUID id = briefs.create(project.getId(), new BriefDtos.SaveRequest(title, body, null), member).id();
+            UUID id = briefs.create(project.getId(), new BriefDtos.SaveRequest(title, body, null), member).brief().id();
             briefs.link(project.getId(), deliverable.getId(), id, member);
             return id;
         });
