@@ -49,8 +49,9 @@ public class PlanFromBriefSkill implements AgentSkill {
     }
 
     /** 채택하면 만들어질 제출물에 이 안내문이 걸린다. 모델이 쓴 값은 믿지 않고 서버가 채운다 */
-    @Override public void complete(ObjectNode content, JsonNode input) {
+    @Override public String complete(String kind, ObjectNode content, JsonNode input) {
         content.put("briefId", input.path("briefId").asString());
+        return null;
     }
 
     private BriefService.PlanInput planInput(JsonNode input) {
