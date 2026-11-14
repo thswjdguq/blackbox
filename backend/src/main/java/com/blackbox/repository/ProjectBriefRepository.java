@@ -21,6 +21,15 @@ public interface ProjectBriefRepository extends JpaRepository<ProjectBrief, UUID
     /** 계획 만들기가 같은 본문의 안내문을 다시 쓴다(K-31 4장). 여럿이면 가장 먼저 만든 것 */
     Optional<ProjectBrief> findFirstByProjectAndBodyHashOrderByCreatedAtAsc(Project project, String bodyHash);
 
+    /**
+     * 안내문 하나의 수정·삭제·걸기·떼기(K-31 2.3·2.4·3장)를 차례대로 처리하는 행 잠금. 트랜잭션 안에서 부른다.
+     * 이 잠금을 잡은 뒤에 제출물 행을 잠근다. 안내문 행을 잠그는 요청은 모두 이 순서를 따르므로, 그 요청들 사이에는 교착 상태가 생기지 않는다.
+     * PESSIMISTIC_WRITE는 PostgreSQL에서 FOR NO KEY UPDATE가 되어, 이 안내문을 가리키는 줄의 삽입(외래 키 확인의 FOR KEY SHARE)을 막지 못한다.
+     * 그래서 FOR UPDATE를 직접 쓴다. 삭제가 검토 대기 카드 수를 센 뒤 그 안내문을 근거로 한 카드가 저장되면, 삭제가 그 근거 줄까지 지우기 때문이다
+     */
+    @Query(value = "select * from project_briefs where id = :id and project_id = :projectId for update", nativeQuery = true)
+    Optional<ProjectBrief> lockByIdAndProject(@Param("id") UUID id, @Param("projectId") UUID projectId);
+
     /** 안내문마다 그것을 근거로 한 검토 대기 제안 카드의 수. [brief_id, count] 줄이고, 카드가 없는 안내문은 줄이 없다 */
     @Query(value = "select b.brief_id, count(*) from agent_proposal_briefs b join agent_proposals p on p.id = b.proposal_id "
             + "where p.project_id = :projectId and p.status = 'PENDING' group by b.brief_id", nativeQuery = true)
