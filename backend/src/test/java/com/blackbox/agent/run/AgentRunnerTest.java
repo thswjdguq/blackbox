@@ -558,6 +558,12 @@ class AgentRunnerTest {
                 + gapAdd("파일은 PDF로 낸다") + "," + gapAdd("파일은 pdf로 낸다") + "]}");
         Recorder again = run(member, FindRequirementGapsSkill.NAME, gaps);
         assertEquals("text 다시 찾았습니다.\n\n이미 제안된 것과 같아 3건은 제외했습니다", again.seen.get(1));
+        assertTrue(materials.get(1).startsWith("<자료>\n제출물: 중간 보고서 (기한 " + report.getDueDate() + ")"), materials.get(1));
+        // 문구만 다른 같은 뜻의 카드를 모델이 다시 내지 않게 대기 카드를 알린다
+        assertTrue(materials.get(1).contains("\n\n이미 제안되어 검토를 기다리는 것\n"), materials.get(1));
+        assertTrue(materials.get(1).contains("\n- 빠진 요구사항: 보고서는 A4 10쪽 이내로 작성한다"), materials.get(1));
+        assertTrue(materials.get(1).contains("\n- [R1]의 수정 제안"), materials.get(1));
+        assertFalse(materials.get(0).contains("이미 제안되어"), "대기 카드가 없으면 그 부분이 없다");
         assertEquals(List.of("범위", "보고서는 A4 10쪽 이내로 작성한다", "파일은 PDF로 낸다"), titles(), "새로 만든 것은 PDF 카드 하나다");
 
         decisions.reject(project.getId(), member, card("보고서는 A4 10쪽 이내로 작성한다").getId());
