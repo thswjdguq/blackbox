@@ -48,7 +48,8 @@ public class AgentProposal {
     private Set<Result> results = new LinkedHashSet<>();
 
     /**
-     * 채택으로 만들어진 기록 하나. 대상의 종류(targetType)도 카드 종류와 함께 늘어나므로 문자열로 둔다.
+     * 채택의 결과 하나. 대개 채택으로 만들어진 기록이고, 기록이 아닌 표시도 있다(TargetTypes.ASSESSMENT_CLEARED).
+     * 대상의 종류(targetType)도 카드 종류와 함께 늘어나므로 문자열로 둔다.
      * 대상 테이블을 직접 가리키지 않아, 에이전트가 제출물·업무의 구조를 몰라도 된다.
      */
     @Embeddable
