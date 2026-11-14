@@ -18,6 +18,9 @@ public interface ProjectBriefRepository extends JpaRepository<ProjectBrief, UUID
     @EntityGraph(attributePaths = {"createdBy", "updatedBy", "sourceFile"})
     Optional<ProjectBrief> findByIdAndProject(UUID id, Project project);
 
+    /** 같은 본문(K-31 2.5)의 안내문. 여럿이면 가장 먼저 만든 것이다 */
+    Optional<ProjectBrief> findFirstByProjectAndBodyHashOrderByCreatedAtAsc(Project project, String bodyHash);
+
     /**
      * 안내문 하나의 수정·삭제·걸기·떼기(K-31 2.3·2.4·3장)를 차례대로 처리하는 행 잠금. 트랜잭션 안에서 부른다.
      * 이 잠금을 잡은 뒤에 제출물 행을 잠근다. 안내문 행을 잠그는 요청은 모두 이 순서를 따르므로, 그 요청들 사이에는 교착 상태가 생기지 않는다.
