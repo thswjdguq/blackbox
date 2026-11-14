@@ -7,6 +7,7 @@ import com.blackbox.service.BriefService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,13 +29,15 @@ public class BriefController {
         return service.get(projectId, briefId, user);
     }
 
-    @PostMapping("/briefs") @ResponseStatus(HttpStatus.CREATED)
-    public Response create(@PathVariable UUID projectId, @Valid @RequestBody SaveRequest req, @AuthenticationPrincipal User user) {
-        return service.create(projectId, req, user);
+    /** 새로 만들면 201, 같은 본문의 안내문이 이미 있으면 200과 그 안내문(K-31 2.2) */
+    @PostMapping("/briefs")
+    public ResponseEntity<Response> create(@PathVariable UUID projectId, @Valid @RequestBody SaveRequest req, @AuthenticationPrincipal User user) {
+        BriefService.Saved saved = service.create(projectId, req, user);
+        return ResponseEntity.status(saved.created() ? HttpStatus.CREATED : HttpStatus.OK).body(saved.brief());
     }
 
     @PutMapping("/briefs/{briefId}")
-    public Response update(@PathVariable UUID projectId, @PathVariable UUID briefId, @Valid @RequestBody SaveRequest req,
+    public Response update(@PathVariable UUID projectId, @PathVariable UUID briefId, @Valid @RequestBody UpdateRequest req,
             @AuthenticationPrincipal User user) {
         return service.update(projectId, briefId, req, user);
     }

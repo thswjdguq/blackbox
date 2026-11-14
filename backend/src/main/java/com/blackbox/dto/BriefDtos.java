@@ -21,12 +21,17 @@ public final class BriefDtos {
     public record SaveRequest(@NotNull(message = "제목을 입력해 주세요") String title,
             @NotNull(message = "본문을 입력해 주세요") String body, UUID sourceFileId) {}
 
+    /** 수정은 전체 교체다. version은 화면이 읽은 안내문의 값이다(K-31 2.3) */
+    public record UpdateRequest(@NotNull(message = "제목을 입력해 주세요") String title,
+            @NotNull(message = "본문을 입력해 주세요") String body, UUID sourceFileId,
+            @NotNull(message = "고칠 안내문의 version을 함께 보내 주세요") Integer version) {}
+
     public record Response(UUID id, String title, String body, SourceFile sourceFile, Person createdBy, OffsetDateTime createdAt,
-            Person updatedBy, OffsetDateTime updatedAt, String bodyHash, Usage usage, boolean locked) {
+            Person updatedBy, OffsetDateTime updatedAt, String bodyHash, int version, Usage usage, boolean locked) {
         public static Response from(ProjectBrief b, Usage usage) {
             boolean locked = usage.deliverables().stream().anyMatch(d -> DeliverableStatusReader.isConfirmed(d.status()));
             return new Response(b.getId(), b.getTitle(), b.getBody(), SourceFile.of(b.getSourceFile()), Person.of(b.getCreatedBy()),
-                    b.getCreatedAt(), Person.of(b.getUpdatedBy()), b.getUpdatedAt(), b.getBodyHash(), usage, locked);
+                    b.getCreatedAt(), Person.of(b.getUpdatedBy()), b.getUpdatedAt(), b.getBodyHash(), b.getVersion(), usage, locked);
         }
     }
 

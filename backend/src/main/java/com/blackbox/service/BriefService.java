@@ -47,22 +47,35 @@ public class BriefService {
         return response(project, find(project, briefId));
     }
 
-    public Response create(UUID projectId, SaveRequest req, User user) {
+    /**
+     * 같은 본문이 이미 있으면 새로 만들지 않고 그 안내문을 돌려준다(K-31 2.2, created가 false). 그 안내문의 제목과 원본 파일은 바꾸지 않는다.
+     * 권한·길이·원본 파일 검사를 먼저 한다. 잘못된 요청이 기존 안내문 덕에 성공하지 않게 하기 위해서다
+     */
+    public Saved create(UUID projectId, SaveRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        ProjectBrief brief = ProjectBrief.create(project, title(req), body(req), sourceFile(project, req), user, now());
-        return response(project, briefs.save(brief));
+        String title = title(req.title()), body = body(req.body());
+        FileVault source = sourceFile(project, req.sourceFileId());
+        Optional<ProjectBrief> same = briefs.findFirstByProjectAndBodyHashOrderByCreatedAtAsc(project, ProjectBrief.hash(body));
+        if (same.isPresent()) return new Saved(response(project, same.get()), false);
+        return new Saved(response(project, briefs.save(ProjectBrief.create(project, title, body, source, user, now()))), true);
     }
+
+    /** 등록의 결과. created가 false면 같은 본문의 안내문이 이미 있었다 */
+    public record Saved(Response brief, boolean created) {}
 
     /**
      * 안내문 행, 걸린 제출물 행 순서로 잠근 뒤 확정 여부를 본다(K-31 2.3). 확정도 제출물 행을 잠그므로 확인과 저장 사이에 확정되지 않는다.
      * 확정이 먼저면 여기서 409, 수정이 먼저면 확정은 수정이 끝난 뒤에 된다.
-     * 걸기도 안내문 행을 먼저 잠그므로, 잠근 뒤에 이 안내문이 다른 제출물에 새로 걸리지 않는다
+     * 걸기도 안내문 행을 먼저 잠그므로, 잠근 뒤에 이 안내문이 다른 제출물에 새로 걸리지 않는다.
+     * 검사 순서(2.3): 404 → 409 BRIEF_LOCKED → 길이·빈 값 400 → 409 BRIEF_CHANGED. 안내문 행을 잠근 뒤 version을 보므로
+     * 동시에 들어온 두 수정도 하나만 반영된다. 바뀐 것이 없으면 version과 수정자·시각을 그대로 둔다
      */
-    public Response update(UUID projectId, UUID briefId, SaveRequest req, User user) {
+    public Response update(UUID projectId, UUID briefId, UpdateRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
         ProjectBrief brief = lock(project, briefId);
+        FileVault source = sourceFile(project, req.sourceFileId());
         statuses.lockAll(project, links.findDeliverableIdsByBrief(brief));
         Response current = response(project, brief);
         if (current.locked()) {
@@ -70,7 +83,13 @@ public class BriefService {
             throw new CodedException(HttpStatus.CONFLICT, "BRIEF_LOCKED", "확정된 제출물(" + confirmed
                     + ")이 쓰는 안내문은 고칠 수 없습니다. 바뀐 내용은 추가 공지로 새로 등록해 주세요", Map.of());
         }
-        brief.edit(title(req), body(req), sourceFile(project, req), user, now());
+        String title = title(req.title()), body = body(req.body());
+        if (req.version() != brief.getVersion()) {
+            throw new CodedException(HttpStatus.CONFLICT, "BRIEF_CHANGED",
+                    "다른 사람이 먼저 이 안내문을 고쳤습니다. 최신 내용을 확인한 뒤 다시 저장해 주세요", Map.of("brief", current));
+        }
+        if (brief.sameAs(title, body, source)) return current;
+        brief.edit(title, body, source, user, now());
         return response(project, brief);
     }
 
@@ -137,14 +156,14 @@ public class BriefService {
         return deliverables.stream().map(d -> "'" + d.title() + "'").collect(Collectors.joining(", "));
     }
 
-    private static String title(SaveRequest req) {
-        String title = required(req.title(), "제목");
+    private static String title(String value) {
+        String title = required(value, "제목");
         if (title.length() > 200) throw badRequest("제목은 최대 200자입니다. 지금 " + title.length() + "자입니다");
         return title;
     }
 
-    private String body(SaveRequest req) {
-        String body = required(req.body(), "본문");
+    private String body(String value) {
+        String body = required(value, "본문");
         int max = properties.getBriefMaxLength();
         if (body.length() > max) throw badRequest("본문은 최대 " + max + "자입니다. 지금 " + body.length() + "자입니다");
         return body;
@@ -167,8 +186,8 @@ public class BriefService {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, detail);
     }
 
-    private FileVault sourceFile(Project project, SaveRequest req) {
-        return req.sourceFileId() == null ? null : files.findByIdAndProject(req.sourceFileId(), project)
+    private FileVault sourceFile(Project project, UUID id) {
+        return id == null ? null : files.findByIdAndProject(id, project)
                 .orElseThrow(() -> new NotFoundException("파일을 찾을 수 없습니다"));
     }
 
