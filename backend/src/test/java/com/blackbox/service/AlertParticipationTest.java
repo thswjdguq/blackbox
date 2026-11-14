@@ -11,12 +11,12 @@ import static org.mockito.Mockito.*;
 
 class AlertParticipationTest {
     final AlertRepository alerts=mock(AlertRepository.class);
-    final ActivityLogRepository activity=mock(ActivityLogRepository.class);
+    final ScoreRecentActivityReader activity=mock(ScoreRecentActivityReader.class);
     final ProjectMemberRepository members=mock(ProjectMemberRepository.class);
     final ContributionScoreRepository scores=mock(ContributionScoreRepository.class);
     final ProjectAccessChecker access=mock(ProjectAccessChecker.class);
     final AlertService service=new AlertService(alerts,activity,mock(ProjectRepository.class),members,scores,
-            mock(DiscordNotificationService.class),access);
+            mock(DiscordNotificationService.class),access,mock(ScoreReviewActivityReader.class));
     final Project project=new Project();
     final User leader=user(),worker=user(),observer=user(),removed=user();
     User user(){User u=new User();u.setId(UUID.randomUUID());u.setName("합성 실명");return u;}
@@ -46,8 +46,7 @@ class AlertParticipationTest {
         var saved=ArgumentCaptor.forClass(Alert.class);verify(alerts).save(saved.capture());
         assertEquals("FREE_RIDE",saved.getValue().getAlertType());assertSame(worker,saved.getValue().getUser());
         assertTrue(saved.getValue().getMessage().contains("자동 집계"));assertFalse(saved.getValue().getMessage().contains(worker.getName()));
-        verify(activity,never()).hasActivityAfter(eq(project),eq(observer),any());
-        verify(activity,never()).hasActivityAfter(eq(project),eq(removed),any());
+        verify(activity).read(project);
     }
     @Test void observerDoesNotSatisfyMinimumTeamSize() {
         var roster=List.of(member(leader,"LEADER"),member(observer,"OBSERVER"));when(members.findByProject(project)).thenReturn(roster);

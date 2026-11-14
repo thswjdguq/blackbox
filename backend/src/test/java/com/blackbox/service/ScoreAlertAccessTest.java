@@ -20,8 +20,8 @@ class ScoreAlertAccessTest {
     final ProjectAccessChecker access = new ProjectAccessChecker(projects, members);
     final ContributionScoreRepository scores = mock(ContributionScoreRepository.class);
     final AlertRepository alerts = mock(AlertRepository.class);
-    final AlertService alertService = new AlertService(alerts, mock(ActivityLogRepository.class),
-            projects, members, scores, mock(DiscordNotificationService.class), access);
+    final AlertService alertService = new AlertService(alerts, mock(ScoreRecentActivityReader.class),
+            projects, members, scores, mock(DiscordNotificationService.class), access, mock(ScoreReviewActivityReader.class));
     final ScoreService scoreService = new ScoreService(projects, members, scores,
             mock(MeetingRepository.class), mock(MeetingAttendeeRepository.class),
             mock(TaskAssigneeRepository.class), mock(FileVaultRepository.class), alertService, access);
