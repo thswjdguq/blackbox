@@ -28,11 +28,15 @@ public record ProposalResponse(UUID id, UUID runId, String kind, String status, 
         }
     }
 
-    /** 채택으로 만들어진 것의 id. 계약이 정한 모양이라 대상 종류 셋을 칸으로 나눈다. 순서는 조회할 때마다 같게만 하고 뜻은 없다 */
-    public record Results(UUID deliverableId, List<UUID> requirementIds, List<UUID> taskIds) {
+    /**
+     * 채택으로 만들어진 것의 id. 계약이 정한 모양이라 대상 종류 셋을 칸으로 나눈다. 순서는 조회할 때마다 같게만 하고 뜻은 없다.
+     * assessmentCleared는 수정 카드의 채택으로 요구사항의 충족 확인이 풀렸는가다(K-31 5.2)
+     */
+    public record Results(UUID deliverableId, List<UUID> requirementIds, List<UUID> taskIds, boolean assessmentCleared) {
         static Results of(Collection<AgentProposal.Result> created) {
             return new Results(ids(created, TargetTypes.DELIVERABLE).stream().findFirst().orElse(null),
-                    ids(created, TargetTypes.REQUIREMENT), ids(created, TargetTypes.TASK));
+                    ids(created, TargetTypes.REQUIREMENT), ids(created, TargetTypes.TASK),
+                    !ids(created, TargetTypes.ASSESSMENT_CLEARED).isEmpty());
         }
         private static List<UUID> ids(Collection<AgentProposal.Result> created, String type) {
             return created.stream().filter(r -> r.targetType().equals(type)).map(AgentProposal.Result::targetId).sorted().toList();
