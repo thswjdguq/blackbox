@@ -54,11 +54,16 @@ public class BriefService {
         return response(project, briefs.save(brief));
     }
 
-    // ponytail: 걸린 제출물의 확정과 동시에 들어온 수정은 막지 못한다. 문제가 되면 걸린 제출물 행을 잠근 뒤 확인한다
+    /**
+     * 안내문 행, 걸린 제출물 행 순서로 잠근 뒤 확정 여부를 본다(K-31 2.3). 확정도 제출물 행을 잠그므로 확인과 저장 사이에 확정되지 않는다.
+     * 확정이 먼저면 여기서 409, 수정이 먼저면 확정은 수정이 끝난 뒤에 된다.
+     * 걸기도 안내문 행을 먼저 잠그므로, 잠근 뒤에 이 안내문이 다른 제출물에 새로 걸리지 않는다
+     */
     public Response update(UUID projectId, UUID briefId, SaveRequest req, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        ProjectBrief brief = find(project, briefId);
+        ProjectBrief brief = lock(project, briefId);
+        statuses.lockAll(project, links.findDeliverableIdsByBrief(brief));
         Response current = response(project, brief);
         if (current.locked()) {
             String confirmed = titles(current.usage().deliverables().stream().filter(d -> DeliverableStatusReader.isConfirmed(d.status())).toList());
@@ -69,23 +74,23 @@ public class BriefService {
         return response(project, brief);
     }
 
-    /** 쓰는 곳이 있으면 막는다(2.4). 그 사이에 걸린 연결은 DB의 외래 키가 막아 409가 된다 */
+    /** 쓰는 곳이 있으면 막는다(2.4). 안내문 행을 잠가, 쓰는 곳을 센 뒤 지우기 전까지 걸기와 카드의 근거 기록이 끼어들지 못하게 한다 */
     public void delete(UUID projectId, UUID briefId, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
-        ProjectBrief brief = find(project, briefId);
+        ProjectBrief brief = lock(project, briefId);
         Usage usage = response(project, brief).usage();
         if (!usage.isEmpty())
             throw new CodedException(HttpStatus.CONFLICT, "BRIEF_IN_USE", inUse(usage), Map.of("usage", usage));
         briefs.delete(brief);
     }
 
-    /** 이미 걸려 있으면 지금 배열을 그대로 돌려준다(3장의 중복 클릭) */
+    /** 이미 걸려 있으면 지금 배열을 그대로 돌려준다(3장의 중복 클릭). 수정과 같은 순서(안내문, 제출물)로 잠근다 */
     public List<BriefSummary> link(UUID projectId, UUID deliverableId, UUID briefId, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
+        ProjectBrief brief = lock(project, briefId);
         Deliverable deliverable = statuses.lockEditable(project, deliverableId);
-        ProjectBrief brief = find(project, briefId);
         if (!links.existsById(new DeliverableBrief.Key(deliverable.getId(), brief.getId())))
             links.save(new DeliverableBrief(deliverable, brief, user, now()));
         return summaries(deliverable);
@@ -95,8 +100,9 @@ public class BriefService {
     public List<BriefSummary> unlink(UUID projectId, UUID deliverableId, UUID briefId, User user) {
         Project project = access.getProject(projectId);
         access.requireContributor(project, user);
+        ProjectBrief brief = lock(project, briefId);
         Deliverable deliverable = statuses.lockEditable(project, deliverableId);
-        links.deleteById(new DeliverableBrief.Key(deliverable.getId(), find(project, briefId).getId()));
+        links.deleteById(new DeliverableBrief.Key(deliverable.getId(), brief.getId()));
         return summaries(deliverable);
     }
 
@@ -110,8 +116,14 @@ public class BriefService {
     }
 
     private ProjectBrief find(Project project, UUID briefId) {
-        return briefs.findByIdAndProject(briefId, project).orElseThrow(() -> new NotFoundException("안내문을 찾을 수 없습니다"));
+        return briefs.findByIdAndProject(briefId, project).orElseThrow(BriefService::notFound);
     }
+
+    private ProjectBrief lock(Project project, UUID briefId) {
+        return briefs.lockByIdAndProject(briefId, project.getId()).orElseThrow(BriefService::notFound);
+    }
+
+    private static NotFoundException notFound() { return new NotFoundException("안내문을 찾을 수 없습니다"); }
 
     // 화면은 detail을 그대로 보여 주므로, 무엇이 막는지와 어떻게 풀지를 문구에 담는다
     private static String inUse(Usage usage) {
