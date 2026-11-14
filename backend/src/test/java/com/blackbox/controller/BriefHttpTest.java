@@ -69,12 +69,14 @@ class BriefHttpTest {
         assertEquals(0, created.at("/usage/deliverables").size());
         assertEquals(0, created.at("/usage/pendingProposals").asLong());
         assertFalse(created.get("locked").asBoolean());
+        assertEquals(1, created.get("version").asInt());
 
         JsonNode edited = save(leader, id, "웹 프로젝트 중간 과제", "1. 분량은 12쪽 이내", null, 200);
         assertNotEquals(created.get("bodyHash"), edited.get("bodyHash"));
         assertEquals("송팀장", edited.at("/updatedBy/name").asString());
         assertEquals("손팀원", edited.at("/createdBy/name").asString());
         assertTrue(edited.get("sourceFile").isNull());
+        assertEquals(2, edited.get("version").asInt());
         assertEquals(edited, call(get(BRIEFS + "/{id}", project.getId(), id), observer, 200));
 
         save(member, null, "추가 공지", "발표는 7분", null, 201);
@@ -105,7 +107,8 @@ class BriefHttpTest {
         assertEquals("본문을 입력해 주세요", save(member, null, "과제", "\u3000\u3000\n", null, 400).get("detail").asString());
         // 웹 페이지에서 복사한 줄바꿈 없는 공백도 공백이다. 파일에서 복사할 때 앞에 붙는 BOM은 뗀다
         assertEquals("본문을 입력해 주세요", save(member, null, "과제", "\u00A0\u00A0", null, 400).get("detail").asString());
-        assertEquals("본문", save(member, null, "과제", "\uFEFF본문\u00A0", null, 201).get("body").asString());
+        JsonNode bom = save(member, null, "과제", "\uFEFF본문\u00A0", null, 200);
+        assertEquals(id, bom.get("id").asString(), "BOM과 줄바꿈 없는 공백을 떼면 처음 등록한 본문과 같다");
         JsonNode missing = call(post(BRIEFS, project.getId()).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"과제\"}"), member, 400);
         assertEquals("본문을 입력해 주세요", missing.at("/errors/body").asString());
 
@@ -117,6 +120,50 @@ class BriefHttpTest {
         call(get(BRIEFS + "/{id}", project.getId(), othersBrief), member, 404);
         call(post(LINK, project.getId(), report.getId(), othersBrief), member, 404);
         call(post(LINK, project.getId(), deliverable(em, other, "남의 제출물").getId(), id), member, 404);
+    }
+
+    /** 같은 본문의 등록은 새로 만들지 않고 200으로 처음 것을 돌려준다(K-31 2.2·2.5). 제목과 원본 파일은 바꾸지 않는다 */
+    @Test void sameBodyIsRegisteredOnce() throws Exception {
+        FileVault file = file(em, project, member, "과제안내.pdf", 1, 'a');
+        JsonNode first = save(member, null, "중간 과제", "분량은 10쪽\nPDF로 제출", file.getId(), 201);
+        String nfd = java.text.Normalizer.normalize("분량은 10쪽\r\nPDF로 제출", java.text.Normalizer.Form.NFD);
+        JsonNode again = save(leader, null, "다른 제목", nfd, null, 200);
+        assertEquals(first, again, "처음 안내문 그대로다");
+        assertEquals(1, call(get(BRIEFS, project.getId()), member, 200).size());
+
+        // 같은 본문 확인보다 권한·길이·원본 파일 검사가 먼저다
+        save(observer, null, "중간 과제", "분량은 10쪽\nPDF로 제출", null, 403);
+        Project other = project(em, outsider);
+        save(member, null, "중간 과제", "분량은 10쪽\nPDF로 제출", file(em, other, outsider, "남의 파일.pdf", 1, 'b').getId(), 404);
+        // 다른 프로젝트의 같은 본문은 따로 만든다
+        member(em, other, outsider, "LEADER");
+        assertNotEquals(first.get("id"), save(outsider, null, "중간 과제", "분량은 10쪽\nPDF로 제출", null, 201, other).get("id"));
+    }
+
+    /**
+     * 수정은 화면이 읽은 version을 담는다(K-31 2.3). 다르면 409 BRIEF_CHANGED와 지금 안내문이다.
+     * 바꾸지 않은 저장은 version과 수정자·시각을 그대로 두어, 다른 사람의 수정을 막지 않는다
+     */
+    @Test void editsCarryTheVersionTheyRead() throws Exception {
+        String id = save(member, null, "과제", "처음 본문", null, 201).get("id").asString();
+        JsonNode second = edit(leader, id, "과제", "둘째 본문", 1, 200);
+        assertEquals(2, second.get("version").asInt());
+
+        JsonNode stale = edit(member, id, "과제", "옛 판으로 고친 본문", 1, 409);
+        assertEquals("BRIEF_CHANGED", stale.get("code").asString());
+        assertEquals("다른 사람이 먼저 이 안내문을 고쳤습니다. 최신 내용을 확인한 뒤 다시 저장해 주세요", stale.get("detail").asString());
+        assertEquals(second, stale.get("brief"), "지금 안내문을 담는다");
+
+        JsonNode unchanged = edit(member, id, " 과제 ", "둘째 본문\r\n", 2, 200);   // 정규화하면 지금과 같다
+        assertEquals(second, unchanged, "version·수정자·시각이 그대로다");
+        assertEquals(3, edit(leader, id, "과제", "셋째 본문", 2, 200).get("version").asInt(), "바꾸지 않은 저장 뒤에도 그 version으로 고칠 수 있다");
+
+        // 형식 400(칸 없음)과 길이 400이 BRIEF_CHANGED보다 먼저다
+        JsonNode missing = call(put(BRIEFS + "/{id}", project.getId(), id).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"과제\",\"body\":\"본문\"}"), member, 400);
+        assertEquals("고칠 안내문의 version을 함께 보내 주세요", missing.at("/errors/version").asString());
+        assertEquals("본문은 최대 20000자입니다. 지금 20001자입니다", edit(member, id, "과제", "가".repeat(20001), 1, 400).get("detail").asString());
+        assertEquals("셋째 본문", call(get(BRIEFS + "/{id}", project.getId(), id), member, 200).get("body").asString());
     }
 
     /** 한 안내문을 두 제출물에, 한 제출물에 여러 안내문을 건다. 다시 걸기·떼기는 지금 배열을 그대로 돌려준다 */
@@ -183,7 +230,9 @@ class BriefHttpTest {
         JsonNode locked = call(get(BRIEFS + "/{id}", project.getId(), brief), member, 200);
         assertTrue(locked.get("locked").asBoolean());
         assertEquals("CONFIRMED", locked.at("/usage/deliverables/0/status").asString());
-        JsonNode refused = save(member, brief, "과제", "고친 본문", null, 409);
+        // 404가 BRIEF_LOCKED보다 먼저다(2.3). 다른 프로젝트의 원본 파일은 잠겼는지와 관계없이 404다
+        save(member, brief, "과제", "고친 본문", file(em, project(em, outsider), outsider, "남의 파일.pdf", 1, 'b').getId(), 404);
+        JsonNode refused = edit(member, brief, "과제", "고친 본문", 7, 409);   // 잠겼으면 version이 달라도 BRIEF_LOCKED를 먼저 알린다
         assertEquals("BRIEF_LOCKED", refused.get("code").asString());
         assertEquals("확정된 제출물('중간 보고서')이 쓰는 안내문은 고칠 수 없습니다. 바뀐 내용은 추가 공지로 새로 등록해 주세요",
                 refused.get("detail").asString());
@@ -234,9 +283,21 @@ class BriefHttpTest {
         return save(as, id, title, body, sourceFileId, expectedStatus, project);
     }
 
+    /** id가 있으면 수정이고, 지금 version을 읽어 함께 보낸다 */
     private JsonNode save(User as, String id, String title, String body, UUID sourceFileId, int expectedStatus, Project in) throws Exception {
+        Integer version = id == null ? null : call(get(BRIEFS + "/{id}", in.getId(), id), leader, 200).get("version").asInt();
+        return save(as, id, title, body, sourceFileId, version, expectedStatus, in);
+    }
+
+    private JsonNode edit(User as, String id, String title, String body, Integer version, int expectedStatus) throws Exception {
+        return save(as, id, title, body, null, version, expectedStatus, project);
+    }
+
+    private JsonNode save(User as, String id, String title, String body, UUID sourceFileId, Integer version, int expectedStatus, Project in)
+            throws Exception {
         var node = json.createObjectNode().put("title", title).put("body", body);
         if (sourceFileId != null) node.put("sourceFileId", sourceFileId.toString());
+        if (version != null) node.put("version", version);
         var request = id == null ? post(BRIEFS, in.getId()) : put(BRIEFS + "/{id}", in.getId(), id);
         return call(request.contentType(MediaType.APPLICATION_JSON).content(node.toString()), as, expectedStatus);
     }
