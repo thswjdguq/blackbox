@@ -19,6 +19,9 @@ public interface AgentProposalRepository extends JpaRepository<AgentProposal, UU
     @EntityGraph(attributePaths = {"run", "run.requestedBy", "decidedBy", "results"})
     Optional<AgentProposal> findByIdAndProject(UUID id, Project project);
 
+    /** 한 프로젝트에서 상태와 종류로 고른 카드. 요구사항 찾기가 검토 대기 카드와 같은 카드를 다시 만들지 않을 때 쓴다(K-31 5장) */
+    List<AgentProposal> findByProject_IdAndStatusAndKindIn(UUID projectId, AgentProposal.Status status, java.util.Collection<String> kinds);
+
     /** 채택과 거절은 카드 행을 잠근 뒤 상태를 확인한다. 동시에 두 번 채택해도 한 번만 만들어진다 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from AgentProposal p where p.id = :id and p.project = :project")
