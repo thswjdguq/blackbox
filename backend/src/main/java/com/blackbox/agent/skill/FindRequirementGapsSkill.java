@@ -61,12 +61,16 @@ public class FindRequirementGapsSkill implements AgentSkill {
     @Override public List<String> tools() { return List.of(); }
     @Override public List<String> proposalKinds() { return List.of(RequirementAddKind.NAME, RequirementReviseKind.NAME); }
 
+    /** 실행 전에 입력을 확인한다(404·409·400). 모델이 읽는 글은 begin이 다시 읽은 자료로 만든다 */
     @Override public String material(UUID projectId, User user, JsonNode input) {
-        Source s = source(projectId, user, input);
-        StringBuilder text = new StringBuilder("제출물: ").append(s.deliverable().title());
+        return text(source(projectId, user, input));
+    }
+
+    private static String text(Source s) {
+        StringBuilder text = new StringBuilder("제출물: ").append(oneLine(s.deliverable().title()));
         for (int b = 0; b < s.briefs().size(); b++) {
             BriefService.Text brief = s.briefs().get(b);
-            text.append("\n\n[B").append(b + 1).append("] 과제 안내문 \"").append(brief.title()).append("\"");
+            text.append("\n\n[B").append(b + 1).append("] 과제 안내문 \"").append(oneLine(brief.title())).append("\"");
             List<Sentence> sentences = sentences(brief.body());
             for (int i = 0; i < sentences.size(); i++) text.append("\n[B").append(b + 1).append("-S").append(i + 1).append("] ").append(sentences.get(i).text());
         }
@@ -75,18 +79,20 @@ public class FindRequirementGapsSkill implements AgentSkill {
         if (requirements.isEmpty()) text.append("\n없음");
         for (int i = 0; i < requirements.size(); i++) {
             DeliverableDtos.RequirementResponse r = requirements.get(i);
-            text.append("\n[R").append(i + 1).append("] (").append(r.required() ? "필수" : "선택").append(") ").append(r.content());
+            text.append("\n[R").append(i + 1).append("] (").append(r.required() ? "필수" : "선택").append(") ").append(oneLine(r.content()));
         }
         return text.toString();
     }
 
+    /** 한 줄이 번호 하나다. 요구사항 문구나 제목의 줄바꿈이 "[B1-S2] …" 같은 가짜 번호 줄을 만들지 않게 공백으로 바꾼다 */
+    private static String oneLine(String s) { return s.replaceAll("\\R", " "); }
+
     /**
-     * 번호마다 원문을 담은 표를 입력에 붙인다. complete가 근거를 확인하고 카드에 원문을 넣을 때 쓴다.
-     * 도구를 쓰지 않아 모델의 답이 오기까지 다른 이벤트가 없으므로, 읽는 안내문을 먼저 알린다.
-     * ponytail: material과 따로 읽는다. 실행이 자리를 얻는 사이에 걸린 안내문이나 요구사항이 바뀌면 모델이 본 번호와 표가 어긋날 수 있다.
-     * 문제가 되면 material에서 만든 표를 실행 기록과 함께 넘긴다
+     * 걸린 안내문과 요구사항을 한 번 읽어, 번호 붙인 글을 모델에 주고 번호마다 원문을 담은 표를 입력에 붙인다.
+     * complete가 그 표로 근거를 확인하고 카드에 원문을 넣는다. 같은 읽기에서 만들므로 모델이 본 번호와 표의 원문이 같다.
+     * 도구를 쓰지 않아 모델의 답이 오기까지 다른 이벤트가 없으므로, 읽는 안내문을 먼저 알린다
      */
-    @Override public JsonNode begin(UUID projectId, User user, JsonNode input, AgentEvents events) {
+    @Override public Begun begin(UUID projectId, User user, JsonNode input, AgentEvents events) {
         Source s = source(projectId, user, input);
         s.briefs().forEach(b -> events.brief(b.id(), b.title(), false));
         ObjectNode refs = json.createObjectNode();
@@ -104,7 +110,7 @@ public class FindRequirementGapsSkill implements AgentSkill {
         }
         ObjectNode begun = ((ObjectNode) input).deepCopy();
         begun.set(REFS, refs);
-        return begun;
+        return new Begun(begun, text(s));
     }
 
     /** 근거 확인(6.3). 모델이 쓴 deliverableId·원문은 믿지 않고 서버가 채운다 */
@@ -114,7 +120,7 @@ public class FindRequirementGapsSkill implements AgentSkill {
         content.put("deliverableId", input.path("deliverableId").asString());
         Set<String> used = new LinkedHashSet<>();
         if (kind.equals(RequirementAddKind.NAME)) {
-            if (kept(content.get("requirement"), refs, false, used).isEmpty() | kept(content.get("reason"), refs, false, used).isEmpty()) return NO_EVIDENCE;
+            if (kept(content.get("requirement"), refs, false, used).isEmpty() || kept(content.get("reason"), refs, false, used).isEmpty()) return NO_EVIDENCE;
             String wanted = key(content.path("requirement").path("content").asString(""));
             for (JsonNode ref : refs) if (ref.has("requirementId") && key(ref.path("content").asString()).equals(wanted)) return ALREADY_REGISTERED;
         } else {
