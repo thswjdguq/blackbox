@@ -182,7 +182,22 @@ class DeliverableConfirmationConcurrencyTest {
         Reply refused = running.get("안내문 수정").get(30, TimeUnit.SECONDS);
         assertEquals(409, refused.status(), String.valueOf(refused.body()));
         assertEquals("BRIEF_LOCKED", refused.body().get("code").asString());
-        assertEquals("본문", call(get(BRIEFS + "/" + brief, project.getId()), member).body().get("body").asString());
+        assertEquals("과제 안내", call(get(BRIEFS + "/" + brief, project.getId()), member).body().get("body").asString(), "본문은 그대로다");
+    }
+
+    /** 같은 version으로 동시에 들어온 두 수정은 하나만 반영되고, 다른 하나는 409 BRIEF_CHANGED와 반영된 안내문을 받는다(K-31 2.3) */
+    @Test void twoEditsOfTheSameVersionKeepOnlyOne() throws Exception {
+        for (int round = 0; round < 5; round++) {
+            String brief = brief("동시 수정 " + round, null);
+            List<Reply> replies = race(List.of(() -> editBrief(brief, "첫째 수정"), () -> editBrief(brief, "둘째 수정")));
+            List<Integer> statuses = replies.stream().map(Reply::status).sorted().toList();
+            assertEquals(List.of(200, 409), statuses, String.valueOf(replies));
+            Reply won = replies.stream().filter(r -> r.status() == 200).findFirst().orElseThrow();
+            Reply lost = replies.stream().filter(r -> r.status() == 409).findFirst().orElseThrow();
+            assertEquals("BRIEF_CHANGED", lost.body().get("code").asString());
+            assertEquals(won.body().get("body"), lost.body().at("/brief/body"), "진 쪽은 반영된 안내문을 받는다");
+            assertEquals(2, lost.body().at("/brief/version").asInt());
+        }
     }
 
     /**
@@ -205,7 +220,7 @@ class DeliverableConfirmationConcurrencyTest {
             } else {
                 assertEquals(409, edited.status(), String.valueOf(edited.body()));
                 assertEquals("BRIEF_LOCKED", edited.body().get("code").asString());
-                assertEquals("본문", body);
+                assertEquals("과제 " + i, body, "본문은 그대로다");
             }
         }
     }
@@ -236,9 +251,9 @@ class DeliverableConfirmationConcurrencyTest {
         assertEquals(1, count("agent_proposal_briefs where brief_id = ?", brief));
     }
 
-    /** 본문이 "본문"인 안내문을 커밋해 두고, ready가 있으면 그 제출물에 건다 */
+    /** 제목을 본문으로도 쓰는 안내문을 커밋해 두고, ready가 있으면 그 제출물에 건다. 본문이 같으면 새로 만들지 않으므로(K-31 2.2) 제목마다 다르게 한다 */
     private String brief(String title, Ready ready) throws Exception {
-        Reply saved = call(json(post(BRIEFS, project.getId()), "{\"title\":\"" + title + "\",\"body\":\"본문\"}"), member);
+        Reply saved = call(json(post(BRIEFS, project.getId()), "{\"title\":\"" + title + "\",\"body\":\"" + title + "\"}"), member);
         assertEquals(201, saved.status(), String.valueOf(saved.body()));
         String id = saved.body().get("id").asString();
         if (ready != null) assertEquals(200, call(post(BASE + "/briefs/" + id, project.getId(), ready.deliverable()), member).status());
@@ -246,7 +261,12 @@ class DeliverableConfirmationConcurrencyTest {
     }
 
     private Reply editBrief(String id) throws Exception {
-        return call(json(put(BRIEFS + "/" + id, project.getId()), "{\"title\":\"과제\",\"body\":\"고친 본문\"}"), member);
+        return editBrief(id, "고친 본문");
+    }
+
+    /** 처음 만든 안내문(version 1)을 고친다 */
+    private Reply editBrief(String id, String body) throws Exception {
+        return call(json(put(BRIEFS + "/" + id, project.getId()), "{\"title\":\"과제\",\"body\":\"" + body + "\",\"version\":1}"), member);
     }
 
     @Test void simultaneousConfirmationsStoreOne() throws Exception {

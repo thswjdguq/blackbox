@@ -18,7 +18,7 @@ public interface ProjectBriefRepository extends JpaRepository<ProjectBrief, UUID
     @EntityGraph(attributePaths = {"createdBy", "updatedBy", "sourceFile"})
     Optional<ProjectBrief> findByIdAndProject(UUID id, Project project);
 
-    /** 계획 만들기가 같은 본문의 안내문을 다시 쓴다(K-31 4장). 여럿이면 가장 먼저 만든 것 */
+    /** 같은 본문(K-31 2.5)의 안내문. 등록(2.2)과 계획 만들기(4장)가 쓴다. 여럿이면 가장 먼저 만든 것이다 */
     Optional<ProjectBrief> findFirstByProjectAndBodyHashOrderByCreatedAtAsc(Project project, String bodyHash);
 
     /**
