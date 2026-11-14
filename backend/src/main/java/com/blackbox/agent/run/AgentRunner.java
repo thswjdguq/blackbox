@@ -143,9 +143,10 @@ public class AgentRunner {
         // 관찰자의 실행은 카드를 만들지 않는다(K-30 1장·2장)
         List<String> allowedKinds = p.contributor() ? p.skill().proposalKinds() : List.of();
         String guide = instructions.forRun(p.skill(), allowedKinds, projectId);
+        AgentSkill.Begun begun = p.skill().begin(projectId, user, p.input(), events);
+        JsonNode input = begun.input();
         // 안내문과 질문은 자료로만 넘긴다. 그 안의 지시는 따르지 않게 공통 지시문이 막는다
-        String material = instructions.material(p.material());
-        JsonNode input = p.skill().begin(projectId, user, p.input(), events);
+        String material = instructions.material(begun.material() != null ? begun.material() : p.material());
 
         String answer = model.generate(guide, material, toolbox.bind(projectId, user, p.skill().tools(), events::step));
         requireInTime(p);

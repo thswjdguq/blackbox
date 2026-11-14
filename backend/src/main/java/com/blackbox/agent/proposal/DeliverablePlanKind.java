@@ -47,7 +47,7 @@ public class DeliverablePlanKind implements ProposalKind {
         }
         if (read.deliverable() == null) return new Checked(content, List.of("deliverable: 없다"));
         Content c = new Content(read.deliverable(),
-                read.requirements() == null ? List.of() : read.requirements(), read.tasks() == null ? List.of() : read.tasks(), read.briefId());
+                read.requirements() == null ? List.of() : read.requirements(), read.tasks() == null ? List.of() : read.tasks(), read.briefId(), read.briefBodyHash());
 
         Deliverable d = c.deliverable();
         // 안내문에 기한이 없으면 모델이 비워 두고 사람이 채운다. 채택할 때는 있어야 한다
@@ -83,6 +83,7 @@ public class DeliverablePlanKind implements ProposalKind {
         if (!(edited instanceof ObjectNode e)) return edited;
         ObjectNode kept = e.deepCopy();
         kept.set("briefId", before.get("briefId"));
+        kept.set("briefBodyHash", before.get("briefBodyHash"));
         return kept;
     }
 
@@ -108,7 +109,8 @@ public class DeliverablePlanKind implements ProposalKind {
         return created;
     }
 
-    record Content(Deliverable deliverable, List<Requirement> requirements, List<Task> tasks, UUID briefId) {}
+    /** briefBodyHash는 모델이 읽은 안내문 본문의 해시다. 안내문의 지금 해시와 다르면 그 뒤에 안내문이 고쳐진 것이다 */
+    record Content(Deliverable deliverable, List<Requirement> requirements, List<Task> tasks, UUID briefId, String briefBodyHash) {}
     record Deliverable(String title, String description, LocalDate dueDate, String submissionMethod, String dueTime) {
         DeliverableDtos.SaveRequest toRequest() {
             return new DeliverableDtos.SaveRequest(title, description, dueDate, submissionMethod, null, dueTime);
