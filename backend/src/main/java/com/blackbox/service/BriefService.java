@@ -133,6 +133,17 @@ public class BriefService {
         return Used.of(briefs.save(ProjectBrief.create(project, title, input.body(), null, user, now())), true);
     }
 
+    /** 요구사항 찾기(K-31 5장)가 읽는 안내문. 걸린 순서(ids의 순서)대로다 */
+    @Transactional(readOnly = true)
+    public List<Text> texts(UUID projectId, List<UUID> ids) {
+        Project project = access.getProject(projectId);
+        return ids.stream().map(id -> Text.of(find(project, id))).toList();
+    }
+
+    public record Text(UUID id, String title, String body, String bodyHash) {
+        static Text of(ProjectBrief b) { return new Text(b.getId(), b.getTitle(), b.getBody(), b.getBodyHash()); }
+    }
+
     /**
      * 안내문의 첫 줄은 보통 제목이다("[캡스톤디자인] 중간 보고서 제출 안내"). 날짜로 정하면 같은 날 붙여 넣은 안내문끼리 제목이 같아진다.
      * 정규화한 본문은 공백으로 시작하지 않으므로 첫 줄은 비지 않는다. 길면 앞 60자(코드 포인트)에 "…"를 붙인다.
