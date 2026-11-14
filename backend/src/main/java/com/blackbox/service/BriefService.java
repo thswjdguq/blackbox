@@ -117,8 +117,8 @@ public class BriefService {
     public record PlanInput(String title, String body) {}
 
     /** 계획 만들기가 쓴 안내문. created는 이번에 새로 저장했는가다 */
-    public record Used(UUID id, String title, String body, boolean created) {
-        static Used of(ProjectBrief b, boolean created) { return new Used(b.getId(), b.getTitle(), b.getBody(), created); }
+    public record Used(UUID id, String title, String body, String bodyHash, boolean created) {
+        static Used of(ProjectBrief b, boolean created) { return new Used(b.getId(), b.getTitle(), b.getBody(), b.getBodyHash(), created); }
     }
 
     /** 저장된 안내문으로 계획을 만든다. 다른 프로젝트의 안내문이면 404다 */
