@@ -4,10 +4,13 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.List;
 
 @Entity
 @Table(name = "contribution_scores",
@@ -82,4 +85,15 @@ public class ContributionScore {
     // Java에서 직접 관리 (재계산 시 갱신)
     @Column(name = "calculated_at", nullable = false)
     private OffsetDateTime calculatedAt;
+
+    // V37: 옛 행은 첫 재계산 전까지 null이다. 저장된 판정에 현재 자료로 센 항목을 섞지 않는다.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<ContributionScoreItem> items;
+
+    @Column(name = "criteria_version", length = 32)
+    private String criteriaVersion;
+
+    @Column(name = "period_from")
+    private OffsetDateTime periodFrom;
 }
