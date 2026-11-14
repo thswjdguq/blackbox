@@ -68,11 +68,16 @@ public class FindRequirementGapsSkill implements AgentSkill {
 
     /** 실행 전에 입력을 확인한다(404·409·400). 모델이 읽는 글은 begin이 다시 읽은 자료로 만든다 */
     @Override public String material(UUID projectId, User user, JsonNode input) {
-        return text(source(projectId, user, input));
+        return text(source(projectId, user, input), List.of());
     }
 
-    private static String text(Source s) {
-        StringBuilder text = new StringBuilder("제출물: ").append(oneLine(s.deliverable().title()));
+    /**
+     * 모델에 주는 번호 붙인 글. 제출물의 기한은 제출물 칸이 다루므로 함께 알려 요구사항으로 만들지 않게 한다.
+     * 검토 대기 카드도 알려, 문구만 다른 같은 뜻의 카드를 다시 내지 않게 한다(서버는 같은 문구만 거른다)
+     */
+    private static String text(Source s, List<AgentProposal> waiting) {
+        StringBuilder text = new StringBuilder("제출물: ").append(oneLine(s.deliverable().title()))
+                .append(" (기한 ").append(s.deliverable().dueDate()).append(")");
         for (int b = 0; b < s.briefs().size(); b++) {
             BriefService.Text brief = s.briefs().get(b);
             text.append("\n\n[B").append(b + 1).append("] 과제 안내문 \"").append(oneLine(brief.title())).append("\"");
@@ -85,6 +90,18 @@ public class FindRequirementGapsSkill implements AgentSkill {
         for (int i = 0; i < requirements.size(); i++) {
             DeliverableDtos.RequirementResponse r = requirements.get(i);
             text.append("\n[R").append(i + 1).append("] (").append(r.required() ? "필수" : "선택").append(") ").append(oneLine(r.content()));
+        }
+        if (!waiting.isEmpty()) text.append("\n\n이미 제안되어 검토를 기다리는 것");
+        for (AgentProposal p : waiting) {
+            JsonNode c = p.getContent();
+            if (p.getKind().equals(RequirementAddKind.NAME)) {
+                text.append("\n- 빠진 요구사항: ").append(oneLine(c.at("/requirement/content").asString("")));
+            } else {
+                String target = c.path("requirementId").asString("");
+                int i = 0;
+                while (i < requirements.size() && !requirements.get(i).id().toString().equals(target)) i++;
+                text.append("\n- [R").append(i + 1).append("]의 수정 제안");
+            }
         }
         return text.toString();
     }
@@ -115,8 +132,12 @@ public class FindRequirementGapsSkill implements AgentSkill {
         }
         ObjectNode begun = ((ObjectNode) input).deepCopy();
         begun.set(REFS, refs);
-        begun.set(PROPOSED, pending(projectId, input.path("deliverableId").asString()));
-        return new Begun(begun, text(s));
+        List<AgentProposal> waiting = pending(projectId, input.path("deliverableId").asString());
+        ArrayNode proposed = begun.putArray(PROPOSED);
+        for (AgentProposal p : waiting) proposed.add(p.getKind().equals(RequirementAddKind.NAME)
+                ? "ADD:" + RequirementAddKind.key(p.getContent().at("/requirement/content").asString(""))
+                : "REVISE:" + p.getContent().path("requirementId").asString(""));
+        return new Begun(begun, text(s, waiting));
     }
 
     /** 근거 확인(6.3). 모델이 쓴 deliverableId·원문은 믿지 않고 서버가 채운다 */
@@ -169,16 +190,9 @@ public class FindRequirementGapsSkill implements AgentSkill {
     }
 
     /** 이 제출물의 검토 대기 요구사항 카드(K-31 5장). 다시 실행해도 같은 카드가 쌓이지 않게 한다 */
-    private ArrayNode pending(UUID projectId, String deliverableId) {
-        ArrayNode out = json.createArrayNode();
-        for (AgentProposal p : proposals.findByProject_IdAndStatusAndKindIn(projectId, AgentProposal.Status.PENDING, proposalKinds())) {
-            JsonNode c = p.getContent();
-            if (!c.path("deliverableId").asString("").equals(deliverableId)) continue;
-            out.add(p.getKind().equals(RequirementAddKind.NAME)
-                    ? "ADD:" + RequirementAddKind.key(c.at("/requirement/content").asString(""))
-                    : "REVISE:" + c.path("requirementId").asString(""));
-        }
-        return out;
+    private List<AgentProposal> pending(UUID projectId, String deliverableId) {
+        return proposals.findByProject_IdAndStatusAndKindInOrderByCreatedAtAsc(projectId, AgentProposal.Status.PENDING, proposalKinds()).stream()
+                .filter(p -> p.getContent().path("deliverableId").asString("").equals(deliverableId)).toList();
     }
 
     /** 처음 보는 것이면 기록하고 true, 이미 제안된 것이면 false */
