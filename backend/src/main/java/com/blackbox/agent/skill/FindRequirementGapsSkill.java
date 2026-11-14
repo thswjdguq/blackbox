@@ -1,13 +1,14 @@
 package com.blackbox.agent.skill;
 
 import com.blackbox.agent.AgentProperties;
+import com.blackbox.agent.AgentProposal;
+import com.blackbox.agent.AgentProposalRepository;
 import com.blackbox.agent.proposal.RequirementAddKind;
 import com.blackbox.agent.proposal.RequirementEvidence.Quote;
 import com.blackbox.agent.proposal.RequirementEvidence.RequirementQuote;
 import com.blackbox.agent.proposal.RequirementReviseKind;
 import com.blackbox.agent.run.AgentEvents;
 import com.blackbox.dto.DeliverableDtos;
-import com.blackbox.entity.ProjectBrief;
 import com.blackbox.entity.User;
 import com.blackbox.exception.CodedException;
 import com.blackbox.service.BriefService;
@@ -15,6 +16,7 @@ import com.blackbox.service.DeliverableService;
 import com.blackbox.service.DeliverableStatusReader;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
@@ -25,7 +27,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -43,7 +44,10 @@ public class FindRequirementGapsSkill implements AgentSkill {
     public static final String NAME = "FIND_REQUIREMENT_GAPS";
     static final String NO_EVIDENCE = "근거를 확인할 수 없어";
     static final String ALREADY_REGISTERED = "이미 등록된 요구사항과 같아";
+    static final String ALREADY_PROPOSED = "이미 제안된 것과 같아";
     private static final String REFS = "refs";
+    // 이미 제안된 것: 검토 대기 카드와 이 응답에서 앞서 낸 빠진 요구사항 카드. "ADD:문구", "REVISE:요구사항 id"
+    private static final String PROPOSED = "proposed";
     // 목록의 항목은 한 문장이다(6.1). 줄 앞의 기호나 번호 뒤에 공백이 오면 항목으로 본다. 공백(\\s)에는 전각 공백도 든다
     private static final Pattern LIST_ITEM = Pattern.compile("^\\s*(?:[-*•·◦▪‣○●■□※>]|\\d{1,3}[.)]|\\(\\d{1,3}\\)|[가-하][.)]|[①-⑳])\\s",
             Pattern.UNICODE_CHARACTER_CLASS);
@@ -54,6 +58,7 @@ public class FindRequirementGapsSkill implements AgentSkill {
     private final BriefService briefs;
     private final AgentProperties properties;
     private final ObjectMapper json;
+    private final AgentProposalRepository proposals;
 
     @Override public String name() { return NAME; }
     @Override public String label() { return "빠졌거나 모호한 요구사항 찾기"; }
@@ -94,7 +99,7 @@ public class FindRequirementGapsSkill implements AgentSkill {
      */
     @Override public Begun begin(UUID projectId, User user, JsonNode input, AgentEvents events) {
         Source s = source(projectId, user, input);
-        s.briefs().forEach(b -> events.brief(b.id(), b.title(), false));
+        s.briefs().forEach(b -> events.brief(b.id(), b.title(), AgentEvents.BriefUse.READ));
         ObjectNode refs = json.createObjectNode();
         for (int b = 0; b < s.briefs().size(); b++) {
             BriefService.Text brief = s.briefs().get(b);
@@ -110,6 +115,7 @@ public class FindRequirementGapsSkill implements AgentSkill {
         }
         ObjectNode begun = ((ObjectNode) input).deepCopy();
         begun.set(REFS, refs);
+        begun.set(PROPOSED, pending(projectId, input.path("deliverableId").asString()));
         return new Begun(begun, text(s));
     }
 
@@ -121,8 +127,10 @@ public class FindRequirementGapsSkill implements AgentSkill {
         Set<String> used = new LinkedHashSet<>();
         if (kind.equals(RequirementAddKind.NAME)) {
             if (kept(content.get("requirement"), refs, false, used).isEmpty() || kept(content.get("reason"), refs, false, used).isEmpty()) return NO_EVIDENCE;
-            String wanted = key(content.path("requirement").path("content").asString(""));
-            for (JsonNode ref : refs) if (ref.has("requirementId") && key(ref.path("content").asString()).equals(wanted)) return ALREADY_REGISTERED;
+            String wanted = RequirementAddKind.key(content.path("requirement").path("content").asString(""));
+            for (JsonNode ref : refs) if (ref.has("requirementId") && RequirementAddKind.key(ref.path("content").asString()).equals(wanted)) return ALREADY_REGISTERED;
+            // 같은 응답의 뒤 카드가 이 카드와 같으면 그것도 뺀다. input은 응답을 읽을 때마다 새 사본이다(AgentSkill.complete)
+            if (!firstProposal(input, "ADD:" + wanted)) return ALREADY_PROPOSED;
         } else {
             // 모델은 고칠 요구사항을 R 번호로 가리킨다(target). 서버가 id와 그때의 문구로 바꾼다
             JsonNode target = refs.path(content.path("target").asString(""));
@@ -134,6 +142,7 @@ public class FindRequirementGapsSkill implements AgentSkill {
             // 수정안은 안내문에 근거가 있을 때만 낸다. 없으면 확인 질문만 남긴다
             if (kept(content.get("revision"), refs, false, used).isEmpty()) content.putNull("revision");
             if (content.get("revision").isNull() && content.path("question").asString("").isBlank()) return NO_EVIDENCE;
+            if (input.path(PROPOSED).valueStream().anyMatch(v -> v.asString().equals("REVISE:" + target.path("requirementId").asString()))) return ALREADY_PROPOSED;
         }
         ObjectNode quotes = content.putObject("evidenceText");
         ObjectNode requirements = json.createObjectNode();
@@ -159,8 +168,26 @@ public class FindRequirementGapsSkill implements AgentSkill {
         return kept;
     }
 
-    /** 같은 문구인지 볼 때 앞뒤 공백과 대소문자를 가리지 않는다(5장) */
-    private static String key(String text) { return ProjectBrief.normalize(text).toLowerCase(Locale.ROOT); }
+    /** 이 제출물의 검토 대기 요구사항 카드(K-31 5장). 다시 실행해도 같은 카드가 쌓이지 않게 한다 */
+    private ArrayNode pending(UUID projectId, String deliverableId) {
+        ArrayNode out = json.createArrayNode();
+        for (AgentProposal p : proposals.findByProject_IdAndStatusAndKindIn(projectId, AgentProposal.Status.PENDING, proposalKinds())) {
+            JsonNode c = p.getContent();
+            if (!c.path("deliverableId").asString("").equals(deliverableId)) continue;
+            out.add(p.getKind().equals(RequirementAddKind.NAME)
+                    ? "ADD:" + RequirementAddKind.key(c.at("/requirement/content").asString(""))
+                    : "REVISE:" + c.path("requirementId").asString(""));
+        }
+        return out;
+    }
+
+    /** 처음 보는 것이면 기록하고 true, 이미 제안된 것이면 false */
+    private static boolean firstProposal(JsonNode input, String key) {
+        ArrayNode seen = (ArrayNode) input.path(PROPOSED);
+        if (seen.valueStream().anyMatch(v -> v.asString().equals(key))) return false;
+        seen.add(key);
+        return true;
+    }
 
     private record Source(DeliverableDtos.Response deliverable, List<BriefService.Text> briefs) {}
 

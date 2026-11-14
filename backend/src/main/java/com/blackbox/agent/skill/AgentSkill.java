@@ -50,7 +50,8 @@ public interface AgentSkill {
     record Begun(JsonNode input, String material) {}
 
     /**
-     * 모델이 만든 카드 내용 중 서버가 이미 아는 값을 채운다. input은 begin이 돌려준 것이다.
+     * 모델이 만든 카드 내용 중 서버가 이미 아는 값을 채운다. input은 begin이 돌려준 것의 사본이고 응답을 읽을 때마다 새로 만든다.
+     * 그래서 같은 응답의 앞 카드에서 본 것을 input에 남겨도, 형식을 고쳐 다시 받은 응답에는 이어지지 않는다.
      * 카드를 만들지 않을 것이면 그 이유("근거를 확인할 수 없어")를 돌려준다. 실행의 마지막 글에 "이유 n건은 제외했습니다"로 알린다
      */
     default String complete(String kind, ObjectNode content, JsonNode input) { return null; }

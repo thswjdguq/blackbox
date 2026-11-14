@@ -46,7 +46,7 @@ public class PlanFromBriefSkill implements AgentSkill {
         UUID briefId = briefId(input);
         BriefService.Used used = briefId != null ? briefs.findForPlan(projectId, briefId, user)
                 : briefs.useForPlan(projectId, planInput(input), user);
-        events.brief(used.id(), used.title(), used.created());
+        events.brief(used.id(), used.title(), used.created() ? AgentEvents.BriefUse.CREATED : AgentEvents.BriefUse.REUSED);
         ObjectNode begun = ((ObjectNode) input).deepCopy();
         begun.put("briefId", used.id().toString());
         begun.put("briefBodyHash", used.bodyHash());

@@ -184,7 +184,9 @@ public class AgentRunner {
     private record Answer(String text, List<Draft> drafts, Map<String, Integer> dropped, List<String> problems) {}
 
     /** 모델의 답을 읽는다. 형식에 맞지 않는 곳이 있으면 problems에 담고, 그때는 아무것도 저장하지 않는다 */
-    private Answer read(String answer, Prepared p, JsonNode input, List<String> allowedKinds) {
+    private Answer read(String answer, Prepared p, JsonNode begun, List<String> allowedKinds) {
+        // complete가 같은 응답의 앞 카드에서 본 것을 input에 남길 수 있어, 응답마다 begin이 돌려준 것의 새 사본으로 읽는다
+        JsonNode input = begun.deepCopy();
         JsonNode root;
         try {
             // 모델이 코드 블록 표시나 앞뒤 말을 붙여도 객체만 읽는다
