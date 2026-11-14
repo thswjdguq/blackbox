@@ -209,6 +209,7 @@ PENDING ──(채택)──▶ ACCEPTED
 | `requirements[].required` | 불리언 |
 | `tasks[]` | `title`·`completionCriteria`·`dueDate`는 아래 `TASKS`와 같다. `requirementId` 대신 `requirementKey`로 같은 카드의 요구사항을 가리킨다(없으면 `null`) |
 | `briefId` | 이 계획을 만든 과제 안내문(K-31 4장). 서버가 채우고 카드를 고쳐도 바뀌지 않는다. 채택하면 만들어진 제출물에 이 안내문이 걸린다. 0.9 전에 만든 카드는 `null` |
+| `briefBodyHash` | 모델이 읽은 안내문 본문의 해시. 서버가 채우고 카드를 고쳐도 바뀌지 않는다. 안내문의 지금 `bodyHash`와 다르면 카드를 만든 뒤(또는 모델이 답하는 사이에) 안내문이 고쳐진 것이다. 0.9 전에 만든 카드는 `null` |
 
 **`TASKS`** — 이미 있는 제출물에 붙일 업무 초안.
 
