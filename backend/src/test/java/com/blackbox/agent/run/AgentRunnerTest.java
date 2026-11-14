@@ -79,6 +79,7 @@ class AgentRunnerTest {
     final Deque<String> answers = new ArrayDeque<>();
     final List<String> guides = new ArrayList<>(), materials = new ArrayList<>();
     final List<Integer> toolCounts = new ArrayList<>();
+    Runnable duringModel = () -> {};   // 모델이 답하는 사이에 일어날 일
 
     @BeforeEach void setUp() {
         data = new AgentTestData(em, transactions, jdbc);
@@ -97,6 +98,7 @@ class AgentRunnerTest {
             List<AgentTool> tools = call.getArgument(2);
             toolCounts.add(tools.size());
             tools.stream().filter(t -> t.name().equals(ListDeliverablesTool.NAME)).findFirst().ifPresent(t -> t.call("{}"));
+            duringModel.run();
             return answers.remove();
         });
     }
@@ -330,6 +332,30 @@ class AgentRunnerTest {
                 tooLong.getReason(), "계획 만들기 화면이 부르는 이름으로 알린다");
     }
 
+    /**
+     * 준비 뒤 실행 전에 고친 안내문은 고친 본문을 모델이 읽고 카드가 그 본문의 해시를 남긴다.
+     * 모델이 답하는 사이에 다시 고치면 카드의 해시가 안내문의 지금 해시와 달라 옛 본문으로 만든 카드임을 알 수 있다
+     */
+    @Test void theModelReadsTheSameBriefTheCardsPointTo() throws Exception {
+        UUID saved = briefs.create(project.getId(), new BriefDtos.SaveRequest("중간 과제", "10월 18일까지 중간 보고서를 낸다", null), member).id();
+        AgentRunner.Prepared prepared = prepare(member, PlanFromBriefSkill.NAME, "{\"briefId\":\"" + saved + "\"}");
+        briefs.update(project.getId(), saved, new BriefDtos.SaveRequest("중간 과제", "10월 25일까지 중간 보고서를 낸다", null), member);
+        String read = briefs.get(project.getId(), saved, member).bodyHash();
+        duringModel = () -> briefs.update(project.getId(), saved, new BriefDtos.SaveRequest("중간 과제", "11월 1일까지 중간 보고서를 낸다", null), member);
+        answers.add(PLAN);
+
+        runner.execute(prepared, new Recorder());
+
+        assertEquals("<자료>\n10월 25일까지 중간 보고서를 낸다\n</자료>", materials.get(0), "준비 때가 아니라 실행이 시작될 때의 본문을 읽는다");
+        List<AgentProposal> cards = proposals.findByProjectOrderByCreatedAtDesc(project, Limit.of(10));
+        assertEquals(2, cards.size());
+        for (AgentProposal card : cards) {
+            assertEquals(saved.toString(), card.getContent().path("briefId").asString());
+            assertEquals(read, card.getContent().path("briefBodyHash").asString(), "모델이 읽은 본문의 해시다");
+        }
+        assertNotEquals(read, briefs.get(project.getId(), saved, member).bodyHash());
+    }
+
     /** 실행이 409·429로 막히거나 아직 자리를 얻지 못했으면 안내문을 저장하지 않는다. 모델이 실패해도 저장한 안내문은 남는다 */
     @Test void onlyARunThatStartsSavesTheBrief() throws Exception {
         prepare(member, AskSkill.NAME, "{\"question\":\"상태\"}");   // 아직 도는 실행
@@ -360,10 +386,11 @@ class AgentRunnerTest {
                 .filter(p -> p.getTitle().equals("중간 보고서 계획")).findFirst().orElseThrow();
 
         ObjectNode edited = (ObjectNode) card.getContent().deepCopy();
-        edited.put("briefId", UUID.randomUUID().toString());
+        edited.put("briefId", UUID.randomUUID().toString()).put("briefBodyHash", "0".repeat(64));
         ((ObjectNode) edited.get("deliverable")).put("title", "고친 보고서");
         JsonNode kept = decisions.edit(project.getId(), member, card.getId(), edited).content();
         assertEquals(brief.toString(), kept.path("briefId").asString(), "근거 안내문은 사람이 바꿀 수 없다");
+        assertEquals(card.getContent().path("briefBodyHash"), kept.path("briefBodyHash"));
         assertEquals("고친 보고서", kept.path("deliverable").path("title").asString());
 
         CodedException inUse = assertThrows(CodedException.class, () -> briefs.delete(project.getId(), brief, member));
