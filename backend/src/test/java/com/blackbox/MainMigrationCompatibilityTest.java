@@ -38,7 +38,7 @@ class MainMigrationCompatibilityTest {
     }
     @Test void emptyDatabaseMigratesAndRepeatedMigrationDoesNothing() throws Exception {
         var f = flyway(null); f.migrate(); f.validate();
-        assertEquals("36", f.info().current().getVersion().toString());
+        assertEquals("37", f.info().current().getVersion().toString());
         assertEquals(0, f.migrate().migrationsExecuted);
         try (var c = connection()) {
             assertEquals("1", scalar(c, "SELECT count(*) FROM flyway_schema_history WHERE version='25' AND script='V25__agent_proposals.sql'"));
