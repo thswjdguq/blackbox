@@ -103,6 +103,25 @@ class RequirementCardHttpTest {
         assertEquals("REQUIREMENT_CHANGED", accept(orphan, 409).path("code").asString());
     }
 
+    /**
+     * 빠진 요구사항 카드가 대기하는 사이 같은 문구(앞뒤 공백·대소문자 무시)의 요구사항이 생기면 채택은 409 REQUIREMENT_EXISTS다(K-31 5.1).
+     * 같은 지적의 다른 카드를 먼저 채택한 경우와 사람이 직접 등록한 경우다
+     */
+    @Test void aRequirementThatAppearedMeanwhileIsNotAddedTwice() throws Exception {
+        AgentProposal first = add("보고서는 PDF로 낸다", true), second = add("보고서는 pdf로 낸다", false);
+        accept(first, 200);
+        JsonNode refused = accept(second, 409);
+        assertEquals("REQUIREMENT_EXISTS", refused.path("code").asString());
+        assertEquals("같은 요구사항이 이미 등록되어 있습니다. 이 제안은 거절로 닫아 주세요", refused.path("detail").asString());
+
+        AgentProposal typedMeanwhile = add("발표는 10분이다", true);
+        call(post("/api/projects/{p}/deliverables/{d}/requirements", project.getId(), report.getId())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\" 발표는 10분이다 \",\"required\":true}"), leader, 201);
+        assertEquals("REQUIREMENT_EXISTS", accept(typedMeanwhile, 409).path("code").asString());
+        assertEquals(3, call(get("/api/projects/{p}/deliverables/{d}", project.getId(), report.getId()), member, 200).path("requirements").size(),
+                "처음 요구사항, 첫 카드, 직접 등록한 것뿐이다");
+    }
+
     @Test void editingChangesOnlyTheWordsNotTheEvidence() throws Exception {
         AgentProposal revision = revise(met, "보고서는 PDF로 낸다", "표지도 드는지 확인이 필요합니다");
         ObjectNode edited = (ObjectNode) revision.getContent().deepCopy();
