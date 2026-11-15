@@ -5,6 +5,7 @@ export const projectNavigation = [
   { key: "board", label: "팀 업무", suffix: "/board", primary: true },
   { key: "feedback", label: "피드백", suffix: "/feedback", primary: true },
   { key: "meetings", label: "회의", suffix: "/meetings", primary: true },
+  { key: "briefs", label: "과제 안내문", suffix: "/briefs", primary: false },
   { key: "vault", label: "파일 모아보기", suffix: "/vault", primary: false },
   { key: "analytics", label: "활동·기여 기록", suffix: "/analytics", primary: false },
   { key: "settings", label: "팀 설정", suffix: "/settings", primary: false },

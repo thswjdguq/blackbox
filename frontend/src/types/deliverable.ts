@@ -1,3 +1,5 @@
+import type { BriefSummary } from "./brief";
+
 // ── 요구사항 ──────────────────────────────────────────────────────────────
 
 /**
@@ -20,6 +22,8 @@ export interface DeliverableRequirement {
 
 export interface Deliverable {
   latestDecision?: "APPROVED" | "CHANGES_REQUESTED" | null;
+  /** K-31 3장. 걸린 과제 안내문(건 순서). 이전 서버는 보내지 않는다 */
+  briefs?: BriefSummary[];
   id: string;
   projectId: string;
   /** K-20 응답이 없는 기존 UI 서버와 호환한다. 확정 이후 AI 업무 생성 진입점은 숨긴다. */
