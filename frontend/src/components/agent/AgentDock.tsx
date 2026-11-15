@@ -8,6 +8,7 @@ import { BRIEF_MAX, buttonSkills, canAsk, canBreakDown, breakDownUnavailableReas
 import { shortDate } from "@/lib/due";
 import RunEntryView from "./RunEntryView";
 import ProposalList from "./ProposalList";
+import { useBriefs } from "./RequirementProposal";
 
 const EXAMPLES = ["늦은 업무가 있나요?", "이번 주에 끝내야 할 일은 무엇인가요?", "일이 몰린 사람이 있나요?"];
 
@@ -57,6 +58,9 @@ export default function AgentDock() {
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState<Pending>(null);
   const [brief, setBrief] = useState("");
+  // K-31 4장: 안내문 공간에 저장된 안내문으로 계획을 만든다. 비어 있으면 붙여 넣은 글로 만든다
+  const [pickedBrief, setPickedBrief] = useState("");
+  const savedBriefs = useBriefs(projectId ?? "", !!projectId && pending?.skill === "PLAN_FROM_BRIEF");
   const [pickedDeliverable, setPickedDeliverable] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dockRef = useRef<HTMLElement>(null);
@@ -171,9 +175,9 @@ export default function AgentDock() {
           onSubmit={(e) => {
             e.preventDefault();
             const text = brief.trim();
-            if (!text || running) return;
-            start("PLAN_FROM_BRIEF", { briefText: text });
-            setBrief("");
+            if ((!text && !pickedBrief) || running) return;
+            start("PLAN_FROM_BRIEF", pickedBrief ? { briefId: pickedBrief } : { briefText: text });
+            setBrief(""); setPickedBrief("");
           }}
           className="mt-2 space-y-2"
         >
@@ -181,16 +185,26 @@ export default function AgentDock() {
           <textarea
             id="agent-brief"
             value={brief}
+            disabled={!!pickedBrief}
             onChange={(e) => setBrief(e.target.value)}
             maxLength={BRIEF_MAX}
             rows={8}
-            className="w-full resize-y rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm text-bb-text focus:border-bb-primary focus:outline-none"
+            className="w-full resize-y rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm text-bb-text focus:border-bb-primary focus:outline-none disabled:opacity-50"
           />
+          {savedBriefs && savedBriefs.length > 0 && (
+            <label className="block text-xs text-bb-text2">또는 저장된 안내문으로
+              <select aria-label="저장된 안내문" value={pickedBrief} onChange={(e) => setPickedBrief(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-bb-border bg-bb-surface px-2 py-1.5 text-xs text-bb-text">
+                <option value="">붙여 넣은 글로 만들기</option>
+                {savedBriefs.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+              </select>
+            </label>
+          )}
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] text-bb-text2">{brief.length.toLocaleString()} / {BRIEF_MAX.toLocaleString()}자</span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPending(null)} className="px-2 py-1.5 text-xs text-bb-text2 hover:text-bb-text">취소</button>
-              <button type="submit" disabled={!brief.trim() || running} className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-bb-primary-h disabled:opacity-50">
+              <button type="submit" disabled={(!brief.trim() && !pickedBrief) || running} className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-bb-primary-h disabled:opacity-50">
                 계획 만들기
               </button>
             </div>
