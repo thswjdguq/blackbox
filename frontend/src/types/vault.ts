@@ -57,4 +57,22 @@ export interface ScoreEntry {
   /** FULL | PARTIAL | NONE */
   participationLevel: "FULL" | "PARTIAL" | "NONE";
   calculatedAt: string;
+  /** K-40 2장. 같은 재계산에서 함께 저장된 항목. 새 기준으로 아직 계산하지 않은 행이나 이전 서버는 null·생략 */
+  items?: ScoreItem[] | null;
+  criteriaVersion?: string | null;
+  period?: { from: string; to: string } | null;
+}
+
+/** 기여도 항목. code는 늘 수 있으므로 모르는 값도 label·count로 보인다 */
+export interface ScoreItem {
+  code: string;
+  label: string;
+  description: string;
+  count: number;
+  /** 비율로 판정하는 항목(회의 참석)에만 있다 */
+  total?: number;
+  passed: boolean;
+  /** true면 판정(participationLevel)에 들어간다 */
+  countsTowardLevel: boolean;
+  details?: { code: string; label: string; count: number }[];
 }
