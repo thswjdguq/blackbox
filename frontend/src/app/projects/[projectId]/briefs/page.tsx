@@ -61,10 +61,10 @@ export default function BriefsPage() {
   useEffect(() => { void load(); }, [load]);
 
   const current = briefs?.find((b) => b.id === selected) ?? null;
-  const replace = (b: Brief) => setBriefs((list) => {
-    const rest = (list ?? []).filter((x) => x.id !== b.id);
-    return [b, ...rest];
-  });
+  // 서버 목록과 같은 "최근 수정 먼저"를 지킨다. 응답의 안내문이 목록에 있으면 바꾸고, 없으면(내가 목록을 연 뒤
+  // 팀원이 만든 같은 본문이 200으로 온 경우 등, #187 B 리뷰) 넣는다. 200은 수정 시각이 그대로라 자리가 바뀌지 않는다
+  const replace = (b: Brief) => setBriefs((list) =>
+    [...(list ?? []).filter((x) => x.id !== b.id), b].sort((x, y) => Date.parse(y.updatedAt) - Date.parse(x.updatedAt)));
   const open = (id: string | null) => {
     if (dirty && !window.confirm("저장하지 않은 안내문이 있습니다. 다른 안내문을 열까요?")) return;
     setDraft(null); setConflict(null); setSelected(id); setNotice(""); setError("");
@@ -83,9 +83,7 @@ export default function BriefsPage() {
       if (draft.mode === "new") {
         const res = await api.post<Brief>(`/projects/${projectId}/briefs`, payload);
         if (generation !== sessionGeneration()) return;
-        // 200(같은 본문의 기존 안내문)은 수정 시각이 그대로라 목록의 자리도 그대로 둔다
-        if (res.status === 200) setBriefs((list) => (list ?? []).map((x) => (x.id === res.data.id ? res.data : x)));
-        else replace(res.data);
+        replace(res.data);
         setSelected(res.data.id); setDraft(null);
         // 200은 본문이 같은 안내문이 이미 있어 새로 만들지 않았다는 뜻이다(2.2). 입력한 제목·원본 파일은 쓰이지 않는다
         setNotice(res.status === 200
