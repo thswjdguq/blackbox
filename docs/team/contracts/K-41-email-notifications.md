@@ -1,11 +1,11 @@
 # K-41 · Gmail SMTP 이메일 알림
 
-- 버전 0.1 / 상태 DRAFT / 2026-11-16 / B 생산자, A SMTP 기반·DB·검토 회차 생산자, C 소비자
+- 버전 0.2 / 상태 DRAFT / 2026-11-16 / B 알림·수신 설정 생산자, A SMTP·인증·DB·검토 회차 생산자, C 화면 소비자
 - 기준 main `035be3f2`. Gmail SMTP를 공급자로 사용하며 수신자·신규 이벤트·발송 이력을 제안한다. 합의 전 HTTP/DB/운영 동작을 변경하지 않는다.
 
 ## 1. 최소 범위
 
-기존 앱 알림은 유지한다. 첫 발송 대상은 업무 결과 확인 요청 `TASK_COMPLETION_REQUESTED`, 최종 제출물 새 회차 검토 요청 `REVIEW_REQUESTED`(제안) 두 가지다. 댓글마다 메일을 보내거나 파일을 첨부하지 않는다. 기존 `REVIEW_VERSION_POSTED`는 이전 피드백 작성자에게 수정본을 알리는 것으로 새 검토 요청과 다르므로 대체 사용하지 않는다.
+기존 앱 알림은 유지한다. 첫 발송 대상은 업무 결과 확인 요청 `TASK_COMPLETION_REQUESTED`, 최종 제출물 새 회차 검토 요청 `REVIEW_REQUESTED` 두 가지다. 검토 요청은 앱 알림에도 저장해 메일이 실패해도 앱에서 확인할 수 있게 한다. 댓글마다 메일을 보내거나 파일을 첨부하지 않는다. 기존 `REVIEW_VERSION_POSTED`는 이전 피드백 작성자에게 수정본을 알리는 것으로 새 검토 요청과 다르므로 대체 사용하지 않는다.
 
 메일은 서비스 전용 Gmail에서 각 수신자에게 개별 발송한다. 수신자 목록을 To/CC로 공유하지 않는다. 본문은 요청한 사람·대상 제목·로그인 후 열 수 있는 원문 링크만 담고 비밀번호/토큰/댓글 원문/파일 내용은 담지 않는다. 제목의 CR/LF는 공백으로 바꾸고 본문은 plain text UTF-8로 시작한다.
 
@@ -13,35 +13,116 @@
 
 - 업무 요청: 기존 완료 확인의 canReview와 동일한 사람. `NotificationService.completionRequested` 후보·본인/관찰자 제외를 재사용한다.
 - 검토 요청: A의 최신 회차 결정 권한을 가진 현재 팀장·팀원에서 행위자 및 파일 업로더를 제외한다. A가 후보를 생산하며 B가 권한을 별도로 복제하지 않는다. 새 회차 id로 재요청을 구분한다.
-- 첫 시연은 서버의 명시적 수신 허용 목록(MAIL_RECIPIENT_ALLOWLIST)에 등록하고 수신에 동의한 테스트 계정만 대상으로 한다. 빈 목록은 발송0이다. 가입에 입력된 모든 주소로 자동 발송하지 않는다.
-- 발송 직전에도 현재 프로젝트 기여자·본인 제외·허용 목록·유효한 주소·대상 존재 및 요청 대기 상태를 확인한다. 탈퇴/관찰자 전환/삭제/이미 처리된 요청은 SKIPPED로 끝낸다.
-- 일반 사용자 수신 설정/주소 확인 API·화면은 이번 초기 SMTP 연결에 자동 포함하지 않는다. 공개 사용으로 확대하려면 C와 별도 계약으로 기본 꺼짐·주소 확인·해제를 제공한다.
+- 첫 시연은 서버의 명시적 수신 허용 목록(MAIL_RECIPIENT_ALLOWLIST)에 등록하고 수신에 동의한 테스트 계정만 대상으로 한다. 빈 목록은 발송 0건이다. 가입에 입력된 모든 주소로 자동 발송하지 않는다.
+- 발송 직전에도 현재 프로젝트 기여자·본인 제외·허용 목록·유효한 주소·대상 존재 및 요청 대기 상태를 확인한다. 탈퇴/관찰자 전환/삭제/이미 처리된 요청은 발송하지 않는다.
+- 일반 사용자 수신 선택·주소 확인은 7~12장의 후속 범위다. 초기 SMTP 연결과 구별하고 A/C 합의 뒤 별도 구현 PR로 진행한다.
 
 ## 3. SMTP 기반(A 요청)
 
 - Spring Boot이 관리하는 `spring-boot-starter-mail`을 쓰고 버전을 따로 지정하지 않는다. JavaMailSender, Gmail smtp.gmail.com:587, 인증 및 STARTTLS 필수. TLS 검증을 끄지 않는다.
 - MAIL_USERNAME/MAIL_PASSWORD는 발급 계정과 앱 비밀번호로 서버에서만 읽는다. MAIL_ENABLED 기본 false. 비밀번호가 있는 것만으로 켜지지 않는다.
+- MAIL_ENABLED=false면 메일 자격 증명이 없어도 PMS가 기동하며 시작/health 검사에서 SMTP에 접속하지 않는다.
 - MAIL_RECIPIENT_ALLOWLIST 기본 빈 값. FRONTEND_BASE_URL은 기존 설정을 재사용하며, 메일의 링크는 그 고정 출처와 UUID 경로만 사용한다. 공개 주소는 https, 개발은 localhost/loopback http만 허용한다. 사용자 입력으로 링크 출처를 고르지 않는다.
 - 연결/읽기/쓰기 제한을 명시(예: 각각5초). 사용자/메일/예외의 문자열 전체를 로그에 남기지 않고 대기 id와 분류된 오류만 남긴다.
 - .env.example은 비어 있는 예시만, Compose는 필요한 변수만 backend에 전달한다. 프론트에 노출하지 않는다. 로컬 실행은 현재 스크립트가 AI 변수만 읽으므로 MAIL_* 전달을 추가하고, 일반 수신자 발송은 기본 꺼짐을 유지한다. 소스/CI는 teamplay-ui의 실제 .env를 복사하지 않는다.
 
-## 4. 저장과 재시도(B 엔티티/저장소, SQL 번호 A)
+## 4. 초기 발송과 한계
 
-업무/검토 변경과 앱 알림 및 발송 대기 기록은 같은 DB 트랜잭션에 저장한다. SMTP는 커밋 후 별도 작업으로 실행한다. 단순 메모리 afterCommit만으로 발송을 맡기지 않고 재시작해도 남는 대기 기록을 둔다. SMTP 실패는 이미 커밋된 업무와 앱 알림을 롤백시키지 않는다.
+업무/검토 변경과 앱 알림은 같은 DB 트랜잭션에 저장한다. 새 앱 알림 INSERT가 성공한 경우에만 메일 이벤트를 발행한다. 기존 (event_key, recipient_id) 고유 제약에 걸린 중복 이벤트에는 메일 이벤트를 다시 내지 않는다. A의 새 회차 이벤트는 원래 트랜잭션 안에서 B 알림 발행 경계로 연결한다.
 
-새 테이블 초안(A가 번호·DDL 확정): id UUID PK, project_id/recipient_id/actor_id UUID, event_type varchar(40), event_key varchar(200), task_id/deliverable_id/review_id nullable UUID, target_title varchar(255), actor_name varchar(100), status(PENDING/PROCESSING/SENT/FAILED/SKIPPED), attempt_count, available_at, claimed_at, sent_at, error_code(분류값), created_at/updated_at. UNIQUE(event_key,recipient_id). 기존 migration과 user_notifications 응답은 수정하지 않는다. 수신 주소는 평문 이력으로 중복 저장하지 않고 발송 시 사용자에서 읽는다.
+`@TransactionalEventListener(AFTER_COMMIT)`와 별도 `@Async` 실행에서 SMTP를 호출한다. 원래 변경이 롤백되면 보내지 않는다. 이벤트에는 UUID·문자열 스냅숏 등 불변 값만 담고 지연 로딩 엔티티를 넘기지 않는다. worker는 별도 읽기 트랜잭션에서 현재 수신 조건을 확인한 뒤 네트워크 호출을 수행한다. 메일 오류나 실행 예약 실패가 이미 커밋된 업무·앱 알림을 취소하지 않도록 한다. 큐/실행 자원 상한과 거부 처리는 B 구현에서 검증한다.
 
-작업 획득은 짧은 트랜잭션의 원자적 claim/lease로 한 worker만 처리하며 네트워크를 기다리는 동안 업무 트랜잭션/행 잠금을 잡지 않는다. 연결 오류/일시 제한은 제한된 지수 지연으로 재시도(최대3회). 인증/설정 오류는 반복하지 않고 운영 조치 대상으로 표시한다. 처리 중 서버가 내려가면 lease 만료 후 다시 처리한다.
+초기에는 발송 대기 테이블·claim/lease·재시도·재시작 복구를 만들지 않는다. 실패는 event 식별자와 분류된 코드로 기록하고 메일을 다시 보내지 않는다. 프로세스 종료나 SMTP 오류로 메일이 유실될 수 있고 앱 알림이 보조 확인 경로로 남는다. SMTP 수락과 실제 받은편지함 도착을 구별하며 정확히 한 번 전달을 보장하지 않는다. 영속 대기와 제한된 재시도는 공개 사용 확대 때 후속 합의한다.
 
-SMTP 수락 뒤 SENT 저장 전에 프로세스가 종료되면 중복 수신할 수 있다. 가능한 동일 Message-ID를 재사용하되 수신 서버의 중복 제거를 보장하지 않는다. '정확히 한 번 전달'을 약속하지 않는다.
+새 발송 대기 테이블용 SQL은 필요 없지만 **REVIEW_REQUESTED를 앱 알림에 넣으려면 타입 제약 확장이 필요하다.** 현 `V32__feedback_notifications.sql`의 user_notifications_type_check는 열거형 목록이며 새 타입을 포함하지 않는다. A가 새 migration 번호와 제약 확장만 별도 제공한다. 기존 SQL/체크섬을 수정하지 않는다. 수신 설정·주소 확인의 후속 스키마도 A가 별도 배정한다.
 
-## 5. B가 독립 진행할 수 있는 내부 연결
+## 5. 앱·메일 공통 문장과 대상(B 생산, C 소비)
 
-B는 발송 정책/메일 내용 생성기 및 `EmailNotificationTransport` 내부 경계를 라이브러리 추가 없이 작성·단위 검증한다. A의 SMTP 어댑터는 이 경계에 연결한다. DB·사용자 API는 계약 합의와 SQL 병합 뒤 별도 B 구현 PR이다. 계약 색인과 공통 설정은 A가 반영한다.
+B의 생성기 하나가 기존 알림 스냅숏으로 message·target·path를 만들고 앱 알림 응답과 메일 본문이 같은 결과를 쓴다. 문장은 조회/메일 생성 시 만들며 옛 알림도 현재 문구로 표시한다. 기존 DB의 문자열 스냅숏 자체를 덮어쓰지 않는다. Discord 문장은 이번 범위에서 변경하지 않는다.
+
+기존 GET 알림 응답 `NotificationDtos.Item`에 아래 세 필드만 추가하고 기존 필드·페이지·읽음/권한·targetAvailable 의미는 유지한다.
+
+| 필드 | 의미 |
+| --- | --- |
+| message | 서버가 만든 표시 문장. 예: `김민지님이 ‘자료 정리’ 업무의 결과 확인을 요청했습니다.` |
+| target | kind(TASK/DELIVERABLE_REVIEW/UNKNOWN)와 taskId, deliverableId, reviewId, messageId, commentId, fileId. 해당 없는 id는 null |
+| path | 서버가 만든 같은 사이트의 `/projects/{projectId}/...` 상대 경로. 유효한 대상 경로를 만들 수 없으면 null |
+
+TASK는 기존 `/projects/{projectId}/board?task={taskId}`, DELIVERABLE_REVIEW는 `/projects/{projectId}/deliverables/{deliverableId}?tab=review`를 쓴다. 피드백 위치가 있으면 기존 `#comment-{commentId}`를 유지한다. source id는 같은 프로젝트의 대상인지 확인한다. targetAvailable=false면 화면은 이동을 막고 메일은 보내지 않는다. 모르는 type은 일반 문장을 쓰되 유효한 대상 id의 종류/경로를 보존하고, 대상도 모르면 UNKNOWN/path=null로 표시만 한다.
+
+C는 message를 그대로 표시하고 TASK는 그 자리에서 업무 창을 열되 target.messageId/fileId의 기존 위치 이동을 유지한다. 다른/모르는 kind는 유효한 같은 프로젝트의 path가 있으면 그 경로로 이동한다. 새 필드가 없는 옛 서버 응답은 기존 fallback으로 처리한다. 현재 화면은 이미 deliverableId로 검토 탭 이동을 구분하므로 이 동작을 유지한다. 로그인 뒤 원문 복귀는 #199를 따른다.
+
+B가 공통 생성기/DTO 추가를 먼저 제공하고 C가 소비 화면을 전환한다. 새 검토 타입 활성화는 A의 제약 확장과 C 소비 확인 뒤 진행한다. #198의 초안 메일 생성기는 이 공통 결과를 사용하도록 후속 갱신한다.
 
 ## 6. 합의/검증 요청
 
-- A: starter-mail·MAIL_* 전달·TLS/시간 제한·새 SQL 번호·ReviewRoundService의 신규 검토 요청 후보/이벤트. 직접 작성 또는 임시 작성 경계 확인.
-- C: 기존 board?task= 및 제출물 검토 탭 링크 확인. 초기 수신 허용 목록으로 범위를 제한하고 일반 수신 설정은 후속으로 두는 것 확인.
-- B 검사: 빈 설정/허용 목록, 수신자 경계, 제목 줄바꿈/긴 한글·이모지, 원문 링크, 커밋/롤백, 중복/claim 경합, SMTP 실패와 재시작 대기 복구. mock/실제 DB/로컬 SMTP/Gmail 수신을 각각 구별한다.
-- 공식 자료: https://docs.spring.io/spring-boot/reference/io/email.html / https://support.google.com/accounts/answer/185833 / https://developers.google.com/workspace/gmail/imap/imap-smtp
+- A: SMTP 라이브러리·MAIL_* 전달·TLS/시간 제한·새 회차 이벤트, REVIEW_REQUESTED 타입 제약 확장용 새 SQL 번호. 수신 설정/주소 확인의 후속은 7~12장에서 별도 합의한다.
+- C: 공통 message/target/path 소비, 기존 업무 위치 이동/검토 탭 보존, 새 필드 없는 응답 fallback. 수신 설정 후속과 토큰 링크는 7~12장에서 확인한다.
+- B 검사: 빈 설정/허용 목록, 수신자 경계, 제목 줄바꿈/긴 한글·이모지, 공통 문장/원문 링크, 같은 트랜잭션 롤백·중복 INSERT 시 미발송, SMTP/실행 예약 실패와 앱 알림 보존. mock·실제 DB·로컬 SMTP·Gmail 수신을 구별한다.
+- 공식 자료: [Spring 메일 지원](https://docs.spring.io/spring-boot/reference/io/email.html), [Google 앱 비밀번호](https://support.google.com/accounts/answer/185833), [Gmail SMTP](https://developers.google.com/workspace/gmail/imap/imap-smtp).
+
+## 7. 사용자 흐름과 범위
+
+가입할 때 `[선택] 팀프로젝트 이메일 알림 받기`를 기본 해제 상태로 표시한다. 설명은 `업무 결과 확인·최종 제출물 검토 요청을 가입한 이메일로 받습니다. 받으려면 이메일 주소 확인이 필요합니다.`로 제안한다. 선택하지 않아도 회원가입·로그인·프로젝트 생성/참여·업무·앱 알림을 모두 사용할 수 있다.
+
+체크하면 수신 의향만 저장하고 가입은 바로 완료한다. 회원가입 응답은 SMTP나 이메일 확인을 기다리지 않는다. 가입 후 프로필 설정에서 `확인 메일 보내기`를 눌러 본인 주소를 확인한다. 확인 전에도 PMS를 계속 사용할 수 있고, 이메일 알림 설정만 `주소 확인 필요` 상태로 표시한다. 신규 인증을 로그인/프로젝트 권한 조건으로 추가하지 않는다.
+
+기존 회원은 기본 off. 프로필 설정에서 언제든 켜고 끌 수 있다. 수신 주소는 계정에 등록한 현재 주소를 사용하며 별도 임의 주소 입력은 제공하지 않는다. Gmail 외 네이버·다음·Outlook·학교 주소도 같은 흐름을 사용하고 수신자 Google 연동은 요구하지 않는다.
+
+업무 메일 범위는 K-41의 업무 결과 확인·최종 제출물 검토 요청만이다. 광고/홍보 수신 선택은 포함하지 않는다. 개인정보 안내에 계정 관리·팀프로젝트 업무 알림 목적과 실제 메일 처리 방식을 맞추는 작업은 A가 확인한다. 문구 적용은 제품 정책/법적 요건 확인과 구별한다.
+
+## 8. 알림 설정 API(B 제안)
+
+인증된 본인에게만 다음 API를 제공한다. 프로젝트별 설정은 이번 범위에 추가하지 않는다.
+
+| 메서드·경로 | 입력 | 응답 |
+| --- | --- | --- |
+| GET `/api/notifications/email-settings` | 없음 | 아래 상태, 200 |
+| PUT `/api/notifications/email-settings` | `{ "enabled": true }` 또는 false | 저장 뒤 아래 상태, 200 |
+
+응답 예시: `{ "enabled": true, "emailVerified": false, "verificationRequired": true, "updatedAt": "2026-11-16T10:00:00Z" }`. emailVerified는 A가 보장하는 현재 계정 주소의 확인 상태다. verificationRequired는 enabled && !emailVerified. updatedAt은 설정 기록이 없으면 null, 변경 시 UTC 마이크로초다. 같은 값을 다시 저장하면 설정 버전/시각을 불필요하게 올리지 않는다.
+
+enabled는 알림 수신 의향이며 실제 SMTP 수락/배달 완료를 뜻하지 않는다. enabled=true라도 주소 확인 전에는 업무 메일을 예약하지 않는다. 주소 확인을 마치면 그 뒤 발생한 새 이벤트부터 대상이 되며 과거 알림을 한꺼번에 재발송하지 않는다.
+
+요청은 사용자 id/수신 주소/인증 상태를 받지 않고 인증된 사용자로 대상을 정한다. 비로그인401, enabled 누락/null/형식 오류400. 다른 사람의 설정을 읽거나 바꾸는 API는 제공하지 않는다.
+
+## 9. 가입·주소 확인 연결(A 제안)
+
+기존 POST `/api/auth/signup`에 선택 필드 `emailNotificationsEnabled`를 추가한다. 누락/null은 false로 처리하여 옛 클라이언트/테스트 payload를 유지한다. A는 가입 트랜잭션에서 B의 설정 저장 경계를 호출한다. 이 선택은 프로젝트 참여 동의·개인정보 필수 동의·Google Calendar 연결과 별개다.
+
+주소 확인 API 초안(인증된 본인만):
+
+| 메서드·경로 | 입력 | 성공·오류 |
+| --- | --- | --- |
+| POST `/api/auth/email-verification/request` | 없음, 현재 계정 주소 사용 | 발송 요청202, 이미 확인한 주소204, 재요청 제한429+Retry-After, 메일 기능 사용 불가503 |
+| POST `/api/auth/email-verification/confirm` | `{ "token": "..." }` | 현재 주소 확인204, 잘못된 토큰400, 만료410, 주소 변경409 |
+
+확인 메일은 사용자가 설정에서 명시적으로 요청한 주소 확인 목적이다. 업무 메일의 미확인 주소 차단과 구별하여 A가 생산한다. 재전송 간격 최소 60초와 계정별 시간당 상한을 적용하며 한 번의 요청이 여러 건을 만들지 않게 한다. token은 예측 불가·단일 사용·짧은 만료(제안 15분)로 사용자·정규화된 현재 주소·확인 목적에 묶고 DB에는 원문 대신 해시를 저장한다. 다른 계정 토큰과 옛 주소 토큰은 거절한다. 확인 성공으로 로그인 세션이나 다른 권한을 부여하지 않는다.
+
+확인 링크는 `{FRONTEND_BASE_URL}/email/verify#token={token}`으로 고정한다. 토큰은 fragment로만 전달하고 화면은 먼저 sessionStorage의 해당 탭 임시 값으로 옮긴 뒤 history.replaceState로 주소에서 지운다. 그 뒤 로그인이 필요하면 `/login?next=/email/verify`로 이동하며 next·쿼리·서버 접근 로그에 토큰을 싣지 않는다. 로그인 뒤 확인 화면에서 임시 토큰으로 confirm을 POST하고 성공/잘못된 토큰/만료/주소 변경 처리 후 임시 값을 지운다. 토큰을 PR·예외·활동 로그에 남기지 않고, 링크 GET만으로 확인 상태를 바꾸지 않는다. C의 #200 리뷰 제안을 반영한 경로이며 #199의 안전한 로그인 복귀와 연결한다.
+
+계정 이메일 변경이 가능해지면 이전 확인 상태를 반드시 해제한다. 설정 의향은 유지하되 새 주소 확인까지 업무 메일은 중단한다. 이 주소 변경 동작은 A 소유이며 B는 그 상태를 읽는 공개 내부 경계를 합의한다.
+
+## 10. 저장·발송 조건과 철회
+
+B 엔티티 초안: `email_notification_preferences`의 user_id PK, enabled 기본 false, version 기본 0, notice_version, enabled_at/disabled_at/updated_at. 선택 문구 버전과 설정 변경 시각을 기록한다. 실제 테이블·제약·번호·기존 사용자 기본값 SQL은 A가 확정한다. User/인증 테이블·토큰 테이블의 실제 배치는 A가 제안하며 B가 중복 인증 상태를 만들지 않는다.
+
+공개 업무 알림은 현재 주소 확인 + 수신 의향 + 기존 수신 권한 + 서비스 발송 설정을 모두 만족해야 한다. 테스트 허용 목록은 초기 검증 범위이며 공개 회원 수신 설정 완료를 뜻하지 않는다. 이 후속 수신 설정을 적용한 뒤 초기 허용 목록을 추가 제한으로 유지할 수 있으나 알림 off/미확인 주소 차단을 우회하는 설정으로 사용하지 않는다.
+
+메일 이벤트에 수신 설정 버전과 현재 주소의 식별값을 연결하고 발송 직전에 다시 대조한다. 알림 해제·설정 버전 변경·주소 변경·회원 탈퇴·관찰자 전환·요청 처리/취소 뒤 아직 발송하지 않은 이벤트는 보내지 않는다. off→on으로 바꿔도 예전 이벤트를 되살리지 않는다. 초기에는 4장의 비영속 비동기 전송을 쓰므로 새 발송 대기 표나 상태는 만들지 않는다. 이미 SMTP 전송을 시작하거나 수락된 메일은 회수할 수 없으며 해제 후 도착 0건을 보장하지 않는다. 후속 영속 대기는 별도 합의한다.
+
+## 11. 개발·자동 테스트
+
+- 일반 단위/DB/브라우저 테스트의 가입은 이메일 인증 없이 기존처럼 진행한다. enabled를 생략하거나 false면 SMTP가 필요 없다.
+- 알림 테스트는 전용 DB fixture에서 A의 확인된 테스트 사용자와 B의 수신 설정을 구성한다. 사용자 API에 인증 생략용 헤더/쿼리/공용 토큰을 넣지 않는다.
+- 인증 흐름은 Mailpit의 격리된 테스트 수신함에서 확인 링크를 읽어 실제 확인 API까지 자동화한다. 컨테이너 이름은 `blackbox_mail_test`, SMTP는 `127.0.0.1:28125`(컨테이너1025), 수신 UI/API는 `http://127.0.0.1:28025`(컨테이너8025)로 제안한다. 외부 노출/전달/릴레이를 켜지 않으며 이미지 태그·다이제스트는 A가 고정한다.
+- 테스트 전용 설정은 `MAIL_HOST=127.0.0.1`, `MAIL_PORT=28125`, `MAIL_AUTH_ENABLED=false`, `MAIL_STARTTLS_ENABLED=false`를 제안한다. 별도 test-mail 프로필과 loopback SMTP 조합에서만 이 예외를 허용하고 일반 서버의 Gmail 인증/STARTTLS 필수 조건은 유지한다. A SMTP 기반 PR에서 이름·프로필을 확정한 뒤 C 브라우저 시험이 같은 값을 사용한다. 테스트 발신·수신 주소는 example.test 합성 주소를 쓰고 실제 Gmail 앱 비밀번호를 불러오지 않는다.
+- Mailpit 수신 성공은 실제 Gmail 배달 성공과 구별한다. [Mailpit 공식 Docker/기본 포트](https://mailpit.axllent.org/docs/install/docker/), [설정](https://mailpit.axllent.org/docs/configuration/)을 기준으로 한다.
+- 경계: 체크 유무와 상관없이 가입/로그인/PMS 가능, 기존 가입 payload, 미확인 주소 업무 메일 0건, 인증 재전송 제한·토큰 재사용/만료/다른 사용자/주소 변경, 본인 설정만 변경, 중복 PUT, off 후 대기 제외, 재활성화 때 과거 메일 없음.
+
+## 12. 합의 요청과 구현 순서
+
+1. A: 가입 필드·확인 상태의 내부 조회 경계·인증 API와 토큰·rate limit·SQL/SMTP 담당 확인.
+2. C: 가입 선택 문구·설정 상태/주소 확인 버튼·메일 링크 로그인 복귀 확인. 가입 필수 절차를 늘리지 않는 흐름을 확인한다.
+3. B: 합의 후 설정 저장/API를 별도 PR로 구현. A SQL/확인 상태 경계 뒤 실제 DB/HTTP 검증하고 메일 발송 처리에 설정 버전/철회를 연결한다.
+4. A/C 소비자 확인 뒤 공개 회원 발송을 켠다. 초기 테스트 발송과 공개 수신 기능 완료를 구별한다.
