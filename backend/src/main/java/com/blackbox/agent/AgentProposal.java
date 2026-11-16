@@ -48,12 +48,18 @@ public class AgentProposal {
     private Set<Result> results = new LinkedHashSet<>();
 
     /**
-     * 채택으로 만들어진 기록 하나. 대상의 종류(targetType)도 카드 종류와 함께 늘어나므로 문자열로 둔다.
+     * 채택의 결과 하나. 대개 채택으로 만들어진 기록이고, 기록이 아닌 표시도 있다(TargetTypes.ASSESSMENT_CLEARED).
+     * 대상의 종류(targetType)도 카드 종류와 함께 늘어나므로 문자열로 둔다.
      * 대상 테이블을 직접 가리키지 않아, 에이전트가 제출물·업무의 구조를 몰라도 된다.
      */
     @Embeddable
     public record Result(@Column(name = "target_type", nullable = false, length = 40) String targetType,
                          @Column(name = "target_id", nullable = false) UUID targetId) {}
+
+    // 카드가 근거로 쓰는 과제 안내문(K-31 9장). 검토 대기 카드가 있으면 그 안내문을 지울 수 없다
+    @ElementCollection @Getter(AccessLevel.NONE)
+    @CollectionTable(name = "agent_proposal_briefs", joinColumns = @JoinColumn(name = "proposal_id"))
+    @Column(name = "brief_id") private Set<UUID> briefIds = new HashSet<>();
 
     /** 실행이 만든 카드. 프로젝트는 실행에서 가져오므로 둘이 어긋날 수 없다 */
     public static AgentProposal propose(AgentRun run, String kind, String title, String rationale, JsonNode content, OffsetDateTime now) {
@@ -64,6 +70,8 @@ public class AgentProposal {
         p.content = content; p.original = content.deepCopy(); p.createdAt = now;
         return p;
     }
+
+    public void cite(Collection<UUID> briefs) { requirePending(); briefIds.addAll(briefs); }
 
     public void edit(JsonNode newContent) { requirePending(); content = newContent; }
 

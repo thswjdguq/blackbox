@@ -11,12 +11,12 @@ import static org.mockito.Mockito.*;
 
 class AlertParticipationTest {
     final AlertRepository alerts=mock(AlertRepository.class);
-    final ActivityLogRepository activity=mock(ActivityLogRepository.class);
+    final ScoreRecentActivityReader activity=mock(ScoreRecentActivityReader.class);
     final ProjectMemberRepository members=mock(ProjectMemberRepository.class);
     final ContributionScoreRepository scores=mock(ContributionScoreRepository.class);
     final ProjectAccessChecker access=mock(ProjectAccessChecker.class);
     final AlertService service=new AlertService(alerts,activity,mock(ProjectRepository.class),members,scores,
-            mock(DiscordNotificationService.class),access);
+            mock(DiscordNotificationService.class),access,mock(ScoreReviewActivityReader.class));
     final Project project=new Project();
     final User leader=user(),worker=user(),observer=user(),removed=user();
     User user(){User u=new User();u.setId(UUID.randomUUID());u.setName("합성 실명");return u;}
@@ -32,7 +32,8 @@ class AlertParticipationTest {
                 alert(observer,"FREE_RIDE"),alert(observer,"DROPOUT"),alert(removed,"OVERLOAD")));
         var result=service.getAlerts(project.getId(),leader);
         assertEquals(2,result.size());assertEquals(worker.getId(),result.get(0).userId());
-        assertTrue(result.get(0).message().contains("검토·답변"));
+        assertTrue(result.get(0).message().contains("업무·회의·파일·검토"));
+        assertFalse(result.get(0).message().contains("검토·답변 등 집계에 반영되지"));
         assertFalse(result.get(0).message().contains("합성 실명"));assertFalse(result.get(0).message().contains("미참여"));
         assertEquals(tamper.getMessage(),result.get(1).message());
         assertEquals("합성 실명 (미참여)",legitimate.getMessage());
@@ -46,8 +47,7 @@ class AlertParticipationTest {
         var saved=ArgumentCaptor.forClass(Alert.class);verify(alerts).save(saved.capture());
         assertEquals("FREE_RIDE",saved.getValue().getAlertType());assertSame(worker,saved.getValue().getUser());
         assertTrue(saved.getValue().getMessage().contains("자동 집계"));assertFalse(saved.getValue().getMessage().contains(worker.getName()));
-        verify(activity,never()).hasActivityAfter(eq(project),eq(observer),any());
-        verify(activity,never()).hasActivityAfter(eq(project),eq(removed),any());
+        verify(activity).read(project);
     }
     @Test void observerDoesNotSatisfyMinimumTeamSize() {
         var roster=List.of(member(leader,"LEADER"),member(observer,"OBSERVER"));when(members.findByProject(project)).thenReturn(roster);
