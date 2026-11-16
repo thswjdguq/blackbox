@@ -59,7 +59,6 @@ function fileColor(name: string): string {
 // ── 파일 이력 아이템 ───────────────────────────────────────────────────
 function HistoryItem({
   record,
-  projectId,
   isTampered,
 }: {
   record: FileRecord;

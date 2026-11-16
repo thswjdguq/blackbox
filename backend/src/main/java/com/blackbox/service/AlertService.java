@@ -90,12 +90,20 @@ public class AlertService {
     @Transactional
     public void checkAlerts(Project project, List<ProjectMember> members,
                             List<ContributionScore> scores) {
+        checkAlerts(project, members, scores, null);
+    }
+
+    /** 같은 점수 계산에서 읽은 검토 횟수를 재사용한다. 독립 경보 호출은 null로 직접 조회하며 현재 기여자 필터는 항상 적용한다. */
+    @Transactional
+    public void checkAlerts(Project project, List<ProjectMember> members, List<ContributionScore> scores,
+                            Map<UUID, ScoreReviewActivityReader.Counts> calculatedReviews) {
         members=currentContributors(project);
         if (members.size() < 2) return;
         Set<UUID> ids=members.stream().map(m->m.getUser().getId()).collect(Collectors.toSet());
         scores=scores.stream().filter(s->ids.contains(s.getUser().getId())).toList();
 
-        Map<UUID, ScoreReviewActivityReader.Counts> reviews = reviewActivity.read(project);
+        Map<UUID, ScoreReviewActivityReader.Counts> reviews = calculatedReviews == null
+                ? reviewActivity.read(project) : calculatedReviews;
         Map<UUID, OffsetDateTime> recent = recentActivity.read(project);
         resolveImprovedAlerts(project, scores, members, reviews, recent);  // 먼저 해제
         checkFreeRide(project, scores, reviews);

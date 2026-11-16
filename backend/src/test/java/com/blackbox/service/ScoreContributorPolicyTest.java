@@ -36,7 +36,7 @@ class ScoreContributorPolicyTest {
         verify(tasks, never()).countDoneActionItemsByProjectAndUser(project, observer.getUser());
         verify(snapshots).read(eq(project), argThat(ms -> ms.size() == 2 && !ms.contains(observer)));
         verify(alerts).checkAlerts(eq(project), argThat(ms -> ms.size() == 2 && !ms.contains(observer)),
-                argThat(ss -> ss.size() == 2 && ss.stream().noneMatch(s -> s.getUser().equals(observer.getUser()))));
+                argThat(ss -> ss.size() == 2 && ss.stream().noneMatch(s -> s.getUser().equals(observer.getUser()))), eq(Map.of()));
     }
     @Test void observerOnlyOrUnknownRolesPerformNoCalculationOrWrites() {
         when(members.findByProject(project)).thenReturn(List.of(observer, member("UNKNOWN")));

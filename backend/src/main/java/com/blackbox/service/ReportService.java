@@ -138,25 +138,39 @@ public class ReportService {
             else if(recent.isPresent())box.addCell(cell("최근 대화 예시 / "+recent.get().getTask().getTitle()+"\n“"+excerpt(recent.get().getBody(),180)+"”",false));
             doc.add(box);index++;
         }
-        doc.add(p("파일 수는 버전별 등록 횟수입니다. 한 파일을 여러 번 수정하면 각각 집계됩니다. 검토·답변 활동은 아래 기존 4개 집계 항목과 별도로 제시한 근거이며 새 점수에 합산하지 않았습니다.",9,MUTED,false));
+        doc.add(p("파일 수는 버전별 등록 횟수입니다. 한 파일을 여러 번 수정하면 각각 집계됩니다. 검토·답변 활동은 참여 수준 판정에 넣지 않습니다.",9,MUTED,false));
     }
 
     private void method(Document doc,List<ProjectMember> members,Map<UUID,ContributionScore> scores,List<Alert> alerts) throws DocumentException {
         heading(doc,"04","자동 집계 기준과 해석");
-        note(doc,"숫자 점수 대신 네 종류의 기록을 확인합니다","저장된 집계는 아래 조건의 충족 여부입니다. 네 항목은 가중치·기여율·성적이 아니며 평가·감점 기준이 아닙니다. ‘기록 없음’은 실제 활동이 없었다는 확정 판단이 아닙니다.");
+        // 저장된 계산에 항목(K-40 items)이 있으면 그 이름·설명·횟수를 그대로 쓴다. 기준 문구를 PDF에 따로 두지 않는다
+        var current=members.stream().map(m->scores.get(m.getUser().getId())).filter(Objects::nonNull).toList();
+        var itemized=!current.isEmpty()&&current.stream().allMatch(s->s.getItems()!=null);
+        var columns=itemized?columns(current):Map.<String,ContributionScoreItem>of();
+        long kinds=itemized?columns.values().stream().filter(ContributionScoreItem::countsTowardLevel).count():4;
+        note(doc,"숫자 점수 대신 "+kinds+"종류의 기록을 확인합니다","저장된 집계는 아래 조건의 충족 여부입니다. 판정에 들어가는 "+kinds+"개 항목은 가중치·기여율·성적이 아니며 평가·감점 기준이 아닙니다. ‘기록 없음’은 실제 활동이 없었다는 확정 판단이 아닙니다.");
         var rules=table(1,3);headers(rules,"집계 항목","현재 시스템의 확인 조건");
-        row(rules,"업무 완료","담당 업무 중 완료(DONE)된 업무가 1건 이상");
-        row(rules,"회의 참석","프로젝트 회의의 50% 이상에 체크인 기록 존재. 회의가 없으면 이 항목은 확인되지 않음");
-        row(rules,"파일 등록","프로젝트 파일을 1회 이상 업로드");
-        row(rules,"회의 후속 업무","회의에서 생성된 후속 업무 중 담당 업무가 1건 이상 완료");doc.add(rules);
-        doc.add(p("확인된 항목의 수는 활동 종류의 폭을 나타냅니다. 모든 항목이 확인되어야 좋은 기여라는 뜻은 아닙니다. 회의를 열지 않은 팀 등 활동 방식에 따른 차이도 함께 고려해 주세요.",9,MUTED,false));
-        var matrix=table(1.3f,.8f,.8f,.8f,.9f,1.8f);headers(matrix,"팀원","업무","회의","파일","후속 업무","마지막 집계 (KST)");
-        for(var m:members) {
-            var s=scores.get(m.getUser().getId());
-            row(matrix,m.getUser().getName(),mark(s,s!=null&&s.isTaskParticipated()),mark(s,s!=null&&s.isMeetingParticipated()),
-                    mark(s,s!=null&&s.isFileParticipated()),mark(s,s!=null&&s.isActionParticipated()),s==null?"아직 집계되지 않음":time(s.getCalculatedAt()));
+        if(itemized) {
+            for(var i:columns.values())row(rules,i.label(),i.description());
+            doc.add(rules);
+            doc.add(p("계산 기준: "+current.stream().map(ContributionScore::getCriteriaVersion).distinct().collect(Collectors.joining(", ")),9,MUTED,false));
+        } else {
+            row(rules,"업무 완료","담당 업무 중 완료(DONE)된 업무가 1건 이상");
+            row(rules,"회의 참석","프로젝트 회의의 50% 이상에 체크인 기록 존재. 회의가 없으면 이 항목은 확인되지 않음");
+            row(rules,"파일 등록","프로젝트 파일을 1회 이상 업로드");
+            row(rules,"회의 후속 업무","회의에서 생성된 후속 업무 중 담당 업무가 1건 이상 완료");doc.add(rules);
         }
-        if(members.isEmpty())row(matrix,"현재 팀원 없음","-","-","-","-","-");doc.add(matrix);
+        doc.add(p("확인된 항목의 수는 활동 종류의 폭을 나타냅니다. 모든 항목이 확인되어야 좋은 기여라는 뜻은 아닙니다. 회의를 열지 않은 팀 등 활동 방식에 따른 차이도 함께 고려해 주세요.",9,MUTED,false));
+        if(itemized) doc.add(itemMatrix(members,scores,columns));
+        else {
+            var matrix=table(1.3f,.8f,.8f,.8f,.9f,1.8f);headers(matrix,"팀원","업무","회의","파일","후속 업무","마지막 집계 (KST)");
+            for(var m:members) {
+                var s=scores.get(m.getUser().getId());
+                row(matrix,m.getUser().getName(),mark(s,s!=null&&s.isTaskParticipated()),mark(s,s!=null&&s.isMeetingParticipated()),
+                        mark(s,s!=null&&s.isFileParticipated()),mark(s,s!=null&&s.isActionParticipated()),s==null?"아직 집계되지 않음":time(s.getCalculatedAt()));
+            }
+            if(members.isEmpty())row(matrix,"현재 팀원 없음","-","-","-","-","-");doc.add(matrix);
+        }
         doc.add(p("집계 시각 이후의 활동은 이 표에 아직 반영되지 않을 수 있습니다. 앞의 업무·파일·피드백 근거는 보고서 생성 시점에 조회하므로 저장된 집계와 시점이 다를 수 있습니다. 관찰자는 팀원 집계에서 제외합니다.",9,MUTED,false));
         heading(doc,"05","추가로 함께 확인할 기록");
         long notices=alerts.stream().filter(a->"FREE_RIDE".equals(a.getAlertType())).count();
@@ -202,6 +216,39 @@ public class ReportService {
     private static String join(String a,String b) {return safe(a)+" / "+safe(b);}
     private static String role(ProjectMember m) {return "LEADER".equals(m.getRole())?"팀장":"팀원";}
     private static String mark(ContributionScore s,boolean b) {return s==null?"미집계":b?"확인":"기록 없음";}
+
+    /** 저장된 계산에 나온 항목(code 순서는 처음 나온 대로). 모르는 code도 칸이 된다(K-40 2장) */
+    private static Map<String,ContributionScoreItem> columns(List<ContributionScore> scores) {
+        var out=new LinkedHashMap<String,ContributionScoreItem>();
+        for(var s:scores)for(var i:s.getItems())out.putIfAbsent(i.code(),i);
+        return out;
+    }
+
+    private static PdfPTable itemMatrix(List<ProjectMember> members,Map<UUID,ContributionScore> scores,Map<String,ContributionScoreItem> columns) {
+        float[] widths=new float[columns.size()+2];Arrays.fill(widths,.9f);widths[0]=1.3f;widths[widths.length-1]=1.6f;
+        var matrix=table(widths);
+        var head=new ArrayList<String>();head.add("팀원");columns.values().forEach(i->head.add(i.label()));head.add("마지막 집계 (KST)");
+        headers(matrix,head.toArray(String[]::new));
+        for(var m:members) {
+            var s=scores.get(m.getUser().getId());
+            var cells=new ArrayList<String>();cells.add(m.getUser().getName());
+            for(var code:columns.keySet())cells.add(s==null?"미집계":s.getItems().stream().filter(i->i.code().equals(code)).findFirst().map(ReportService::itemCell).orElse("-"));
+            cells.add(s==null?"아직 집계되지 않음":time(s.getCalculatedAt()));
+            row(matrix,cells.toArray(String[]::new));
+        }
+        return matrix;
+    }
+
+    /**
+     * 판정 항목은 확인 여부와 횟수(회의는 체크인/전체), 판정에 넣지 않는 항목은 횟수만.
+     * 전체 수가 0이면(회의를 열지 않은 팀) 확인할 대상이 없으므로 "기록 없음" 대신 "대상 없음"이다
+     */
+    private static String itemCell(ContributionScoreItem i) {
+        String count=i.total()==null?String.valueOf(i.count()):i.count()+"/"+i.total();
+        if(!i.countsTowardLevel())return count+"건";
+        if(i.total()!=null&&i.total()==0)return "대상 없음 · "+count;
+        return (i.passed()?"확인":"기록 없음")+" · "+count;
+    }
     private static String excerpt(String s,int n) {return s==null?"":s.length()>n?s.substring(0,n)+"...":s;}
     private static String status(String s) {return "DONE".equals(s)?"완료":"IN_PROGRESS".equals(s)?"진행 중":"할 일";}
     private static String decision(String s) {return "APPROVED".equals(s)?"승인":"CHANGES_REQUESTED".equals(s)?"수정 요청":"결정 전";}
