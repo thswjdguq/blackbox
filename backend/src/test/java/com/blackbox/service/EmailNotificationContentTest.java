@@ -62,7 +62,8 @@ class EmailNotificationContentTest {
     }
 
     @Test void reviewLinkOpensExistingReviewTabAndRejectsMissingIds() {
-        notification.setType("REVIEW_REQUESTED"); notification.setDeliverableId(UUID.randomUUID()); notification.setReviewId(UUID.randomUUID());
+        notification.setType("REVIEW_REQUESTED"); notification.setTaskId(null);
+        notification.setDeliverableId(UUID.randomUUID()); notification.setReviewId(UUID.randomUUID());
         var composer = new EmailNotificationComposer(URI.create("https://team.example"));
         assertEquals("https://team.example/projects/" + projectId + "/deliverables/" + notification.getDeliverableId() + "?tab=review", composer.compose(notification).target().toString());
         notification.setReviewId(null); assertThrows(NullPointerException.class, () -> composer.compose(notification));
