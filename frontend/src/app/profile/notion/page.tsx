@@ -9,6 +9,7 @@ import {
   CheckCircle2, AlertCircle, Loader2,
   X, Unlink,
 } from "lucide-react";
+import { loginHref } from "@/lib/loginRedirect";
 
 const INPUT_CLS =
   "w-full bg-bb-bg border border-bb-border rounded-lg px-3 py-2.5 text-sm " +
@@ -34,7 +35,7 @@ export default function NotionConnectPage() {
         setWorkspaceName(res.data.workspaceName);
       })
       .catch(err => {
-        if (err?.response?.status === 401) router.replace("/login");
+        if (err?.response?.status === 401) router.replace(loginHref());
       })
       .finally(() => setLoading(false));
   }, [router]);
