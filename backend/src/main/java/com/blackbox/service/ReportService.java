@@ -160,7 +160,8 @@ public class ReportService {
         doc.add(p("집계 시각 이후의 활동은 이 표에 아직 반영되지 않을 수 있습니다. 앞의 업무·파일·피드백 근거는 보고서 생성 시점에 조회하므로 저장된 집계와 시점이 다를 수 있습니다. 관찰자는 팀원 집계에서 제외합니다.",9,MUTED,false));
         heading(doc,"05","추가로 함께 확인할 기록");
         long notices=alerts.stream().filter(a->"FREE_RIDE".equals(a.getAlertType())).count();
-        if(notices>0)doc.add(p("참여 기록 확인 안내 "+notices+"건: 자동 집계가 포착하지 못한 검토·답변·오프라인 역할이 있는지 함께 확인해 주세요. 개인의 불성실이나 감점을 뜻하지 않습니다.",10,MUTED,false));
+        // 안내 문구는 경보(화면)와 같은 상수를 쓴다. 집계 기준이 바뀌어 문구를 고칠 때 한 곳만 고치면 된다
+        if(notices>0)doc.add(p("참여 기록 확인 안내 "+notices+"건: "+AlertService.PARTICIPATION_NOTICE+" 개인의 불성실이나 감점을 뜻하지 않습니다.",10,MUTED,false));
         var other=alerts.stream().filter(a->!"FREE_RIDE".equals(a.getAlertType())).toList();
         if(other.isEmpty())doc.add(p("표시할 미해결 추가 알림이 없습니다. 모든 기여가 집계되었다는 뜻은 아닙니다.",10,MUTED,false));
         else {var t=table(1,3);headers(t,"확인 유형","시스템 안내");for(var a:other)row(t,alertLabel(a.getAlertType()),safe(a.getMessage()));doc.add(t);}
