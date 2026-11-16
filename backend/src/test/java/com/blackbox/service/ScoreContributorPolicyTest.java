@@ -34,7 +34,7 @@ class ScoreContributorPolicyTest {
         verify(scores, never()).findByProjectAndUser(project, observer.getUser());
         verify(tasks, never()).countDoneByProjectAndUser(project, observer.getUser());
         verify(tasks, never()).countDoneActionItemsByProjectAndUser(project, observer.getUser());
-        verify(snapshots).read(project); // 파일/검토는 기여자별 조회 대신 프로젝트 단위로 묶어 읽는다.
+        verify(snapshots).read(eq(project), argThat(ms -> ms.size() == 2 && !ms.contains(observer)));
         verify(alerts).checkAlerts(eq(project), argThat(ms -> ms.size() == 2 && !ms.contains(observer)),
                 argThat(ss -> ss.size() == 2 && ss.stream().noneMatch(s -> s.getUser().equals(observer.getUser()))));
     }

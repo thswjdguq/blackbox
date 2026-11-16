@@ -4,6 +4,7 @@ import com.blackbox.entity.ContributionScore;
 import com.blackbox.entity.ContributionScoreItem;
 import com.blackbox.entity.ContributionScoreItem.Detail;
 import com.blackbox.entity.Project;
+import com.blackbox.entity.ProjectMember;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,21 +26,24 @@ public class ScoreSnapshotService {
         public static final Extra EMPTY = new Extra(0, new ScoreReviewActivityReader.Counts(0, 0, 0, 0, 0, 0));
     }
 
-    /** 계산 트랜잭션에서 프로젝트별로 한 번 읽는다. 사용자마다 파일/검토 전체를 다시 읽지 않는다. */
-    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
-    public Map<UUID, Extra> read(Project project) {
+    /** 계산기가 확보한 이 프로젝트의 현재 기여자 목록으로 파일 범위를 정한다. 검토 없는 사람도 포함하며 호출자 트랜잭션 속성을 따른다. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Map<UUID, Extra> read(Project project, List<ProjectMember> members) {
+        var users = members.stream().filter(ProjectAccessChecker::canContribute)
+                .map(m -> m.getUser().getId()).distinct().toList();
+        if (users.isEmpty()) return Map.of();
         var activity = reviews.read(project);
-        if (activity.isEmpty()) return Map.of();
         Map<UUID, Long> files = new HashMap<>();
         for (Object[] row : em.createQuery("""
                 select f.uploader.id, count(distinct f.fileName) from FileVault f
                 where f.project = :project and f.uploader.id in :users group by f.uploader.id
                 """, Object[].class).setParameter("project", project)
-                .setParameter("users", activity.keySet()).getResultList()) {
+                .setParameter("users", users).getResultList()) {
             files.put((UUID) row[0], ((Number) row[1]).longValue());
         }
         Map<UUID, Extra> result = new HashMap<>();
-        activity.forEach((id, counts) -> result.put(id, new Extra(files.getOrDefault(id, 0L), counts)));
+        users.forEach(id -> result.put(id, new Extra(files.getOrDefault(id, 0L),
+                activity.getOrDefault(id, Extra.EMPTY.reviews()))));
         return Map.copyOf(result);
     }
 

@@ -64,6 +64,19 @@ class ScoreSnapshotHttpTest {
                 .andReturn().getResponse().getStatus());
     }
 
+    @Test void memberWithOneFileAndNoReviewKeepsFileParticipation() throws Exception {
+        Team t = team();
+        file(em, t.project(), t.idle(), "합성_파일만.txt", 1, 'z'); em.flush(); em.clear();
+        JsonNode calculated = row(recalculate(t), t.idle());
+        assertTrue(calculated.path("fileParticipated").asBoolean());
+        assertEquals(1, calculated.at("/items/2/count").asLong());
+        assertTrue(calculated.at("/items/2/passed").asBoolean());
+        assertEquals(0, calculated.at("/items/4/count").asLong());
+        assertFalse(calculated.at("/items/4/passed").asBoolean());
+        assertEquals("NONE", calculated.path("participationLevel").asString(), "기존 0~1개 조건 판정을 유지한다");
+        assertEquals(calculated, row(readScores(t, t.worker()), t.idle()), "저장된 JSONB를 다시 읽어도 파일 참여가 남는다");
+    }
+
     @Test void snapshotRoundTripsThroughJsonbAndDoesNotRefreshUntilRecalculated() throws Exception {
         Team t = team(); ReviewRound round = facts(t); em.flush(); em.clear();
         JsonNode calculated = recalculate(t);

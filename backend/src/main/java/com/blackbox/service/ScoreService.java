@@ -89,7 +89,7 @@ public class ScoreService {
                 .filter(ProjectAccessChecker::canContribute).toList();
         if (members.isEmpty()) return List.of();
 
-        var extra = snapshots.read(project);
+        var extra = snapshots.read(project, members);
 
         // 전체 회의 수 (회의 참석율 계산 기준)
         long totalMeetings = meetingRepository.findByProjectOrderByMeetingDateDesc(project).size();
