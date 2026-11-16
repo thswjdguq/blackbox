@@ -17,6 +17,7 @@ import { roleLabel } from "@/lib/roleLabel";
 import { Task } from "@/types/task";
 import { Meeting } from "@/types/meeting";
 import { FileRecord, ScoreEntry, Alert } from "@/types/vault";
+import { reviewItem, sortScores } from "@/lib/scoreItems";
 import {
   Kanban, FileText, Files, BarChart2,
   Copy, Check, AlertTriangle,
@@ -530,8 +531,9 @@ export default function ProjectHomePage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {scores.map((s) => {
+                {sortScores(scores).map((s) => {
                   const memberAlert = activeAlerts.find((a) => a.userId === s.userId);
+                  const review = reviewItem(s);
                   const alertTone = ALERT_TONE[memberAlert?.severity ?? "LOW"] ?? ALERT_TONE.LOW;
                   const levelCfg = {
                     FULL:    { label: "전체 참여", cls: "text-teal-400 bg-teal-500/10 border-teal-500/25" },
@@ -547,6 +549,12 @@ export default function ProjectHomePage() {
                           <span className={`flex items-center gap-1 text-[10px] border px-2 py-0.5 rounded-full ${alertTone.color} ${alertTone.bg}`}>
                             <AlertTriangle size={9} />
                             {alertTone.label} · {ALERT_LABEL[memberAlert.alertType] ?? memberAlert.alertType}
+                          </span>
+                        )}
+                        {/* K-40 6장: 판정 배지는 그대로, 검토 참여 횟수를 함께(판정에는 넣지 않음) */}
+                        {review && (
+                          <span title={review.description} className="text-[10px] text-bb-text2 border border-bb-border px-2 py-0.5 rounded-full">
+                            검토 {review.count}건
                           </span>
                         )}
                         <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${levelCfg.cls}`}>

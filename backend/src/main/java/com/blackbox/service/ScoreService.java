@@ -155,7 +155,9 @@ public class ScoreService {
         }
 
         // 경보 감지
-        alertService.checkAlerts(project, members, savedScores);
+        Map<UUID, ScoreReviewActivityReader.Counts> reviews = new HashMap<>();
+        extra.forEach((id, facts) -> reviews.put(id, facts.reviews()));
+        alertService.checkAlerts(project, members, savedScores, Map.copyOf(reviews));
 
         // 응답도 화면 경보와 같이 현재 팀장·팀원만 보여 준다(관찰자 제외).
         Set<UUID> contributors = contributorIds(members);
