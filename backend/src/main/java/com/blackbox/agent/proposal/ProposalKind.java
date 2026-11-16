@@ -28,6 +28,12 @@ public interface ProposalKind {
      */
     List<AgentProposal.Result> accept(UUID projectId, User user, JsonNode content);
 
+    /** 이 카드가 근거로 쓰는 과제 안내문(K-31 9장). 검토 대기 카드가 쓰는 안내문은 지울 수 없다 */
+    default Set<UUID> briefIds(JsonNode content) { return Set.of(); }
+
+    /** 사람이 카드를 고칠 때, 서버가 정한 칸(근거 등)은 고치기 전 값으로 되돌린 내용. 검증보다 먼저 지난다 */
+    default JsonNode keepFixed(JsonNode before, JsonNode edited) { return edited; }
+
     /**
      * content는 이 종류가 아는 칸만 남긴 내용이고, problems는 형식에 맞지 않는 곳("어디: 무엇")이다.
      * problems가 비어 있을 때만 content를 저장한다.

@@ -55,6 +55,11 @@ public class AgentProposal {
     public record Result(@Column(name = "target_type", nullable = false, length = 40) String targetType,
                          @Column(name = "target_id", nullable = false) UUID targetId) {}
 
+    // 카드가 근거로 쓰는 과제 안내문(K-31 9장). 검토 대기 카드가 있으면 그 안내문을 지울 수 없다
+    @ElementCollection @Getter(AccessLevel.NONE)
+    @CollectionTable(name = "agent_proposal_briefs", joinColumns = @JoinColumn(name = "proposal_id"))
+    @Column(name = "brief_id") private Set<UUID> briefIds = new HashSet<>();
+
     /** 실행이 만든 카드. 프로젝트는 실행에서 가져오므로 둘이 어긋날 수 없다 */
     public static AgentProposal propose(AgentRun run, String kind, String title, String rationale, JsonNode content, OffsetDateTime now) {
         AgentProposal p = new AgentProposal();
@@ -64,6 +69,8 @@ public class AgentProposal {
         p.content = content; p.original = content.deepCopy(); p.createdAt = now;
         return p;
     }
+
+    public void cite(Collection<UUID> briefs) { requirePending(); briefIds.addAll(briefs); }
 
     public void edit(JsonNode newContent) { requirePending(); content = newContent; }
 

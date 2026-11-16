@@ -1,5 +1,6 @@
 package com.blackbox.agent.skill;
 
+import com.blackbox.agent.run.AgentEvents;
 import com.blackbox.entity.User;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -31,10 +32,24 @@ public interface AgentSkill {
     /** 만들 수 있는 카드 종류. 비어 있으면 글만 만든다. 관찰자의 실행은 여기 무엇이 있든 카드를 만들지 않는다 */
     default List<String> proposalKinds() { return List.of(); }
 
-    /** 입력을 검증하고 모델에 자료로 넘길 글을 만든다. 입력이 틀리면 400, 다른 프로젝트의 id면 404가 되는 예외를 던진다 */
+    /**
+     * 입력을 검증하고 모델에 자료로 넘길 글을 만든다. 입력이 틀리면 400, 다른 프로젝트의 id면 404가 되는 예외를 던진다.
+     * 스트림이 시작되기 전에 부른다. begin이 글을 다시 정하면 모델은 그 글을 읽는다
+     */
     String material(UUID projectId, User user, JsonNode input);
 
-    /** 모델이 만든 카드 내용 중 서버가 이미 아는 값을 채운다 */
+    /**
+     * 실행이 자리를 얻은 뒤(409·429를 지난 뒤), 모델을 부르기 전에 한 번 부른다. 막힌 실행에서는 하지 않을 일을 여기서 한다
+     * (예: 안내문 저장). 돌려준 입력을 complete가 받는다.
+     * 기록을 읽어 카드의 근거로 남기는 실행은 여기서 읽은 것으로 모델에 줄 글도 정한다. material과 begin 사이에 기록이 바뀌어도
+     * 모델이 읽은 글과 카드가 가리키는 근거가 같은 시점의 것이 된다
+     */
+    default Begun begin(UUID projectId, User user, JsonNode input, AgentEvents events) { return new Begun(input, null); }
+
+    /** material이 null이면 material()이 만든 글을 그대로 모델에 준다 */
+    record Begun(JsonNode input, String material) {}
+
+    /** 모델이 만든 카드 내용 중 서버가 이미 아는 값을 채운다. input은 begin이 돌려준 것이다 */
     default void complete(ObjectNode content, JsonNode input) {}
 
     static String requiredText(JsonNode input, String field, String label, int maxLength) {

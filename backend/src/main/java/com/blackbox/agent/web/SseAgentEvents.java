@@ -21,6 +21,12 @@ class SseAgentEvents implements AgentEvents {
     SseAgentEvents(SseEmitter emitter) { this.emitter = emitter; }
 
     @Override public void step(String tool, String label) { send("step", new Step(label, tool), false); }
+    @Override public void brief(UUID briefId, String title, boolean created) {
+        // 제목에 따라 조사(을/를)가 달라지지 않게 제목을 문장 끝에 둔다
+        String label = created ? "과제 안내문을 안내문 공간에 저장했습니다: " + title : "안내문 공간에 있던 안내문을 썼습니다: " + title;
+        // 모델이 부른 도구가 아니므로 tool은 비운다
+        send("step", new BriefStep(label, null, briefId, title, created), false);
+    }
     @Override public void text(String text) { send("text", new Text(text), false); }
     @Override public void proposal(AgentProposal proposal) { send("proposal", ProposalResponse.from(proposal), false); }
     @Override public void done(UUID runId, List<UUID> proposalIds) { send("done", new Done(runId, proposalIds), true); }
@@ -37,6 +43,7 @@ class SseAgentEvents implements AgentEvents {
     }
 
     record Step(String label, String tool) {}
+    record BriefStep(String label, String tool, UUID briefId, String briefTitle, boolean briefCreated) {}
     record Text(String text) {}
     record Done(UUID runId, List<UUID> proposalIds) {}
     record Failure(String detail) {}
