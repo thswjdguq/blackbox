@@ -4,6 +4,15 @@ export interface PersonalNotification {
   deliverableId?: string | null; deliverableTitle?: string | null; reviewId?: string | null; commentId?: string | null;
   fileVersion: number | null; messageId: string | null;
   createdAt: string; readAt: string | null; targetAvailable: boolean;
+  /** K-41 5장. 서버가 만든 표시 문장·대상·같은 사이트 경로. 이전 서버는 보내지 않는다 */
+  message?: string | null;
+  target?: NotificationTarget | null;
+  path?: string | null;
+}
+export interface NotificationTarget {
+  kind: "TASK" | "DELIVERABLE_REVIEW" | "UNKNOWN" | string;
+  taskId: string | null; deliverableId: string | null; reviewId: string | null;
+  messageId: string | null; commentId: string | null; fileId: string | null;
 }
 export interface NotificationPage { items: PersonalNotification[]; nextCursor: string | null; unreadCount: number }
 export const notificationLabels: Record<string, string> = {
