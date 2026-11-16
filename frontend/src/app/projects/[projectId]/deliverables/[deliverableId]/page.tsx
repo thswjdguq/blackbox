@@ -15,6 +15,7 @@ import TaskFilesPanel from "@/components/deliverable/TaskFilesPanel";
 import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal";
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import ReviewPanel from "@/components/deliverable/ReviewPanel";
+import DeliverableBriefs from "@/components/deliverable/DeliverableBriefs";
 import FinalSubmissionPanel from "@/components/deliverable/FinalSubmissionPanel";
 import api from "@/lib/api";
 import { deliverableDue, dueLabel, shortDate } from "@/lib/due";
@@ -485,6 +486,12 @@ export default function DeliverableDetailPage() {
                 )}
 
                 <ProgressSection progress={progress} progressError={progressError} onRetry={fetchProgress} />
+
+                {deliverable.briefs && (
+                  <DeliverableBriefs projectId={projectId} deliverableId={deliverableId} briefs={deliverable.briefs}
+                    canWrite={canContribute} locked={locked}
+                    onChange={(briefs) => setDeliverable((prev) => (prev ? { ...prev, briefs } : prev))} />
+                )}
 
                 {/* 요구사항 */}
                 <section className="bg-bb-surface border border-bb-border rounded-xl p-5">

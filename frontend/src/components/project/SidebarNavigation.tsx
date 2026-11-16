@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, ChevronDown, ClipboardList, FileText, Files, FolderKanban, Kanban, LayoutDashboard, Settings, BarChart2, MessageSquare } from "lucide-react";
+import { ArrowLeft, BookOpenText, ChevronDown, ClipboardList, FileText, Files, FolderKanban, Kanban, LayoutDashboard, Settings, BarChart2, MessageSquare } from "lucide-react";
 import { countActionableFeedback, useFeedbackInbox } from "@/hooks/useFeedbackInbox";
 import { projectNavigation, projectSection } from "@/lib/projectNavigation";
 import NotificationLink from "./NotificationLink";
 
-const icons = { home: LayoutDashboard, deliverables: ClipboardList, board: Kanban, feedback: MessageSquare, meetings: FileText, vault: Files, analytics: BarChart2, settings: Settings };
+const icons = { home: LayoutDashboard, deliverables: ClipboardList, board: Kanban, feedback: MessageSquare, meetings: FileText, briefs: BookOpenText, vault: Files, analytics: BarChart2, settings: Settings };
 
 export default function SidebarNavigation({ projectId, onNavigate }: { projectId: string | null; onNavigate: () => void }) {
   const pathname = usePathname();
