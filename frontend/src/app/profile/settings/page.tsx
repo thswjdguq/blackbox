@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import BeginnerGuide from "@/components/BeginnerGuide";
@@ -10,12 +10,9 @@ import { sessionGeneration } from "@/lib/sessionCache";
 import ProfileAffiliation from "@/components/auth/ProfileAffiliation";
 import type {CurrentProfile} from "@/lib/store/profileStore";
 import {
-  UserCircle,
   Mail,
   Lock,
-  Link2,
   CheckCircle2,
-  XCircle,
   Loader2,
   Eye,
   EyeOff,

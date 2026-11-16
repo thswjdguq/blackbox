@@ -11,13 +11,9 @@ import {
   X,
   LogIn,
   Trash2,
-  CheckSquare,
-  Clock,
-  ChevronRight,
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import MyTasks from "@/components/dashboard/MyTasks";
 import ReviewQueue from "@/components/dashboard/ReviewQueue";
@@ -156,7 +152,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-bb-bg">
-      <Sidebar hasProjects={projects.length > 0} />
+      <Sidebar />
 
       <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
         {/* Header */}

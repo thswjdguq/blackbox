@@ -23,7 +23,6 @@ import {
   Copy, Check, AlertTriangle,
   Calendar, ChevronRight,
   AlertCircle, Hash, Archive, Download,
-  X, ArrowRight,
 } from "lucide-react";
 
 // ── 타입 ─────────────────────────────────────────────────────────────────
