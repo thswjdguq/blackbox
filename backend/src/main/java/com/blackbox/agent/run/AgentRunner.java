@@ -143,8 +143,10 @@ public class AgentRunner {
         // 관찰자의 실행은 카드를 만들지 않는다(K-30 1장·2장)
         List<String> allowedKinds = p.contributor() ? p.skill().proposalKinds() : List.of();
         String guide = instructions.forRun(p.skill(), allowedKinds, projectId);
+        AgentSkill.Begun begun = p.skill().begin(projectId, user, p.input(), events);
+        JsonNode input = begun.input();
         // 안내문과 질문은 자료로만 넘긴다. 그 안의 지시는 따르지 않게 공통 지시문이 막는다
-        String material = instructions.material(p.material());
+        String material = instructions.material(begun.material() != null ? begun.material() : p.material());
 
         String answer = model.generate(guide, material, toolbox.bind(projectId, user, p.skill().tools(), events::step));
         requireInTime(p);
@@ -153,18 +155,24 @@ public class AgentRunner {
             return List.of();
         }
 
-        Answer read = read(answer, p, allowedKinds);
+        Answer read = read(answer, p, input, allowedKinds);
         if (!read.problems().isEmpty()) {
             // 한 번만 다시 요청한다(K-30 6장). 기록은 다시 조회하지 않고 형식만 고치게 한다
-            read = read(model.generate(guide, instructions.repair(material, answer, read.problems()), List.of()), p, allowedKinds);
+            read = read(model.generate(guide, instructions.repair(material, answer, read.problems()), List.of()), p, input, allowedKinds);
             requireInTime(p);
             if (!read.problems().isEmpty()) throw new IllegalStateException("형식에 맞지 않는 응답: " + read.problems());
         }
-        if (!read.text().isBlank()) events.text(read.text());
+        // 서버가 버린 카드는 이유마다 몇 건인지 글 끝에 알린다(K-31 6.3)
+        String text = read.text();
+        for (Map.Entry<String, Integer> d : read.dropped().entrySet()) {
+            text = (text.isEmpty() ? "" : text + "\n\n") + d.getKey() + " " + d.getValue() + "건은 제외했습니다";
+        }
+        if (!text.isBlank()) events.text(text);
         List<UUID> ids = new ArrayList<>();
         for (Draft draft : read.drafts()) {
-            AgentProposal saved = proposals.save(AgentProposal.propose(
-                    p.run(), draft.kind(), draft.title(), draft.rationale(), draft.content(), OffsetDateTime.now()));
+            AgentProposal card = AgentProposal.propose(p.run(), draft.kind(), draft.title(), draft.rationale(), draft.content(), OffsetDateTime.now());
+            card.cite(kinds.get(draft.kind()).briefIds(draft.content()));
+            AgentProposal saved = proposals.save(card);
             events.proposal(saved);
             ids.add(saved.getId());
         }
@@ -172,19 +180,23 @@ public class AgentRunner {
     }
 
     private record Draft(String kind, String title, String rationale, JsonNode content) {}
-    private record Answer(String text, List<Draft> drafts, List<String> problems) {}
+    /** dropped는 서버가 카드로 만들지 않은 것의 이유별 개수다 */
+    private record Answer(String text, List<Draft> drafts, Map<String, Integer> dropped, List<String> problems) {}
 
     /** 모델의 답을 읽는다. 형식에 맞지 않는 곳이 있으면 problems에 담고, 그때는 아무것도 저장하지 않는다 */
-    private Answer read(String answer, Prepared p, List<String> allowedKinds) {
+    private Answer read(String answer, Prepared p, JsonNode begun, List<String> allowedKinds) {
+        // complete가 같은 응답의 앞 카드에서 본 것을 input에 남길 수 있어, 응답마다 begin이 돌려준 것의 새 사본으로 읽는다
+        JsonNode input = begun.deepCopy();
         JsonNode root;
         try {
             // 모델이 코드 블록 표시나 앞뒤 말을 붙여도 객체만 읽는다
             root = json.readTree(answer.substring(answer.indexOf('{'), answer.lastIndexOf('}') + 1));
         } catch (JacksonException | IndexOutOfBoundsException e) {
-            return new Answer("", List.of(), List.of("답이 JSON 객체 하나가 아니다"));
+            return new Answer("", List.of(), Map.of(), List.of("답이 JSON 객체 하나가 아니다"));
         }
         List<String> problems = new ArrayList<>();
         List<Draft> drafts = new ArrayList<>();
+        Map<String, Integer> dropped = new LinkedHashMap<>();
         JsonNode list = root.path("proposals");
         if (!list.isArray() && !list.isMissingNode() && !list.isNull()) problems.add("proposals: 배열이어야 한다");
         for (int i = 0; list.isArray() && i < list.size(); i++) {
@@ -194,17 +206,18 @@ public class AgentRunner {
             String title = item.path("title").asString("").strip();
             String rationale = item.path("rationale").asString("").strip();
             if (!allowedKinds.contains(kind)) { problems.add(at + ".kind: " + allowedKinds + " 중 하나여야 한다"); continue; }
+            if (!(item.path("content") instanceof ObjectNode content)) { problems.add(at + ".content: 객체여야 한다"); continue; }
+            String drop = p.skill().complete(kind, content, input);
+            if (drop != null) { dropped.merge(drop, 1, Integer::sum); continue; }
             if (title.isEmpty()) problems.add(at + ".title: 비어 있다");
             if (rationale.isEmpty()) problems.add(at + ".rationale: 비어 있다");
-            if (!(item.path("content") instanceof ObjectNode content)) { problems.add(at + ".content: 객체여야 한다"); continue; }
-            p.skill().complete(content, p.input());
             ProposalKind.Checked checked = kinds.get(kind).check(p.run().getProject().getId(), p.run().getRequestedBy(), content, false);
             checked.problems().forEach(problem -> problems.add(at + ".content." + problem));
             // 저장하는 것은 그 종류가 아는 칸만 남긴 내용이다
             drafts.add(new Draft(kind, title, rationale, checked.content()));
         }
         String text = root.path("text").asString("").strip();
-        if (problems.isEmpty() && text.isEmpty() && drafts.isEmpty()) problems.add("text와 proposals가 모두 비어 있다");
-        return new Answer(text, drafts, problems);
+        if (problems.isEmpty() && text.isEmpty() && drafts.isEmpty() && dropped.isEmpty()) problems.add("text와 proposals가 모두 비어 있다");
+        return new Answer(text, drafts, dropped, problems);
     }
 }

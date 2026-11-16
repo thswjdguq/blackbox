@@ -32,12 +32,7 @@ public class BreakDownTasksSkill implements AgentSkill {
     @Override public List<String> proposalKinds() { return List.of(TasksKind.NAME); }
 
     @Override public String material(UUID projectId, User user, JsonNode input) {
-        UUID id;
-        try {
-            id = UUID.fromString(input.path(DELIVERABLE_ID).asString(""));
-        } catch (IllegalArgumentException e) {
-            throw AgentSkill.badInput("제출물을 골라주세요");
-        }
+        UUID id = AgentSkill.deliverableId(input);
         // 다른 프로젝트의 제출물이면 여기서 404가 된다
         DeliverableDtos.Response deliverable = deliverables.get(projectId, id, user);
         // 확정·제출된 제출물에는 업무를 더할 수 없어 채택이 409가 된다. 모델을 부르기 전에 막는다
@@ -45,7 +40,8 @@ public class BreakDownTasksSkill implements AgentSkill {
         return "업무로 나눌 제출물: id " + id + ", 제목 \"" + deliverable.title() + "\"";
     }
 
-    @Override public void complete(ObjectNode content, JsonNode input) {
+    @Override public String complete(String kind, ObjectNode content, JsonNode input) {
         content.put(DELIVERABLE_ID, input.path(DELIVERABLE_ID).asString());
+        return null;
     }
 }

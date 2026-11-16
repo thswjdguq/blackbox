@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -18,10 +18,11 @@ import java.util.stream.Collectors;
 public class AlertService {
     // ReportService(PDF)도 화면과 같은 대상·문구를 쓰도록 같은 패키지에 공개한다.
     static final Set<String> PARTICIPATION_TYPES=Set.of("FREE_RIDE","DROPOUT","OVERLOAD");
-    static final String PARTICIPATION_NOTICE="자동 집계된 참여 기록이 적습니다. 검토·답변 등 집계에 반영되지 않은 활동이 있을 수 있으니 팀과 함께 확인해 주세요.";
+    static final String PARTICIPATION_NOTICE="자동 집계된 참여 기록(업무·회의·파일·검토)이 적습니다. 집계되지 않는 활동이 있을 수 있으니 팀과 함께 확인해 주세요.";
 
     private final AlertRepository               alertRepository;
-    private final ActivityLogRepository         activityLogRepository;
+    private final ScoreRecentActivityReader     recentActivity;
+    private final ScoreReviewActivityReader     reviewActivity;
     private final ProjectRepository             projectRepository;
     private final ProjectMemberRepository       memberRepository;
     private final ContributionScoreRepository   scoreRepository;
@@ -29,14 +30,16 @@ public class AlertService {
     private final ProjectAccessChecker         accessChecker;
 
     public AlertService(AlertRepository alertRepository,
-                        ActivityLogRepository activityLogRepository,
+                        ScoreRecentActivityReader recentActivity,
                         ProjectRepository projectRepository,
                         ProjectMemberRepository memberRepository,
                         ContributionScoreRepository scoreRepository,
                         DiscordNotificationService discordService,
-                        ProjectAccessChecker accessChecker) {
+                        ProjectAccessChecker accessChecker,
+                        ScoreReviewActivityReader reviewActivity) {
         this.alertRepository       = alertRepository;
-        this.activityLogRepository = activityLogRepository;
+        this.recentActivity        = recentActivity;
+        this.reviewActivity        = reviewActivity;
         this.projectRepository     = projectRepository;
         this.memberRepository      = memberRepository;
         this.scoreRepository       = scoreRepository;
@@ -92,10 +95,12 @@ public class AlertService {
         Set<UUID> ids=members.stream().map(m->m.getUser().getId()).collect(Collectors.toSet());
         scores=scores.stream().filter(s->ids.contains(s.getUser().getId())).toList();
 
-        resolveImprovedAlerts(project, scores, members);  // 먼저 해제
-        checkFreeRide(project, scores);
+        Map<UUID, ScoreReviewActivityReader.Counts> reviews = reviewActivity.read(project);
+        Map<UUID, OffsetDateTime> recent = recentActivity.read(project);
+        resolveImprovedAlerts(project, scores, members, reviews, recent);  // 먼저 해제
+        checkFreeRide(project, scores, reviews);
         checkOverload(project, scores);
-        checkDropout(project, members);
+        checkDropout(project, members, recent);
     }
 
     // ── 이벤트 트리거 재평가 (태스크 완료·체크인·파일 업로드 시 호출) ───────
@@ -103,8 +108,8 @@ public class AlertService {
     @Transactional
     public void reevaluate(User user, Project project) {
         if (!contributorIds(project).contains(user.getId())) return;
-        reevaluateFreeRide(user, project);
-        reevaluateDropout(user, project);
+        reevaluateFreeRide(user, project, reviewCount(reviewActivity.read(project), user));
+        reevaluateDropout(user, project, recentActivity.read(project));
         reevaluateOverload(project);
     }
 
@@ -112,34 +117,45 @@ public class AlertService {
 
     /** 점수 재계산 결과로 개선된 경보 일괄 해제 */
     private void resolveImprovedAlerts(Project project, List<ContributionScore> scores,
-                                       List<ProjectMember> members) {
+                                       List<ProjectMember> members, Map<UUID, ScoreReviewActivityReader.Counts> reviews,
+                                       Map<UUID, OffsetDateTime> recent) {
         for (ContributionScore s : scores) {
-            reevaluateFreeRideByScore(s.getUser(), project, s.getParticipationLevel());
+            reevaluateFreeRideByScore(s.getUser(), project, s.getParticipationLevel(), reviewCount(reviews, s.getUser()));
             reevaluateOverload(project);
         }
         for (ProjectMember pm : members) {
-            reevaluateDropout(pm.getUser(), project);
+            reevaluateDropout(pm.getUser(), project, recent);
         }
     }
 
-    /** FREE_RIDE 해제: 참여 여부가 PARTIAL 이상이면 */
-    private void reevaluateFreeRide(User user, Project project) {
+    /** FREE_RIDE 해제: 기존 참여 조건 또는 검토 참여. 판정 자체는 바꾸지 않는다(K-40 4.2). */
+    private void reevaluateFreeRide(User user, Project project, long reviews) {
+        if (reviews > 0) {
+            resolveFreeRide(user, project, "검토에 참여했습니다");
+            return;
+        }
         scoreRepository.findByProjectAndUser(project, user).ifPresent(score ->
-            reevaluateFreeRideByScore(user, project, score.getParticipationLevel())
+            reevaluateFreeRideByScore(user, project, score.getParticipationLevel(), reviews)
         );
     }
 
-    private void reevaluateFreeRideByScore(User user, Project project, String level) {
+    private void reevaluateFreeRideByScore(User user, Project project, String level, long reviews) {
         if ("PARTIAL".equals(level) || "FULL".equals(level)) {
-            alertRepository.findByProjectAndUserAndAlertTypeAndResolvedAtIsNull(project, user, "FREE_RIDE")
-                    .ifPresent(a -> resolve(a, user.getName() + "님이 참여 활동을 완료했습니다"));
+            resolveFreeRide(user, project, user.getName() + "님이 참여 활동을 완료했습니다");
+        } else if (reviews > 0) {
+            resolveFreeRide(user, project, "검토에 참여했습니다");
         }
     }
 
+    private void resolveFreeRide(User user, Project project, String reason) {
+        alertRepository.findByProjectAndUserAndAlertTypeAndResolvedAtIsNull(project, user, "FREE_RIDE")
+                .ifPresent(a -> resolve(a, reason));
+    }
+
     /** DROPOUT 해제: 최근 7일 내 활동 있으면 */
-    private void reevaluateDropout(User user, Project project) {
+    private void reevaluateDropout(User user, Project project, Map<UUID, OffsetDateTime> recent) {
         OffsetDateTime sevenDaysAgo = OffsetDateTime.now().minusDays(7);
-        boolean hasActivity = activityLogRepository.hasActivityAfter(project, user, sevenDaysAgo);
+        boolean hasActivity = hasActivityAfter(recent, user, sevenDaysAgo);
         if (hasActivity) {
             alertRepository.findByProjectAndUserAndAlertTypeAndResolvedAtIsNull(project, user, "DROPOUT")
                     .ifPresent(a -> resolve(a, user.getName() + "님이 최근 7일 내 활동했습니다"));
@@ -166,9 +182,10 @@ public class AlertService {
 
     // ── 경보 생성 로직 ────────────────────────────────────────────────────
 
-    private void checkFreeRide(Project project, List<ContributionScore> scores) {
+    private void checkFreeRide(Project project, List<ContributionScore> scores,
+                               Map<UUID, ScoreReviewActivityReader.Counts> reviews) {
         for (ContributionScore s : scores) {
-            if ("NONE".equals(s.getParticipationLevel())
+            if ("NONE".equals(s.getParticipationLevel()) && reviewCount(reviews, s.getUser()) == 0
                     && !alertRepository.existsByProjectAndUserAndAlertTypeAndResolvedAtIsNull(
                             project, s.getUser(), "FREE_RIDE")) {
                 createAlert(project, s.getUser(), "FREE_RIDE", "MEDIUM",
@@ -195,18 +212,28 @@ public class AlertService {
         }
     }
 
-    private void checkDropout(Project project, List<ProjectMember> members) {
+    private void checkDropout(Project project, List<ProjectMember> members, Map<UUID, OffsetDateTime> recent) {
         OffsetDateTime twoWeeksAgo = OffsetDateTime.now().minusDays(14);
         for (ProjectMember pm : members) {
             if (pm.getJoinedAt() != null && pm.getJoinedAt().isAfter(twoWeeksAgo)) continue;
             User u = pm.getUser();
-            boolean hasActivity = activityLogRepository.hasActivityAfter(project, u, twoWeeksAgo);
+            boolean hasActivity = hasActivityAfter(recent, u, twoWeeksAgo);
             if (!hasActivity
                     && !alertRepository.existsByProjectAndUserAndAlertTypeAndResolvedAtIsNull(project, u, "DROPOUT")) {
                 createAlert(project, u, "DROPOUT", "HIGH",
                         u.getName() + "님이 최근 2주 동안 활동 기록이 없습니다");
             }
         }
+    }
+
+    private static long reviewCount(Map<UUID, ScoreReviewActivityReader.Counts> reviews, User user) {
+        var count = reviews.get(user.getId());
+        return count == null ? 0 : count.total();
+    }
+
+    private static boolean hasActivityAfter(Map<UUID, OffsetDateTime> recent, User user, OffsetDateTime since) {
+        OffsetDateTime last = recent.get(user.getId());
+        return last != null && last.isAfter(since);
     }
 
     private void createAlert(Project project, User user, String type, String severity, String message) {

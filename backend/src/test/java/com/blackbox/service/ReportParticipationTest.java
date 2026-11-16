@@ -68,6 +68,8 @@ class ReportParticipationTest {
         assertTrue(text.contains("팀원수1명")); assertTrue(text.contains("참여기록확인"));
         assertTrue(text.contains("2026-10-1717:33")); assertTrue(text.contains("KST"));
         assertTrue(text.contains("평가·감점기준이아닙니다")); assertTrue(text.contains("무결성확인필요"));
+        // FREE_RIDE 안내는 화면의 경보와 같은 문구다(AlertService.PARTICIPATION_NOTICE)
+        assertTrue(text.contains("참여기록확인안내1건:" + AlertService.PARTICIPATION_NOTICE.replaceAll("\\s+", "")), text);
         for(String forbidden:List.of("무임승차","미참여","관찰합성","탈퇴합성","님이","해결된알림표시금지"))
             assertFalse(text.contains(forbidden),forbidden);
         assertEquals("팀장합성님이 미참여했습니다",legacy.getMessage());
