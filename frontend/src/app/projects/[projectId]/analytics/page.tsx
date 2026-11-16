@@ -10,7 +10,7 @@ import { ALERT_TONE } from "@/lib/alertTone";
 import { apiError, blobApiError } from "@/lib/apiError";
 import { useMyRole } from "@/hooks/useMyRole";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
-import { columns, countText, extraItems, levelItems, reviewItem, sortScores } from "@/lib/scoreItems";
+import { columns, countText, extraItems, levelItems, noTarget, reviewItem, sortScores } from "@/lib/scoreItems";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
 } from "recharts";
@@ -422,7 +422,10 @@ export default function AnalyticsPage() {
                         const text = item ? countText(item) : null;
                         return (
                           <div key={col.code} role="cell" title={col.description} className="py-4 px-4 text-center">
-                            {item ? (
+                            {item && noTarget(item) ? (
+                              // 확인할 대상이 없으면 미충족(✗)으로 보이지 않는다(PDF와 같음)
+                              <span className="text-[11px] text-bb-text2">{text}</span>
+                            ) : item ? (
                               <div className="flex flex-col items-center gap-1">
                                 <ParticipationCell participated={item.passed} />
                                 {text ? <span className="text-[11px] text-bb-text2">{text}</span> : Icon && <Icon size={11} className="text-bb-text2" />}

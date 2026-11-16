@@ -20,8 +20,9 @@ assert.deepEqual(levelItems(now).map(i=>i.code),['TASK_DONE','MEETING_ATTENDANCE
 assert.deepEqual(extraItems(now).map(i=>i.code),['REVIEW_ACTIVITY']);
 assert.equal(reviewItem(now).count,5);
 
-// 횟수 글: 회의는 n/total, 회의가 없으면 "회의 없음", 나머지는 n건
-assert.equal(countText(items[1]),'1/4');assert.equal(countText({count:0,total:0}),'회의 없음');assert.equal(countText(items[0]),'3건');
+// 횟수 글: 회의는 n/total, 회의가 없으면 PDF와 같은 "대상 없음 · 0/0", 나머지는 n건
+assert.equal(countText(items[1]),'1/4');assert.equal(countText({count:0,total:0}),'대상 없음 · 0/0');assert.equal(countText(items[0]),'3건');
+assert.equal(m.exports.noTarget({count:0,total:0}),true);assert.equal(m.exports.noTarget(items[1]),false);assert.equal(m.exports.noTarget(items[0]),false);
 
 // 모르는 code: 버리지 않고 countsTowardLevel로 자리를 나눈다(K-40 2장)
 const future={...base,userId:'u2',name:'김민지',items:[...items,item('PRESENTATION',1),item('PEER_NOTE',2,{countsTowardLevel:false})]};
