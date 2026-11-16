@@ -15,7 +15,10 @@ assert.equal(safeNext('/loginx'),'/loginx','접두어만 같은 다른 경로는
 // 로그인 주소: 지금 주소를 next에 담는다
 assert.equal(loginHref('/projects/p1/board?task=t1'),'/login?next=%2Fprojects%2Fp1%2Fboard%3Ftask%3Dt1');
 assert.equal(loginHref('/login'),'/login');assert.equal(loginHref('/'),'/login');
+// fragment(이메일 확인 토큰 등)는 next에 담지 않는다(쿼리는 서버 로그에 남을 수 있음)
+assert.equal(loginHref('/email/verify#token=secret'),'/login?next=%2Femail%2Fverify');
+assert.equal(loginHref('/projects/p1/board?task=t1#x'),'/login?next=%2Fprojects%2Fp1%2Fboard%3Ftask%3Dt1','fragment 없음');
 // 로그인 뒤: 안전한 next, 아니면 대시보드
 assert.equal(afterLogin('?next=%2Fprojects%2Fp1%2Fboard%3Ftask%3Dt1'),'/projects/p1/board?task=t1');
 for(const q of ['','?next=','?next=%2F%2Fevil.example','?next=https%3A%2F%2Fevil.example','?next=%2Flogin'])assert.equal(afterLogin(q),'/dashboard',q);
-console.log('로그인 뒤 돌아가기 검사 통과: 같은 사이트 경로만, 다른 사이트·로그인 화면 거르기, next 담기·꺼내기');
+console.log('로그인 뒤 돌아가기 검사 통과: 같은 사이트 경로만, 다른 사이트·로그인 화면 거르기, next 담기·꺼내기, fragment 빼기');

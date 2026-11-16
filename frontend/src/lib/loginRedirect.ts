@@ -13,9 +13,12 @@ export function safeNext(raw: string | null | undefined): string | null {
   return raw;
 }
 
-/** 지금 주소를 next로 담은 로그인 주소. 원래 주소가 로그인·가입 화면이면 담지 않는다 */
+/**
+ * 지금 주소를 next로 담은 로그인 주소. 원래 주소가 로그인·가입 화면이면 담지 않는다.
+ * fragment(#…)는 담지 않는다. next는 쿼리라 서버 접근 로그에 남을 수 있어, fragment로만 오는 값(이메일 확인 토큰 등, K-42)이 새지 않게 한다
+ */
 export function loginHref(current?: string): string {
-  const here = current ?? (typeof window === "undefined" ? "" : window.location.pathname + window.location.search + window.location.hash);
+  const here = (current ?? (typeof window === "undefined" ? "" : window.location.pathname + window.location.search)).split("#")[0];
   const next = safeNext(here);
   return next ? `/login?next=${encodeURIComponent(next)}` : "/login";
 }
