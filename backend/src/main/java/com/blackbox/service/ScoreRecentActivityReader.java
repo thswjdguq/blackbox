@@ -21,8 +21,8 @@ public class ScoreRecentActivityReader {
     private final EntityManager em;
     private final ProjectMemberRepository members;
 
-    /** 현재 기여자의 마지막 활동 시각이다. 활동이 없는 사람은 없으며, 재가입 전 기록도 기간 기준에 따라 포함한다. */
-    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
+    /** 현재 기여자의 마지막 활동 시각이다. 활동이 없는 사람은 없으며, 재가입 전 기록도 기간 기준에 따라 포함한다. 호출자의 트랜잭션 속성을 따른다. */
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<UUID, OffsetDateTime> read(Project project) {
         List<UUID> users = members.findByProject(project).stream().filter(ProjectAccessChecker::canContribute)
                 .map(m -> m.getUser().getId()).distinct().toList();

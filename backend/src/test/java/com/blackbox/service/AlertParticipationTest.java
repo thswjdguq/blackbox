@@ -32,7 +32,8 @@ class AlertParticipationTest {
                 alert(observer,"FREE_RIDE"),alert(observer,"DROPOUT"),alert(removed,"OVERLOAD")));
         var result=service.getAlerts(project.getId(),leader);
         assertEquals(2,result.size());assertEquals(worker.getId(),result.get(0).userId());
-        assertTrue(result.get(0).message().contains("검토·답변"));
+        assertTrue(result.get(0).message().contains("업무·회의·파일·검토"));
+        assertFalse(result.get(0).message().contains("검토·답변 등 집계에 반영되지"));
         assertFalse(result.get(0).message().contains("합성 실명"));assertFalse(result.get(0).message().contains("미참여"));
         assertEquals(tamper.getMessage(),result.get(1).message());
         assertEquals("합성 실명 (미참여)",legitimate.getMessage());

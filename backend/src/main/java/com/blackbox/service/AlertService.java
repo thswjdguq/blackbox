@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class AlertService {
     // ReportService(PDF)도 화면과 같은 대상·문구를 쓰도록 같은 패키지에 공개한다.
     static final Set<String> PARTICIPATION_TYPES=Set.of("FREE_RIDE","DROPOUT","OVERLOAD");
-    static final String PARTICIPATION_NOTICE="자동 집계된 참여 기록이 적습니다. 검토·답변 등 집계에 반영되지 않은 활동이 있을 수 있으니 팀과 함께 확인해 주세요.";
+    static final String PARTICIPATION_NOTICE="자동 집계된 참여 기록(업무·회의·파일·검토)이 적습니다. 집계되지 않는 활동이 있을 수 있으니 팀과 함께 확인해 주세요.";
 
     private final AlertRepository               alertRepository;
     private final ScoreRecentActivityReader     recentActivity;
