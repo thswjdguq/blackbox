@@ -1,6 +1,7 @@
 # K-41 · Gmail SMTP 이메일 알림
 
-- 버전 0.3 / 상태 DRAFT / 2026-11-16 / B 알림·수신 설정 생산자, A SMTP·인증·DB·검토 회차 생산자, C 화면 소비자
+- 버전 0.4 / 2026-11-16 / B 알림·수신 설정 생산자, A SMTP·인증·DB·검토 회차 생산자, C 화면 소비자
+- 상태: **1~6장 합의 대상(A·C 최종 승인 대기), 7~12장 후속 DRAFT**. 후속의 이번 학기 구현 여부·착수 시점은 주간 계획에서 별도 합의한다. 후속 미구현을 초기 SMTP 구현의 대기로 묶지 않는다.
 - 기준 main `035be3f2`. Gmail SMTP를 공급자로 사용하며 수신자·신규 이벤트·발송 이력을 제안한다. 합의 전 HTTP/DB/운영 동작을 변경하지 않는다.
 
 ## 1. 최소 범위
@@ -52,14 +53,14 @@ B의 생성기 하나가 기존 알림 스냅숏으로 message·target·path를 
 
 TASK는 기존 `/projects/{projectId}/board?task={taskId}`, DELIVERABLE_REVIEW는 `/projects/{projectId}/deliverables/{deliverableId}?tab=review`를 쓴다. 피드백 위치가 있으면 기존 `#comment-{commentId}`를 유지한다. source id는 같은 프로젝트의 대상인지 확인한다. targetAvailable=false면 화면은 이동을 막고 메일은 보내지 않는다. 모르는 type은 일반 문장을 쓰되 유효한 대상 id의 종류/경로를 보존하고, 대상도 모르면 UNKNOWN/path=null로 표시만 한다.
 
-C는 message를 그대로 표시하고 TASK는 그 자리에서 업무 창을 열되 target.messageId/fileId의 기존 위치 이동을 유지한다. 다른/모르는 kind는 유효한 같은 프로젝트의 path가 있으면 그 경로로 이동한다. 새 필드가 없는 옛 서버 응답은 기존 fallback으로 처리한다. 현재 화면은 이미 deliverableId로 검토 탭 이동을 구분하므로 이 동작을 유지한다. 로그인 뒤 원문 복귀는 #199를 따른다.
+C는 message를 그대로 표시하고 TASK는 그 자리에서 업무 창을 열되 target.messageId/fileId의 기존 위치 이동을 유지한다. 다른/모르는 kind는 유효한 같은 프로젝트의 path가 있으면 그 경로로 이동한다. message/target/path는 필수 응답이다. 화면의 notificationLabels와 기존 칸 존재 여부로 대상을 다시 정하는 코드는 제거하고 옛 서버용 문구/대상 fallback은 두지 않는다. 필드 누락/손상 응답은 이동하지 않고 갱신/오류 안내로 처리한다. 서버·화면은 같은 릴리스 태그로 함께 전환한다. 기존 검토 탭/댓글 이동 동작은 공통 target/path로 유지하며 로그인 뒤 원문 복귀는 #199를 따른다.
 
 B가 공통 생성기/DTO 추가를 먼저 제공하고 C가 소비 화면을 전환한다. 새 검토 타입 활성화는 A의 제약 확장과 C 소비 확인 뒤 진행한다. #198의 초안 메일 생성기는 이 공통 결과를 사용하도록 후속 갱신한다.
 
 ## 6. 합의/검증 요청
 
 - A: SMTP 라이브러리·MAIL_* 전달·TLS/시간 제한·새 회차 이벤트, REVIEW_REQUESTED 타입 제약 확장용 새 SQL 번호. 수신 설정/주소 확인의 후속은 7~12장에서 별도 합의한다.
-- C: 공통 message/target/path 소비, 기존 업무 위치 이동/검토 탭 보존, 새 필드 없는 응답 fallback. 수신 설정 후속과 토큰 링크는 7~12장에서 확인한다.
+- C: 공통 message/target/path 필수 응답 소비, 기존 업무 위치 이동/검토 탭 보존, notificationLabels/기존 칸으로 정하는 분기 제거. 수신 설정 후속과 토큰 링크는 7~12장 DRAFT에서 확인한다.
 - B 검사: 빈 설정/허용 목록, 수신자 경계, 제목 줄바꿈/긴 한글·이모지, 공통 문장/원문 링크, 업무 롤백·중복 INSERT 시 대기 없음, worker 경합·lease 회수·이전 획득 결과 저장 거절·최대 시도 횟수·SMTP 실패와 앱 알림 보존. mock·실제 DB·로컬 SMTP·Gmail 수신을 구별한다.
 - 공식 자료: [Spring 메일 지원](https://docs.spring.io/spring-boot/reference/io/email.html), [Google 앱 비밀번호](https://support.google.com/accounts/answer/185833), [Gmail SMTP](https://developers.google.com/workspace/gmail/imap/imap-smtp).
 
@@ -107,11 +108,11 @@ enabled는 알림 수신 의향이며 실제 SMTP 수락/배달 완료를 뜻하
 
 ## 10. 저장·발송 조건과 철회
 
-B 엔티티 초안: `email_notification_preferences`의 user_id PK, enabled 기본 false, version 기본 0, notice_version, enabled_at/disabled_at/updated_at. 선택 문구 버전과 설정 변경 시각을 기록한다. 실제 테이블·제약·번호·기존 사용자 기본값 SQL은 A가 확정한다. User/인증 테이블·토큰 테이블의 실제 배치는 A가 제안하며 B가 중복 인증 상태를 만들지 않는다.
+B 엔티티 초안: `email_notification_preferences`의 user_id PK, enabled 기본 false, notice_version, enabled_at/disabled_at/updated_at. 선택 문구 버전과 설정 변경 시각을 기록한다. 실제 테이블·제약·번호·기존 사용자 기본값 SQL은 A가 확정한다. A의 확인 상태 제안은 users.email_verified_at(null이면 미확인)과 별도 단일 사용 토큰 표다. B는 현재 주소의 확인 시각을 읽는 경계만 사용하며 중복 인증 상태를 만들지 않는다.
 
 공개 업무 알림은 현재 주소 확인 + 수신 의향 + 기존 수신 권한 + 서비스 발송 설정을 모두 만족해야 한다. 테스트 허용 목록은 초기 검증 범위이며 공개 회원 수신 설정 완료를 뜻하지 않는다. 이 후속 수신 설정을 적용한 뒤 초기 허용 목록을 추가 제한으로 유지할 수 있으나 알림 off/미확인 주소 차단을 우회하는 설정으로 사용하지 않는다.
 
-후속 수신 설정 적용 때 대기 기록에 설정 버전과 현재 주소의 식별값을 연결하고 발송 직전에 다시 대조한다. 알림 해제·설정 버전 변경·주소 변경·회원 탈퇴·관찰자 전환·요청 처리/취소 뒤 아직 발송하지 않은 대기는 SKIPPED로 끝낸다. off→on으로 바꿔도 예전 대기를 되살리지 않는다. 필요한 후속 컬럼은 A가 새 SQL로 추가한다. 이미 SMTP 전송을 시작하거나 수락된 메일은 회수할 수 없으며 해제 후 도착 0건을 보장하지 않는다.
+후속 수신 설정 적용 때 발송 직전 현재 enabled와 주소 확인 상태를 읽는다. 마지막 enabled_at과 현재 주소의 email_verified_at이 모두 대기 생성 시각보다 앞서야 발송한다. 이 조건으로 off→on이나 주소 변경 후 재확인이 과거 대기를 되살리지 않게 하며 대기 표의 별도 설정 버전/주소 식별 컬럼은 추가하지 않는다. 알림 해제·회원 탈퇴·관찰자 전환·요청 처리/취소 등 발송 조건이 사라진 대기는 SKIPPED로 끝낸다. 이미 SMTP 전송을 시작하거나 수락된 메일은 회수할 수 없으며 해제 후 도착 0건을 보장하지 않는다.
 
 ## 11. 개발·자동 테스트
 
