@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,7 +26,7 @@ public class ScoreService {
     private final MeetingRepository          meetingRepository;
     private final MeetingAttendeeRepository  attendeeRepository;
     private final TaskAssigneeRepository     taskAssigneeRepository;
-    private final FileVaultRepository        fileVaultRepository;
+    private final ScoreSnapshotService       snapshots;
     private final AlertService               alertService;
     private final ProjectAccessChecker      accessChecker;
 
@@ -34,7 +36,7 @@ public class ScoreService {
                         MeetingRepository meetingRepository,
                         MeetingAttendeeRepository attendeeRepository,
                         TaskAssigneeRepository taskAssigneeRepository,
-                        FileVaultRepository fileVaultRepository,
+                        ScoreSnapshotService snapshots,
                         AlertService alertService,
                         ProjectAccessChecker accessChecker) {
         this.projectRepository       = projectRepository;
@@ -43,7 +45,7 @@ public class ScoreService {
         this.meetingRepository       = meetingRepository;
         this.attendeeRepository      = attendeeRepository;
         this.taskAssigneeRepository  = taskAssigneeRepository;
-        this.fileVaultRepository     = fileVaultRepository;
+        this.snapshots               = snapshots;
         this.alertService            = alertService;
         this.accessChecker           = accessChecker;
     }
@@ -87,32 +89,39 @@ public class ScoreService {
                 .filter(ProjectAccessChecker::canContribute).toList();
         if (members.isEmpty()) return List.of();
 
+        var extra = snapshots.read(project);
+
         // 전체 회의 수 (회의 참석율 계산 기준)
         long totalMeetings = meetingRepository.findByProjectOrderByMeetingDateDesc(project).size();
 
-        OffsetDateTime now = OffsetDateTime.now();
+        // DB와 POST/GET의 시각을 UTC·마이크로초로 맞춘다. 옛 행의 시각/버전은 조회에서 바꾸지 않는다.
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
         List<ContributionScore> savedScores = new ArrayList<>();
 
         for (ProjectMember pm : members) {
             User u = pm.getUser();
+            var details = extra.getOrDefault(u.getId(), ScoreSnapshotService.Extra.EMPTY);
 
             // ── 1. 태스크 완료 참여 여부 ──────────────────────────────────
-            boolean taskParticipated = taskAssigneeRepository.countDoneByProjectAndUser(project, u) > 0;
+            long taskDone = taskAssigneeRepository.countDoneByProjectAndUser(project, u);
+            boolean taskParticipated = taskDone > 0;
 
             // ── 2. 회의 참석 여부 (50% 이상 체크인) ───────────────────────
             boolean meetingParticipated;
+            long checkedIn = 0;
             if (totalMeetings == 0) {
                 meetingParticipated = false;
             } else {
-                long checkedIn = attendeeRepository.countCheckedInByProjectAndUser(project, u);
+                checkedIn = attendeeRepository.countCheckedInByProjectAndUser(project, u);
                 meetingParticipated = (double) checkedIn / totalMeetings >= 0.5;
             }
 
             // ── 3. 파일 업로드 여부 ───────────────────────────────────────
-            boolean fileParticipated = fileVaultRepository.countByProjectAndUploader(project, u) > 0;
+            boolean fileParticipated = details.fileUploads() > 0;
 
             // ── 4. 액션아이템 완료 여부 ───────────────────────────────────
-            boolean actionParticipated = taskAssigneeRepository.countDoneActionItemsByProjectAndUser(project, u) > 0;
+            long actionDone = taskAssigneeRepository.countDoneActionItemsByProjectAndUser(project, u);
+            boolean actionParticipated = actionDone > 0;
 
             // ── 종합 판정 ─────────────────────────────────────────────────
             int count = (taskParticipated ? 1 : 0)
@@ -139,6 +148,9 @@ public class ScoreService {
             score.setActionParticipated(actionParticipated);
             score.setParticipationLevel(level);
             score.setCalculatedAt(now);
+            score.setItems(ScoreSnapshotService.items(score, details, taskDone, checkedIn, totalMeetings, actionDone));
+            score.setCriteriaVersion(ScoreSnapshotService.CRITERIA_VERSION);
+            score.setPeriodFrom(pm.getJoinedAt());
             savedScores.add(scoreRepository.save(score));
         }
 

@@ -24,7 +24,7 @@ class ScoreAlertAccessTest {
             projects, members, scores, mock(DiscordNotificationService.class), access);
     final ScoreService scoreService = new ScoreService(projects, members, scores,
             mock(MeetingRepository.class), mock(MeetingAttendeeRepository.class),
-            mock(TaskAssigneeRepository.class), mock(FileVaultRepository.class), alertService, access);
+            mock(TaskAssigneeRepository.class), mock(ScoreSnapshotService.class), alertService, access);
     final Project project = new Project();
     final User actor = new User();
     final Alert alert = new Alert();

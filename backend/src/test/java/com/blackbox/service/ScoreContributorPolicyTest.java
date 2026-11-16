@@ -15,9 +15,9 @@ class ScoreContributorPolicyTest {
     final MeetingRepository meetings = mock(MeetingRepository.class);
     final MeetingAttendeeRepository attendance = mock(MeetingAttendeeRepository.class);
     final TaskAssigneeRepository tasks = mock(TaskAssigneeRepository.class);
-    final FileVaultRepository files = mock(FileVaultRepository.class);
+    final ScoreSnapshotService snapshots = mock(ScoreSnapshotService.class);
     final AlertService alerts = mock(AlertService.class);
-    final ScoreService service = new ScoreService(projects, members, scores, meetings, attendance, tasks, files, alerts,
+    final ScoreService service = new ScoreService(projects, members, scores, meetings, attendance, tasks, snapshots, alerts,
             new ProjectAccessChecker(projects, members));
     final Project project = new Project();
     final ProjectMember leader = member("LEADER"), contributor = member("MEMBER"), observer = member("OBSERVER");
@@ -34,14 +34,14 @@ class ScoreContributorPolicyTest {
         verify(scores, never()).findByProjectAndUser(project, observer.getUser());
         verify(tasks, never()).countDoneByProjectAndUser(project, observer.getUser());
         verify(tasks, never()).countDoneActionItemsByProjectAndUser(project, observer.getUser());
-        verify(files, never()).countByProjectAndUploader(project, observer.getUser());
+        verify(snapshots).read(project); // 파일/검토는 기여자별 조회 대신 프로젝트 단위로 묶어 읽는다.
         verify(alerts).checkAlerts(eq(project), argThat(ms -> ms.size() == 2 && !ms.contains(observer)),
                 argThat(ss -> ss.size() == 2 && ss.stream().noneMatch(s -> s.getUser().equals(observer.getUser()))));
     }
     @Test void observerOnlyOrUnknownRolesPerformNoCalculationOrWrites() {
         when(members.findByProject(project)).thenReturn(List.of(observer, member("UNKNOWN")));
         assertTrue(service.recalculate(project).isEmpty());
-        verifyNoInteractions(scores, meetings, attendance, tasks, files, alerts);
+        verifyNoInteractions(scores, meetings, attendance, tasks, snapshots, alerts);
     }
     @Test void becomingContributorUsesExistingScoreInsteadOfReplacingHistory() {
         var existing = new ContributionScore(); existing.setProject(project); existing.setUser(observer.getUser());
