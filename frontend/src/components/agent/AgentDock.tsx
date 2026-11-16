@@ -6,6 +6,7 @@ import { Send, Sparkles, X } from "lucide-react";
 import { useAgentStore } from "@/lib/store/agentStore";
 import { BRIEF_MAX, buttonSkills, canAsk, canBreakDown, breakDownUnavailableReason, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
 import { shortDate } from "@/lib/due";
+import { sessionGeneration } from "@/lib/sessionCache";
 import RunEntryView from "./RunEntryView";
 import ProposalList from "./ProposalList";
 import { useBriefs } from "./RequirementProposal";
@@ -58,9 +59,13 @@ export default function AgentDock() {
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState<Pending>(null);
   const [brief, setBrief] = useState("");
-  // K-31 4장: 안내문 공간에 저장된 안내문으로 계획을 만든다. 비어 있으면 붙여 넣은 글로 만든다
-  const [pickedBrief, setPickedBrief] = useState("");
+  // K-31 4장: 안내문 공간에 저장된 안내문으로 계획을 만든다. 비어 있으면 붙여 넣은 글로 만든다.
+  // 도우미 창은 프로젝트·계정을 옮겨도 남으므로, 고른 id를 그 프로젝트·세션에 묶고 지금 목록에 있을 때만 쓴다(#189 리뷰)
   const savedBriefs = useBriefs(projectId ?? "", !!projectId && pending?.skill === "PLAN_FROM_BRIEF");
+  const briefKey = `${projectId}:${sessionGeneration()}`;
+  const [picked, setPicked] = useState<{ key: string; id: string } | null>(null);
+  const pickedBrief = picked && picked.key === briefKey && savedBriefs?.some((b) => b.id === picked.id) ? picked.id : "";
+  const setPickedBrief = (id: string) => setPicked(id ? { key: briefKey, id } : null);
   const [pickedDeliverable, setPickedDeliverable] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dockRef = useRef<HTMLElement>(null);
@@ -89,7 +94,7 @@ export default function AgentDock() {
   // 다른 프로젝트로 가면 고르던 입력은 버린다
   useEffect(() => {
     setPending(null);
-    setQuestion(""); setBrief(""); setPickedDeliverable("");
+    setQuestion(""); setBrief(""); setPickedDeliverable(""); setPicked(null);
   }, [projectId]);
 
   // 전체 화면 대화 상자에서는 키보드 초점이 뒤의 업무 화면으로 빠져나가지 않게 한다.
