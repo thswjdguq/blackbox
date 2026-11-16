@@ -5,7 +5,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { saveProposal } from "@/lib/api/agent";
 import { apiError } from "@/lib/apiError";
-import { sessionGeneration } from "@/lib/sessionCache";
+import { onSessionReset, sessionGeneration } from "@/lib/sessionCache";
 import { useAgentStore } from "@/lib/store/agentStore";
 import type { Brief } from "@/types/brief";
 import type { EvidenceQuote, Proposal, RequirementAddContent, RequirementReviseContent } from "@/types/agent";
@@ -18,21 +18,29 @@ export const isQuestionOnly = (p: Proposal) => p.kind === "REQUIREMENT_REVISE" &
 
 // 안내문의 지금 bodyHash. 카드 여러 장이 같은 목록을 쓰므로 프로젝트마다 잠깐 담아 둔다
 const cache = new Map<string, { at: number; generation: number; briefs: Promise<Brief[]> }>();
+onSessionReset(() => cache.clear());
+
+/**
+ * 프로젝트의 안내문 목록. 받은 목록을 프로젝트와 세션 세대로 묶어 두고, 지금 프로젝트·세대와 다르면 null을 돌려준다.
+ * 화면이 오래 떠 있는 도우미 창처럼 프로젝트·계정이 바뀌어도 같은 컴포넌트가 남는 곳에서 이전 목록을 보이지 않게 한다
+ */
 export function useBriefs(projectId: string, enabled: boolean) {
-  const [briefs, setBriefs] = useState<Brief[] | null>(null);
+  const generation = sessionGeneration();
+  const key = `${projectId}:${generation}`;
+  const [loaded, setLoaded] = useState<{ key: string; briefs: Brief[] } | null>(null);
   useEffect(() => {
-    if (!enabled) return;
-    const generation = sessionGeneration();
+    if (!enabled || !projectId) return;
     let hit = cache.get(projectId);
     if (!hit || hit.generation !== generation || Date.now() - hit.at > 30_000) {
       hit = { at: Date.now(), generation, briefs: api.get<Brief[]>(`/projects/${projectId}/briefs`).then((r) => r.data) };
       cache.set(projectId, hit);
     }
     let live = true;
-    hit.briefs.then((b) => { if (live && generation === sessionGeneration()) setBriefs(b); }).catch(() => { if (live) setBriefs([]); });
+    const settle = (briefs: Brief[]) => { if (live && generation === sessionGeneration()) setLoaded({ key: `${projectId}:${generation}`, briefs }); };
+    hit.briefs.then(settle).catch(() => settle([]));
     return () => { live = false; };
-  }, [projectId, enabled]);
-  return briefs;
+  }, [projectId, enabled, generation]);
+  return enabled && loaded?.key === key ? loaded.briefs : null;
 }
 export const forgetBriefs = (projectId: string) => cache.delete(projectId);
 
