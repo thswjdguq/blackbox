@@ -8,8 +8,8 @@ import api from "@/lib/api";
 import { apiError } from "@/lib/apiError";
 import { sessionGeneration } from "@/lib/sessionCache";
 import { useNotificationStore } from "@/lib/store/notificationStore";
-import { notificationLabels, type PersonalNotification } from "@/types/notification";
-import { notificationAction, notificationButton, notificationText } from "@/lib/notificationTarget";
+import type { PersonalNotification } from "@/types/notification";
+import { notificationAction, notificationButton } from "@/lib/notificationTarget";
 import type { Task } from "@/types/task";
 
 type Member = { userId: string; name: string; email: string; role: string };
@@ -63,10 +63,9 @@ function Inbox({ projectId }: { projectId: string }) {
     {entry?.page && <div className="mt-5 space-y-3">
       {!entry.page.items.length && <p className="rounded-xl border border-bb-border p-8 text-center text-sm text-bb-text2">아직 받은 알림이 없습니다.</p>}
       {entry.page.items.map(item => <article key={item.id} className={`rounded-xl border p-4 ${item.readAt ? "border-bb-border bg-bb-surface" : "border-bb-primary/30 bg-bb-primary/5"}`}>
-        <div className="flex flex-wrap justify-between gap-2 text-xs text-bb-text2"><span>{notificationLabels[item.type] ?? "업무 소식"} · {item.readAt ? "읽음" : "읽지 않음"}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></div>
-        {/* 서버가 만든 문장(message)이 있으면 그대로 보인다. 옛 응답은 업무 제목과 지금까지의 문장 */}
-        {item.message ? <h2 className="mt-2 break-words font-semibold text-sm">{item.message}</h2>
-          : <><h2 className="mt-2 break-words font-semibold text-sm">{item.taskTitle}</h2><p className="mt-1 text-sm text-bb-text2">{notificationText(item)}</p></>}
+        <div className="flex flex-wrap justify-between gap-2 text-xs text-bb-text2"><span>{item.readAt ? "읽음" : "읽지 않음"}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></div>
+        {/* 문장은 서버가 만든 message 그대로. 화면이 종류 이름으로 문장을 만들지 않는다(K-41 5장) */}
+        <h2 className="mt-2 break-words font-semibold text-sm">{item.message}</h2>
         {item.fileName && <p className="mt-2 break-all text-sm">{item.fileName} · 버전 {item.fileVersion}</p>}
         {notificationAction(item, projectId).kind !== "none" ? <button type="button" disabled={opening} onClick={() => open(item)} className="mt-3 rounded-lg border border-bb-border px-3 py-2 text-sm text-bb-primary disabled:opacity-50">{notificationButton(item).open}</button> : <div className="mt-3 text-sm text-bb-text2">{notificationButton(item).gone} {!item.readAt && <button type="button" onClick={() => read(projectId, item.id)} className="underline">읽음으로 표시</button>}</div>}
       </article>)}
