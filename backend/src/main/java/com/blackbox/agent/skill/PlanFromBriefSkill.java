@@ -46,7 +46,7 @@ public class PlanFromBriefSkill implements AgentSkill {
         UUID briefId = briefId(input);
         BriefService.Used used = briefId != null ? briefs.findForPlan(projectId, briefId, user)
                 : briefs.useForPlan(projectId, planInput(input), user);
-        events.brief(used.id(), used.title(), used.created());
+        events.brief(used.id(), used.title(), used.created() ? AgentEvents.BriefUse.CREATED : AgentEvents.BriefUse.REUSED);
         ObjectNode begun = ((ObjectNode) input).deepCopy();
         begun.put("briefId", used.id().toString());
         begun.put("briefBodyHash", used.bodyHash());
@@ -54,9 +54,10 @@ public class PlanFromBriefSkill implements AgentSkill {
     }
 
     /** 채택하면 만들어질 제출물에 이 안내문이 걸린다. briefBodyHash는 모델이 읽은 본문의 해시다. 모델이 쓴 값은 믿지 않고 서버가 채운다 */
-    @Override public void complete(ObjectNode content, JsonNode input) {
+    @Override public String complete(String kind, ObjectNode content, JsonNode input) {
         content.put("briefId", input.path("briefId").asString());
         content.put("briefBodyHash", input.path("briefBodyHash").asString());
+        return null;
     }
 
     private BriefService.PlanInput planInput(JsonNode input) {
