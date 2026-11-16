@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { KanbanFilter } from "@/components/kanban/KanbanBoard";
 import { TaskPriority, PRIORITY_TEXT } from "@/types/task";
+import { loginHref } from "@/lib/loginRedirect";
 
 interface Member {
   userId: string;
@@ -89,7 +90,7 @@ export default function BoardPage() {
 
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) { router.replace("/login"); return; }
+      if (status === 401) { router.replace(loginHref()); return; }
       setError("프로젝트 데이터를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
