@@ -138,7 +138,7 @@ class ScoreAsyncTransactionTest {
             scoreRepository.flush();
             if (fail) throw new IllegalStateException("검사용 경보 실패");
             return invocation.callRealMethod();
-        }).when(alerts).checkAlerts(any(Project.class), anyList(), anyList());
+        }).when(alerts).checkAlerts(any(Project.class), anyList(), anyList(), anyMap());
         return result;
     }
 
