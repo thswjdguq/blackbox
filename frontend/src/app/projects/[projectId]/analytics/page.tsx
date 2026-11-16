@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
           <div>
             <h1 className="text-2xl font-bold text-bb-text">활동·기여 기록</h1>
             <p className="text-sm text-bb-text2 mt-1">
-              자동 집계된 활동 기록입니다. 검토·답변 등 모든 기여를 포함하지 않으며 평가·감점 기준이 아닙니다.
+              자동 집계된 활동 기록입니다. 모든 기여를 포함하지는 않으며 평가·감점 기준이 아닙니다.
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -282,7 +282,8 @@ export default function AnalyticsPage() {
                   <AlertTriangle size={15} className="text-bb-text2 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-semibold text-bb-text">참여 기록이 적은 팀원 {participationNotes.length}명 — 함께 확인해 주세요</p>
-                    <p className="text-xs text-bb-text2 mt-0.5">검토·답변 등 자동 집계에 반영되지 않은 활동이 있을 수 있습니다. 평가·감점 기준이 아닙니다.</p>
+                    {/* 안내 문장은 서버가 경보에 담아 보낸 것(PARTICIPATION_NOTICE)을 그대로 쓴다. 화면이 같은 뜻의 문장을 따로 만들지 않는다 */}
+                    <p className="text-xs text-bb-text2 mt-0.5">{participationNotes[0].message} 평가·감점 기준이 아닙니다.</p>
                   </div>
                 </div>
               )}
