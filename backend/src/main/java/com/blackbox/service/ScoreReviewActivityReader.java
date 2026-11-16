@@ -31,9 +31,9 @@ public class ScoreReviewActivityReader {
     /**
      * 내부 점수 계산용 조회다. 호출자는 프로젝트를 확인하고 계산 트랜잭션을 연 뒤 사용한다.
      * 현재 팀장·팀원만 반환하며, 기록이 없는 사람도 0이다. 횟수는 재가입 전 기록까지 포함한다.
-     * 반환값은 읽은 시점의 값으로 고정되며, 이 메서드는 점수/경보를 저장하지 않는다.
+     * 반환값은 읽은 시점의 값으로 고정되며, 이 메서드는 점수/경보를 저장하지 않는다. 호출자의 트랜잭션 속성을 따른다.
      */
-    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<UUID, Counts> read(Project project) {
         List<UUID> users = members.findByProject(project).stream()
                 .filter(ProjectAccessChecker::canContribute).map(m -> m.getUser().getId()).distinct().toList();

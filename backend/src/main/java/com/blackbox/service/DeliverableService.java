@@ -20,6 +20,7 @@ public class DeliverableService {
     private final ProjectMemberRepository members;
     private final ProjectAccessChecker access;
     private final DeliverableStatuses statuses;
+    private final DeliverableBriefRepository briefLinks;
 
     @Transactional(readOnly = true)
     public List<Response> list(UUID projectId, User user) {
@@ -27,7 +28,9 @@ public class DeliverableService {
         access.requireMember(project, user);
         List<Deliverable> all = deliverables.findByProjectOrderByDueDateAscCreatedAtAsc(project);
         Map<UUID, DeliverableStatuses.Status> status = statuses.of(project, all);
-        return all.stream().map(d -> response(d, status.get(d.getId()))).toList();
+        Map<UUID, List<DeliverableBrief>> links = briefLinks.findByProject(project).stream()
+                .collect(java.util.stream.Collectors.groupingBy(l -> l.getDeliverable().getId()));
+        return all.stream().map(d -> response(d, status.get(d.getId()), links.getOrDefault(d.getId(), List.of()))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -123,9 +126,9 @@ public class DeliverableService {
         return requirements.findByIdAndDeliverable(id, d).orElseThrow(() -> new NotFoundException("이 제출물의 요구사항을 찾을 수 없습니다"));
     }
     private Response response(Deliverable d) {
-        return response(d, statuses.of(d));
+        return response(d, statuses.of(d), briefLinks.findByDeliverable(d));
     }
-    private Response response(Deliverable d, DeliverableStatuses.Status s) {
-        return Response.from(d, requirements.findByDeliverableOrderByCreatedAtAsc(d), s.status(), s.latestDecision());
+    private Response response(Deliverable d, DeliverableStatuses.Status s, List<DeliverableBrief> briefs) {
+        return Response.from(d, requirements.findByDeliverableOrderByCreatedAtAsc(d), s.status(), s.latestDecision(), briefs);
     }
 }
