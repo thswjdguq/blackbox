@@ -11,6 +11,8 @@ import type { Brief } from "@/types/brief";
 import type { EvidenceQuote, Proposal, RequirementAddContent, RequirementReviseContent } from "@/types/agent";
 
 type RequirementProposal = Extract<Proposal, { kind: "REQUIREMENT_ADD" | "REQUIREMENT_REVISE" }>;
+/** 요구사항 문구의 상한(서버 RequirementRequest와 같다) */
+const REQUIREMENT_MAX = 1000;
 
 export const isRequirementProposal = (p: Proposal): p is RequirementProposal => p.kind === "REQUIREMENT_ADD" || p.kind === "REQUIREMENT_REVISE";
 /** 수정안 없이 확인 질문만 있는 카드(K-31 5.2). 채택할 수 없고 거절로 닫는다 */
@@ -153,7 +155,11 @@ export function RequirementProposalEditor({ proposal: p, projectId, onDone }: { 
   const putProposal = useAgentStore((s) => s.putProposal);
   const [content, setContent] = useState(p.content);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  // 수정안이 없는 카드는 확인 질문이 있어야 한다(서버 400). 저장 전에 막는다
+  const needsQuestion = "issue" in content && content.revision == null && !(content.question ?? "").trim();
+  const emptyText = "requirement" in content ? !content.requirement.content.trim() : !!content.revision && !content.revision.content.trim();
   const save = async () => {
+    if (needsQuestion || emptyText) return;
     setBusy(true); setError("");
     const generation = sessionGeneration();
     try {
@@ -169,7 +175,7 @@ export function RequirementProposalEditor({ proposal: p, projectId, onDone }: { 
       {p.kind === "REQUIREMENT_ADD" && "requirement" in content && (
         <>
           <label className="block text-xs text-bb-text2">추가할 요구사항
-            <textarea aria-label="추가할 요구사항" value={content.requirement.content} rows={2} maxLength={500} className={input}
+            <textarea aria-label="추가할 요구사항" value={content.requirement.content} rows={2} maxLength={REQUIREMENT_MAX} className={input}
               onChange={(e) => setContent({ ...content, requirement: { ...content.requirement, content: e.target.value } })} />
           </label>
           <label className="flex items-center gap-2 text-xs text-bb-text">
@@ -181,20 +187,21 @@ export function RequirementProposalEditor({ proposal: p, projectId, onDone }: { 
         <>
           {content.revision && (
             <label className="block text-xs text-bb-text2">수정안
-              <textarea aria-label="수정안" value={content.revision.content} rows={2} maxLength={500} className={input}
+              <textarea aria-label="수정안" value={content.revision.content} rows={2} maxLength={REQUIREMENT_MAX} className={input}
                 onChange={(e) => setContent({ ...content, revision: { ...content.revision!, content: e.target.value } })} />
             </label>
           )}
           <label className="block text-xs text-bb-text2">확인 질문
-            <textarea aria-label="확인 질문" value={content.question ?? ""} rows={2} maxLength={500} className={input}
+            <textarea aria-label="확인 질문" value={content.question ?? ""} rows={2} maxLength={REQUIREMENT_MAX} className={input}
               onChange={(e) => setContent({ ...content, question: e.target.value })} />
           </label>
         </>
       )}
       <p className="text-[11px] text-bb-text2">근거와 원문은 고칠 수 없습니다.</p>
+      {needsQuestion && <p className="text-xs text-amber-600 dark:text-amber-400">수정안이 없는 제안은 확인 질문이 있어야 합니다.</p>}
       {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={busy} className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs text-white disabled:opacity-50">{busy ? "저장 중…" : "저장"}</button>
+        <button type="submit" disabled={busy || needsQuestion || emptyText} className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs text-white disabled:opacity-50">{busy ? "저장 중…" : "저장"}</button>
         <button type="button" disabled={busy} onClick={onDone} className="rounded-lg border border-bb-border px-3 py-1.5 text-xs">취소</button>
       </div>
     </form>
