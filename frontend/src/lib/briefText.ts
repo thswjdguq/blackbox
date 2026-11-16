@@ -15,10 +15,14 @@ export function briefLength(text: string): number {
   return normalizeBrief(text).length;
 }
 
-/** 제목을 비워 두면 본문의 첫 줄. 60자를 넘으면 앞 60자에 "…"(K-31 4장의 계획 만들기와 같은 규칙) */
+/**
+ * 제목을 비워 두면 본문의 첫 줄. 60자를 넘으면 앞 60자에 "…"(K-31 4장의 계획 만들기와 같은 규칙).
+ * 서버(BriefService.firstLine)처럼 코드 포인트로 센다. UTF-16 단위로 자르면 이모지가 반쪽만 남는다
+ */
 export function defaultBriefTitle(body: string): string {
   const first = normalizeBrief(body).split("\n")[0].trim();
-  return first.length > 60 ? `${first.slice(0, 60)}…` : first;
+  const chars = Array.from(first);
+  return chars.length > 60 ? `${chars.slice(0, 60).join("")}…` : first;
 }
 
 /** 오류 응답의 ProblemDetail에서 code와 확장 칸을 꺼낸다 */

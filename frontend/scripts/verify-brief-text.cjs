@@ -14,9 +14,13 @@ assert.equal(normalizeBrief('줄 안의  공백과\n\n빈 줄은 그대로'),'�
 // 기본 제목: 첫 줄, 60자를 넘으면 앞 60자 + "…"
 assert.equal(defaultBriefTitle('　[캡스톤] 중간 보고서 안내\n본문'),'[캡스톤] 중간 보고서 안내');
 const long='가'.repeat(61);assert.equal(defaultBriefTitle(long),'가'.repeat(60)+'…');assert.equal(defaultBriefTitle('가'.repeat(60)),'가'.repeat(60));
+// 서버(BriefService.firstLine)처럼 코드 포인트로 센다: 이모지 60개는 자르지 않고, 61개 넘으면 반쪽 글자 없이 60개 + "…"
+const emoji='\u{1F4DA}';assert.equal(defaultBriefTitle(emoji.repeat(60)),emoji.repeat(60));
+const cut=defaultBriefTitle('가'.repeat(59)+emoji+emoji);assert.equal(cut,'가'.repeat(59)+emoji+'…');
+assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(cut),'반쪽 서로게이트 없음');
 
 // ProblemDetail에서 code와 확장 칸
 const p=problem({response:{status:409,data:{detail:'먼저 고쳤습니다',code:'BRIEF_CHANGED',brief:{id:'b',version:4}}}});
 assert.equal(p.status,409);assert.equal(p.code,'BRIEF_CHANGED');assert.equal(p.brief.version,4);assert.equal(p.detail,'먼저 고쳤습니다');
 assert.equal(problem({response:{status:500,data:'oops'}}).code,undefined);assert.equal(problem(new Error('네트워크')),null);
-console.log('안내문 글 검사 통과: 정규화(NFC·줄바꿈·앞뒤 공백·BOM), 서버 기준 글자 수, 기본 제목, 오류 code');
+console.log('안내문 글 검사 통과: 정규화(NFC·줄바꿈·앞뒤 공백·BOM), 서버 기준 글자 수, 기본 제목(코드 포인트 60자), 오류 code');

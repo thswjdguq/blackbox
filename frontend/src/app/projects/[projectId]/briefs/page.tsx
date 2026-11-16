@@ -83,7 +83,10 @@ export default function BriefsPage() {
       if (draft.mode === "new") {
         const res = await api.post<Brief>(`/projects/${projectId}/briefs`, payload);
         if (generation !== sessionGeneration()) return;
-        replace(res.data); setSelected(res.data.id); setDraft(null);
+        // 200(같은 본문의 기존 안내문)은 수정 시각이 그대로라 목록의 자리도 그대로 둔다
+        if (res.status === 200) setBriefs((list) => (list ?? []).map((x) => (x.id === res.data.id ? res.data : x)));
+        else replace(res.data);
+        setSelected(res.data.id); setDraft(null);
         // 200은 본문이 같은 안내문이 이미 있어 새로 만들지 않았다는 뜻이다(2.2). 입력한 제목·원본 파일은 쓰이지 않는다
         setNotice(res.status === 200
           ? `본문이 같은 안내문이 이미 있어 그것을 엽니다(입력한 제목과 원본 파일은 바꾸지 않았습니다): ${res.data.title}`
@@ -185,6 +188,12 @@ export default function BriefsPage() {
               )}
               <div className="flex flex-wrap gap-2">
                 <button type="submit" disabled={busy || !draft.body.trim() || length > BRIEF_MAX} className="rounded-lg bg-bb-primary px-4 py-2.5 text-sm text-white disabled:opacity-40">{busy ? "저장 중…" : conflict ? "내 내용으로 다시 저장" : "저장"}</button>
+                {/* 충돌 뒤 두 선택을 한 화면에: 내 입력을 지키거나, 팀원의 최신 내용에서 다시 시작하거나 */}
+                {conflict && <button type="button" disabled={busy} onClick={() => {
+                  if (!window.confirm("내 입력을 버리고 최신 내용에서 다시 고칠까요?")) return;
+                  setDraft({ ...draft, title: conflict.title, body: conflict.body, sourceFileId: conflict.sourceFile?.id ?? "", version: conflict.version });
+                  setConflict(null); setError("");
+                }} className="rounded-lg border border-bb-border px-4 py-2.5 text-sm">최신 내용으로 다시 고치기</button>}
                 <button type="button" disabled={busy} onClick={() => { if (dirty && !window.confirm("입력한 내용을 버릴까요?")) return; setDraft(null); setConflict(null); setError(""); }} className="rounded-lg border border-bb-border px-4 py-2.5 text-sm">취소</button>
               </div>
             </form>
