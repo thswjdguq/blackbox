@@ -35,6 +35,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getReason() == null ? "요청을 처리할 수 없습니다" : ex.getReason());
     }
 
+    @ExceptionHandler(CodedException.class)
+    public ProblemDetail handleCoded(CodedException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+        pd.setProperty("code", ex.getCode());
+        ex.getProperties().forEach(pd::setProperty);
+        return pd;
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ProblemDetail handleConflict(org.springframework.dao.DataIntegrityViolationException ex) {
         log.warn("Data integrity violation", ex);

@@ -74,6 +74,15 @@ public class DeliverableStatuses implements DeliverableStatusReader {
         return deliverable;
     }
 
+    /**
+     * 여러 제출물 행을 id 순서로 잠근다. 확정·확정 취소·제출 기록도 제출물 행을 먼저 잠그므로, 잠근 뒤 본 확정 여부는 이 트랜잭션이 끝날 때까지 그대로다.
+     * 순서를 정해 두어 같은 제출물들을 잠그는 두 요청 사이에 교착 상태가 생기지 않게 한다. 그 사이 지워진 제출물은 건너뛴다
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockAll(Project project, Collection<UUID> ids) {
+        ids.stream().sorted().forEach(id -> deliverables.lockByIdAndProject(id, project));
+    }
+
     @Override @Transactional(readOnly = true)
     public String statusOf(UUID projectId, UUID deliverableId) {
         return of(deliverables.findByIdAndProject(deliverableId, access.getProject(projectId))
