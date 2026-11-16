@@ -1,6 +1,6 @@
 # K-41 · Gmail SMTP 이메일 알림
 
-- 버전 0.2 / 상태 DRAFT / 2026-11-16 / B 알림·수신 설정 생산자, A SMTP·인증·DB·검토 회차 생산자, C 화면 소비자
+- 버전 0.3 / 상태 DRAFT / 2026-11-16 / B 알림·수신 설정 생산자, A SMTP·인증·DB·검토 회차 생산자, C 화면 소비자
 - 기준 main `035be3f2`. Gmail SMTP를 공급자로 사용하며 수신자·신규 이벤트·발송 이력을 제안한다. 합의 전 HTTP/DB/운영 동작을 변경하지 않는다.
 
 ## 1. 최소 범위
@@ -26,15 +26,17 @@
 - 연결/읽기/쓰기 제한을 명시(예: 각각5초). 사용자/메일/예외의 문자열 전체를 로그에 남기지 않고 대기 id와 분류된 오류만 남긴다.
 - .env.example은 비어 있는 예시만, Compose는 필요한 변수만 backend에 전달한다. 프론트에 노출하지 않는다. 로컬 실행은 현재 스크립트가 AI 변수만 읽으므로 MAIL_* 전달을 추가하고, 일반 수신자 발송은 기본 꺼짐을 유지한다. 소스/CI는 teamplay-ui의 실제 .env를 복사하지 않는다.
 
-## 4. 초기 발송과 한계
+## 4. 발송 대기 기록과 재시도
 
-업무/검토 변경과 앱 알림은 같은 DB 트랜잭션에 저장한다. 새 앱 알림 INSERT가 성공한 경우에만 메일 이벤트를 발행한다. 기존 (event_key, recipient_id) 고유 제약에 걸린 중복 이벤트에는 메일 이벤트를 다시 내지 않는다. A의 새 회차 이벤트는 원래 트랜잭션 안에서 B 알림 발행 경계로 연결한다.
+업무/검토 변경·앱 알림·메일 발송 대기 기록을 같은 DB 트랜잭션에 저장한다. 새 앱 알림 INSERT가 성공한 경우에만 발송 대기를 만든다. 기존 (event_key, recipient_id) 고유 제약에 걸린 중복 이벤트에는 대기를 다시 만들지 않는다. A의 새 회차 이벤트는 원래 트랜잭션 안에서 B 알림 발행 경계로 연결한다. SMTP는 업무 트랜잭션에서 호출하지 않는다.
 
-`@TransactionalEventListener(AFTER_COMMIT)`와 별도 `@Async` 실행에서 SMTP를 호출한다. 원래 변경이 롤백되면 보내지 않는다. 이벤트에는 UUID·문자열 스냅숏 등 불변 값만 담고 지연 로딩 엔티티를 넘기지 않는다. worker는 별도 읽기 트랜잭션에서 현재 수신 조건을 확인한 뒤 네트워크 호출을 수행한다. 메일 오류나 실행 예약 실패가 이미 커밋된 업무·앱 알림을 취소하지 않도록 한다. 큐/실행 자원 상한과 거부 처리는 B 구현에서 검증한다.
+테이블 제안 이름은 `notification_email_outbox`다. id UUID PK, project_id/recipient_id/actor_id UUID, event_type varchar(40), event_key varchar(200), task_id/deliverable_id/review_id nullable UUID, target_title varchar(255), actor_name varchar(100), status(PENDING/PROCESSING/SENT/FAILED/SKIPPED), attempt_count, available_at, claimed_at, sent_at, error_code(분류 코드), created_at/updated_at을 둔다. UNIQUE(event_key,recipient_id), 대기 시각 인덱스를 둔다. 시각은 timestamptz, 초기 attempt_count=0이다. A가 DDL과 실제 타입/인덱스를 확정하며 B가 임의 SQL을 작성하지 않는다.
 
-초기에는 발송 대기 테이블·claim/lease·재시도·재시작 복구를 만들지 않는다. 실패는 event 식별자와 분류된 코드로 기록하고 메일을 다시 보내지 않는다. 프로세스 종료나 SMTP 오류로 메일이 유실될 수 있고 앱 알림이 보조 확인 경로로 남는다. SMTP 수락과 실제 받은편지함 도착을 구별하며 정확히 한 번 전달을 보장하지 않는다. 영속 대기와 제한된 재시도는 공개 사용 확대 때 후속 합의한다.
+worker는 커밋된 대기를 짧은 별도 트랜잭션의 `FOR UPDATE SKIP LOCKED`로 획득하고 claimed_at/attempt_count를 원자적으로 갱신한다. SMTP 동안 DB 행 잠금을 유지하지 않는다. 발송 직전 현재 수신 조건을 읽고, 결과 저장은 id와 획득한 claimed_at을 함께 대조해 만료된 worker가 새 획득 결과를 덮지 않게 한다. 프로세스 종료로 남은 PROCESSING은 lease 만료 후 회수한다. 전송 시간 제한보다 긴 lease(제안 2분)를 쓰고 큐/배치 크기 상한을 둔다.
 
-새 발송 대기 테이블용 SQL은 필요 없지만 **REVIEW_REQUESTED를 앱 알림에 넣으려면 타입 제약 확장이 필요하다.** 현 `V32__feedback_notifications.sql`의 user_notifications_type_check는 열거형 목록이며 새 타입을 포함하지 않는다. A가 새 migration 번호와 제약 확장만 별도 제공한다. 기존 SQL/체크섬을 수정하지 않는다. 수신 설정·주소 확인의 후속 스키마도 A가 별도 배정한다.
+일시 실패는 최대 3회 시도(첫 시도 포함)하고 지연을 두며, 인증/영구 실패는 반복하지 않는다. 마지막 실패는 FAILED로, 수신 조건이 사라진 건은 SKIPPED로 끝낸다. 재시작 후 커밋된 PENDING과 만료된 PROCESSING을 다시 읽는다. SMTP 수락 뒤 SENT 기록 전 중단되면 중복 수신할 수 있으므로 같은 delivery id의 Message-ID를 재사용하되 정확히 한 번 배달을 보장하지 않는다. 원본 SMTP 예외/주소/본문은 로그에 넣지 않고 대기 id와 분류 코드만 기록한다. 메일 실패는 이미 커밋된 업무·앱 알림을 되돌리지 않는다.
+
+A의 최신 #197 리뷰에서 발송 대기 표의 **V39 예약**을 확인했다. 동일한 새 migration에서 REVIEW_REQUESTED 앱 알림 타입 제약 확장도 확인을 요청한다. 현 V32의 user_notifications_type_check 열거에 새 타입은 없다. V39의 실제 작성·번호 최종 확인은 A가 맡고 기존 SQL/체크섬은 수정하지 않는다. 수신 설정·주소 확인 후속 스키마는 A가 별도 배정한다.
 
 ## 5. 앱·메일 공통 문장과 대상(B 생산, C 소비)
 
@@ -58,7 +60,7 @@ B가 공통 생성기/DTO 추가를 먼저 제공하고 C가 소비 화면을 �
 
 - A: SMTP 라이브러리·MAIL_* 전달·TLS/시간 제한·새 회차 이벤트, REVIEW_REQUESTED 타입 제약 확장용 새 SQL 번호. 수신 설정/주소 확인의 후속은 7~12장에서 별도 합의한다.
 - C: 공통 message/target/path 소비, 기존 업무 위치 이동/검토 탭 보존, 새 필드 없는 응답 fallback. 수신 설정 후속과 토큰 링크는 7~12장에서 확인한다.
-- B 검사: 빈 설정/허용 목록, 수신자 경계, 제목 줄바꿈/긴 한글·이모지, 공통 문장/원문 링크, 같은 트랜잭션 롤백·중복 INSERT 시 미발송, SMTP/실행 예약 실패와 앱 알림 보존. mock·실제 DB·로컬 SMTP·Gmail 수신을 구별한다.
+- B 검사: 빈 설정/허용 목록, 수신자 경계, 제목 줄바꿈/긴 한글·이모지, 공통 문장/원문 링크, 업무 롤백·중복 INSERT 시 대기 없음, worker 경합·lease 회수·이전 획득 결과 저장 거절·최대 시도 횟수·SMTP 실패와 앱 알림 보존. mock·실제 DB·로컬 SMTP·Gmail 수신을 구별한다.
 - 공식 자료: [Spring 메일 지원](https://docs.spring.io/spring-boot/reference/io/email.html), [Google 앱 비밀번호](https://support.google.com/accounts/answer/185833), [Gmail SMTP](https://developers.google.com/workspace/gmail/imap/imap-smtp).
 
 ## 7. 사용자 흐름과 범위
@@ -109,7 +111,7 @@ B 엔티티 초안: `email_notification_preferences`의 user_id PK, enabled 기�
 
 공개 업무 알림은 현재 주소 확인 + 수신 의향 + 기존 수신 권한 + 서비스 발송 설정을 모두 만족해야 한다. 테스트 허용 목록은 초기 검증 범위이며 공개 회원 수신 설정 완료를 뜻하지 않는다. 이 후속 수신 설정을 적용한 뒤 초기 허용 목록을 추가 제한으로 유지할 수 있으나 알림 off/미확인 주소 차단을 우회하는 설정으로 사용하지 않는다.
 
-메일 이벤트에 수신 설정 버전과 현재 주소의 식별값을 연결하고 발송 직전에 다시 대조한다. 알림 해제·설정 버전 변경·주소 변경·회원 탈퇴·관찰자 전환·요청 처리/취소 뒤 아직 발송하지 않은 이벤트는 보내지 않는다. off→on으로 바꿔도 예전 이벤트를 되살리지 않는다. 초기에는 4장의 비영속 비동기 전송을 쓰므로 새 발송 대기 표나 상태는 만들지 않는다. 이미 SMTP 전송을 시작하거나 수락된 메일은 회수할 수 없으며 해제 후 도착 0건을 보장하지 않는다. 후속 영속 대기는 별도 합의한다.
+후속 수신 설정 적용 때 대기 기록에 설정 버전과 현재 주소의 식별값을 연결하고 발송 직전에 다시 대조한다. 알림 해제·설정 버전 변경·주소 변경·회원 탈퇴·관찰자 전환·요청 처리/취소 뒤 아직 발송하지 않은 대기는 SKIPPED로 끝낸다. off→on으로 바꿔도 예전 대기를 되살리지 않는다. 필요한 후속 컬럼은 A가 새 SQL로 추가한다. 이미 SMTP 전송을 시작하거나 수락된 메일은 회수할 수 없으며 해제 후 도착 0건을 보장하지 않는다.
 
 ## 11. 개발·자동 테스트
 
