@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
- * K-20 11장의 동시 요청 조건. 요청들이 실제로 겹치도록 자료를 커밋해 두고 스레드를 한 번에 출발시킨다.
+ * K-20 11장의 동시 요청 조건과, 안내문 수정·삭제(K-31 2.3·2.4)의 동시 요청 조건. 요청들이 실제로 겹치도록 자료를 커밋해 두고 스레드를 한 번에 출발시킨다.
  * 테스트 트랜잭션으로 되돌릴 수 없으므로 만든 것은 끝나고 지운다.
  * 겹치는 순간은 실행마다 달라서 결과만 봐서는 잠금이 빠진 것을 놓칠 수 있다.
  * 그래서 쓰기들이 제출물 줄부터 잠그는지를 따로 확인하고(everyWriteLocksTheDeliverableRowFirst), 겨루기는 여러 번 되풀이한다.
@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class DeliverableConfirmationConcurrencyTest {
     static final int ROUNDS = 10;
     static final String BASE = "/api/projects/{projectId}/deliverables/{deliverableId}";
+    static final String BRIEFS = "/api/projects/{projectId}/briefs";
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -88,7 +89,7 @@ class DeliverableConfirmationConcurrencyTest {
         UUID id = project.getId();
         jdbc.update("delete from deliverable_submissions where deliverable_id in (select id from deliverables where project_id = ?)", id);
         // 점수, 경보, 활동 기록은 프로젝트를 지워도 따라 지워지지 않는다
-        for (String table : List.of("deliverable_confirmations", "deliverable_confirmation_cancellations", "review_rounds", "activity_logs", "contribution_scores", "alerts"))
+        for (String table : List.of("agent_proposals", "agent_runs", "deliverable_confirmations", "deliverable_confirmation_cancellations", "review_rounds", "activity_logs", "contribution_scores", "alerts"))
             jdbc.update("delete from " + table + " where project_id = ?", id);
         // 파일 금고는 수정과 삭제를 트리거로 막는다. 테스트가 만든 줄을 지우는 동안만 끈다.
         // 테이블 변경도 이 트랜잭션에 묶여, 중간에 실패하면 트리거가 꺼진 채로 남지 않는다
@@ -116,6 +117,26 @@ class DeliverableConfirmationConcurrencyTest {
         writes.put("충족 확인 해제", () -> call(delete(BASE + "/requirements/" + ready.requirement() + "/assessment", ids), member));
         writes.put("회차 열기", () -> call(json(post(BASE + "/reviews", ids), "{}"), member));
 
+        assertAllWaitForTheDeliverableRow(ready, writes);
+    }
+
+    /**
+     * 안내문의 수정·걸기·떼기(K-31 2.3·3장)도 확정과 같은 제출물 줄을 잠근다. 안내문 줄을 먼저 잠그므로 서로 막지 않게 안내문을 따로 둔다.
+     * 연결 풀이 다 차지 않게 위의 쓰기들과 따로 본다
+     */
+    @Test void everyBriefWriteLocksTheDeliverableRowToo() throws Exception {
+        Ready ready = ready("안내문 잠금");
+        Object[] ids = {project.getId(), ready.deliverable()};
+        String edited = brief("수정할 안내문", ready), linked = brief("걸 안내문", null), unlinked = brief("뗄 안내문", ready);
+        Map<String, Callable<Reply>> writes = new LinkedHashMap<>();
+        writes.put("안내문 수정", () -> editBrief(edited));
+        writes.put("안내문 걸기", () -> call(post(BASE + "/briefs/" + linked, ids), member));
+        writes.put("안내문 떼기", () -> call(delete(BASE + "/briefs/" + unlinked, ids), member));
+        assertAllWaitForTheDeliverableRow(ready, writes);
+    }
+
+    /** 테스트가 제출물 줄을 잠근 채 쓰기들을 보내, 모두 그 줄에서 기다리는지 본다. 잠금이 풀리면 모두 끝난다 */
+    private void assertAllWaitForTheDeliverableRow(Ready ready, Map<String, Callable<Reply>> writes) throws Exception {
         Map<String, Future<Reply>> running = new LinkedHashMap<>();
         tx.executeWithoutResult(status -> {
             jdbc.queryForList("select id from deliverables where id = ? for update", ready.deliverable());
@@ -141,6 +162,111 @@ class DeliverableConfirmationConcurrencyTest {
             if (waiting.size() == running.size()) break;
         }
         return waiting;
+    }
+
+    /**
+     * 확정이 제출물 줄을 잡고 있는 동안 안내문 수정은 기다린다. 그 확정이 커밋되면 수정은 409 BRIEF_LOCKED이고 본문은 그대로다(K-31 2.3).
+     * 확정 요청을 이 순간에 멈춰 둘 수 없어, 확정과 같은 일(제출물 줄 잠금, 확정 기록)을 테스트의 트랜잭션이 한다
+     */
+    @Test void aBriefEditWaitsForAConfirmationInProgressAndIsThenRefused() throws Exception {
+        Ready ready = ready("확정 중 수정");
+        String brief = brief("과제 안내", ready);
+        Map<String, Future<Reply>> running = new LinkedHashMap<>();
+        tx.executeWithoutResult(status -> {
+            jdbc.queryForList("select id from deliverables where id = ? for update", ready.deliverable());
+            running.put("안내문 수정", threads.submit(() -> editBrief(brief)));
+            assertEquals(1, statementsWaitingForALock(running).size());
+            jdbc.update("insert into deliverable_confirmations (deliverable_id, project_id, review_id, confirmed_by, confirmed_at) values (?, ?, ?, ?, now())",
+                    ready.deliverable(), project.getId(), ready.review(), leader.getId());
+        });
+        Reply refused = running.get("안내문 수정").get(30, TimeUnit.SECONDS);
+        assertEquals(409, refused.status(), String.valueOf(refused.body()));
+        assertEquals("BRIEF_LOCKED", refused.body().get("code").asString());
+        assertEquals("과제 안내", call(get(BRIEFS + "/" + brief, project.getId()), member).body().get("body").asString(), "본문은 그대로다");
+    }
+
+    /** 같은 version으로 동시에 들어온 두 수정은 하나만 반영되고, 다른 하나는 409 BRIEF_CHANGED와 반영된 안내문을 받는다(K-31 2.3) */
+    @Test void twoEditsOfTheSameVersionKeepOnlyOne() throws Exception {
+        for (int round = 0; round < 5; round++) {
+            String brief = brief("동시 수정 " + round, null);
+            List<Reply> replies = race(List.of(() -> editBrief(brief, "첫째 수정"), () -> editBrief(brief, "둘째 수정")));
+            List<Integer> statuses = replies.stream().map(Reply::status).sorted().toList();
+            assertEquals(List.of(200, 409), statuses, String.valueOf(replies));
+            Reply won = replies.stream().filter(r -> r.status() == 200).findFirst().orElseThrow();
+            Reply lost = replies.stream().filter(r -> r.status() == 409).findFirst().orElseThrow();
+            assertEquals("BRIEF_CHANGED", lost.body().get("code").asString());
+            assertEquals(won.body().get("body"), lost.body().at("/brief/body"), "진 쪽은 반영된 안내문을 받는다");
+            assertEquals(2, lost.body().at("/brief/version").asInt());
+        }
+    }
+
+    /**
+     * 확정, 안내문 수정, 같은 안내문을 다른 제출물에 걸기를 한꺼번에 보내, 교착 상태나 500이 없는지 본다.
+     * 수정은 200이거나 409 BRIEF_LOCKED이고, 409면 본문은 그대로다. 결과 코드만으로는 수정과 확정의 순서를 가릴 수 없어,
+     * 순서는 위의 대기 테스트(aBriefEditWaitsForAConfirmationInProgressAndIsThenRefused)가 본다
+     */
+    @Test void confirmationBriefEditAndLinkTogetherNeverDeadlockOrFail() throws Exception {
+        for (int i = 0; i < ROUNDS; i++) {
+            Ready ready = ready("확정과 수정 " + i), other = ready("다른 제출물 " + i);
+            String brief = brief("과제 " + i, ready);
+            List<Reply> replies = race(List.of(() -> confirm(ready), () -> editBrief(brief),
+                    () -> call(post(BASE + "/briefs/" + brief, project.getId(), other.deliverable()), member)));
+            Reply confirmed = replies.get(0), edited = replies.get(1), linked = replies.get(2);
+            assertEquals(200, confirmed.status(), String.valueOf(confirmed.body()));
+            assertEquals(200, linked.status(), String.valueOf(linked.body()));
+            String body = call(get(BRIEFS + "/" + brief, project.getId()), member).body().get("body").asString();
+            if (edited.status() == 200) {
+                assertEquals("고친 본문", body);
+            } else {
+                assertEquals(409, edited.status(), String.valueOf(edited.body()));
+                assertEquals("BRIEF_LOCKED", edited.body().get("code").asString());
+                assertEquals("과제 " + i, body, "본문은 그대로다");
+            }
+        }
+    }
+
+    /**
+     * 카드 저장이 안내문을 근거로 기록하는 중(외래 키 확인이 안내문 줄에 FOR KEY SHARE를 잡은 상태)이면 삭제는 기다린다.
+     * 그 카드가 커밋되면 삭제는 409 BRIEF_IN_USE이고 카드의 근거 기록은 남는다(K-31 2.4). 카드 저장은 테스트의 트랜잭션이 대신한다
+     */
+    @Test void aBriefDeleteWaitsForACardCitingItAndIsThenRefused() throws Exception {
+        UUID brief = UUID.fromString(brief("과제 안내", null));
+        Map<String, Future<Reply>> running = new LinkedHashMap<>();
+        tx.executeWithoutResult(status -> {
+            jdbc.queryForList("select id from project_briefs where id = ? for key share", brief);
+            running.put("안내문 삭제", threads.submit(() -> call(delete(BRIEFS + "/" + brief, project.getId()), member)));
+            List<String> waiting = statementsWaitingForALock(running);
+            assertEquals(1, waiting.size());
+            assertTrue(waiting.get(0).contains(" from project_briefs "), "안내문 줄에서 기다려야 한다: " + waiting);
+            UUID run = jdbc.queryForObject("insert into agent_runs (project_id, requested_by, skill, status, finished_at) "
+                    + "values (?, ?, 'PLAN_FROM_BRIEF', 'DONE', now()) returning id", UUID.class, project.getId(), member.getId());
+            UUID card = jdbc.queryForObject("insert into agent_proposals (project_id, run_id, kind, title, rationale, content, original) "
+                    + "values (?, ?, 'DELIVERABLE_PLAN', '계획', '근거', '{}', '{}') returning id", UUID.class, project.getId(), run);
+            jdbc.update("insert into agent_proposal_briefs (proposal_id, brief_id) values (?, ?)", card, brief);
+        });
+        Reply refused = running.get("안내문 삭제").get(30, TimeUnit.SECONDS);
+        assertEquals(409, refused.status(), String.valueOf(refused.body()));
+        assertEquals("BRIEF_IN_USE", refused.body().get("code").asString());
+        assertEquals(1, refused.body().at("/usage/pendingProposals").asInt());
+        assertEquals(1, count("agent_proposal_briefs where brief_id = ?", brief));
+    }
+
+    /** 제목을 본문으로도 쓰는 안내문을 커밋해 두고, ready가 있으면 그 제출물에 건다. 본문이 같으면 새로 만들지 않으므로(K-31 2.2) 제목마다 다르게 한다 */
+    private String brief(String title, Ready ready) throws Exception {
+        Reply saved = call(json(post(BRIEFS, project.getId()), "{\"title\":\"" + title + "\",\"body\":\"" + title + "\"}"), member);
+        assertEquals(201, saved.status(), String.valueOf(saved.body()));
+        String id = saved.body().get("id").asString();
+        if (ready != null) assertEquals(200, call(post(BASE + "/briefs/" + id, project.getId(), ready.deliverable()), member).status());
+        return id;
+    }
+
+    private Reply editBrief(String id) throws Exception {
+        return editBrief(id, "고친 본문");
+    }
+
+    /** 처음 만든 안내문(version 1)을 고친다 */
+    private Reply editBrief(String id, String body) throws Exception {
+        return call(json(put(BRIEFS + "/" + id, project.getId()), "{\"title\":\"과제\",\"body\":\"" + body + "\",\"version\":1}"), member);
     }
 
     @Test void simultaneousConfirmationsStoreOne() throws Exception {

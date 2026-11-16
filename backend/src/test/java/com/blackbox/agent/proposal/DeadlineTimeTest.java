@@ -26,7 +26,7 @@ class DeadlineTimeTest {
     @Test void aiProposalKeepsExplicitTimeAndRejectsInvalidTime() throws Exception {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             var mapper = new ObjectMapper();
-            var kind = new DeliverablePlanKind(mapper, factory.getValidator(), mock(DeliverableService.class), mock(TaskService.class));
+            var kind = new DeliverablePlanKind(mapper, factory.getValidator(), mock(DeliverableService.class), mock(TaskService.class), mock(com.blackbox.service.BriefService.class));
             var content = mapper.readTree("""
                 {"deliverable":{"title":"자료","dueDate":"2026-11-05","dueTime":"18:00"},"requirements":[],"tasks":[]}
                 """);
