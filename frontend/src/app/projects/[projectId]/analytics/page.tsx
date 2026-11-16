@@ -10,6 +10,7 @@ import { ALERT_TONE } from "@/lib/alertTone";
 import { apiError, blobApiError } from "@/lib/apiError";
 import { useMyRole } from "@/hooks/useMyRole";
 import { ScoreEntry, Alert, AlertType } from "@/types/vault";
+import { columns, countText, extraItems, levelItems, reviewItem, sortScores } from "@/lib/scoreItems";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
 } from "recharts";
@@ -17,7 +18,7 @@ import {
   RefreshCw, AlertTriangle, Users, Loader2,
   AlertCircle, CheckSquare, Video, Files,
   Download, Zap, TrendingDown, TrendingUp,
-  ListChecks,
+  ListChecks, MessageSquareText,
 } from "lucide-react";
 
 // ── 타입 ──────────────────────────────────────────────────────────────────
@@ -68,11 +69,16 @@ function LevelBadge({ level }: { level: ScoreEntry["participationLevel"] }) {
 // ── 참여 셀 ──────────────────────────────────────────────────────────────
 function ParticipationCell({ participated }: { participated: boolean }) {
   return participated ? (
-    <span className="text-teal-400 font-bold text-base">✓</span>
+    <span className="text-teal-400 font-bold text-base" aria-label="충족">✓</span>
   ) : (
-    <span className="text-red-400/60 text-base">✗</span>
+    <span className="text-red-400/60 text-base" aria-label="미충족">✗</span>
   );
 }
+
+// 아는 항목의 아이콘. 모르는 code는 아이콘 없이 label만 보인다(K-40 2장)
+const ITEM_ICON: Record<string, React.ElementType> = {
+  TASK_DONE: CheckSquare, MEETING_ATTENDANCE: Video, FILE_UPLOAD: Files, ACTION_ITEM: ListChecks, REVIEW_ACTIVITY: MessageSquareText,
+};
 
 // ── KPI 카드 ────────────────────────────────────────────────────────────
 function KpiCard({
@@ -179,6 +185,13 @@ export default function AnalyticsPage() {
   };
 
   // ── 파생 데이터 ──────────────────────────────────────────────────────
+  const sorted       = sortScores(scores);
+  const levelCols    = columns(sorted, levelItems);
+  const extraCols    = columns(sorted, extraItems);
+  const reviewRows   = sorted.filter((s) => reviewItem(s));
+  const gridCols     = `minmax(13rem, 1fr) repeat(${levelCols.length + extraCols.length}, minmax(5.5rem, auto)) minmax(7rem, auto)`;
+  const criteria     = sorted.find((s) => s.criteriaVersion)?.criteriaVersion ?? null;
+  const lastCalc     = sorted.reduce<string | null>((a, s) => (!a || s.calculatedAt > a ? s.calculatedAt : a), null);
   const fullCount    = scores.filter((s) => s.participationLevel === "FULL").length;
   const partialCount = scores.filter((s) => s.participationLevel === "PARTIAL").length;
   const noneCount    = scores.filter((s) => s.participationLevel === "NONE").length;
@@ -219,7 +232,7 @@ export default function AnalyticsPage() {
           <div>
             <h1 className="text-2xl font-bold text-bb-text">활동·기여 기록</h1>
             <p className="text-sm text-bb-text2 mt-1">
-              자동 집계된 활동 기록입니다. 검토·답변 등 모든 기여를 포함하지 않으며 평가·감점 기준이 아닙니다.
+              자동 집계된 활동 기록입니다. 모든 기여를 포함하지는 않으며 평가·감점 기준이 아닙니다.
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -269,7 +282,8 @@ export default function AnalyticsPage() {
                   <AlertTriangle size={15} className="text-bb-text2 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-semibold text-bb-text">참여 기록이 적은 팀원 {participationNotes.length}명 — 함께 확인해 주세요</p>
-                    <p className="text-xs text-bb-text2 mt-0.5">검토·답변 등 자동 집계에 반영되지 않은 활동이 있을 수 있습니다. 평가·감점 기준이 아닙니다.</p>
+                    {/* 안내 문장은 서버가 경보에 담아 보낸 것(PARTICIPATION_NOTICE)을 그대로 쓴다. 화면이 같은 뜻의 문장을 따로 만들지 않는다 */}
+                    <p className="text-xs text-bb-text2 mt-0.5">{participationNotes[0].message} 평가·감점 기준이 아닙니다.</p>
                   </div>
                 </div>
               )}
@@ -353,36 +367,42 @@ export default function AnalyticsPage() {
                 팀원별 항목 참여 여부
               </SectionTitle>
 
-              <div className="bg-bb-surface border border-bb-border rounded-xl overflow-hidden">
+              <p className="mb-3 text-xs text-bb-text2">항목마다 했는지만 봅니다. 양과 질은 재지 않습니다.</p>
+              <div className="bg-bb-surface border border-bb-border rounded-xl overflow-x-auto">
+                <div role="table" aria-label="팀원별 항목 참여 여부" className="min-w-max">
                 {/* 테이블 헤더 */}
-                <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-0 border-b border-bb-border bg-bb-bg/60">
-                  {[
-                    { label: "팀원", cls: "text-left pl-5" },
-                    { label: "업무 완료", cls: "text-center" },
-                    { label: "회의 참석", cls: "text-center" },
-                    { label: "파일 업로드", cls: "text-center" },
-                    { label: "액션아이템", cls: "text-center" },
-                    { label: "종합", cls: "text-center pr-5" },
-                  ].map((col) => (
-                    <div key={col.label} className={`py-3 px-4 text-[11px] font-semibold text-bb-text2 uppercase tracking-wide ${col.cls}`}>
+                <div role="row" className="grid gap-0 border-b border-bb-border bg-bb-bg/60" style={{ gridTemplateColumns: gridCols }}>
+                  <div role="columnheader" className="py-3 px-4 pl-5 text-left text-[11px] font-semibold text-bb-text2 uppercase tracking-wide">팀원</div>
+                  {levelCols.map((col) => (
+                    <div key={col.code} role="columnheader" title={col.description} className="py-3 px-4 text-center text-[11px] font-semibold text-bb-text2 uppercase tracking-wide">
                       {col.label}
                     </div>
                   ))}
+                  {extraCols.map((col) => (
+                    <div key={col.code} role="columnheader" title={col.description} className="py-3 px-4 text-center text-[11px] font-semibold text-bb-text2 tracking-wide">
+                      {col.label}<span className="block font-normal">판정 제외</span>
+                    </div>
+                  ))}
+                  <div role="columnheader" className="py-3 px-4 pr-5 text-center text-[11px] font-semibold text-bb-text2 uppercase tracking-wide">종합</div>
                 </div>
 
                 {/* 행 */}
-                {scores.map((s, idx) => {
+                {sorted.map((s, idx) => {
                   const hue = s.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-                  const isLast = idx === scores.length - 1;
+                  const isLast = idx === sorted.length - 1;
+                  const level = levelItems(s), extra = extraItems(s);
                   return (
                     <div
                       key={s.userId}
-                      className={`grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-0 ${
+                      role="row"
+                      data-testid={`score-row-${s.userId}`}
+                      style={{ gridTemplateColumns: gridCols }}
+                      className={`grid items-center gap-0 ${
                         !isLast ? "border-b border-bb-border" : ""
                       } hover:bg-bb-bg/30 transition-colors`}
                     >
                       {/* 팀원 */}
-                      <div className="flex items-center gap-3 pl-5 py-4 pr-4">
+                      <div role="cell" className="flex items-center gap-3 pl-5 py-4 pr-4">
                         <div
                           style={{ background: `hsl(${hue} 50% 45%)` }}
                           className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
@@ -395,57 +415,52 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
 
-                      {/* 태스크 완료 */}
-                      <div className="py-4 px-6 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <ParticipationCell participated={s.taskParticipated} />
-                          <CheckSquare size={11} className="text-bb-text2" />
-                        </div>
-                      </div>
+                      {/* 판정 항목: 충족 여부와 횟수 */}
+                      {levelCols.map((col) => {
+                        const item = level.find((i) => i.code === col.code);
+                        const Icon = ITEM_ICON[col.code];
+                        const text = item ? countText(item) : null;
+                        return (
+                          <div key={col.code} role="cell" title={col.description} className="py-4 px-4 text-center">
+                            {item ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <ParticipationCell participated={item.passed} />
+                                {text ? <span className="text-[11px] text-bb-text2">{text}</span> : Icon && <Icon size={11} className="text-bb-text2" />}
+                              </div>
+                            ) : <span className="text-xs text-bb-text2">–</span>}
+                          </div>
+                        );
+                      })}
 
-                      {/* 회의 참석 */}
-                      <div className="py-4 px-6 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <ParticipationCell participated={s.meetingParticipated} />
-                          <Video size={11} className="text-bb-text2" />
-                        </div>
-                      </div>
-
-                      {/* 파일 업로드 */}
-                      <div className="py-4 px-6 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <ParticipationCell participated={s.fileParticipated} />
-                          <Files size={11} className="text-bb-text2" />
-                        </div>
-                      </div>
-
-                      {/* 액션아이템 */}
-                      <div className="py-4 px-6 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <ParticipationCell participated={s.actionParticipated} />
-                          <ListChecks size={11} className="text-bb-text2" />
-                        </div>
-                      </div>
+                      {/* 판정에 넣지 않는 항목: 횟수만 */}
+                      {extraCols.map((col) => {
+                        const item = extra.find((i) => i.code === col.code);
+                        return (
+                          <div key={col.code} role="cell" title={col.description} className="py-4 px-4 text-center text-sm font-semibold text-bb-text">
+                            {item ? countText(item) : <span className="text-xs font-normal text-bb-text2">–</span>}
+                          </div>
+                        );
+                      })}
 
                       {/* 종합 */}
-                      <div className="py-4 px-5 text-center">
+                      <div role="cell" className="py-4 px-5 text-center">
                         <LevelBadge level={s.participationLevel} />
                       </div>
                     </div>
                   );
                 })}
+                </div>
               </div>
 
-              {/* 판정 기준 안내 */}
-              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-bb-text2">
-                <span>업무: 담당 업무 1개↑ 완료</span>
-                <span>회의: 전체 회의 50%↑ 체크인</span>
-                <span>파일: 1개↑ 업로드</span>
-                <span>액션아이템: 담당 1개↑ 완료</span>
-              </div>
+              {/* 판정 기준 안내: 응답의 설명을 그대로 쓴다 */}
+              <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-bb-text2" aria-label="항목 설명">
+                {[...levelCols, ...extraCols].map((col) => (
+                  <li key={col.code}>{col.label}: {col.description}</li>
+                ))}
+              </ul>
               <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-bb-text2">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />전체참여: 4개 모두
+                  <span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />전체참여: 판정 항목 4개 모두
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />부분참여: 2~3개
@@ -454,7 +469,45 @@ export default function AnalyticsPage() {
                   <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />집계 기록 적음: 0~1개
                 </span>
               </div>
+              {(criteria || lastCalc) && (
+                <p className="mt-1 text-[11px] text-bb-text2">
+                  {criteria && `계산 기준 ${criteria}`}{criteria && lastCalc && " · "}{lastCalc && `마지막 계산 ${new Date(lastCalc).toLocaleString("ko-KR")}`}
+                </p>
+              )}
             </section>
+
+            {/* ── 검토·피드백 참여 (K-40: 판정에 넣지 않고 횟수와 세부만) ── */}
+            {reviewRows.length > 0 && (
+              <section className="mb-8" aria-label="검토·피드백 참여">
+                <SectionTitle>
+                  <MessageSquareText size={13} />
+                  검토·피드백 참여
+                </SectionTitle>
+                <p className="mb-3 text-xs text-bb-text2">{reviewItem(reviewRows[0])?.description}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {reviewRows.map((s) => {
+                    const r = reviewItem(s)!;
+                    return (
+                      <div key={s.userId} data-testid={`review-${s.userId}`} className="bg-bb-surface border border-bb-border rounded-xl p-4">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="text-sm font-semibold text-bb-text">{s.name}</p>
+                          <p className="text-sm font-semibold text-bb-text">{r.count}건</p>
+                        </div>
+                        {r.details && r.details.length > 0 && (
+                          <ul className="mt-2 flex flex-wrap gap-1.5">
+                            {r.details.map((d) => (
+                              <li key={d.code} className={`text-[11px] px-2 py-0.5 rounded-full border border-bb-border ${d.count > 0 ? "text-bb-text" : "text-bb-text2 opacity-60"}`}>
+                                {d.label} {d.count}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             {/* ── 마감 위험도 게이지 ───────────────────────────────── */}
             {risk && (

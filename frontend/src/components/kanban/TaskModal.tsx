@@ -126,7 +126,10 @@ export default function TaskModal({
 
   // 닫기는 한 곳으로: 배경·닫기(X)·취소·Escape 모두 작성 중이면 먼저 묻는다
   useUnsavedGuard(dirty || discussionDirty || completionDirty, "업무 창에 저장하지 않은 내용이 있습니다. 이 화면을 떠날까요?");
-  const requestClose = () => { if (resourceBusy || submitting) return; dirty || discussionDirty || completionDirty ? setConfirmClose(true) : onClose(); };
+  const requestClose = () => {
+    if (resourceBusy || submitting) return;
+    if (dirty || discussionDirty || completionDirty) setConfirmClose(true); else onClose();
+  };
 
   // 열리면 초점을 패널로 옮기고(그려지기 전에), 닫히면 열기 전 자리(업무 카드 등)로 돌려준다
   const panelRef = useRef<HTMLDivElement>(null);

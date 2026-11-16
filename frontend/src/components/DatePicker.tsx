@@ -24,7 +24,6 @@ interface DatePickerProps {
 export default function DatePicker({
   value,
   onChange,
-  placeholder = "날짜 선택",
   className = "",
   required = false,
 }: DatePickerProps) {

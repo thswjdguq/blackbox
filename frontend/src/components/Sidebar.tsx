@@ -13,11 +13,7 @@ import AccountIdentity from "@/components/AccountIdentity";
 // 개인 알림은 사이드바 메뉴(알림)에서, 참여 기록·파일 변조 등 팀 알림은 팀 활동 페이지에서 확인한다.
 // 헤더의 중복 벨과 빨간 경고 배지는 두지 않는다.
 
-interface SidebarProps {
-  hasProjects?: boolean;
-}
-
-export default function Sidebar({ hasProjects }: SidebarProps) {
+export default function Sidebar() {
   const pathname = usePathname();
   const router   = useRouter();
   const [isDark, setIsDark] = useState(false);

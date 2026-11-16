@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
@@ -9,11 +9,8 @@ import DeadlineNotice from "@/components/kanban/DeadlineNotice";
 import { Task } from "@/types/task";
 import api from "@/lib/api";
 import {
-  ChevronDown,
   FolderKanban,
   AlertCircle,
-  ExternalLink,
-  Loader2,
   SlidersHorizontal,
   X,
 } from "lucide-react";

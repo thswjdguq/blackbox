@@ -64,6 +64,10 @@ class AgentToolboxTest {
         alert.setSeverity("HIGH"); alert.setMessage("이팀원님이 최근 2주 동안 활동 기록이 없습니다"); em.persist(alert);
         ContributionScore score = new ContributionScore(); score.setProject(project); score.setUser(member);
         score.setTaskParticipated(true); score.setParticipationLevel("PARTIAL"); score.setCalculatedAt(OffsetDateTime.now());
+        // 계산이 저장하는 항목(K-40 2장): 업무 2건, 검토 활동 1건(판정에 넣지 않음)
+        score.setItems(com.blackbox.service.ScoreSnapshotService.items(score, new com.blackbox.service.ScoreSnapshotService.Extra(0,
+                new com.blackbox.service.ScoreReviewActivityReader.Counts(1, 0, 0, 0, 0, 0)), 2, 0, 0, 0));
+        score.setCriteriaVersion(com.blackbox.service.ScoreSnapshotService.CRITERIA_VERSION);
         em.persist(score);
         em.flush(); em.clear();
     }
@@ -112,6 +116,15 @@ class AgentToolboxTest {
         JsonNode scores = call(tools, GetScoresTool.NAME, "{}");
         assertEquals("이팀원", scores.path("items").get(0).path("name").asString());
         assertEquals("PARTIAL", scores.path("items").get(0).path("participationLevel").asString());
+        // 저장된 계산의 항목을 그대로 넘긴다(K-40 6장)
+        JsonNode items = scores.path("items").get(0).path("items");
+        assertEquals("2026-11-v1", scores.path("items").get(0).path("criteriaVersion").asString());
+        assertEquals("TASK_DONE", items.get(0).path("code").asString());
+        assertEquals(2, items.get(0).path("count").asLong());
+        JsonNode review = items.get(items.size() - 1);
+        assertEquals("REVIEW_ACTIVITY", review.path("code").asString());
+        assertEquals(1, review.path("count").asLong());
+        assertFalse(review.path("countsTowardLevel").asBoolean(), "판정에 넣지 않는 항목임이 모델에 그대로 간다");
     }
 
     @Test void noToolSendsAnEmailToTheModel() {

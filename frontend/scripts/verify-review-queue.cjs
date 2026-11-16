@@ -7,7 +7,7 @@ function load(file, mocks) {
   new Function('require', 'module', 'exports', code)(n => mocks[n] ?? require(n), m, m.exports); return m.exports.default;
 }
 function harness(file, mocks) {
-  let state = [], cursor = 0, effects = [], cleanups = [], ran = new Set();
+  let state = [], cursor = 0, effects = [], cleanups = [];
   const hooks = { ...React,
     useState(initial) { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], v => { state[i] = typeof v === 'function' ? v(state[i]) : v; }]; },
     useRef(initial) { const i = cursor++; if (!(i in state)) state[i] = { current: initial }; return state[i]; },

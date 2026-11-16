@@ -14,7 +14,7 @@ import DeliverableFormModal from "@/components/deliverable/DeliverableFormModal"
 import ConfirmDeleteDialog from "@/components/deliverable/ConfirmDeleteDialog";
 import DeliverableTimeline from "@/components/deliverable/DeliverableTimeline";
 import api from "@/lib/api";
-import { deliverableDue, shortDate } from "@/lib/due";
+import { deliverableDue } from "@/lib/due";
 import { apiError } from "@/lib/apiError";
 import { getDeliverables, createDeliverable, deleteDeliverable } from "@/lib/api/deliverable";
 import type { Deliverable, SaveDeliverablePayload } from "@/types/deliverable";

@@ -31,7 +31,6 @@ const DURATIONS = [
   { label: "2시간 이상", value: -1 },
 ];
 
-const GOOGLE_BLUE = "#4285F4";
 
 function fmtRec(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", {
