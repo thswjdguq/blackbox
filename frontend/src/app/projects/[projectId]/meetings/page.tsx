@@ -13,7 +13,6 @@ import {
   FileText,
   Plus,
   Calendar,
-  Hash,
   ChevronRight,
   AlertCircle,
   X,
@@ -337,7 +336,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                         type="button"
                         onClick={() => {
                           const next = new Set(selectedIds);
-                          checked ? next.delete(m.userId) : next.add(m.userId);
+                          if (checked) next.delete(m.userId); else next.add(m.userId);
                           setSelectedIds(next);
                         }}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
