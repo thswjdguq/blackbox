@@ -14,6 +14,18 @@ export const SKILLS: Record<string, { input: SkillInput }> = {
   ASK: { input: "question" },
 };
 
+/** 쓸 수 없을 때 창에 보이는 기능 소개의 설명(화면 문구). 이름은 서버 status.skills의 label을 쓴다 */
+export const SKILL_INTRO: Record<string, string> = {
+  PLAN_FROM_BRIEF: "최종 제출물·요구사항·업무 초안을 함께 정리",
+  BREAK_DOWN_TASKS: "완료 기준이 있는 업무 후보 제안",
+  STATUS_BRIEF: "진행 상황과 먼저 살펴볼 업무 요약",
+};
+
+/** 소개 카드: 서버가 알려 준 기능 중 화면이 설명을 가진 것만, 서버 label로 */
+export function introSkills(status: AgentStatus | null | undefined) {
+  return (status?.skills ?? []).filter((s) => SKILL_INTRO[s.skill]).map((s) => ({ skill: s.skill, label: s.label, description: SKILL_INTRO[s.skill] }));
+}
+
 export const QUESTION_MAX = 1000;
 export const BRIEF_MAX = 20000;
 
