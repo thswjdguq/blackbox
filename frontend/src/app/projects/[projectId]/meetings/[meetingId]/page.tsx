@@ -27,6 +27,7 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
+import { loginHref } from "@/lib/loginRedirect";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
 function formatDate(iso: string | null) {
@@ -115,7 +116,7 @@ export default function MeetingDetailPage() {
       setEditDecisions(meetRes.data.decisions ?? "");
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) { router.replace("/login"); return; }
+      if (status === 401) { router.replace(loginHref()); return; }
       setError("회의 정보를 불러오지 못했습니다.");
     } finally {
       setLoading(false);

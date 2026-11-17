@@ -24,6 +24,7 @@ import {
   FileIcon,
   ExternalLink,
 } from "lucide-react";
+import { loginHref } from "@/lib/loginRedirect";
 
 // ── 바이트 → 사람이 읽기 좋은 크기 ────────────────────────────────────
 function formatSize(bytes: number): string {
@@ -353,7 +354,7 @@ export default function VaultPage() {
       setFiles(data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) { router.replace("/login"); return; }
+      if (status === 401) { router.replace(loginHref()); return; }
       setError("파일 목록을 불러오지 못했습니다.");
     } finally {
       setLoading(false);
