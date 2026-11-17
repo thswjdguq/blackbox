@@ -87,6 +87,22 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
 
+  # 이메일 알림의 SMTP(K-41 3장). Gmail은 587 포트에서 STARTTLS와 인증이 필수다.
+  # 기동할 때 SMTP에 접속하지 않는다(test-connection 기본값 false). 실제 발송 여부는 app.mail.enabled가 정한다
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}      # 발송 계정(서비스 전용 Gmail)
+    password: ${MAIL_PASSWORD:}      # Google 앱 비밀번호. 서버의 .env에만 둔다
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true        # STARTTLS를 못 하면 평문으로 보내지 않고 실패한다
+      mail.smtp.ssl.checkserveridentity: true  # 인증서의 호스트 이름을 검증한다
+      mail.smtp.connectiontimeout: 5000        # ms
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
 server:
   port: 8080
 
@@ -100,6 +116,11 @@ app:
   file:
     upload-dir: ${FILE_UPLOAD_DIR:/data/uploads}
   frontend-base-url: ${FRONTEND_BASE_URL:}       # 10분 전 알림 URL 생성용 (예: https://yourdomain.com)
+  mail:
+    # 이메일 알림(K-41). 기본은 꺼짐이며, 비밀번호가 있어도 이 값이 true가 아니면 보내지 않는다
+    enabled: ${MAIL_ENABLED:false}
+    # 받을 수 있는 주소(쉼표로 구분). 비어 있으면 아무에게도 보내지 않는다
+    recipient-allowlist: ${MAIL_RECIPIENT_ALLOWLIST:}
   agent:
     zone: Asia/Seoul        # "오늘"과 "늦음"을 판단하는 시간대
     tool-list-limit: 100    # 도구가 한 번에 돌려주는 목록의 건수. 넘으면 잘렸다고 알린다
