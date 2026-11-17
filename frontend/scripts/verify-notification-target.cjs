@@ -25,4 +25,10 @@ assert.deepEqual(notificationAction({...base,target:tgt({kind:'UNKNOWN'}),path:n
 // 다른 프로젝트·다른 사이트·이상한 경로는 이동하지 않는다
 for(const bad of ['/projects/p2/board','https://evil.example/projects/p1/x','//evil.example','/projects/p1//x','/projects/p1/\\x','/projects/p1/x\n','/dashboard'])assert.equal(samePath(bad,P),false,bad);
 assert.deepEqual(notificationAction({...r,path:'/projects/p2/deliverables/d1?tab=review'},P),{kind:'none'});
-console.log('알림 대상 검사 통과: 서버 target·path만 따름, #comment 한 번만, 모르는 kind, 다른 프로젝트·사이트 경로 막기');
+// 필수 칸이 빠지거나 모양이 틀린 응답: 오류 없이 이동을 막고, 옛 칸(taskId)으로 대신 열지 않는다
+const {notificationBroken,BROKEN_NOTICE}=m.exports;
+const broken=[{...base,target:null},{...base,target:undefined},{...base,target:{taskId:'t9'}},{...base,message:undefined},{...base,message:'  '},{...base,path:undefined},{...base,path:5}];
+for(const b of broken){assert.equal(notificationBroken(b),true,JSON.stringify(b));assert.deepEqual(notificationAction(b,P),{kind:'none'});assert.equal(notificationButton(b).gone,'');}
+assert.equal(notificationBroken(base),false);assert.equal(notificationBroken({...r,path:null}),false);
+assert.ok(BROKEN_NOTICE.includes('새로고침'));
+console.log('알림 대상 검사 통과: 서버 target·path만 따름, #comment 한 번만, 모르는 kind, 다른 프로젝트·사이트 경로 막기, 빠진 칸은 이동 막기');

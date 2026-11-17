@@ -9,7 +9,7 @@ import { apiError } from "@/lib/apiError";
 import { sessionGeneration } from "@/lib/sessionCache";
 import { useNotificationStore } from "@/lib/store/notificationStore";
 import type { PersonalNotification } from "@/types/notification";
-import { notificationAction, notificationButton } from "@/lib/notificationTarget";
+import { BROKEN_NOTICE, notificationAction, notificationBroken, notificationButton } from "@/lib/notificationTarget";
 import type { Task } from "@/types/task";
 
 type Member = { userId: string; name: string; email: string; role: string };
@@ -64,8 +64,8 @@ function Inbox({ projectId }: { projectId: string }) {
       {!entry.page.items.length && <p className="rounded-xl border border-bb-border p-8 text-center text-sm text-bb-text2">아직 받은 알림이 없습니다.</p>}
       {entry.page.items.map(item => <article key={item.id} className={`rounded-xl border p-4 ${item.readAt ? "border-bb-border bg-bb-surface" : "border-bb-primary/30 bg-bb-primary/5"}`}>
         <div className="flex flex-wrap justify-between gap-2 text-xs text-bb-text2"><span>{item.readAt ? "읽음" : "읽지 않음"}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("ko-KR")}</time></div>
-        {/* 문장은 서버가 만든 message 그대로. 화면이 종류 이름으로 문장을 만들지 않는다(K-41 5장) */}
-        <h2 className="mt-2 break-words font-semibold text-sm">{item.message}</h2>
+        {/* 문장은 서버가 만든 message 그대로. 화면이 종류 이름으로 문장을 만들지 않는다(K-41 5장). 필수 칸이 빠진 응답은 새로고침 안내만 */}
+        <h2 className="mt-2 break-words font-semibold text-sm">{notificationBroken(item) ? BROKEN_NOTICE : item.message}</h2>
         {item.fileName && <p className="mt-2 break-all text-sm">{item.fileName} · 버전 {item.fileVersion}</p>}
         {notificationAction(item, projectId).kind !== "none" ? <button type="button" disabled={opening} onClick={() => open(item)} className="mt-3 rounded-lg border border-bb-border px-3 py-2 text-sm text-bb-primary disabled:opacity-50">{notificationButton(item).open}</button> : <div className="mt-3 text-sm text-bb-text2">{notificationButton(item).gone} {!item.readAt && <button type="button" onClick={() => read(projectId, item.id)} className="underline">읽음으로 표시</button>}</div>}
       </article>)}
