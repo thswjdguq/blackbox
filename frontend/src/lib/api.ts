@@ -1,5 +1,6 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/lib/store/authStore";
+import { loginHref } from "@/lib/loginRedirect";
 
 const api = axios.create({
   baseURL: "/api",
@@ -25,13 +26,13 @@ api.interceptors.response.use(
       } catch {
         useAuthStore.getState().clearTokens();
         if (!PUBLIC_PATHS.includes(window.location.pathname)) {
-          window.location.href = "/login";
+          window.location.href = loginHref();
         }
       }
     } else if (error.response?.status === 401 && original?.url === "/auth/refresh") {
       useAuthStore.getState().clearTokens();
       if (!PUBLIC_PATHS.includes(window.location.pathname)) {
-        window.location.href = "/login";
+        window.location.href = loginHref();
       }
     }
     return Promise.reject(error);
