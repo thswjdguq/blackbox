@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 이메일 알림의 SMTP 설정(K-41 3장). 실제 SMTP에는 접속하지 않는다.
  * 컨텍스트가 뜬다는 것 자체가 "메일 계정 없이도 서버가 기동한다"는 확인이다
  */
+// 웹 서버는 필요 없지만, 같은 설정의 ProposalHttpTest와 Spring 컨텍스트를 함께 쓰려고 RANDOM_PORT로 둔다(컨텍스트를 새로 띄우지 않는다)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 class MailSettingsTest {
