@@ -20,6 +20,7 @@ import {
   Download, Zap, TrendingDown, TrendingUp,
   ListChecks, MessageSquareText,
 } from "lucide-react";
+import { loginHref } from "@/lib/loginRedirect";
 
 // ── 타입 ──────────────────────────────────────────────────────────────────
 interface TaskSummary {
@@ -144,7 +145,7 @@ export default function AnalyticsPage() {
       setTasks(taskRes.data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) { router.replace("/login"); return; }
+      if (status === 401) { router.replace(loginHref()); return; }
       setError("데이터를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
