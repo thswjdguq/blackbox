@@ -82,7 +82,12 @@ public class AgentTestData {
         inTransaction(() -> {
             Task t = new Task(); t.setProject(em.find(Project.class, project.getId())); t.setCreatedBy(em.find(User.class, createdBy.getId()));
             t.setTitle(title); t.setStatus(status); t.setPriority("MEDIUM"); t.setDueDate(dueDate);
-            if ("DONE".equals(status)) t.setCompletedAt(OffsetDateTime.now());
+            // 끝난 업무는 승인 기록이 있어야 들어간다(V35 task_done_requires_approval). 만든 사람이 승인한 것으로 둔다
+            if ("DONE".equals(status)) {
+                t.setCompletedAt(OffsetDateTime.now());
+                t.setCompletionApprovedAt(OffsetDateTime.now());
+                t.setCompletionApprovedBy(t.getCreatedBy());
+            }
             if (deliverable != null) t.setDeliverable(em.find(Deliverable.class, deliverable.getId()));
             if (requirement != null) t.setRequirement(em.find(DeliverableRequirement.class, requirement.getId()));
             em.persist(t);
