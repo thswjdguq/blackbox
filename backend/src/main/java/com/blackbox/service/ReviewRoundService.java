@@ -24,6 +24,8 @@ public class ReviewRoundService implements ReviewRoundReader {
     private final DeliverableStatuses statuses;
     private final DeliverableConfirmationCancellationRepository cancellations;
     private final ReviewFeedbackNotifications notifications;
+    private final ProjectMemberRepository members;
+    private final NotificationService personalNotifications;
 
     @Transactional(readOnly = true)
     public ListResponse list(UUID projectId, UUID deliverableId, User user) {
@@ -49,7 +51,21 @@ public class ReviewRoundService implements ReviewRoundReader {
         r.setOpenedBy(user);
         rounds.save(r);
         notifications.versionPosted(r,user);
+        // 새 회차를 결정할 수 있는 사람에게 검토를 요청한다(K-41 2장). 키가 회차 id라 같은 회차는 한 번만 알린다
+        personalNotifications.reviewEvent("REVIEW_REQUESTED", "REVIEW_REQUESTED:" + r.getId(), r, null, user, deciders(r, user));
         return round(r, true);
+    }
+
+    /** 새 회차를 결정할 수 있는 사람: 현재 팀장·팀원 중 행위자와 회차 파일을 올린 사람을 뺀다. decide()와 같은 조건을 쓴다 */
+    private List<User> deciders(ReviewRound r, User actor) {
+        return members.findByProject(r.getProject()).stream().filter(ProjectAccessChecker::canContribute)
+                .map(ProjectMember::getUser)
+                .filter(u -> !u.getId().equals(actor.getId()) && !isRoundFileUploader(r, u)).toList();
+    }
+
+    /** 회차 파일을 올린 사람인가. 이 사람은 그 회차를 결정할 수 없다(K-10). 팀장·팀원 여부와 최신 회차 여부는 호출하는 쪽이 확인한다 */
+    static boolean isRoundFileUploader(ReviewRound r, User user) {
+        return r.getFile() != null && r.getFile().getUploader().getId().equals(user.getId());
     }
 
     public Round decide(UUID projectId, UUID deliverableId, UUID reviewId, String decision, User user) {
@@ -58,8 +74,7 @@ public class ReviewRoundService implements ReviewRoundReader {
         List<ReviewRound> all = rounds.findByDeliverableOrderByRoundNoDesc(statuses.lockEditable(project, deliverableId));
         ReviewRound r = pick(all, reviewId);
         if (r != all.get(0)) throw conflict("최신 회차에만 결정할 수 있습니다");
-        if (r.getFile() != null && r.getFile().getUploader().getId().equals(user.getId()))
-            throw new ForbiddenException("직접 올린 파일은 결정할 수 없습니다");
+        if (isRoundFileUploader(r, user)) throw new ForbiddenException("직접 올린 파일은 결정할 수 없습니다");
         if (r.getDecision() != null) {
             // 같은 결정을 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다
             if (r.getDecision().equals(decision)) return round(r, true);
