@@ -100,9 +100,10 @@ for s in $SERVICES; do
 done
 ids_before=$(docker compose ps -q | sort)
 if [ -n "$changed" ] && [ -n "$(docker compose ps -q db)" ]; then
-  mkdir -p "$BACKUP_DIR"
+  # 덤프에는 계정 정보(비밀번호 해시)가 있다. 폴더는 700, 새 덤프는 600으로 서버 사용자만 읽게 한다(폴더 권한이 기존 백업도 막는다)
+  mkdir -p "$BACKUP_DIR"; chmod 700 "$BACKUP_DIR"
   f="$BACKUP_DIR/auto-$(date +%Y%m%d-%H%M%S).dump"
-  if docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$f"; then
+  if (umask 077; docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$f"); then
     log "새 이미지:$changed. 바꾸기 전에 DB를 백업했다: $f"
     ls -1t "$BACKUP_DIR"/auto-*.dump 2>/dev/null | tail -n +11 | xargs -r rm --   # 자동 백업은 최근 10개만 둔다
   else
