@@ -1,0 +1,12 @@
+# 서버가 켜지고 10분 뒤, 그 뒤로 켜져 있는 동안 1시간마다 S3로 백업한다.
+# 시연 외에는 서버를 꺼 두므로, 켜져 있는 동안 바뀐 자료가 1시간 안에 S3에 남는다. 끄기 직전에는 손으로 한 번 돌린다(docs/deploy-aws.md 8장)
+# 주기를 바꾸면: sudo systemctl daemon-reload && sudo systemctl restart blackbox-backup.timer
+[Unit]
+Description=Blackbox backup to S3 schedule
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target
