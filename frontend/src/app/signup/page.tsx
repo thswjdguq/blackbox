@@ -52,14 +52,11 @@ export default function SignupPage() {
       router.replace("/dashboard");
     } catch (err) {
       const errorData = (err as { response?: { status?: number; data?: { detail?: string; errors?: Record<string, string> } } })?.response;
-      if (errorData?.status === 409) {
-        setError("이미 사용 중인 이메일입니다");
-      } else {
-        const fieldErrors = errorData?.data?.errors
-          ? Object.values(errorData.data.errors).join(", ")
-          : null;
-        setError(fieldErrors || errorData?.data?.detail || "회원가입에 실패했습니다");
-      }
+      // 이메일 중복(409)도 서버 detail을 그대로 보인다. 화면이 같은 문구를 따로 두지 않는다
+      const fieldErrors = errorData?.data?.errors
+        ? Object.values(errorData.data.errors).join(", ")
+        : null;
+      setError(fieldErrors || errorData?.data?.detail || "회원가입에 실패했습니다");
     } finally {
       setLoading(false);
     }
