@@ -71,14 +71,21 @@ class FeedbackLoopHttpTest {
         assertEquals(1,notifications.unread(project.getId(),author).unreadCount());
         assertEquals("3쪽에 근거 추가",messages.inbox(project.getId(),author).sent().get(0).response());
         var next=file(em,project,worker,"보고서.pdf",2,'b');em.flush();
-        reviews.open(project.getId(),deliverable.getId(),new ReviewDtos.OpenRequest(next.getId()),worker);
+        var opened=reviews.open(project.getId(),deliverable.getId(),new ReviewDtos.OpenRequest(next.getId()),worker);
         // 팀장(author)은 피드백 작성자로서 새 버전 알림을, 새 회차를 결정할 수 있는 사람으로서 검토 요청(K-41 2장)을 받는다
         assertEquals(3,notifications.unread(project.getId(),author).unreadCount());
         mvc.perform(get("/api/projects/{id}/notifications",project.getId()).header("Authorization",token(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0:2].type",org.hamcrest.Matchers.containsInAnyOrder("REVIEW_VERSION_POSTED","REVIEW_REQUESTED")))
                 .andExpect(jsonPath("$.items[0].deliverableId").value(deliverable.getId().toString()))
-                .andExpect(jsonPath("$.items[0].targetAvailable").value(true));
+                .andExpect(jsonPath("$.items[0].targetAvailable").value(true))
+                // 검토 요청은 공통 생성기(K-41 5장)의 문장·대상·경로로 나간다. 대상은 새 회차, 경로는 제출물 검토 탭
+                .andExpect(jsonPath("$.items[?(@.type=='REVIEW_REQUESTED')].message")
+                        .value("담당자님이 ‘최종 보고서’ 최종 제출물의 검토를 요청했습니다."))
+                .andExpect(jsonPath("$.items[?(@.type=='REVIEW_REQUESTED')].target.kind").value("DELIVERABLE_REVIEW"))
+                .andExpect(jsonPath("$.items[?(@.type=='REVIEW_REQUESTED')].target.reviewId").value(opened.id().toString()))
+                .andExpect(jsonPath("$.items[?(@.type=='REVIEW_REQUESTED')].path")
+                        .value("/projects/"+project.getId()+"/deliverables/"+deliverable.getId()+"?tab=review"));
         // 회차를 연 사람이자 파일을 올린 담당자와 관찰자에게는 검토 요청이 가지 않는다
         assertEquals(0,notifications.unread(project.getId(),observer).unreadCount());
         assertEquals(1,notifications.unread(project.getId(),worker).unreadCount());
