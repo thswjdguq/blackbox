@@ -31,7 +31,11 @@ docker compose exec -T backend tar -C /data/uploads -czf - . > "$tmp/uploads.tar
   || { log "업로드 폴더를 압축하지 못했다"; exit 1; }
 
 prefix="$DEST/$(date +%Y%m%d-%H%M%S)"
-for f in db.dump uploads.tar.gz; do
-  aws s3 cp "$tmp/$f" "$prefix/$f" --only-show-errors || { log "$f를 올리지 못했다($prefix)"; exit 1; }
+# 두 파일을 올린 뒤 그 둘의 SHA-256을 적은 MANIFEST.sha256을 마지막에 올린다. 이 파일이 있는 폴더만 완성된 백업이다.
+# 중간에 실패한 폴더는 서버가 지울 수 없어 남는다(수명 주기 규칙이 14일 뒤 지운다). 복원은 MANIFEST가 있는 폴더를 골라 sha256sum -c로 확인한다
+(cd "$tmp" && sha256sum db.dump uploads.tar.gz > MANIFEST.sha256) || { log "체크섬을 만들지 못했다"; exit 1; }
+for f in db.dump uploads.tar.gz MANIFEST.sha256; do
+  aws s3 cp "$tmp/$f" "$prefix/$f" --only-show-errors \
+    || { log "$f를 올리지 못했다($prefix). 이 폴더에는 MANIFEST.sha256이 없어 완성된 백업이 아니다"; exit 1; }
 done
 log "올렸다: $prefix (DB $(du -h "$tmp/db.dump" | cut -f1), 업로드 $(du -h "$tmp/uploads.tar.gz" | cut -f1))"
