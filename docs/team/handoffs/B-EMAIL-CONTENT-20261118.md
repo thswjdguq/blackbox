@@ -36,3 +36,10 @@ Java25.0.3 / Gradle9.8.2 / PostgreSQL16. 새 전용 DB bb_b_notification_present
 - A: 공통 생성기와 추가 응답을 재검토한다. A SMTP/V39 및 검토 요청 이벤트는 선행 PR로 별도 제공한다.
 - B: 발송 대기 저장·worker·재시도는 A의 실제 스키마와 SMTP 기반 병합 뒤 별도 PR에서 구현한다. 공통 응답 PR을 해당 후속의 대기로 묶지 않는다.
 - C: label 없이 message/target/path로 소비하고 서버 path의 댓글 anchor를 중복 추가하지 않는다. #198 뒤 #202에서 실제 응답으로 검증한다.
+
+## 같은 날 선행 PR 검토 후 갱신
+
+- A의 #207(V39 발송 대기 표·REVIEW_REQUESTED 제약)과 #206(SMTP 설정·라이브러리)을 B가 소비자 관점으로 검토해 병합했다. B outbox/worker의 실제 구현은 아직 없고 SMTP 어댑터도 후속이다.
+- 최신 서버 + #206/#207/#208/#209 검토 결합본을 별도 DB bb_b_mail_foundation_review_20261118에서 실행했다. 총114건 중111건 통과·실제 모델3건 건너뜀, 실패/오류0. MailSettingsTest3, MainMigrationCompatibilityTest3, ReviewRoundServiceTest13, FeedbackLoopHttpTest4와 기존 agent 검사가 포함된다. 이 결과를 로컬 전체 backend·실제 Gmail/LLM 호출로 보고하지 않는다.
+- #208의 직접 NotificationService.reviewEvent 호출과 B 소유 FeedbackLoopHttpTest 기대값 변경에 동의했다. 새 검토 요청과 새 버전 알림은 목적이 달라 함께 유지하며, #207→#198→#202 뒤 활성화한다.
+- #209는 완료 합성 자료의 담당자 본인 승인, #212는 두 번째 S3 업로드 실패 시 미완성 백업 세트 식별 문제를 별도 수정 요청했다. 관련 결합 검사가 통과해도 이 검토 지적이 해소된 것은 아니다.
