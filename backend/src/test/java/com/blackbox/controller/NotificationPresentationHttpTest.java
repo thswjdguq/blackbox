@@ -103,6 +103,22 @@ class NotificationPresentationHttpTest {
         nullTargetFields(item, "taskId", "messageId", "fileId");
     }
 
+    @Test void v39ReviewRequestUsesTheSharedMessageAndReviewTarget() throws Exception {
+        Team t = team(); Deliverable d = deliverable(em, t.project(), "합성 최종 보고서");
+        ReviewRound review = round(em, d, 1, t.leader(), null); em.flush();
+        notifications.reviewEvent("REVIEW_REQUESTED", "REVIEW_REQUESTED:" + review.getId(), review,
+                null, t.leader(), List.of(t.worker()));
+        JsonNode item = page(t, t.worker(), "").path("items").get(0);
+        assertEquals("REVIEW_REQUESTED", item.path("type").asString());
+        assertEquals("합성 팀장님이 ‘합성 최종 보고서’ 최종 제출물의 검토를 요청했습니다.", item.path("message").asString());
+        assertEquals("DELIVERABLE_REVIEW", item.at("/target/kind").asString());
+        assertEquals(review.getId().toString(), item.at("/target/reviewId").asString());
+        assertEquals(d.getId().toString(), item.at("/target/deliverableId").asString());
+        assertEquals("/projects/" + t.project().getId() + "/deliverables/" + d.getId() + "?tab=review", item.path("path").asString());
+        assertTrue(item.path("targetAvailable").asBoolean());
+        nullTargetFields(item, "taskId", "messageId", "fileId", "commentId");
+    }
+
     @Test void missingAndCrossProjectTargetsRemainUnavailableWithoutLosingSnapshot() throws Exception {
         Team t = team(); Project other = project(em, t.leader());
         Task foreign = new Task(); foreign.setProject(other); foreign.setCreatedBy(t.leader());
