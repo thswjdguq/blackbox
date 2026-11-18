@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Send, Sparkles, X } from "lucide-react";
 import { useAgentStore } from "@/lib/store/agentStore";
-import { BRIEF_MAX, buttonSkills, canAsk, canBreakDown, breakDownUnavailableReason, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
+import { BRIEF_MAX, buttonSkills, canAsk, canBreakDown, breakDownUnavailableReason, introSkills, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
 import { shortDate } from "@/lib/due";
 import RunEntryView from "./RunEntryView";
 import ProposalList from "./ProposalList";
@@ -125,7 +125,8 @@ export default function AgentDock() {
     onKeyDown={e => { if(e.key === "Escape") {e.stopPropagation();close();} }} className="fixed inset-0 z-40 flex flex-col bg-bb-surface md:inset-auto md:right-0 md:top-0 md:h-screen md:w-[420px] md:border-l md:border-bb-border md:shadow-xl">
     <header className="p-5 border-b border-bb-border flex justify-between items-center"><h2 ref={headingRef} tabIndex={-1} className="font-semibold flex gap-2 items-center outline-none"><Sparkles size={18} className="text-bb-primary"/>팀프로젝트 도우미</h2><button type="button" aria-label="AI 도우미 닫기" onClick={close} className="p-2 rounded-lg hover:bg-bb-bg"><X size={18}/></button></header>
     <div className="p-5 space-y-5 overflow-y-auto"><p className="text-sm text-bb-text2">과제 계획을 세우고, 업무를 나누고, 다음 할 일을 정리합니다.</p>
-      <div className="space-y-3">{[["과제 안내문으로 계획 만들기","최종 제출물·요구사항·업무 초안을 함께 정리"],["요구사항을 업무로 나누기","완료 기준이 있는 업무 후보 제안"],["지금 상태 살펴보기","진행 상황과 먼저 살펴볼 업무 요약"]].map(([title,description]) => <section key={title} className="rounded-xl border border-bb-border bg-bb-bg p-4"><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-xs text-bb-text2">{description}</p></section>)}</div>
+      {/* 기능 이름은 서버 status.skills의 label. 상태를 아직 못 받았으면 소개 카드 없이 아래 안내만 */}
+      <div className="space-y-3">{introSkills(status).map((s) => <section key={s.skill} className="rounded-xl border border-bb-border bg-bb-bg p-4"><h3 className="text-sm font-semibold">{s.label}</h3><p className="mt-1 text-xs text-bb-text2">{s.description}</p></section>)}</div>
       <div role="status" className="rounded-xl border border-bb-border p-4"><p className="text-sm">{statusError ?? status?.unavailableReason ?? "AI 도우미 연결 상태를 확인하고 있습니다."}</p><p className="mt-2 text-xs text-bb-text2">{status || statusError ? "지금은 AI 실행을 사용할 수 없습니다. 최종 제출물과 업무는 직접 작성할 수 있습니다." : "연결 확인 후 사용 가능한 기능이 표시됩니다."}</p><button type="button" onClick={() => loadStatus(projectId,true)} className="mt-3 text-xs text-bb-primary underline">다시 확인</button></div>
       <p className="text-xs leading-relaxed text-bb-text2">AI의 제안은 팀원이 내용을 확인하고 채택할 때 프로젝트에 반영됩니다.</p>
     </div>
