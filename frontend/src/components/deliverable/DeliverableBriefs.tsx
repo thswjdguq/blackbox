@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
+import AgentButton from "@/components/agent/AgentButton";
 import { apiError } from "@/lib/apiError";
 import { sessionGeneration } from "@/lib/sessionCache";
 import type { Brief, BriefSummary } from "@/types/brief";
@@ -10,8 +11,8 @@ import type { Brief, BriefSummary } from "@/types/brief";
  * 제출물에 걸린 과제 안내문(K-31 3장). 요구사항 찾기는 걸린 안내문들을 읽는다.
  * 확정·제출된 제출물에는 걸거나 뗄 수 없다(서버 409와 같은 조건으로 버튼을 끈다)
  */
-export default function DeliverableBriefs({ projectId, deliverableId, briefs, canWrite, locked, onChange }: {
-  projectId: string; deliverableId: string; briefs: BriefSummary[]; canWrite: boolean; locked: boolean;
+export default function DeliverableBriefs({ projectId, deliverableId, deliverableTitle, briefs, canWrite, locked, onChange }: {
+  projectId: string; deliverableId: string; deliverableTitle: string; briefs: BriefSummary[]; canWrite: boolean; locked: boolean;
   onChange: (briefs: BriefSummary[]) => void;
 }) {
   const [all, setAll] = useState<Brief[] | null>(null);
@@ -46,7 +47,11 @@ export default function DeliverableBriefs({ projectId, deliverableId, briefs, ca
           <h2 className="text-sm font-semibold text-bb-text">과제 안내문 <span className="text-bb-text2">{briefs.length}</span></h2>
           <p className="mt-1 text-xs text-bb-text2">요구사항 찾기는 여기에 건 안내문을 읽고 빠졌거나 모호한 요구사항을 찾습니다.</p>
         </div>
-        {editable && !picking && <button type="button" disabled={busy} onClick={() => void openPicker()} className="rounded-lg border border-bb-border px-3 py-1.5 text-xs disabled:opacity-40">안내문 걸기</button>}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* K-31 5장: 걸린 안내문이 없으면 서버가 400(NO_BRIEF)이므로 버튼 대신 걸기를 안내한다 */}
+          {editable && briefs.length > 0 && <AgentButton projectId={projectId} skill="FIND_REQUIREMENT_GAPS" input={{ deliverableId }} titleExtra={deliverableTitle} />}
+          {editable && !picking && <button type="button" disabled={busy} onClick={() => void openPicker()} className="rounded-lg border border-bb-border px-3 py-1.5 text-xs disabled:opacity-40">안내문 걸기</button>}
+        </div>
       </div>
       {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
       {picking && (
@@ -64,7 +69,7 @@ export default function DeliverableBriefs({ projectId, deliverableId, briefs, ca
         </div>
       )}
       {briefs.length === 0 ? (
-        <p className="mt-3 text-xs text-bb-text2">{editable ? <>걸린 안내문이 없습니다. <Link href={`${base}/briefs`} className="text-bb-primary underline">과제 안내문</Link>에 등록한 뒤 거세요.</> : "걸린 안내문이 없습니다."}</p>
+        <p className="mt-3 text-xs text-bb-text2">{editable ? <>걸린 안내문이 없습니다. <Link href={`${base}/briefs`} className="text-bb-primary underline">과제 안내문</Link>에 등록한 뒤 걸면 요구사항 찾기를 쓸 수 있습니다.</> : "걸린 안내문이 없습니다."}</p>
       ) : (
         <ul className="mt-3 space-y-1.5">
           {briefs.map((b) => (
