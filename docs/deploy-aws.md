@@ -390,7 +390,7 @@ docker image prune -a -f      # 컨테이너가 쓰지 않는 이미지를 지�
 
 ### S3 백업(서버)
 
-`scripts/ec2-backup-s3.sh`가 DB 덤프와 업로드 볼륨 압축본을 서버의 임시 폴더(권한 700)에 만든 뒤 S3로 올리고 지운다. 반쯤 쓴 파일이 S3에 남지 않도록 끝까지 만든 것만 올린다. 자동 갱신과 같은 잠금을 써서 이미지를 바꾸는 중에는 기다린다. 실패하면 서비스는 그대로 두고 기록만 남긴다(`journalctl -u blackbox-backup`).
+`scripts/ec2-backup-s3.sh`가 DB 덤프와 업로드 볼륨 압축본을 서버의 임시 폴더(권한 700)에 만든 뒤 S3로 올리고 지운다. 파일 하나하나는 끝까지 만든 것만 올린다. 두 파일을 올린 뒤에는 두 파일의 SHA-256을 적은 `MANIFEST.sha256`을 마지막으로 올린다. **`MANIFEST.sha256`이 있는 폴더만 완성된 백업이다.** 중간에 업로드가 실패한 폴더(예: `db.dump`만 있음)는 서버에 삭제 권한이 없어 그대로 남고, 수명 주기 규칙이 14일 뒤 지운다. 자동 갱신과 같은 잠금을 써서 이미지를 바꾸는 중에는 기다린다. 실패하면 서비스는 그대로 두고 기록만 남긴다(`journalctl -u blackbox-backup`). 스크립트의 회귀 검사는 `bash scripts/test-ec2-backup-s3.sh`이며 CI에서도 돈다.
 
 **버킷(콘솔, 처음 한 번)**: 이름 `blackbox-backups-bucket`(학교 규칙상 `blackbox`로 시작), 서울 리전. 퍼블릭 액세스 모두 차단, 객체 소유권은 버킷 소유자 강제, 기본 암호화 SSE-S3, 버전 관리 끔. 수명 주기 규칙(`expire-backups-14d`, 접두사 필터 `backups/`)으로 현재 버전을 14일 뒤 만료하고, 완료되지 않은 멀티파트 업로드를 1일 뒤 삭제한다. CLI는 8MB가 넘는 파일을 멀티파트로 올리는데, 서버 역할에 `AbortMultipartUpload` 권한이 없어 실패한 업로드의 조각을 이 규칙이 치운다. 스토리지 클래스 전환은 쓰지 않는다(14일 보관에는 최소 보관 기간과 전환 비용이 손해).
 
@@ -427,13 +427,28 @@ ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'sudo cp ~/blackbo
 
 ```bash
 ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'sudo systemctl start blackbox-backup && journalctl -u blackbox-backup -n 3 --no-pager'
-ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'aws s3 ls s3://blackbox-backups-bucket/backups/ | tail -3'
+ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'aws s3 ls --recursive s3://blackbox-backups-bucket/backups/ | grep MANIFEST.sha256 | tail -3'
 ```
 
-**S3에서 되돌리기(서버)**: 고른 시각의 두 파일을 서버로 받은 뒤, 아래 "되돌리기"의 명령을 서버 안에서 같은 순서로 실행한다.
+**S3에서 되돌리기(서버)**: 완성된 백업만 쓴다. 먼저 `MANIFEST.sha256`이 있는 폴더를 고르고(위 확인 명령), 그 폴더를 서버의 `~/restore`로 받은 뒤 체크섬을 확인한다. 세 파일이 모두 있고 `sha256sum -c`가 두 파일 모두 `OK`일 때만 다음 단계로 간다. 하나라도 없거나 다르면 그 폴더는 쓰지 않고 그 이전의 완성된 폴더를 고른다.
 
 ```bash
-ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'mkdir -m 700 -p ~/restore && aws s3 cp --recursive s3://blackbox-backups-bucket/backups/<날짜-시각>/ ~/restore/'
+ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'rm -rf ~/restore && mkdir -m 700 ~/restore && aws s3 cp --recursive s3://blackbox-backups-bucket/backups/<날짜-시각>/ ~/restore/ && cd ~/restore && ls && sha256sum -c MANIFEST.sha256'
+```
+
+확인이 끝나면 아래 순서로 되돌린다. 업로드 파일을 먼저 넣고, backend를 멈춘 채 DB를 복원한 뒤 다시 띄운다. 백업 뒤에 새 마이그레이션이 적용됐으면 `--clean`은 실패하므로 7장의 "DB 되돌리기"를 따른다. 파일은 서버의 `~/restore`에서 읽는다(명령 전체를 따옴표 안에 두어 서버에서 실행한다).
+
+```bash
+ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'docker exec -i blackbox_backend tar xzf - -C /data/uploads < ~/restore/uploads.tar.gz'
+ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'cd ~/blackbox && docker compose stop backend'
+ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'docker exec -i blackbox_db pg_restore -U blackbox -d blackbox_db --clean --if-exists < ~/restore/db.dump'
+ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'cd ~/blackbox && docker compose start backend'
+```
+
+받은 사본에는 계정 정보가 있으므로 되돌린 뒤 지운다.
+
+```bash
+ssh -i ~/.ssh/blackbox.pem ec2-user@team-blackbox.duckdns.org 'rm -rf ~/restore'
 ```
 
 ### PC 백업과 되돌리기
