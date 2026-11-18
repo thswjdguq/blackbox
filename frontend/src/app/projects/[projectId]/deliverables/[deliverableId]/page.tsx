@@ -488,7 +488,7 @@ export default function DeliverableDetailPage() {
                 <ProgressSection progress={progress} progressError={progressError} onRetry={fetchProgress} />
 
                 {deliverable.briefs && (
-                  <DeliverableBriefs projectId={projectId} deliverableId={deliverableId} briefs={deliverable.briefs}
+                  <DeliverableBriefs projectId={projectId} deliverableId={deliverableId} deliverableTitle={deliverable.title} briefs={deliverable.briefs}
                     canWrite={canContribute} locked={locked}
                     onChange={(briefs) => setDeliverable((prev) => (prev ? { ...prev, briefs } : prev))} />
                 )}
