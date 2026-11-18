@@ -38,7 +38,7 @@ class MainMigrationCompatibilityTest {
     }
     @Test void emptyDatabaseMigratesAndRepeatedMigrationDoesNothing() throws Exception {
         var f = flyway(null); f.migrate(); f.validate();
-        assertEquals("38", f.info().current().getVersion().toString());
+        assertEquals("39", f.info().current().getVersion().toString());
         assertEquals(0, f.migrate().migrationsExecuted);
         try (var c = connection()) {
             assertEquals("1", scalar(c, "SELECT count(*) FROM flyway_schema_history WHERE version='25' AND script='V25__agent_proposals.sql'"));
@@ -69,6 +69,40 @@ class MainMigrationCompatibilityTest {
             assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "INSERT INTO tasks(project_id,title,status,created_by) VALUES ('22222222-2222-4222-8222-222222222222','우회 완료','DONE','11111111-1111-4111-8111-111111111111')")).getSQLState());
             execute(c, "UPDATE tasks SET status='DONE',completion_approved_at=now(),completion_approved_by='11111111-1111-4111-8111-111111111111' WHERE id='33333333-3333-4333-8333-333333333333'");
             assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "UPDATE tasks SET completion_approved_at=NULL,completion_approved_by=NULL")).getSQLState());
+        }
+    }
+
+    /** V39(K-41 4장): 검토 요청 알림 종류와 이메일 발송 대기의 제약 */
+    @Test void emailOutboxConstraintsAndReviewRequestedType() throws Exception {
+        flyway(null).migrate();
+        String actor = "11111111-1111-4111-8111-111111111111", recipient = "11111111-1111-4111-8111-222222222222",
+                project = "22222222-2222-4222-8222-222222222222", task = "33333333-3333-4333-8333-333333333333",
+                deliverable = "44444444-4444-4444-8444-444444444444", review = "55555555-5555-4555-8555-555555555555";
+        try (var c = connection()) {
+            execute(c, "INSERT INTO users(id,email,name,password_hash) VALUES ('" + actor + "','actor@example.invalid','요청자','dummy'),('" + recipient + "','recipient@example.invalid','받는 사람','dummy')");
+            execute(c, "INSERT INTO projects(id,name,created_by) VALUES ('" + project + "','메일 검사','" + actor + "')");
+            String notification = "INSERT INTO user_notifications(project_id,recipient_id,actor_id,actor_name,type,event_key,task_title,deliverable_id,review_id,created_at) VALUES ('"
+                    + project + "','" + recipient + "','" + actor + "','요청자','%s','%s','최종 보고서','" + deliverable + "','" + review + "',now())";
+            execute(c, notification.formatted("REVIEW_REQUESTED", "review-requested:" + review));
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, notification.formatted("REVIEW_UNKNOWN", "unknown"))).getSQLState());
+
+            String outbox = "INSERT INTO notification_email_outbox(project_id,recipient_id,actor_id,actor_name,event_type,event_key,task_id,deliverable_id,review_id,target_title,available_at,created_at,updated_at) VALUES ('"
+                    + project + "','%s','" + actor + "','요청자','%s','%s',%s,'대상',now(),now()-interval '1 hour',now()-interval '1 hour')";
+            String taskIds = "'" + task + "',NULL,NULL", reviewIds = "NULL,'" + deliverable + "','" + review + "'";
+            execute(c, outbox.formatted(recipient, "TASK_COMPLETION_REQUESTED", "completion:" + task, taskIds));
+            assertEquals("PENDING|0|true", scalar(c, "SELECT status||'|'||attempt_count||'|'||(id IS NOT NULL) FROM notification_email_outbox"));
+            execute(c, outbox.formatted(recipient, "REVIEW_REQUESTED", "review-requested:" + review, reviewIds));
+            // 같은 사건·같은 받는 사람은 한 번만 예약한다
+            assertEquals("23505", assertThrows(SQLException.class, () -> execute(c, outbox.formatted(recipient, "TASK_COMPLETION_REQUESTED", "completion:" + task, taskIds))).getSQLState());
+            // 종류와 대상 id가 맞지 않거나, 자기 자신에게 보내는 대기는 막는다
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, outbox.formatted(recipient, "REVIEW_REQUESTED", "bad-shape", taskIds))).getSQLState());
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, outbox.formatted(actor, "TASK_COMPLETION_REQUESTED", "self", taskIds))).getSQLState());
+            // 처리 중이면 가져간 시각이, 보냄이면 보낸 시각이 있어야 한다
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "UPDATE notification_email_outbox SET status='PROCESSING'")).getSQLState());
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "UPDATE notification_email_outbox SET status='SENT'")).getSQLState());
+            execute(c, "UPDATE notification_email_outbox SET status='PROCESSING',claimed_at=now(),attempt_count=attempt_count+1 WHERE event_type='TASK_COMPLETION_REQUESTED'");
+            assertEquals("t", scalar(c, "SELECT updated_at > created_at FROM notification_email_outbox WHERE event_type='TASK_COMPLETION_REQUESTED'"));
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "UPDATE notification_email_outbox SET attempt_count=-1")).getSQLState());
         }
     }
 }
