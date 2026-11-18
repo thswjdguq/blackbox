@@ -20,6 +20,7 @@ import {
   Unlink,
   ExternalLink,
 } from "lucide-react";
+import { loginHref } from "@/lib/loginRedirect";
 
 const GOOGLE_BLUE = "#4285F4";
 
@@ -89,7 +90,7 @@ function ProfileSettingsContent() {
   useEffect(() => {
     api.get<Profile>("/auth/profile")
       .then(({ data }) => { setProfile(data); setNameEdit(data.name); })
-      .catch(() => router.replace("/login"));
+      .catch(() => router.replace(loginHref()));
 
     fetchCalendar();
 
