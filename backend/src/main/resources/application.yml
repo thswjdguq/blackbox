@@ -89,6 +89,10 @@ spring:
 
 server:
   port: 8080
+  # 리디렉션의 Location을 상대 경로로 보낸다. 운영에서는 nginx가 https를 받고 서버에는 http로 전달하므로,
+  # 절대 주소로 만들면 http://로 나가 브라우저가 https 전환을 한 번 더 거친다(캘린더 OAuth 콜백)
+  tomcat:
+    use-relative-redirects: true
 
 app:
   cors:
