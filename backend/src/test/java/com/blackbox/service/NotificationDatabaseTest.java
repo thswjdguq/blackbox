@@ -58,6 +58,7 @@ class NotificationDatabaseTest {
     @MockitoBean ScoreService scores;
     @MockitoBean FileVaultService storage;
     @MockitoBean ReviewRoundService reviews;
+    @MockitoBean EmailOutboxQueue emailOutbox;
 
     /** 팀장 민지, 팀원 현우(담당)·유나·지호, 관찰자, 다른 프로젝트 사용자. */
     class Team {
