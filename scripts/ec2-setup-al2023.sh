@@ -53,6 +53,8 @@ IMAGE_TAG=main
 CONFIG_BRANCH=main
 # 서버에서 -f 없이 docker compose를 쓰면 이 파일들을 읽는다. 서버 전용 override를 더할 때는 :로 이어 붙인다
 COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+# S3 백업 위치(예: s3://blackbox-backups-bucket/backups). 비어 있으면 S3 백업을 하지 않는다(docs/deploy-aws.md 8장)
+BACKUP_S3_URI=
 # AI 기능. 키는 여기에만 적는다(docs/deploy-aws.md 10장)
 OPENAI_API_KEY=
 LLM_BASE_URL=
@@ -64,9 +66,10 @@ else
   echo ".env가 이미 있어 그대로 둔다"
 fi
 
-echo "== 6. 자동 갱신 타이머(정해진 시각과 켜진 직후)"
-sudo cp ~/blackbox/scripts/systemd/blackbox-update.service ~/blackbox/scripts/systemd/blackbox-update.timer /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl enable -q --now blackbox-update.timer
+echo "== 6. 자동 갱신 타이머(정해진 시각과 켜진 직후)와 S3 백업 타이머(켜진 10분 뒤, 1시간마다)"
+sudo cp ~/blackbox/scripts/systemd/blackbox-update.service ~/blackbox/scripts/systemd/blackbox-update.timer \
+        ~/blackbox/scripts/systemd/blackbox-backup.service ~/blackbox/scripts/systemd/blackbox-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable -q --now blackbox-update.timer blackbox-backup.timer
 
 echo "== 결과"
 TOKEN=$(curl -s -m 3 -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' || true)
@@ -78,3 +81,4 @@ echo "$(sudo docker --version) / $(sudo docker compose version)"
 echo "저장소: $(git -C ~/blackbox log -1 --format='%h %s' | cut -c1-70)"
 echo ".env에 비어 있는 항목: $(grep -E '^[A-Z_]+=$' ~/blackbox/.env | cut -d= -f1 | paste -sd' ')"
 echo "다음 자동 갱신: $(systemctl list-timers blackbox-update.timer --no-legend | awk '{print $1, $2, $3}')"
+echo "다음 S3 백업: $(systemctl list-timers blackbox-backup.timer --no-legend | awk '{print $1, $2, $3}')"
