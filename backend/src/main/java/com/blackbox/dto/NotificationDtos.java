@@ -11,7 +11,8 @@ public final class NotificationDtos {
     public record Item(UUID id, String type, UUID projectId, String actorName, UUID taskId, String taskTitle,
                        UUID fileId, String fileName, Integer fileVersion, UUID messageId,
                        OffsetDateTime createdAt, OffsetDateTime readAt, boolean targetAvailable,
-                       UUID deliverableId, String deliverableTitle, UUID reviewId, UUID commentId) {}
+                       UUID deliverableId, String deliverableTitle, UUID reviewId, UUID commentId,
+                       String message, NotificationPresentation.Target target, String path) {}
 
     public record Page(List<Item> items, String nextCursor, long unreadCount) {}
 
