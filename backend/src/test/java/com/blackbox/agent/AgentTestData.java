@@ -76,13 +76,35 @@ public class AgentTestData {
         });
     }
 
-    /** 제출물, 요구사항, 담당자는 없으면 null을 준다 */
+    /** 제출물, 요구사항, 담당자는 없으면 null을 준다. 끝난 업무는 승인자가 필요하므로 doneTask로 만든다 */
     public void task(Project project, User createdBy, String title, String status, LocalDate dueDate,
                      Deliverable deliverable, DeliverableRequirement requirement, User assignee) {
+        if ("DONE".equals(status)) throw new IllegalArgumentException("끝난 업무는 doneTask로 승인자를 정해 만든다");
+        persistTask(project, createdBy, title, status, dueDate, deliverable, requirement, assignee, null);
+    }
+
+    /**
+     * 끝난 업무. 서비스에서 실제로 만들 수 있는 자료만 만든다(TaskWorkflowService.independentReviewer):
+     * 승인자는 업무를 만든 사람·담당자가 아닌 다른 사람이고, 승인 후 완료 요청 기록은 비어 있다
+     */
+    public void doneTask(Project project, User createdBy, String title, LocalDate dueDate,
+                         Deliverable deliverable, DeliverableRequirement requirement, User assignee, User approvedBy) {
+        if (approvedBy == null) throw new IllegalArgumentException("끝난 업무에는 승인자가 있어야 한다");
+        if (approvedBy.getId().equals(createdBy.getId()) || (assignee != null && approvedBy.getId().equals(assignee.getId())))
+            throw new IllegalArgumentException("승인자는 업무를 만든 사람·담당자와 달라야 한다(담당자·요청자는 자기 업무를 승인할 수 없다)");
+        persistTask(project, createdBy, title, "DONE", dueDate, deliverable, requirement, assignee, approvedBy);
+    }
+
+    private void persistTask(Project project, User createdBy, String title, String status, LocalDate dueDate,
+                             Deliverable deliverable, DeliverableRequirement requirement, User assignee, User approvedBy) {
         inTransaction(() -> {
             Task t = new Task(); t.setProject(em.find(Project.class, project.getId())); t.setCreatedBy(em.find(User.class, createdBy.getId()));
             t.setTitle(title); t.setStatus(status); t.setPriority("MEDIUM"); t.setDueDate(dueDate);
-            if ("DONE".equals(status)) t.setCompletedAt(OffsetDateTime.now());
+            if (approvedBy != null) {
+                OffsetDateTime approvedAt = OffsetDateTime.now();
+                t.setCompletedAt(approvedAt); t.setCompletionApprovedAt(approvedAt);
+                t.setCompletionApprovedBy(em.find(User.class, approvedBy.getId()));
+            }
             if (deliverable != null) t.setDeliverable(em.find(Deliverable.class, deliverable.getId()));
             if (requirement != null) t.setRequirement(em.find(DeliverableRequirement.class, requirement.getId()));
             em.persist(t);
