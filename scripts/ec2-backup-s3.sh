@@ -30,7 +30,11 @@ docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 docker compose exec -T backend tar -C /data/uploads -czf - . > "$tmp/uploads.tar.gz" \
   || { log "업로드 폴더를 압축하지 못했다"; exit 1; }
 
-prefix="$DEST/$(date +%Y%m%d-%H%M%S)"
+# 실행마다 폴더가 겹치지 않게 시각 뒤에 무작위 값을 붙인다. 같은 초에 다시 돌아도 앞의 완성된 백업을 덮어쓰지 않는다
+# (서버는 지울 수 없어, 덮어쓴 뒤 실패하면 완성본이 망가진 채 남는다). 시각이 앞에 있어 이름순이 곧 시간순이다
+run_id=$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')
+[ ${#run_id} = 8 ] || { log "실행 고유값을 만들지 못했다"; exit 1; }
+prefix="$DEST/$(date +%Y%m%d-%H%M%S)-$run_id"
 # 두 파일을 올린 뒤 그 둘의 SHA-256을 적은 MANIFEST.sha256을 마지막에 올린다. 이 파일이 있는 폴더만 완성된 백업이다.
 # 중간에 실패한 폴더는 서버가 지울 수 없어 남는다(수명 주기 규칙이 14일 뒤 지운다). 복원은 MANIFEST가 있는 폴더를 골라 sha256sum -c로 확인한다
 (cd "$tmp" && sha256sum db.dump uploads.tar.gz > MANIFEST.sha256) || { log "체크섬을 만들지 못했다"; exit 1; }
