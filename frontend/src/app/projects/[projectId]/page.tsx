@@ -24,6 +24,7 @@ import {
   Calendar, ChevronRight,
   AlertCircle, Hash, Archive, Download,
 } from "lucide-react";
+import { loginHref } from "@/lib/loginRedirect";
 
 // ── 타입 ─────────────────────────────────────────────────────────────────
 interface ProjectDetail {
@@ -178,7 +179,7 @@ export default function ProjectHomePage() {
       setMembers(memberRes.data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) { router.replace("/login"); return; }
+      if (status === 401) { router.replace(loginHref()); return; }
       if (status === 403 || status === 404) { router.replace("/dashboard"); return; }
       setError("프로젝트 정보를 불러오지 못했습니다.");
     } finally {

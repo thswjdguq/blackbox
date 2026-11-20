@@ -12,9 +12,11 @@ import { apiError } from "@/lib/apiError";
 import { sessionGeneration } from "@/lib/sessionCache";
 import { useMyRole } from "@/hooks/useMyRole";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
+import { forgetBriefs } from "@/components/agent/RequirementProposal";
 import { BRIEF_MAX, BRIEF_TITLE_MAX, briefLength, defaultBriefTitle, normalizeBrief, problem } from "@/lib/briefText";
 import type { Brief } from "@/types/brief";
 import type { FileRecord } from "@/types/vault";
+import { loginHref } from "@/lib/loginRedirect";
 
 type Draft = { mode: "new" | "edit"; title: string; body: string; sourceFileId: string; version: number | null; baseId: string | null };
 const EMPTY: Draft = { mode: "new", title: "", body: "", sourceFileId: "", version: null, baseId: null };
@@ -25,7 +27,10 @@ const fmt = (iso: string) => new Date(iso).toLocaleString("ko-KR", { month: "num
 export default function BriefsPage() {
   const projectId = useParams()?.projectId as string;
   const router = useRouter();
-  const wanted = useSearchParams()?.get("brief") ?? null;
+  const search = useSearchParams();
+  const wanted = search?.get("brief") ?? null;
+  // 제안 카드의 근거에서 왔으면 그 문장의 위치(K-31 6.4). 카드가 해시가 같을 때만 보낸다
+  const mark = { start: Number(search?.get("start")), end: Number(search?.get("end")), hash: search?.get("hash") ?? null };
   const readOnly = useMyRole(projectId) === "OBSERVER";
   const [briefs, setBriefs] = useState<Brief[] | null>(null);
   const [files, setFiles] = useState<FileRecord[]>([]);
@@ -54,13 +59,17 @@ export default function BriefsPage() {
       if (generation !== sessionGeneration()) return;
       setBriefs(b.data); setFiles(f.data); setError("");
     } catch (e) {
-      if ((e as { response?: { status?: number } })?.response?.status === 401) { router.replace("/login"); return; }
+      if ((e as { response?: { status?: number } })?.response?.status === 401) { router.replace(loginHref()); return; }
       if (generation === sessionGeneration()) setError(apiError(e, "안내문을 불러오지 못했습니다."));
     }
   }, [projectId, router]);
   useEffect(() => { void load(); }, [load]);
 
   const current = briefs?.find((b) => b.id === selected) ?? null;
+  // 카드에 저장된 해시가 지금 본문과 같을 때만 위치를 쓴다. 다르면 글자가 밀려 다른 문장을 가리킬 수 있다(6.4)
+  const markable = !!current && current.id === wanted && mark.hash != null && Number.isInteger(mark.start) && Number.isInteger(mark.end)
+    && mark.start >= 0 && mark.end > mark.start && mark.end <= current.body.length;
+  const markFits = markable && current!.bodyHash === mark.hash;
   // 서버 목록과 같은 "최근 수정 먼저"를 지킨다. 응답의 안내문이 목록에 있으면 바꾸고, 없으면(내가 목록을 연 뒤
   // 팀원이 만든 같은 본문이 200으로 온 경우 등, #187 B 리뷰) 넣는다. 200은 수정 시각이 그대로라 자리가 바뀌지 않는다
   const replace = (b: Brief) => setBriefs((list) =>
@@ -84,7 +93,7 @@ export default function BriefsPage() {
         const res = await api.post<Brief>(`/projects/${projectId}/briefs`, payload);
         if (generation !== sessionGeneration()) return;
         replace(res.data);
-        setSelected(res.data.id); setDraft(null);
+        setSelected(res.data.id); setDraft(null); forgetBriefs(projectId);
         // 200은 본문이 같은 안내문이 이미 있어 새로 만들지 않았다는 뜻이다(2.2). 입력한 제목·원본 파일은 쓰이지 않는다
         setNotice(res.status === 200
           ? `본문이 같은 안내문이 이미 있어 그것을 엽니다(입력한 제목과 원본 파일은 바꾸지 않았습니다): ${res.data.title}`
@@ -92,7 +101,7 @@ export default function BriefsPage() {
       } else {
         const res = await api.put<Brief>(`/projects/${projectId}/briefs/${draft.baseId}`, { ...payload, version: draft.version });
         if (generation !== sessionGeneration()) return;
-        replace(res.data); setDraft(null); setConflict(null); setNotice(`안내문을 저장했습니다: ${res.data.title}`);
+        replace(res.data); setDraft(null); setConflict(null); forgetBriefs(projectId); setNotice(`안내문을 저장했습니다: ${res.data.title}`);
       }
     } catch (e) {
       if (generation !== sessionGeneration()) return;
@@ -112,7 +121,7 @@ export default function BriefsPage() {
     pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
       await api.delete(`/projects/${projectId}/briefs/${b.id}`);
-      setBriefs((list) => (list ?? []).filter((x) => x.id !== b.id)); setSelected(null); setNotice(`안내문을 지웠습니다: ${b.title}`);
+      setBriefs((list) => (list ?? []).filter((x) => x.id !== b.id)); setSelected(null); forgetBriefs(projectId); setNotice(`안내문을 지웠습니다: ${b.title}`);
     } catch (e) {
       const p = problem(e);
       setError(p?.detail ?? apiError(e, "지우지 못했습니다."));
@@ -222,7 +231,12 @@ export default function BriefsPage() {
                   </ul>
                 </div>
               )}
-              <pre data-testid="brief-body" className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-lg bg-bb-bg p-4 font-sans text-sm leading-relaxed text-bb-text">{current.body}</pre>
+              {markable && !markFits && <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="brief-mark-stale">제안을 만든 뒤 안내문이 바뀌어 근거 위치를 표시하지 않습니다. 카드에 남은 문장을 확인하세요.</p>}
+              <pre data-testid="brief-body" className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-lg bg-bb-bg p-4 font-sans text-sm leading-relaxed text-bb-text">
+                {markFits
+                  ? <>{current.body.slice(0, mark.start)}<mark ref={(el) => el?.scrollIntoView({ block: "center" })} data-testid="brief-mark" className="rounded bg-amber-300/60 text-inherit dark:bg-amber-400/30">{current.body.slice(mark.start, mark.end)}</mark>{current.body.slice(mark.end)}</>
+                  : current.body}
+              </pre>
             </article>
           ) : briefs && briefs.length > 0 && (
             <p className="text-sm text-bb-text2">{selected ? "그 안내문을 찾을 수 없습니다. 지워졌을 수 있습니다." : "왼쪽에서 안내문을 고르세요."}</p>

@@ -7,6 +7,7 @@ import { Shield, Sun, Moon, Eye, EyeOff, LogIn } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
 import LoginIntroduction from "@/components/LoginIntroduction";
+import { afterLogin } from "@/lib/loginRedirect";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function LoginPage() {
     try {
       await api.post("/auth/login", { email, password });
       setTokens();
-      router.replace("/dashboard");
+      router.replace(afterLogin());
     } catch (err) {
       const message =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
