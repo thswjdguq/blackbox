@@ -696,7 +696,7 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
   return (
     <div
       onClick={() => router.push(`/projects/${projectId}/meetings/${meeting.id}`)}
-      className="group bg-bb-surface border border-bb-border rounded-xl p-5 cursor-pointer
+      className="group bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer
                  hover:border-slate-500 hover:bg-slate-800/80 transition-all flex items-center gap-4"
     >
       {/* 아이콘 */}
@@ -795,7 +795,7 @@ export default function MeetingsPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-36 mb-6" />
@@ -812,10 +812,10 @@ export default function MeetingsPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
 <ProjectNav projectId={projectId} />
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-bb-text">회의</h1>
             <p className="text-sm text-bb-text2 mt-1">총 {meetings.length}개의 회의</p>
@@ -872,7 +872,7 @@ export default function MeetingsPage() {
 
         {/* 월별 그룹 타임라인 */}
         {[...grouped.entries()].map(([month, list]) => (
-          <section key={month} className="mb-8">
+          <section key={month} className="mb-6">
             <h2 className="text-xs font-semibold text-bb-text2 uppercase tracking-wider mb-3 px-1">
               {month}
             </h2>

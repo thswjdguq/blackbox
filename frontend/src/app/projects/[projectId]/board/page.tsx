@@ -111,7 +111,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
         <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
           <div className="animate-pulse space-y-6">
             <div className="h-7 bg-bb-surface rounded-lg w-48" />
@@ -131,7 +131,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 flex items-center justify-center">
         <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
           <div className="text-center">
             <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
@@ -289,7 +289,7 @@ export default function BoardPage() {
 
           {/* 팀원별 진행 현황 */}
           {members.length > 0 && (
-            <div className="md:min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-5">
+            <div className="md:min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-4">
               <h2 className="text-sm font-semibold text-bb-text mb-4 flex items-center gap-2">
                 <FolderKanban size={14} className="text-indigo-400" />
                 팀원별 업무 현황
