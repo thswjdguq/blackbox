@@ -4,6 +4,9 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -23,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 공급자를 openai로 고르고 주소를 바꾸면(OpenAI 호환 게이트웨이) 요청이 그 주소로 우리 설정대로 나가는지 본다.
  * 실제 API 대신 이 테스트가 띄운 서버가 답한다. 키는 가짜다.
  */
+@ExtendWith(OutputCaptureExtension.class)
 @SpringBootTest(properties = {"spring.ai.model.chat=openai", "spring.ai.openai.api-key=test-key-not-real",
         "spring.ai.openai.chat.model=test-model", "app.agent.model-request-timeout=2s"})
 @ActiveProfiles("test")
@@ -63,7 +67,7 @@ class OpenAiWiringTest {
 
     @BeforeEach void reset() { requests.clear(); delayMillis = 0; }
 
-    @Test void requestGoesToTheConfiguredAddressWithOurKeyAndModel() {
+    @Test void requestGoesToTheConfiguredAddressWithOurKeyAndModel(CapturedOutput output) {
         String text = model.generate("지시", "질문", List.of());
 
         assertTrue(model.available());
@@ -71,6 +75,12 @@ class OpenAiWiringTest {
         assertEquals(1, requests.size());
         assertTrue(requests.get(0).startsWith("/v1/chat/completions Bearer test-key-not-real "), requests.get(0));
         assertTrue(requests.get(0).contains("\"model\":\"test-model\""), requests.get(0));
+        // 출력 상한을 정하지 않으면 게이트웨이 기본값(4,096)에 걸려 긴 상태 요약이 빈 답으로 끝났다. application.yml의 값이 실려 가야 한다
+        assertTrue(requests.get(0).contains("\"max_tokens\":8192"), requests.get(0));
+        // 게이트웨이는 기본으로 내부 추론을 켜고 그 토큰도 출력 상한에 든다. 추론에 상한을 다 써 빈 답이 되지 않게 low로 보낸다
+        assertTrue(requests.get(0).contains("\"reasoning_effort\":\"low\""), requests.get(0));
+        // 요청 하나마다 출력 토큰과 끝난 이유가 서버 로그에 남는다(ModelRequestLogConfig)
+        assertTrue(output.getAll().contains("모델 요청 model=test-model 입력 1 출력 1 토큰 종료=STOP 도구 호출 0건"), output.getAll());
     }
 
     /**

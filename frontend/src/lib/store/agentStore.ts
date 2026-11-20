@@ -226,10 +226,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     } catch (err) {
       let message = "요청을 보내지 못했습니다. 연결을 확인해주세요";
       let problem: RunProblem | null = null;
+      // 서버 detail을 그대로 보인다(409의 "앞의 요청이 끝난 뒤 다시 시도해주세요"에 화면이 시간을 덧붙이지 않는다)
       if (err instanceof AgentRunError) {
         message = err.message;
         problem = err.problem;
-        if (err.status === 409) message += " 길어도 2분 안에 끝납니다.";
       }
       update((r) => (r.state === "running" ? { ...r, state: "failed", error: message, problem } : r));
     } finally {

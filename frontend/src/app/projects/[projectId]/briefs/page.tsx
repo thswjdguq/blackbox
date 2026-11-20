@@ -16,6 +16,7 @@ import { forgetBriefs } from "@/components/agent/RequirementProposal";
 import { BRIEF_MAX, BRIEF_TITLE_MAX, briefLength, defaultBriefTitle, normalizeBrief, problem } from "@/lib/briefText";
 import type { Brief } from "@/types/brief";
 import type { FileRecord } from "@/types/vault";
+import { loginHref } from "@/lib/loginRedirect";
 
 type Draft = { mode: "new" | "edit"; title: string; body: string; sourceFileId: string; version: number | null; baseId: string | null };
 const EMPTY: Draft = { mode: "new", title: "", body: "", sourceFileId: "", version: null, baseId: null };
@@ -58,7 +59,7 @@ export default function BriefsPage() {
       if (generation !== sessionGeneration()) return;
       setBriefs(b.data); setFiles(f.data); setError("");
     } catch (e) {
-      if ((e as { response?: { status?: number } })?.response?.status === 401) { router.replace("/login"); return; }
+      if ((e as { response?: { status?: number } })?.response?.status === 401) { router.replace(loginHref()); return; }
       if (generation === sessionGeneration()) setError(apiError(e, "안내문을 불러오지 못했습니다."));
     }
   }, [projectId, router]);

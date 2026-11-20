@@ -20,6 +20,7 @@ import {
   Download, Zap, TrendingDown, TrendingUp,
   ListChecks, MessageSquareText,
 } from "lucide-react";
+import { loginHref } from "@/lib/loginRedirect";
 
 // ── 타입 ──────────────────────────────────────────────────────────────────
 interface TaskSummary {
@@ -144,7 +145,7 @@ export default function AnalyticsPage() {
       setTasks(taskRes.data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) { router.replace("/login"); return; }
+      if (status === 401) { router.replace(loginHref()); return; }
       setError("데이터를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
@@ -479,12 +480,12 @@ export default function AnalyticsPage() {
               )}
             </section>
 
-            {/* ── 검토·피드백 참여 (K-40: 판정에 넣지 않고 횟수와 세부만) ── */}
+            {/* ── 검토·피드백 참여 (K-40: 판정에 넣지 않고 횟수와 세부만). 제목·설명은 서버 항목의 label·description ── */}
             {reviewRows.length > 0 && (
-              <section className="mb-8" aria-label="검토·피드백 참여">
+              <section className="mb-8" aria-label={reviewItem(reviewRows[0])?.label}>
                 <SectionTitle>
                   <MessageSquareText size={13} />
-                  검토·피드백 참여
+                  {reviewItem(reviewRows[0])?.label}
                 </SectionTitle>
                 <p className="mb-3 text-xs text-bb-text2">{reviewItem(reviewRows[0])?.description}</p>
                 <div className="grid gap-3 sm:grid-cols-2">

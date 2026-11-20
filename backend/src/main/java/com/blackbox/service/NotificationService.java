@@ -36,6 +36,7 @@ public class NotificationService {
     private final UserNotificationRepository notifications;
     private final ProjectMemberRepository members;
     private final ProjectAccessChecker access;
+    private final NotificationPresentationFactory presentations = new NotificationPresentationFactory();
 
     public NotificationService(UserNotificationRepository notifications, ProjectMemberRepository members,
                                ProjectAccessChecker access) {
@@ -182,10 +183,12 @@ public class NotificationService {
     }
 
     private NotificationDtos.Item item(UserNotification n, boolean taskExists) {
+        var presentation = presentations.create(n);
         return new NotificationDtos.Item(n.getId(), n.getType(), n.getProjectId(), n.getActorName(), n.getTaskId(),
                 n.getTaskTitle(), n.getFileId(), n.getFileName(), n.getFileVersion(), n.getMessageId(),
                 utc(n.getCreatedAt()), utc(n.getReadAt()), taskExists,
-                n.getDeliverableId(), n.getDeliverableId()==null?null:n.getTaskTitle(), n.getReviewId(), n.getCommentId());
+                n.getDeliverableId(), n.getDeliverableId()==null?null:n.getTaskTitle(), n.getReviewId(), n.getCommentId(),
+                presentation.message(), presentation.target(), presentation.path());
     }
 
     // ── cursor: 정렬 위치(created_at, id)만 담는다. 권한 판정에는 쓰지 않는다 ───────

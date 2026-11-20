@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -79,6 +80,19 @@ class SpringAiAgentModelTest {
         AgentModelException empty = assertThrows(AgentModelException.class,
                 () -> new SpringAiAgentModel(Optional.of(stub(new ArrayList<>(), " "))).generate("지시", "자료", List.of()));
         assertEquals(AgentModelException.Reason.FAILED, empty.reason());
+        assertEquals("모델이 빈 응답을 돌려줬습니다", empty.getMessage());
+    }
+
+    @Test void anEmptyAnswerCutByTheOutputLimitSaysSo() {
+        // 실서버에서 상태 요약이 출력 상한에 걸려 빈 답으로 끝났다. 원인을 로그에서 바로 알 수 있게 다른 문구로 올린다
+        for (String reason : List.of("length", "MAX_TOKENS")) {
+            ChatModel cut = prompt -> new ChatResponse(List.of(new Generation(new AssistantMessage(""),
+                    ChatGenerationMetadata.builder().finishReason(reason).build())));
+            AgentModelException e = assertThrows(AgentModelException.class,
+                    () -> new SpringAiAgentModel(Optional.of(cut)).generate("지시", "자료", List.of()));
+            assertEquals(AgentModelException.Reason.FAILED, e.reason());
+            assertEquals("모델의 답이 출력 상한에 걸려 잘렸습니다", e.getMessage(), reason);
+        }
     }
 
     /** 실제 공급자처럼 도구를 받을 수 있는 옵션을 내놓는다. Spring AI 2.0은 모델의 옵션이 이 모양일 때 도구를 실어 보낸다 */
