@@ -133,7 +133,7 @@ export default function BriefsPage() {
   return (
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
         <ProjectNav projectId={projectId} />
         <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
           <div>
@@ -166,7 +166,7 @@ export default function BriefsPage() {
 
           {/* 등록·수정 */}
           {draft ? (
-            <form aria-label={draft.mode === "new" ? "새 안내문" : "안내문 고치기"} className="space-y-4 rounded-xl border border-bb-border bg-bb-surface p-5"
+            <form aria-label={draft.mode === "new" ? "새 안내문" : "안내문 고치기"} className="space-y-4 rounded-xl border border-bb-border bg-bb-surface p-4"
               onSubmit={(e) => { e.preventDefault(); void save(); }}>
               <h2 className="font-semibold text-bb-text">{draft.mode === "new" ? "새 안내문" : "안내문 고치기"}</h2>
               <label className="block text-sm">제목 {draft.mode === "new" && <span className="text-bb-text2">(비우면 본문의 첫 줄)</span>}
@@ -205,7 +205,7 @@ export default function BriefsPage() {
               </div>
             </form>
           ) : current ? (
-            <article aria-label="안내문" className="space-y-4 rounded-xl border border-bb-border bg-bb-surface p-5">
+            <article aria-label="안내문" className="space-y-4 rounded-xl border border-bb-border bg-bb-surface p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="font-semibold text-bb-text break-all">{current.title}</h2>
