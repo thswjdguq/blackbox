@@ -37,11 +37,19 @@ export function columns(scores: ScoreEntry[], pick: (s: ScoreEntry) => { code: s
   return Array.from(seen.values());
 }
 
-/** 칸에 쓸 횟수 글. 회의처럼 total이 있으면 "1/4", 회의가 없으면 "회의 없음" */
+/**
+ * 칸에 쓸 횟수 글. 회의처럼 total이 있으면 "1/4".
+ * 전체 수가 0이면(회의를 열지 않은 팀) 확인할 대상이 없으므로 교수용 PDF(#194, ReportService)와 같은 "대상 없음 · 0/0"
+ */
 export function countText(i: { count?: number; total?: number }): string | null {
   if (i.count == null) return null;
-  if (i.total != null) return i.total === 0 ? "회의 없음" : `${i.count}/${i.total}`;
+  if (i.total != null) return i.total === 0 ? `대상 없음 · ${i.count}/0` : `${i.count}/${i.total}`;
   return `${i.count}건`;
+}
+
+/** 확인할 대상이 없는 항목(전체 수 0). 충족·미충족 표시 없이 글만 보인다 */
+export function noTarget(i: { total?: number }): boolean {
+  return i.total === 0;
 }
 
 /** GET은 점수순, 재계산은 멤버순으로 와서 순서가 바뀌므로 화면은 이름순으로 고정한다 */

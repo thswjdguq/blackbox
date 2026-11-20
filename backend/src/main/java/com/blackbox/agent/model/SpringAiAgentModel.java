@@ -46,7 +46,9 @@ public class SpringAiAgentModel implements AgentModel {
             logCall(response, started);
             String text = response == null || response.getResult() == null ? null : response.getResult().getOutput().getText();
             if (text == null || text.isBlank()) {
-                throw new AgentModelException(AgentModelException.Reason.FAILED, "모델이 빈 응답을 돌려줬습니다", null);
+                String message = truncated(finishReason(response))
+                        ? "모델의 답이 출력 상한에 걸려 잘렸습니다" : "모델이 빈 응답을 돌려줬습니다";
+                throw new AgentModelException(AgentModelException.Reason.FAILED, message, null);
             }
             return text;
         } catch (AgentModelException e) {
@@ -56,12 +58,22 @@ public class SpringAiAgentModel implements AgentModel {
         }
     }
 
-    /** 사용량 한도를 따져 볼 수 있게 호출마다 모델, 걸린 시간, 토큰 수를 남긴다. 도구를 부르며 오간 요청은 합쳐서 한 줄이다 */
+    /** 사용량 한도를 따져 볼 수 있게 호출마다 모델, 걸린 시간, 토큰 수, 마지막 답이 끝난 이유를 남긴다. 도구를 부르며 오간 요청은 합쳐서 한 줄이다 */
     private static void logCall(ChatResponse response, long startedNanos) {
         if (response == null) return;
         Usage usage = response.getMetadata().getUsage();
-        log.info("모델 호출 model={} {}ms 입력 {} 출력 {} 토큰", response.getMetadata().getModel(),
-                (System.nanoTime() - startedNanos) / 1_000_000, usage.getPromptTokens(), usage.getCompletionTokens());
+        log.info("모델 호출 model={} {}ms 입력 {} 출력 {} 토큰 종료={}", response.getMetadata().getModel(),
+                (System.nanoTime() - startedNanos) / 1_000_000, usage.getPromptTokens(), usage.getCompletionTokens(),
+                finishReason(response));
+    }
+
+    private static String finishReason(ChatResponse response) {
+        return response == null || response.getResult() == null ? null : response.getResult().getMetadata().getFinishReason();
+    }
+
+    /** 공급자마다 이름이 다르다: OpenAI 호환은 length, Bedrock·Anthropic은 max_tokens, Gemini는 MAX_TOKENS */
+    private static boolean truncated(String finishReason) {
+        return finishReason != null && (finishReason.equalsIgnoreCase("length") || finishReason.equalsIgnoreCase("max_tokens"));
     }
 
     /** 우리 도구를 Spring AI가 부를 수 있는 모양으로 감싼다. 도구 쪽은 Spring AI를 모른다 */
