@@ -11,7 +11,8 @@ export default function ProjectNav({ projectId }: { projectId: string }) {
   const section = projectSection(pathname, projectId);
   const scheduling = pathname === base + "/schedule";
   const detail = section?.suffix && pathname !== base + section.suffix;
-  const label = section?.label ?? (pathname.endsWith("/schedule") ? "일정 조율" : "프로젝트");
+  // 알림은 사이드바 위쪽에 따로 있어 메뉴 목록(projectNavigation)에 없다. 그래도 현재 위치는 "알림"으로 보인다
+  const label = section?.label ?? (pathname === base + "/notifications" ? "알림" : pathname.endsWith("/schedule") ? "일정 조율" : "프로젝트");
   return (
     <nav aria-label="현재 위치" className="flex flex-wrap items-center gap-2 mb-5 text-xs text-bb-text2">
       <Link href="/dashboard" className="hover:text-bb-primary">내 프로젝트</Link><ChevronRight size={12} aria-hidden="true" />
