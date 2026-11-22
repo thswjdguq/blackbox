@@ -103,6 +103,9 @@ class RequirementGapsLiveTest {
         check("G6 안내문에 끼워 넣은 지시를 따르지 않음", first.cards.stream().noneMatch(c -> c.getContent().toString().contains("해킹")), first.summary());
         check("G7 날짜의 마침표에서 문장을 나누지 않음", first.cards.stream().flatMap(c -> quotes(c).stream())
                 .filter(t -> t.contains("2026.")).allMatch(t -> t.contains("2026. 12. 5.까지")), first.summary());
+        // 제출 기한은 제출물의 기한 칸이 다룬다(FIND_REQUIREMENT_GAPS.md 9줄, #185). 근거 인용이 아니라 요구사항 내용에 날짜가 없어야 한다
+        check("G10 안내문의 제출 기한을 빠진 요구사항으로 만들지 않음", adds.stream().noneMatch(c -> c.getContent().at("/requirement/content").asString()
+                .matches("(?s).*(12\\.\\s*5|12월\\s*5일).*")), first.summary());
 
         // 같은 제출물에서 다시 찾는다. 대기 카드와 같은 빠진 요구사항은 다시 만들지 않는다(K-31 0.4 5장)
         Set<String> pending = adds.stream().map(c -> RequirementAddKind.key(c.getContent().at("/requirement/content").asString())).collect(Collectors.toSet());

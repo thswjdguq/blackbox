@@ -10,9 +10,10 @@ import { shortDate } from "@/lib/due";
 import { useAgentStore } from "@/lib/store/agentStore";
 import type { AgentStatus, Proposal } from "@/types/agent";
 import ProposalEditor from "./ProposalEditor";
+import { PlanBriefNote, RequirementProposalBody, RequirementProposalEditor, forgetBriefs, isQuestionOnly, isRequirementProposal } from "./RequirementProposal";
 import { sessionGeneration } from "@/lib/sessionCache";
 
-const KIND_LABEL: Record<string, string> = { DELIVERABLE_PLAN: "최종 제출물 계획", TASKS: "업무" };
+const KIND_LABEL: Record<string, string> = { DELIVERABLE_PLAN: "최종 제출물 계획", TASKS: "업무", REQUIREMENT_ADD: "빠진 요구사항", REQUIREMENT_REVISE: "모호한 요구사항" };
 const STATUS_LABEL: Record<string, string> = { PENDING: "대기", ACCEPTED: "채택됨", REJECTED: "거절됨" };
 const STATUS_CLS: Record<string, string> = {
   PENDING: "bg-amber-500/15 text-amber-400",
@@ -79,7 +80,10 @@ export default function ProposalCard({
   const loadDeliverables = useAgentStore((s) => s.loadDeliverables);
   const deliverables = useAgentStore((s) => s.deliverables[projectId]);
 
-  const known = p.kind === "DELIVERABLE_PLAN" || p.kind === "TASKS";
+  const planOrTasks = p.kind === "DELIVERABLE_PLAN" || p.kind === "TASKS";
+  const requirementCard = isRequirementProposal(p);
+  const questionOnly = isQuestionOnly(p);
+  const known = planOrTasks || requirementCard;
   const needsRequirementNames = open && p.kind === "TASKS" && p.content.tasks.some((t) => t.requirementId);
   useEffect(() => {
     if (needsRequirementNames) loadDeliverables(projectId);
@@ -98,8 +102,12 @@ export default function ProposalCard({
       ? `요구사항 ${p.content.requirements.length} · 업무 ${p.content.tasks.length} · ${p.content.deliverable.dueDate ? `기한 ${shortDate(p.content.deliverable.dueDate)} · ${p.content.deliverable.dueTime ?? "시간 미지정"}` : "기한 없음"}`
       : p.kind === "TASKS"
         ? `업무 ${p.content.tasks.length} · ${stageTitle(p.content.deliverableId)}`
-        : "";
-  const needs = known ? needsCount(p) : 0;
+        : p.kind === "REQUIREMENT_ADD"
+          ? `요구사항 추가 · ${stageTitle(p.content.deliverableId)}`
+          : p.kind === "REQUIREMENT_REVISE"
+            ? `${questionOnly ? "확인 필요" : "요구사항 수정"} · ${stageTitle(p.content.deliverableId)}`
+            : "";
+  const needs = planOrTasks ? needsCount(p) : 0;
   const noDue = p.kind === "DELIVERABLE_PLAN" && !p.content.deliverable.dueDate;
   const duplicate = p.kind === "DELIVERABLE_PLAN" && status.stages.some((s) => s.title === p.content.deliverable.title);
   const acceptLabel =
@@ -107,7 +115,11 @@ export default function ProposalCard({
       ? `채택 — 최종 제출물 1 · 요구사항 ${p.content.requirements.length} · 업무 ${p.content.tasks.length} 만들기`
       : p.kind === "TASKS"
         ? `채택 — 업무 ${p.content.tasks.length}개 만들기`
-        : "";
+        : p.kind === "REQUIREMENT_ADD"
+          ? "채택 — 요구사항 추가"
+          : p.kind === "REQUIREMENT_REVISE"
+            ? "채택 — 요구사항을 수정안으로 바꾸기"
+            : "";
 
   const afterDecision = (next: Proposal) => {
     putProposal(next);
@@ -135,7 +147,7 @@ export default function ProposalCard({
     try {
       const { data } = kind === "accept" ? await acceptProposal(projectId, p.id) : await rejectProposal(projectId, p.id);
       if (generation !== sessionGeneration()) return;
-      if (kind === "accept" && data.status === "ACCEPTED") bumpRecords();
+      if (kind === "accept" && data.status === "ACCEPTED") { bumpRecords(); forgetBriefs(projectId); }
       setConfirmReject(false);
       afterDecision(data);
     } catch (err) {
@@ -181,6 +193,7 @@ export default function ProposalCard({
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="rounded bg-bb-surface2 px-1.5 py-0.5 text-bb-text2">{KIND_LABEL[p.kind] ?? "제안"}</span>
+            {questionOnly && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-500">확인 필요</span>}
             <span className={`rounded px-1.5 py-0.5 ${STATUS_CLS[p.status] ?? ""}`}>{STATUS_LABEL[p.status] ?? p.status}</span>
           </p>
           <p className="mt-1 text-sm font-medium text-bb-text break-words">{p.title}</p>
@@ -194,13 +207,17 @@ export default function ProposalCard({
       {open && editing && (
         <div className="border-t border-bb-border px-3 pb-3 pt-2">
           {error && <p role="alert" className="mb-2 text-xs text-red-400">{error}</p>}
-          <ProposalEditor
-            proposal={p}
-            projectId={projectId}
-            initialProblems={editing.problems}
-            focusDue={editing.focusDue}
-            onDone={() => { setEditing(null); setError(""); }}
-          />
+          {requirementCard ? (
+            <RequirementProposalEditor proposal={p} projectId={projectId} onDone={() => { setEditing(null); setError(""); }} />
+          ) : (
+            <ProposalEditor
+              proposal={p}
+              projectId={projectId}
+              initialProblems={editing.problems}
+              focusDue={editing.focusDue}
+              onDone={() => { setEditing(null); setError(""); }}
+            />
+          )}
         </div>
       )}
 
@@ -214,8 +231,11 @@ export default function ProposalCard({
 
           {!known && <p className="text-xs text-bb-text2">이 화면에서는 아직 열 수 없는 제안입니다.</p>}
 
+          {requirementCard && <RequirementProposalBody proposal={p} projectId={projectId} />}
+
           {p.kind === "DELIVERABLE_PLAN" && (
             <>
+              <PlanBriefNote projectId={projectId} briefId={p.content.briefId} briefBodyHash={p.content.briefBodyHash} />
               <dl className="grid grid-cols-[4rem_1fr] gap-x-2 gap-y-1 text-xs">
                 <dt className="text-bb-text2">최종 제출물</dt><dd className="text-bb-text"><Value text={p.content.deliverable.title} /></dd>
                 <dt className="text-bb-text2">기한</dt><dd className="text-bb-text">{p.content.deliverable.dueDate ?? <span className="text-amber-400">없음</span>} · {p.content.deliverable.dueTime ? `${p.content.deliverable.dueTime} (한국 시간)` : "시간 미지정"}</dd>
@@ -233,7 +253,7 @@ export default function ProposalCard({
             </>
           )}
 
-          {known && (
+          {planOrTasks && (
             <div>
               <p className="text-xs font-medium text-bb-text2">
                 업무 {p.content.tasks.length}
@@ -288,7 +308,7 @@ export default function ProposalCard({
             ) : (
               <div className="space-y-1.5">
                 <div className="flex flex-wrap gap-2">
-                  {known && (
+                  {known && !questionOnly && (
                     <button
                       type="button"
                       disabled={!!busy || noDue}
@@ -313,7 +333,8 @@ export default function ProposalCard({
                     거절
                   </button>
                 </div>
-                {known && <p className="text-[11px] text-bb-text2">담당자는 만든 뒤 업무 보드에서 정합니다.</p>}
+                {planOrTasks && <p className="text-[11px] text-bb-text2">담당자는 만든 뒤 업무 보드에서 정합니다.</p>}
+                {questionOnly && <p className="text-[11px] text-bb-text2">안내문만으로 정할 수 없어 채택할 수 없습니다. 교수님께 확인한 뒤 요구사항을 직접 고치고 이 제안은 거절로 닫으세요.</p>}
               </div>
             )
           )}
@@ -326,7 +347,8 @@ export default function ProposalCard({
                   <Link key={l.href} href={l.href} onClick={onNavigate} className="text-bb-primary underline hover:no-underline">{l.label}</Link>
                 ))}
               </div>
-              <p className="text-[11px] text-bb-text2">담당자는 업무 보드에서 정하세요.</p>
+              {p.results?.assessmentCleared && <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="assessment-cleared">요구사항 문구가 바뀌어 충족 확인이 풀렸습니다. 다시 확인해 주세요.</p>}
+              {planOrTasks && <p className="text-[11px] text-bb-text2">담당자는 업무 보드에서 정하세요.</p>}
             </div>
           )}
           {p.status === "REJECTED" && decided}
@@ -347,6 +369,7 @@ function acceptedLinks(p: Proposal, projectId: string): { label: string; href: s
       { label: `업무 ${r.taskIds.length}개 보기`, href: `${base}/board?deliverable=${r.deliverableId}` },
     ];
   }
+  if (isRequirementProposal(p)) return [{ label: "최종 제출물에서 요구사항 보기", href: `${base}/deliverables/${p.content.deliverableId}` }];
   if (p.kind === "TASKS") {
     if (r.taskIds.length === 1) return [{ label: "업무 열기", href: `${base}/board?task=${r.taskIds[0]}` }];
     if (p.content.deliverableId) return [{ label: `업무 ${r.taskIds.length}개 보기`, href: `${base}/board?deliverable=${p.content.deliverableId}` }];
