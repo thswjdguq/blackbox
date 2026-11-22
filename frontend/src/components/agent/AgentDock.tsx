@@ -6,8 +6,11 @@ import { Send, Sparkles, X } from "lucide-react";
 import { useAgentStore } from "@/lib/store/agentStore";
 import { BRIEF_MAX, buttonSkills, canAsk, canBreakDown, breakDownUnavailableReason, introSkills, QUESTION_MAX, SKILLS, skillLabel, suggestFor } from "@/lib/agent/skills";
 import { shortDate } from "@/lib/due";
+import { sessionGeneration } from "@/lib/sessionCache";
 import RunEntryView from "./RunEntryView";
 import ProposalList from "./ProposalList";
+import { useBriefs } from "./RequirementProposal";
+import { briefLength } from "@/lib/briefText";
 
 const EXAMPLES = ["늦은 업무가 있나요?", "이번 주에 끝내야 할 일은 무엇인가요?", "일이 몰린 사람이 있나요?"];
 
@@ -57,6 +60,14 @@ export default function AgentDock() {
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState<Pending>(null);
   const [brief, setBrief] = useState("");
+  // K-31 4장: 안내문 공간에 저장된 안내문으로 계획을 만든다. 비어 있으면 붙여 넣은 글로 만든다.
+  // 도우미 창은 프로젝트·계정을 옮겨도 남으므로, 고른 id를 그 프로젝트·세션에 묶고 지금 목록에 있을 때만 쓴다(#189 리뷰)
+  const savedBriefs = useBriefs(projectId ?? "", !!projectId && pending?.skill === "PLAN_FROM_BRIEF");
+  const briefKey = `${projectId}:${sessionGeneration()}`;
+  const [picked, setPicked] = useState<{ key: string; id: string } | null>(null);
+  const pickedBrief = picked && picked.key === briefKey && savedBriefs?.some((b) => b.id === picked.id) ? picked.id : "";
+  const setPickedBrief = (id: string) => setPicked(id ? { key: briefKey, id } : null);
+  const briefChars = briefLength(brief), briefTooLong = briefChars > BRIEF_MAX;
   const [pickedDeliverable, setPickedDeliverable] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dockRef = useRef<HTMLElement>(null);
@@ -85,7 +96,7 @@ export default function AgentDock() {
   // 다른 프로젝트로 가면 고르던 입력은 버린다
   useEffect(() => {
     setPending(null);
-    setQuestion(""); setBrief(""); setPickedDeliverable("");
+    setQuestion(""); setBrief(""); setPickedDeliverable(""); setPicked(null);
   }, [projectId]);
 
   // 전체 화면 대화 상자에서는 키보드 초점이 뒤의 업무 화면으로 빠져나가지 않게 한다.
@@ -172,9 +183,10 @@ export default function AgentDock() {
           onSubmit={(e) => {
             e.preventDefault();
             const text = brief.trim();
-            if (!text || running) return;
-            start("PLAN_FROM_BRIEF", { briefText: text });
-            setBrief("");
+            if ((!text && !pickedBrief) || running || (!pickedBrief && briefTooLong)) return;
+            // 저장된 안내문으로 실행하면 붙여 넣은 글은 쓰지 않고 남겨 둔다(#189 A 리뷰: 말없이 지우지 않기)
+            if (pickedBrief) { start("PLAN_FROM_BRIEF", { briefId: pickedBrief }); setPickedBrief(""); }
+            else { start("PLAN_FROM_BRIEF", { briefText: text }); setBrief(""); }
           }}
           className="mt-2 space-y-2"
         >
@@ -182,16 +194,27 @@ export default function AgentDock() {
           <textarea
             id="agent-brief"
             value={brief}
+            disabled={!!pickedBrief}
             onChange={(e) => setBrief(e.target.value)}
-            maxLength={BRIEF_MAX}
             rows={8}
-            className="w-full resize-y rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm text-bb-text focus:border-bb-primary focus:outline-none"
+            className="w-full resize-y rounded-lg border border-bb-border bg-bb-surface px-3 py-2 text-sm text-bb-text focus:border-bb-primary focus:outline-none disabled:opacity-50"
           />
+          {savedBriefs && savedBriefs.length > 0 && (
+            <label className="block text-xs text-bb-text2">또는 저장된 안내문으로
+              <select aria-label="저장된 안내문" value={pickedBrief} onChange={(e) => setPickedBrief(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-bb-border bg-bb-surface px-2 py-1.5 text-xs text-bb-text">
+                <option value="">붙여 넣은 글로 만들기</option>
+                {savedBriefs.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+              </select>
+            </label>
+          )}
+          {pickedBrief && brief.trim() && <p className="text-[11px] text-bb-text2">붙여 넣은 글은 이번 실행에 쓰지 않고 그대로 남겨 둡니다.</p>}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-bb-text2">{brief.length.toLocaleString()} / {BRIEF_MAX.toLocaleString()}자</span>
+            {/* 서버와 같은 기준(NFC·줄바꿈·앞뒤 공백 정리 뒤)으로 센다. macOS에서 붙여 넣은 한글을 더 세어 막지 않는다 */}
+            <span className={`text-[11px] ${briefTooLong && !pickedBrief ? "text-red-500" : "text-bb-text2"}`}>{briefChars.toLocaleString()} / {BRIEF_MAX.toLocaleString()}자</span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPending(null)} className="px-2 py-1.5 text-xs text-bb-text2 hover:text-bb-text">취소</button>
-              <button type="submit" disabled={!brief.trim() || running} className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-bb-primary-h disabled:opacity-50">
+              <button type="submit" disabled={(!brief.trim() && !pickedBrief) || running || (!pickedBrief && briefTooLong)} className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-bb-primary-h disabled:opacity-50">
                 계획 만들기
               </button>
             </div>
