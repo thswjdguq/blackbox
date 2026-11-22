@@ -85,7 +85,7 @@ export default function NotionConnectPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 flex items-center justify-center">
           <Loader2 size={24} className="animate-spin text-bb-text2" />
         </main>
       </div>
@@ -95,16 +95,16 @@ export default function NotionConnectPage() {
   return (
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
         <div className="max-w-xl">
           <h1 className="text-2xl font-bold text-bb-text mb-1">Notion 연동 설정</h1>
-          <p className="text-sm text-bb-text2 mb-8">
+          <p className="text-sm text-bb-text2 mb-6">
             개인 Notion 워크스페이스에 회의록을 자동으로 내보냅니다.
           </p>
 
           {/* 연결된 상태 */}
           {connected ? (
-            <div className="bg-bb-surface border border-bb-border rounded-xl p-6">
+            <div className="bg-bb-surface border border-bb-border rounded-xl p-5">
               <div className="flex items-center gap-3 mb-4">
                 <CheckCircle2 size={22} className="text-green-400 shrink-0" />
                 <div>
@@ -180,7 +180,7 @@ export default function NotionConnectPage() {
               />
 
               {/* 입력 폼 */}
-              <div className="bg-bb-surface border border-bb-border rounded-xl p-5 space-y-4">
+              <div className="bg-bb-surface border border-bb-border rounded-xl p-4 space-y-4">
                 {error && (
                   <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                     <AlertCircle size={14} className="text-red-400 shrink-0" />

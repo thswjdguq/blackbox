@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
         <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-bb-surface2 rounded w-48" />
@@ -226,10 +226,10 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
         <ProjectNav projectId={projectId} />
         {/* ── 헤더 ──────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-bb-text">활동·기여 기록</h1>
             <p className="text-sm text-bb-text2 mt-1">
@@ -271,7 +271,7 @@ export default function AnalyticsPage() {
 
         {/* ── 활성 경보 ─────────────────────────────────────────────── */}
         {unreadAlerts.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-6">
             <SectionTitle>
               <AlertTriangle size={14} className="text-bb-text2" />
               함께 확인할 기록
@@ -330,7 +330,7 @@ export default function AnalyticsPage() {
         ) : (
           <>
             {/* ── KPI 카드 4개 ────────────────────────────────────── */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-4 gap-4 mb-6">
               <KpiCard
                 label="팀원 수"
                 value={scores.length}
@@ -362,7 +362,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* ── 참여 여부 테이블 ─────────────────────────────────── */}
-            <section className="mb-8">
+            <section className="mb-6">
               <SectionTitle>
                 <ListChecks size={13} />
                 팀원별 항목 참여 여부
@@ -482,7 +482,7 @@ export default function AnalyticsPage() {
 
             {/* ── 검토·피드백 참여 (K-40: 판정에 넣지 않고 횟수와 세부만). 제목·설명은 서버 항목의 label·description ── */}
             {reviewRows.length > 0 && (
-              <section className="mb-8" aria-label={reviewItem(reviewRows[0])?.label}>
+              <section className="mb-6" aria-label={reviewItem(reviewRows[0])?.label}>
                 <SectionTitle>
                   <MessageSquareText size={13} />
                   {reviewItem(reviewRows[0])?.label}
@@ -515,14 +515,14 @@ export default function AnalyticsPage() {
 
             {/* ── 마감 위험도 게이지 ───────────────────────────────── */}
             {risk && (
-              <section className="mb-8">
+              <section className="mb-6">
                 <SectionTitle>
                   <AlertTriangle size={13} />
                   마감 위험도
                 </SectionTitle>
                 <div className="grid grid-cols-2 gap-4">
                   {/* 게이지 */}
-                  <div className="bg-bb-surface border border-bb-border rounded-xl p-6 flex items-center gap-6">
+                  <div className="bg-bb-surface border border-bb-border rounded-xl p-5 flex items-center gap-6">
                     <div className="w-28 h-28 shrink-0">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadialBarChart
@@ -552,7 +552,7 @@ export default function AnalyticsPage() {
                   </div>
 
                   {/* 통계 */}
-                  <div className="bg-bb-surface border border-bb-border rounded-xl p-6 space-y-3">
+                  <div className="bg-bb-surface border border-bb-border rounded-xl p-5 space-y-3">
                     <StatRow label="완료율" value={`${risk.completionRate}%`} />
                     <StatRow label="완료 업무" value={`${risk.doneTasks} / ${risk.totalTasks}개`} />
                     <StatRow label="지연 업무" value={`${risk.overdueTasks}개`} />
@@ -571,7 +571,7 @@ export default function AnalyticsPage() {
 
             {/* ── 팀원별 업무 완료 현황 ───────────────────────────────── */}
             {tasks.length > 0 && scores.length > 0 && (
-              <section className="mb-8">
+              <section className="mb-6">
                 <SectionTitle>
                   <CheckSquare size={14} className="text-indigo-400" />
                   팀원별 업무 완료 현황

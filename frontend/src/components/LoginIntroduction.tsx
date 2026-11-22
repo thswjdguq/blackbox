@@ -9,7 +9,7 @@ export default function LoginIntroduction() {
     </h1>
     <p className="mt-5 max-w-lg break-keep text-sm leading-7 text-bb-text2 sm:text-base">업무를 나누고, 결과를 공유하고, 피드백부터 최종 제출 기록까지 한곳에서 이어가세요.</p>
     <div className="mt-9 hidden lg:block">
-      <div className="rounded-2xl border border-blue-200/70 bg-bb-surface p-5 shadow-sm dark:border-blue-800/50">
+      <div className="rounded-2xl border border-blue-200/70 bg-bb-surface p-4 shadow-sm dark:border-blue-800/50">
         <div className="flex items-center justify-between border-b border-bb-border pb-4">
           <div><p className="text-xs text-bb-text2">프로젝트 예시</p><h2 className="mt-1 text-sm font-semibold">우리 동네 상권 분석</h2></div>
           <span className="flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs text-blue-700 dark:text-blue-300"><Users size={13} />4인 팀</span>
