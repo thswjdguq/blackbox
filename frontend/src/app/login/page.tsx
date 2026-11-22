@@ -65,9 +65,9 @@ export default function LoginPage() {
 
       <main className="mx-auto grid w-full max-w-7xl gap-8 px-6 pb-12 pt-4 sm:px-10 lg:min-h-[calc(100vh-80px)] lg:grid-cols-[1.35fr_1fr] lg:items-center lg:gap-14 lg:py-12">
       <LoginIntroduction />
-      <section aria-labelledby="login-title" className="w-full max-w-md justify-self-center rounded-2xl border border-bb-border bg-bb-surface p-6 shadow-sm sm:p-8 lg:p-10">
+      <section aria-labelledby="login-title" className="w-full max-w-md justify-self-center rounded-2xl border border-bb-border bg-bb-surface p-5 shadow-sm sm:p-8 lg:p-10">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-bb-primary/10 mb-4">
             <Shield size={24} className="text-indigo-500" />
           </div>

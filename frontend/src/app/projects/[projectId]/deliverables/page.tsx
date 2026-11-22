@@ -38,7 +38,7 @@ interface Member {
 
 function SkeletonCard() {
   return (
-    <div className="bg-bb-surface border border-bb-border rounded-xl p-5 animate-pulse">
+    <div className="bg-bb-surface border border-bb-border rounded-xl p-4 animate-pulse">
       <div className="h-4 bg-bb-surface2 rounded w-2/3 mb-3" />
       <div className="h-3 bg-bb-surface2 rounded w-1/3" />
     </div>
@@ -125,7 +125,7 @@ export default function DeliverablesPage() {
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto p-4 md:p-8">
+      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto px-4 py-5 md:px-12 md:py-6">
 <ProjectNav projectId={projectId} />
 
 
@@ -230,7 +230,7 @@ export default function DeliverablesPage() {
               return (
                 <div
                   key={d.id}
-                  className="group bg-bb-surface border border-bb-border rounded-xl p-5 hover:border-indigo-500/40 transition-colors"
+                  className="group bg-bb-surface border border-bb-border rounded-xl p-4 hover:border-indigo-500/40 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <Link href={`/projects/${projectId}/deliverables/${d.id}`} className="flex-1 min-w-0">
