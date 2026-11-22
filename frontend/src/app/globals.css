@@ -10,7 +10,7 @@
 /* ─── Design Tokens (CSS Custom Properties) ─────────────────────────── */
 :root {
   /* Light mode palette */
-  --bb-bg:        249 249 248;   /* workspace canvas */
+  --bb-bg:        241 241 239;   /* workspace canvas: 예전 사이드바 회색. 흰 카드가 떠 보이게 */
   --bb-surface:   255 255 255;   /* workspace surface */
   --bb-surface2:  241 241 239;   /* #F1F5F9 */
   --bb-border:    233 233 231;   /* #E2E8F0 */
@@ -19,7 +19,7 @@
   --bb-accent:    45 212 191;    /* #2DD4BF  teal-400 */
   --bb-text:      55 53 47;      /* #0F172A */
   --bb-text2:     95 94 91;   /* #64748B */
-  --bb-sidebar:   241 241 239;   /* workspace surface */
+  --bb-sidebar:   255 255 255;   /* 사이드바는 흰색, 본문 배경과 자리를 바꿈 */
 }
 
 .dark {

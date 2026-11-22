@@ -13,6 +13,7 @@ import {
   Trash2,
   AlertCircle,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import MyTasks from "@/components/dashboard/MyTasks";
@@ -150,13 +151,15 @@ export default function DashboardPage() {
     setCode("");
   };
 
+  const shown = projects.filter(p => (p.name + " " + (p.courseName ?? "")).toLowerCase().includes(query.trim().toLowerCase()));
+
   return (
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <p className="text-xs font-semibold tracking-widest text-bb-primary mb-2">TEAM WORKSPACE</p><h1 className="text-3xl font-bold text-bb-text">함께 만드는 결과물, 한곳에서.</h1>
             <p className="text-sm text-bb-text2 mt-1">참여 중인 프로젝트 {projects.length}개</p>
@@ -164,7 +167,7 @@ export default function DashboardPage() {
           <div className="flex shrink-0 gap-3">
             <button
               onClick={() => setShowJoin(true)}
-              className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
+              className="bg-bb-surface border border-bb-border hover:bg-bb-surface2 text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
             >
               <Hash size={15} />
               코드 참여
@@ -186,12 +189,15 @@ export default function DashboardPage() {
         {!loading && <MyTasks projects={projects} />}
 
         {/* Project Grid */}
-        <input aria-label="프로젝트 검색" value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="프로젝트 검색" className="mb-5 w-full max-w-md border border-bb-border bg-bb-surface rounded-lg p-3 text-sm" />
+        <div className="relative mx-auto mb-5 w-full max-w-md">
+          <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-bb-text2" />
+          <input type="search" aria-label="프로젝트 검색" value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="프로젝트 검색" className="w-full border border-bb-border bg-bb-surface rounded-lg py-3 pl-9 pr-3 text-sm" />
+        </div>
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-bb-surface border border-bb-border rounded-xl p-6 animate-pulse">
+              <div key={i} className="bg-bb-surface border border-bb-border rounded-xl p-5 animate-pulse">
                 <div className="h-4 bg-bb-surface2 rounded w-2/3 mb-3" />
                 <div className="h-3 bg-bb-surface2 rounded w-1/2 mb-6" />
                 <div className="h-3 bg-bb-surface2 rounded w-full" />
@@ -223,7 +229,7 @@ export default function DashboardPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowJoin(true)}
-                className="bg-bb-surface2 hover:bg-bb-border text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className="bg-bb-surface border border-bb-border hover:bg-bb-surface2 text-bb-text px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <Hash size={15} />
                 코드 참여
@@ -239,9 +245,12 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.filter(p => (p.name + " " + (p.courseName ?? "")).toLowerCase().includes(query.trim().toLowerCase())).map((project) => (
+            {shown.map((project) => (
               <ProjectCard key={project.id} project={project} onDelete={() => setShowDeleteId(project.id)} />
             ))}
+            {/* 마지막 줄이 비면 빈 칸으로 채운다. 한 줄 2개(md)와 3개(lg)는 남는 칸 수가 달라 따로 그린다 */}
+            {Array.from({ length: emptySlots(shown.length, 3) }, (_, i) => <EmptyProjectSlot key={`lg-${i}`} className="hidden lg:block" />)}
+            {Array.from({ length: emptySlots(shown.length, 2) }, (_, i) => <EmptyProjectSlot key={`md-${i}`} className="hidden md:block lg:hidden" />)}
           </div>
         )}
 
@@ -384,6 +393,18 @@ export default function DashboardPage() {
   );
 }
 
+// ── 빈 칸 ───────────────────────────────────────────────────────────────────
+
+/** 한 줄에 perRow개씩 놓을 때 마지막 줄을 채울 빈 칸 수. 프로젝트가 없으면 0 */
+function emptySlots(count: number, perRow: number) {
+  return count === 0 ? 0 : (perRow - (count % perRow)) % perRow;
+}
+
+/** 마지막 줄을 채우는 빈 프로젝트 칸. 꾸밈이라 읽기 도구에는 보이지 않는다 */
+function EmptyProjectSlot({ className }: { className: string }) {
+  return <div aria-hidden="true" data-testid="empty-project-slot" className={`${className} rounded-xl border border-dashed border-bb-border bg-bb-surface/60`} />;
+}
+
 // ── 프로젝트 카드 ───────────────────────────────────────────────────────────
 
 function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => void }) {
@@ -406,7 +427,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
   return (
     <div
       onClick={() => router.push(`/projects/${project.id}`)}
-      className="bg-bb-surface border border-bb-border rounded-xl p-6 cursor-pointer hover:border-bb-primary/30 hover:shadow-sm transition-all group"
+      className="bg-bb-surface border border-bb-border rounded-xl p-5 cursor-pointer hover:border-bb-primary/30 hover:shadow-sm transition-all group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
@@ -464,7 +485,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain bg-bb-surface border border-bb-border rounded-xl p-6 shadow-2xl">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain bg-bb-surface border border-bb-border rounded-xl p-5 shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-bb-text">{title}</h2>
           <button onClick={onClose} className="text-bb-text2 hover:text-bb-text transition-colors p-1 rounded-lg hover:bg-bb-surface2">

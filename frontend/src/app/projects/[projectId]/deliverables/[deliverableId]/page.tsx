@@ -356,7 +356,7 @@ export default function DeliverableDetailPage() {
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto p-4 md:p-8">
+      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto px-4 py-5 md:px-12 md:py-6">
         <ProjectNav projectId={projectId} />
         <Link
           href={`/projects/${projectId}/deliverables`}
@@ -494,7 +494,7 @@ export default function DeliverableDetailPage() {
                 )}
 
                 {/* 요구사항 */}
-                <section className="bg-bb-surface border border-bb-border rounded-xl p-5">
+                <section className="bg-bb-surface border border-bb-border rounded-xl p-4">
                   <h2 className="text-sm font-semibold text-bb-text">
                     요구사항 <span className="text-bb-text2">{deliverable.requirements.length}</span>
                   </h2>
@@ -628,7 +628,7 @@ export default function DeliverableDetailPage() {
                 </section>
 
                 {/* 연결 업무 */}
-                <section className="bg-bb-surface border border-bb-border rounded-xl p-5">
+                <section className="bg-bb-surface border border-bb-border rounded-xl p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-sm font-semibold text-bb-text">연결 업무 {linkedTasks.length}개</h2>
                     {deliverable.requirements.length > 0 && deliverable.status !== "CONFIRMED" && deliverable.status !== "SUBMITTED" && <AgentButton projectId={projectId} skill="BREAK_DOWN_TASKS" input={{deliverableId}} titleExtra={deliverable.title} />}
