@@ -143,7 +143,7 @@ export default function ReviewRoundCard({
   return (
     <section
       data-testid={`round-${round.roundNo}`}
-      className={`bg-bb-surface border rounded-xl p-5 ${round.latest ? "border-bb-border" : "border-bb-border/60"}`}
+      className={`bg-bb-surface border rounded-xl p-4 ${round.latest ? "border-bb-border" : "border-bb-border/60"}`}
     >
       {/* 회차 머리 */}
       <div className="flex flex-wrap items-center gap-2">

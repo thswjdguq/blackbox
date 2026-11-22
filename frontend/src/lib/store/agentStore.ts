@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { getAgentOrigins, getAgentStatus, getProposals } from "@/lib/api/agent";
 import { getDeliverables } from "@/lib/api/deliverable";
-import { AgentRunError, runAgent } from "@/lib/agent/run";
+import { AgentRunError, runAgent, type RunProblem } from "@/lib/agent/run";
 import { onSessionReset, sessionGeneration } from "@/lib/sessionCache";
 import type { AgentOrigins, AgentStatus, Proposal } from "@/types/agent";
 import type { Deliverable } from "@/types/deliverable";
@@ -24,6 +24,8 @@ export interface RunEntry {
   proposalIds: string[];
   state: "running" | "done" | "failed";
   error: string | null;
+  /** 실행 요청이 막혔을 때 서버가 함께 보낸 code와 확장 칸 */
+  problem?: RunProblem | null;
 }
 
 export type ProposalFilter = Proposal["status"];
@@ -223,9 +225,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       });
     } catch (err) {
       let message = "요청을 보내지 못했습니다. 연결을 확인해주세요";
+      let problem: RunProblem | null = null;
       // 서버 detail을 그대로 보인다(409의 "앞의 요청이 끝난 뒤 다시 시도해주세요"에 화면이 시간을 덧붙이지 않는다)
-      if (err instanceof AgentRunError) message = err.message;
-      update((r) => (r.state === "running" ? { ...r, state: "failed", error: message } : r));
+      if (err instanceof AgentRunError) {
+        message = err.message;
+        problem = err.problem;
+      }
+      update((r) => (r.state === "running" ? { ...r, state: "failed", error: message, problem } : r));
     } finally {
       // 끝나면(성공·실패 모두) 상태를 다시 부른다. AI가 꺼졌으면(503) 이걸로 버튼이 사라진다
       if (gen === sessionGeneration()) get().loadStatus(projectId, true);
