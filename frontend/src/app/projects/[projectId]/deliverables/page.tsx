@@ -54,7 +54,6 @@ export default function DeliverablesPage() {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [projectName, setProjectName] = useState("");
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -80,17 +79,15 @@ export default function DeliverablesPage() {
     setLoading(true);
     setError("");
     try {
-      const [delRes, taskRes, memRes, projRes, profileRes] = await Promise.all([
+      const [delRes, taskRes, memRes, profileRes] = await Promise.all([
         getDeliverables(projectId),
         api.get<Task[]>(`/projects/${projectId}/tasks`),
         api.get<Member[]>(`/projects/${projectId}/members`),
-        api.get<{ name: string }>(`/projects/${projectId}`),
         api.get<{ id: string }>("/auth/profile"),
       ]);
       setDeliverables(delRes.data);
       setTasks(taskRes.data);
       setMembers(memRes.data);
-      setProjectName(projRes.data.name);
       setMyUserId(profileRes.data.id);
     } catch (err) {
       setError(apiError(err, "최종 제출물 목록을 불러오지 못했습니다."));
