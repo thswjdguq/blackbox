@@ -265,7 +265,7 @@ function UploadZone({ projectId, onUploaded }: UploadZoneProps) {
   };
 
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       {/* 드롭존 */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -394,7 +394,7 @@ export default function VaultPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-32 mb-6" />
@@ -412,7 +412,7 @@ export default function VaultPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
 <ProjectNav projectId={projectId} />
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
@@ -457,7 +457,7 @@ export default function VaultPage() {
         )}
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           {[
             { label: "등록 파일", value: uniqueFiles, color: "text-indigo-400", icon: Files },
             { label: "전체 버전", value: totalVersions, color: "text-bb-text", icon: Hash },

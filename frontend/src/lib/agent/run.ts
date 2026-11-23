@@ -2,8 +2,17 @@ import api from "@/lib/api";
 import type { AgentEvent } from "@/types/agent";
 
 /** 스트림이 시작되기 전의 실패(HTTP 상태와 detail), 또는 끝 이벤트 없이 끊긴 것(status 0) */
+/** 실행 요청이 막힌 이유. 서버 ProblemDetail의 확장 칸(K-31 8장)을 화면이 안내에 쓴다 */
+export interface RunProblem {
+  code?: string;
+  /** BRIEFS_TOO_LONG: 상한, 지금 합계, 걸린 안내문별 글자 수(건 순서) */
+  limit?: number;
+  total?: number;
+  briefs?: { id: string; title: string; length: number }[];
+}
+
 export class AgentRunError extends Error {
-  constructor(public status: number, detail: string) {
+  constructor(public status: number, detail: string, public problem: RunProblem | null = null) {
     super(detail);
   }
 }
@@ -65,7 +74,8 @@ export async function runAgent(projectId: string, skill: string, input: object, 
     }
     if (!res.ok) {
       const problem = await res.json().catch(() => ({}));
-      throw new AgentRunError(res.status, problem.detail ?? "요청을 처리할 수 없습니다");
+      throw new AgentRunError(res.status, problem.detail ?? "요청을 처리할 수 없습니다",
+        typeof problem.code === "string" ? { code: problem.code, limit: problem.limit, total: problem.total, briefs: Array.isArray(problem.briefs) ? problem.briefs : undefined } : null);
     }
     let ended = false;
     const feed = createEventParser((e) => {

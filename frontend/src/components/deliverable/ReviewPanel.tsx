@@ -336,7 +336,7 @@ function OpenRoundDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="open-round-title">
-      <section className="w-full max-w-lg bg-bb-surface border border-bb-border rounded-xl p-6 space-y-4">
+      <section className="w-full max-w-lg bg-bb-surface border border-bb-border rounded-xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 id="open-round-title" className="text-base font-semibold text-bb-text">
             검토할 파일 등록·선택

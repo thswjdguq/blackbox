@@ -89,7 +89,7 @@ function ConfirmMeetingModal({ rec, projectId, members, durationMin, customDurat
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-bb-surface border border-bb-border rounded-2xl shadow-2xl p-6">
+      <div className="relative w-full max-w-md bg-bb-surface border border-bb-border rounded-2xl shadow-2xl p-5">
         <button onClick={onClose} className="absolute top-4 right-4 text-bb-text2 hover:text-bb-text">
           <X size={16} />
         </button>
@@ -245,12 +245,12 @@ export default function SchedulePage() {
         </div>
       )}
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen p-4 md:p-8">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
         <ProjectNav projectId={projectId} />
         <div className="max-w-2xl">
 
           {/* 헤더 */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2">
               <CalendarClock size={22} className="text-indigo-400" />
               회의 일정 조율
@@ -261,7 +261,7 @@ export default function SchedulePage() {
           </div>
 
           {/* 팀원 캘린더 연동 현황 */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-5">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-bb-text flex items-center gap-2">
                 <Users size={14} className="text-bb-text2" />
@@ -328,7 +328,7 @@ export default function SchedulePage() {
           </div>
 
           {/* 일정 조율 섹션 */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-5">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
             <h2 className="text-sm font-semibold text-bb-text mb-4">일정 조율 설정</h2>
 
             {/* 날짜 범위 */}

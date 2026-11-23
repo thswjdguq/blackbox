@@ -18,10 +18,20 @@ import static org.mockito.Mockito.*;
 
 /** mock 저장소 단위 테스트. 고유 제약·cursor 질의·롤백의 실제 동작은 NotificationDatabaseTest가 맡는다. */
 class NotificationServiceTest {
+    @Test void completionKeyUsesTaskAndDatabasePrecisionAcrossOffsets() {
+        UUID taskId=UUID.randomUUID();
+        OffsetDateTime at=OffsetDateTime.parse("2026-11-23T10:00:00.123456000+09:00");
+        String key=NotificationService.completionKey(taskId,at);
+        assertEquals(key,NotificationService.completionKey(taskId,at.withOffsetSameInstant(ZoneOffset.UTC)));
+        assertEquals(key,NotificationService.completionKey(taskId,at.plusNanos(999)));
+        assertNotEquals(key,NotificationService.completionKey(taskId,at.plusNanos(1000)));
+        assertNotEquals(key,NotificationService.completionKey(UUID.randomUUID(),at));
+    }
     final UserNotificationRepository repo = mock(UserNotificationRepository.class);
     final ProjectRepository projects = mock(ProjectRepository.class);
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
-    final NotificationService service = new NotificationService(repo, members, new ProjectAccessChecker(projects, members));
+    final EmailOutboxQueue emailOutbox = mock(EmailOutboxQueue.class);
+    final NotificationService service = new NotificationService(repo, members, new ProjectAccessChecker(projects, members), emailOutbox);
     final Project project = new Project();
     final User leader = user("팀장"), actor = user("현우"), peer = user("유나"), observer = user("관찰자"), outsider = user("외부");
     final Task task = new Task();
@@ -99,6 +109,27 @@ class NotificationServiceTest {
         assertEquals(first.toInstant(), result.readAt().toInstant());
         assertEquals(ZoneOffset.UTC, result.readAt().getOffset());
         verify(repo, never()).save(any());
+    }
+
+    @Test void completionQueuesOnlyWhenTheAppInsertAddedARow() {
+        task.setCompletionRequestedAt(OffsetDateTime.now());
+        when(repo.insertIgnoringDuplicate(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(1, 0);
+        service.completionRequested(task, actor, List.of(peer));
+        service.completionRequested(task, actor, List.of(peer));
+        verify(emailOutbox, times(1)).task(eq("TASK_COMPLETION_REQUESTED"), anyString(), same(task), same(actor), same(peer), any());
+        verifyNoMoreInteractions(emailOutbox);
+    }
+
+    @Test void reviewQueuesOnlyWhenTheAppInsertAddedARow() {
+        Deliverable d = new Deliverable(); d.setId(UUID.randomUUID()); d.setTitle("합성 보고서");
+        ReviewRound r = new ReviewRound(); r.setId(UUID.randomUUID()); r.setProject(project); r.setDeliverable(d);
+        when(repo.insertReview(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(1, 0);
+        service.reviewEvent("REVIEW_REQUESTED", "REVIEW_REQUESTED:" + r.getId(), r, null, actor, List.of(peer));
+        service.reviewEvent("REVIEW_REQUESTED", "REVIEW_REQUESTED:" + r.getId(), r, null, actor, List.of(peer));
+        verify(emailOutbox, times(1)).review(eq("REVIEW_REQUESTED"), anyString(), same(r), same(actor), same(peer), any());
+        verifyNoMoreInteractions(emailOutbox);
     }
 
     private User leaderLogin() {

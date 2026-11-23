@@ -61,7 +61,7 @@ export default function BeginnerGuide({ toggleLabel, steps, warning, faq, defaul
       </button>
 
       {open && (
-        <div className="mt-3 bg-bb-surface border border-bb-border rounded-xl p-5 space-y-0">
+        <div className="mt-3 bg-bb-surface border border-bb-border rounded-xl p-4 space-y-0">
           {/* 단계 목록 */}
           {steps.map((step, i) => (
             <div key={i} className="flex gap-3">

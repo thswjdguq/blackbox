@@ -36,11 +36,12 @@ public class NotificationService {
     private final UserNotificationRepository notifications;
     private final ProjectMemberRepository members;
     private final ProjectAccessChecker access;
+    private final EmailOutboxQueue emailOutbox;
     private final NotificationPresentationFactory presentations = new NotificationPresentationFactory();
 
     public NotificationService(UserNotificationRepository notifications, ProjectMemberRepository members,
-                               ProjectAccessChecker access) {
-        this.notifications = notifications; this.members = members; this.access = access;
+                               ProjectAccessChecker access, EmailOutboxQueue emailOutbox) {
+        this.notifications = notifications; this.members = members; this.access = access; this.emailOutbox = emailOutbox;
     }
 
     // ── 발행 ──────────────────────────────────────────────────────────────
@@ -69,8 +70,13 @@ public class NotificationService {
 
     /** 요청 시각이 요청 한 번을 구분한다. 보완 후 다시 요청하면 시각이 달라져 새 알림이 된다. */
     public void completionRequested(Task task, User actor, Collection<User> reviewers) {
-        publish(COMPLETION_REQUESTED, "COMPLETION:" + task.getId() + ":" + micros(task.getCompletionRequestedAt()),
+        publish(COMPLETION_REQUESTED, completionKey(task.getId(), task.getCompletionRequestedAt()),
                 task, actor, null, null, reviewers);
+    }
+
+    /** 업무 확인 요청의 사건 식별자. 발행자와 발송 전 재확인이 같은 형식을 사용한다. */
+    public static String completionKey(UUID taskId, OffsetDateTime requestedAt) {
+        return "COMPLETION:" + Objects.requireNonNull(taskId) + ":" + micros(Objects.requireNonNull(requestedAt));
     }
 
     /** 보완 결정은 대기 중인 요청 하나에 한 번만 가능하므로 그 요청 시각을 키로 쓴다. */
@@ -102,10 +108,12 @@ public class NotificationService {
         var file=review.getFile();
         for (User user:candidates) {
             if (user==null || !allowed.contains(user.getId()) || user.getId().equals(actor.getId()) || !recipients.add(user.getId())) continue;
-            notifications.insertReview(project.getId(),user.getId(),actor.getId(),actor.getName(),type,key,
+            OffsetDateTime at = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+            int inserted = notifications.insertReview(project.getId(),user.getId(),actor.getId(),actor.getName(),type,key,
                     review.getDeliverable().getTitle(),review.getDeliverable().getId(),review.getId(),commentId,
                     file==null?null:file.getId(),file==null?null:file.getFileName(),file==null?null:file.getVersion(),
-                    OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS));
+                    at);
+            if (inserted == 1) emailOutbox.review(type, key, review, actor, user, at);
         }
     }
 
@@ -114,17 +122,18 @@ public class NotificationService {
         Project project = task.getProject();
         Set<UUID> current = new HashSet<>();
         for (User u : contributors(project)) current.add(u.getId());
-        Set<UUID> recipients = new LinkedHashSet<>();
+        Map<UUID, User> recipients = new LinkedHashMap<>();
         for (User u : candidates) {
-            if (u != null && current.contains(u.getId()) && !u.getId().equals(actor.getId())) recipients.add(u.getId());
+            if (u != null && current.contains(u.getId()) && !u.getId().equals(actor.getId())) recipients.putIfAbsent(u.getId(), u);
         }
         // 한 이벤트의 알림은 같은 시각을 공유한다. 목록 정렬은 id로 동률을 가른다.
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
-        for (UUID recipient : recipients) {
-            notifications.insertIgnoringDuplicate(project.getId(), recipient, actor.getId(), actor.getName(), type,
+        for (var recipient : recipients.entrySet()) {
+            int inserted = notifications.insertIgnoringDuplicate(project.getId(), recipient.getKey(), actor.getId(), actor.getName(), type,
                     eventKey, task.getId(), task.getTitle(), messageId,
                     file == null ? null : file.getId(), file == null ? null : file.getFileName(),
                     file == null ? null : file.getVersion(), now);
+            if (inserted == 1) emailOutbox.task(type, eventKey, task, actor, recipient.getValue(), now);
         }
     }
 

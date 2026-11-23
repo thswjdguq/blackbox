@@ -76,7 +76,7 @@ export default function SignupPage() {
       {/* Card */}
       <div className="w-full max-w-md bg-bb-surface border border-bb-border rounded-xl p-8">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-bb-primary/10 mb-4">
             <Shield size={24} className="text-indigo-500" />
           </div>

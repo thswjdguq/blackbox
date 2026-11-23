@@ -80,7 +80,7 @@ export default function DeliverableFormModal({
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-xl max-h-[90vh] overflow-auto bg-bb-surface border border-bb-border rounded-xl p-6 space-y-4"
+        className="w-full max-w-xl max-h-[90vh] overflow-auto bg-bb-surface border border-bb-border rounded-xl p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 id="deliverable-form-title" className="text-base font-semibold text-bb-text">
