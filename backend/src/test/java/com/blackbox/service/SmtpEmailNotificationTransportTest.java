@@ -99,8 +99,11 @@ class SmtpEmailNotificationTransportTest {
 
     @Test void nothingIsSentWhenDisabledUnconfiguredOrAddressIsNotOne() {
         assertEquals(AUTHENTICATION_FAILURE, new SmtpEmailNotificationTransport(smtp, settings, " ").send(UUID.randomUUID(), TO, content));
-        for (String bad : List.of("a@example.test, b@example.test", "not-an-address", ""))
+        for (String bad : List.of("a@example.test, b@example.test", "Group:alpha@example.test,beta@example.test;",
+                "not-an-address", ""))
             assertEquals(PERMANENT_FAILURE, transport().send(UUID.randomUUID(), bad, content), bad);
+        assertEquals(PERMANENT_FAILURE, new SmtpEmailNotificationTransport(smtp, settings, "Group:" + SENDER + ";")
+                .send(UUID.randomUUID(), TO, content), "보내는 주소도 한 명");
         assertEquals(PERMANENT_FAILURE, transport().send(UUID.randomUUID(), null, content));
         settings.setEnabled(false);
         assertThrows(IllegalStateException.class, () -> transport().send(UUID.randomUUID(), TO, content));
