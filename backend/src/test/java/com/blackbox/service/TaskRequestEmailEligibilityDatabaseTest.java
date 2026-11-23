@@ -29,12 +29,29 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 class TaskRequestEmailEligibilityDatabaseTest {
     @Autowired TaskRequestEmailEligibility eligibility;
+    @Autowired NotificationService notifications;
     @Autowired MailNotificationProperties settings;
     @Autowired EntityManager em;
     @Autowired PlatformTransactionManager transactions;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean ScoreScheduler scoreScheduler;
     record Team(UUID project, UUID actor, UUID assignee, UUID recipient, UUID outsider, UUID task, OffsetDateTime requestedAt, String email) {}
+
+    @Test void notificationStoredByTheProducerCanBeRecheckedWithoutRebuildingItsKey() {
+        Team t=team();
+        UserNotification stored=new TransactionTemplate(transactions).execute(status -> {
+            notifications.completionRequested(em.find(Task.class,t.task()),em.find(User.class,t.actor()),
+                    List.of(em.find(User.class,t.recipient())));
+            return em.createQuery("select n from UserNotification n where n.projectId=:p and n.recipientId=:u",UserNotification.class)
+                    .setParameter("p",t.project()).setParameter("u",t.recipient()).getSingleResult();
+        });
+        try {
+            assertEquals(Optional.of(t.email()),eligibility.currentRecipient(stored));
+        } finally {
+            // #214가 합쳐지면 실제 생산자가 대기도 남긴다. 본인 합성 자료만 종결해 전역 claim 검사를 오염시키지 않는다.
+            jdbc.update("UPDATE notification_email_outbox SET status='SKIPPED' WHERE project_id=? AND status='PENDING'",t.project());
+        }
+    }
 
     @Test void pendingRequestAllowsTheCurrentIndependentReviewerOnly() {
         Team t=team();
@@ -78,7 +95,7 @@ class TaskRequestEmailEligibilityDatabaseTest {
         OffsetDateTime newer=t.requestedAt().plusSeconds(1);
         change(t, task -> { task.setCompletionRequestedAt(newer); task.setCompletionRequestedBy(em.find(User.class,t.actor())); });
         assertTrue(eligibility.currentRecipient(old).isEmpty());
-        UserNotification next=snapshot(t,t.recipient()); next.setEventKey("COMPLETION:"+t.task()+":"+NotificationService.micros(newer));
+        UserNotification next=snapshot(t,t.recipient()); next.setEventKey(NotificationService.completionKey(t.task(),newer));
         assertTrue(eligibility.currentRecipient(next).isPresent());
         change(t, task -> task.setCompletionRequestedBy(em.find(User.class,t.assignee())));
         assertTrue(eligibility.currentRecipient(next).isEmpty());
@@ -140,6 +157,6 @@ class TaskRequestEmailEligibilityDatabaseTest {
     private UserNotification snapshot(Team t, UUID recipient) {
         UserNotification request=new UserNotification(); request.setType("TASK_COMPLETION_REQUESTED"); request.setProjectId(t.project());
         request.setActorId(t.actor()); request.setRecipientId(recipient); request.setTaskId(t.task());
-        request.setEventKey("COMPLETION:"+t.task()+":"+NotificationService.micros(t.requestedAt())); return request;
+        request.setEventKey(NotificationService.completionKey(t.task(),t.requestedAt())); return request;
     }
 }
