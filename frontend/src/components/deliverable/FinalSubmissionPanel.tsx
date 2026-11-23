@@ -21,11 +21,11 @@ export default function FinalSubmissionPanel({ projectId, deliverableId, isLeade
   const [channel, setChannel] = useState(submissionMethod ?? ""), [submittedAt, setSubmittedAt] = useState(localNow);
   const [note, setNote] = useState(""), [notice, setNotice] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false), [reason, setReason] = useState("");
-  const initialSubmittedAt = useRef(submittedAt);
+  const [initialSubmittedAt] = useState(submittedAt);
   const pending = useRef(false), sequence = useRef(0);
   const mounted = useRef(true);
   useEffect(() => { setConfirmChecked(false); }, [view?.candidate?.reviewId, view?.candidate?.file.fileId]);
-  const dirty = !!view?.confirmation && !view.submission && (!!note.trim() || channel !== (submissionMethod ?? "") || submittedAt !== initialSubmittedAt.current || submittedChecked || !!reason.trim());
+  const dirty = !!view?.confirmation && !view.submission && (!!note.trim() || channel !== (submissionMethod ?? "") || submittedAt !== initialSubmittedAt || submittedChecked || !!reason.trim());
   useEffect(() => { onDirty(dirty); return () => onDirty(false); }, [dirty, onDirty]);
   useEffect(() => {
     if (!dirty) return;
@@ -46,7 +46,7 @@ export default function FinalSubmissionPanel({ projectId, deliverableId, isLeade
     } catch (e) { if (ticket === sequence.current && generation === sessionGeneration()) setError(apiError(e, "최종본 정보를 불러오지 못했습니다.")); }
     finally { if (ticket === sequence.current) setLoading(false); }
   }, [path]);
-  useEffect(() => { mounted.current = true; void load(); return () => { mounted.current = false; sequence.current++; }; }, [load]);
+  useEffect(() => { const seq = sequence; mounted.current = true; void load(); return () => { mounted.current = false; seq.current++; }; }, [load]);
   const save = async (kind: "confirm" | "submit") => {
     if (!view || pending.current || loading) return;
     if (kind === "confirm" && (!isLeader || !view.canConfirm || !view.candidate || !confirmChecked)) return;
