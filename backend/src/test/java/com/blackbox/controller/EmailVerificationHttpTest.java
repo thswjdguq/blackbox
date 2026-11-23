@@ -8,6 +8,7 @@ import com.blackbox.service.EmailNotificationComposer;
 import com.blackbox.service.EmailNotificationTransport;
 import com.blackbox.service.EmailVerificationService;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,7 +20,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -34,9 +41,12 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/** 이메일 주소 확인 API(K-41 0.5 9장). 실제 PostgreSQL과 인증을 쓰고 SMTP 발송만 mock이다. 메일은 보내지 않는다 */
+/**
+ * 이메일 주소 확인 API(K-41 0.5 9장). 실제 PostgreSQL과 인증을 쓰고 SMTP 발송만 mock이다. 메일은 보내지 않는다.
+ * 토큰 발급은 호출자와 따로 커밋되므로 테스트 트랜잭션으로 감싸지 않는다. 만든 사용자는 테스트마다 지운다(토큰은 cascade)
+ */
 @SpringBootTest(properties = {"app.mail.enabled=true", "app.frontend-base-url=https://app.example.test"})
-@AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
+@AutoConfigureMockMvc @ActiveProfiles("test")
 class EmailVerificationHttpTest {
     @Autowired MockMvc mvc;
     @Autowired EntityManager em;
@@ -44,14 +54,29 @@ class EmailVerificationHttpTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired MailNotificationProperties settings;
     @Autowired EmailVerificationService verification;
+    @Autowired PlatformTransactionManager transactions;
+    @Autowired DataSource dataSource;
     @MockitoBean EmailNotificationTransport transport;
     @MockitoBean ScoreScheduler scoreScheduler;
 
     User member;
+    final List<UUID> created = new ArrayList<>();
+
+    /** 커밋된 테스트용 사용자. 허용 목록은 ASCII 주소만 받으므로(EmailNotificationPolicy) 이름 대신 ASCII 주소를 쓴다 */
+    User person(String name) {
+        User u = new TransactionTemplate(transactions).execute(status -> {
+            User p = user(em, name); p.setEmail("member-" + UUID.randomUUID() + "@example.com"); em.flush(); return p;
+        });
+        created.add(u.getId());
+        return u;
+    }
+
+    @AfterEach void removeCreatedUsers() {
+        for (UUID id : created) jdbc.update("DELETE FROM users WHERE id = ?", id);
+    }
 
     @BeforeEach void setUp() {
-        // 허용 목록은 ASCII 주소만 받으므로(EmailNotificationPolicy) 이름이 들어간 기본 주소 대신 ASCII 주소를 쓴다
-        member = user(em, "확인 회원"); member.setEmail("member-" + UUID.randomUUID() + "@example.com"); em.flush();
+        member = person("확인 회원");
         settings.setEnabled(true);
         settings.setRecipientAllowlist(List.of(member.getEmail()));
         when(transport.send(any(), any(), any())).thenReturn(ACCEPTED);
@@ -119,7 +144,7 @@ class EmailVerificationHttpTest {
     }
 
     @Test void serviceWideDailyBudgetAlsoAnswers429() throws Exception {
-        User other = user(em, "다른 회원"); em.flush();
+        User other = person("다른 회원");
         for (int i = 0; i < 100; i++)
             jdbc.update("INSERT INTO email_verification_tokens(user_id,email,token_hash,created_at,expires_at) VALUES (?,?,?,now()-interval '1 hour',now())",
                     other.getId(), other.getEmail(), "%064d".formatted(i));
@@ -149,10 +174,48 @@ class EmailVerificationHttpTest {
         request(member).andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.detail").value(UNAVAILABLE));
     }
 
+    @Test void lastSlotOfTheServiceBudgetGoesToOnlyOneOfTwoConcurrentUsers() throws Exception {
+        User other = person("다른 회원"), first = person("첫 요청자"), second = person("둘째 요청자");
+        settings.setRecipientAllowlist(List.of(first.getEmail(), second.getEmail()));
+        for (int i = 0; i < 99; i++)   // 서비스 하루 상한(100) 바로 아래
+            jdbc.update("INSERT INTO email_verification_tokens(user_id,email,token_hash,created_at,expires_at) VALUES (?,?,?,now()-interval '1 hour',now())",
+                    other.getId(), other.getEmail(), "%064d".formatted(i));
+        var start = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            Callable<String> call1 = () -> { start.await(); return attempt(first); }, call2 = () -> { start.await(); return attempt(second); };
+            Future<String> a = pool.submit(call1), b = pool.submit(call2);
+            start.countDown();
+            assertEquals(List.of("429", "REQUESTED"), java.util.stream.Stream.of(a.get(30, TimeUnit.SECONDS), b.get(30, TimeUnit.SECONDS)).sorted().toList());
+        }
+        assertEquals(100, jdbc.queryForObject("SELECT count(*) FROM email_verification_tokens WHERE created_at > now() - interval '1 day'", Integer.class));
+    }
+    private String attempt(User u) {
+        try { return verification.request(u).name(); }
+        catch (Rejected e) { return String.valueOf(e.status().value()); }
+    }
+
+    @Test void tokenIsCommittedBeforeTheMailEvenInsideACallerTransaction() throws Exception {
+        var visibleToOtherConnection = new AtomicInteger(-1);
+        when(transport.send(any(), any(), any())).thenAnswer(call -> {
+            try (var c = dataSource.getConnection(); var q = c.prepareStatement("SELECT count(*) FROM email_verification_tokens WHERE user_id = ?")) {
+                q.setObject(1, member.getId());
+                try (var r = q.executeQuery()) { r.next(); visibleToOtherConnection.set(r.getInt(1)); }
+            }
+            return ACCEPTED;
+        });
+        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+            assertEquals(Outcome.REQUESTED, verification.request(member));
+            status.setRollbackOnly();   // 호출자가 롤백해도
+        });
+        assertEquals(1, visibleToOtherConnection.get(), "메일을 보낼 때 이미 다른 연결에서 토큰이 보인다");
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM email_verification_tokens WHERE user_id = ?", Integer.class, member.getId()),
+                "이미 보낸 링크의 토큰은 호출자의 롤백과 함께 사라지지 않는다");
+    }
+
     @Test void confirmRejectsForeignGarbageExpiredAndOldAddressTokens() throws Exception {
         request(member).andExpect(status().isAccepted());
         String token = sentToken();
-        User other = user(em, "다른 회원"); em.flush();
+        User other = person("다른 회원");
         confirm(other, token).andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(INVALID));
         confirm(member, "not-a-token").andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(INVALID));
         confirm(member, null).andExpect(status().isBadRequest());
@@ -162,7 +225,6 @@ class EmailVerificationHttpTest {
 
         jdbc.update("UPDATE email_verification_tokens SET expires_at = now() + interval '10 minutes' WHERE user_id = ?", member.getId());
         jdbc.update("UPDATE users SET email = ? WHERE id = ?", "changed-" + UUID.randomUUID() + "@example.com", member.getId());
-        em.clear();
         User changed = em.find(User.class, member.getId());
         confirm(changed, token).andExpect(status().isConflict()).andExpect(jsonPath("$.detail").value(ADDRESS_CHANGED));
         assertNull(verifiedAt(member));
