@@ -15,7 +15,7 @@ import type { Task } from "@/types/task";
 type Member = { userId: string; name: string; email: string; role: string };
 export default function NotificationsPage() {
   const projectId = useParams()?.projectId as string;
-  return <div className="min-h-screen bg-bb-bg"><Sidebar /><main className="md:ml-64 mt-14 md:mt-0 px-4 md:px-8 py-6 max-w-[1440px]">
+  return <div className="min-h-screen bg-bb-bg"><Sidebar /><main className="md:ml-64 mt-14 md:mt-0 px-4 md:px-12 py-5 md:py-6 max-w-[1440px]">
     <ProjectNav projectId={projectId} /><Inbox key={projectId} projectId={projectId} />
   </main></div>;
 }

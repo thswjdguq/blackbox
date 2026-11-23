@@ -34,6 +34,8 @@ export default function RunEntryView({
   onRetry: () => void;
   onNavigate: () => void;
 }) {
+  // 실행 입력의 제출물(요구사항 찾기·업무 나누기). 막힌 이유를 고치러 갈 곳이다
+  const deliverableId = (entry.input as { deliverableId?: string }).deliverableId;
   const running = entry.state === "running";
   const elapsed = useElapsed(entry.startedAt, running);
   const lines = entry.text ? parseAnswer(entry.text, projectId) : [];
@@ -107,6 +109,24 @@ export default function RunEntryView({
       {entry.state === "failed" && entry.error && (
         <div className="mt-3">
           <p role="alert" className="text-sm text-red-400">{entry.error}</p>
+          {/* 문장은 서버 detail 그대로. 아래는 서버가 함께 보낸 칸으로 고칠 곳을 바로 열게 한다(K-31 8장) */}
+          {entry.problem?.code === "BRIEFS_TOO_LONG" && entry.problem.briefs && (
+            <div className="mt-2 rounded-lg border border-bb-border p-2.5 text-xs" data-testid="briefs-too-long">
+              <p className="text-bb-text2">걸린 안내문 {entry.problem.total?.toLocaleString()} / {entry.problem.limit?.toLocaleString()}자</p>
+              <ul className="mt-1 space-y-0.5">
+                {entry.problem.briefs.map((b) => (
+                  <li key={b.id} className="flex flex-wrap justify-between gap-2">
+                    <Link href={`/projects/${projectId}/briefs?brief=${b.id}`} onClick={onNavigate} className="min-w-0 break-all text-bb-primary underline">{b.title}</Link>
+                    <span className="shrink-0 text-bb-text2">{b.length.toLocaleString()}자</span>
+                  </li>
+                ))}
+              </ul>
+              {deliverableId && <Link href={`/projects/${projectId}/deliverables/${deliverableId}`} onClick={onNavigate} className="mt-1.5 inline-block text-bb-primary underline">최종 제출물에서 안내문 떼기</Link>}
+            </div>
+          )}
+          {entry.problem?.code === "NO_BRIEF" && deliverableId && (
+            <Link href={`/projects/${projectId}/deliverables/${deliverableId}`} onClick={onNavigate} className="mt-1 inline-block text-xs text-bb-primary underline">최종 제출물에서 안내문 걸기</Link>
+          )}
           <button
             type="button"
             onClick={onRetry}

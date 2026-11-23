@@ -90,7 +90,7 @@ export default function ReviewQueue({ projects }: { projects: ProjectRef[] }) {
   if (!items || (items.length === 0 && !failed)) return null;
 
   return (
-    <section className="mb-8" aria-labelledby="review-queue-title">
+    <section className="mb-6" aria-labelledby="review-queue-title">
       <h2 id="review-queue-title" className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-bb-text2">
         <ClipboardCheck size={14} aria-hidden="true" />
         확인할 결과
