@@ -31,6 +31,6 @@ Java25.0.3 / Gradle9.8.2 / PostgreSQL16 전용 DB bb_b_email_outbox_20261119. �
 ## 미검증·다음
 
 - 로컬 전체 backend·worker 경합/lease·SMTP/실제 Gmail·브라우저·운영 적용은 수행하지 않았다. 최종 main 반영 뒤 PR 전체 CI를 별도로 기록한다.
-- worker·SMTP 어댑터·재시도/최대3회·발송 직전 대상/수신 조건 재확인은 후속이다. 이 PR만으로 이메일이 전송되는 상태가 아니므로 Draft로 제출한다.
+- worker·SMTP 어댑터·재시도/최대3회·발송 직전 대상/수신 조건 재확인은 후속이다. 초기 Draft였으며 11/23 최신 main·전체 CI 확인 뒤 저장 단위의 Ready 검토를 요청한다. 실제 발송은 이 PR과 별개로 검증하고 활성화한다.
 - A에게 기존 EmailNotificationTransport의 다섯 결과와 deliveryId/Message-ID를 따르는 SMTP 어댑터를 별도 PR로 요청했다. 운영 MAIL_ENABLED를 활성화하지 않는다.
 - A는 JDBC/JPA 트랜잭션 결합, 새 INSERT 조건과 허용 정책을 검토한다. 후속 발송 경로 준비와 검토 전 B가 직접 병합하지 않는다.
