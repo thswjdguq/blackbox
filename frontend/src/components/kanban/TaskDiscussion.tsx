@@ -54,7 +54,7 @@ export default function TaskDiscussion({ task, members, files, readOnly, focusMe
     } catch(e) { if (request === sequence.current) setError(apiError(e,"대화를 불러오지 못했습니다.")); }
     finally { if (request === sequence.current) setLoading(false); }
   }, [path, page]);
-  useEffect(() => { load(); return () => { sequence.current++; }; }, [load]);
+  useEffect(() => { const seq = sequence; load(); return () => { seq.current++; }; }, [load]);
   useEffect(() => { api.get<{ id: string }>("/auth/profile").then(({data}) => setMyId(data.id)).catch(() => {}); }, []);
   useEffect(() => {
     if (!focusMessageId || !myId || focused.current === focusMessageId) return;
