@@ -101,7 +101,7 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
                 </span>
                 <span className="mt-1 block break-words text-xs text-bb-text2">
                   {t.deliverableTitle ?? "최종 제출물 미연결"}
-                  {locked && <span data-testid="task-locked" className="ml-1.5 rounded bg-bb-surface2 px-1 py-0.5 text-[11px]">확정됨</span>}
+                  {locked && <span data-testid="task-locked" className="ml-1.5 rounded bg-bb-surface2 px-1 py-0.5 text-xs">확정됨</span>}
                   {t.requirementContent && <> · {t.requirementContent}</>}
                 </span>
                 {t.tag && <span className="mt-0.5 block text-xs text-bb-text2">#{t.tag}</span>}

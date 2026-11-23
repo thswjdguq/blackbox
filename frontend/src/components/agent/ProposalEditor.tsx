@@ -11,7 +11,7 @@ import type { PlanContent, Proposal, TasksContent } from "@/types/agent";
 import OptionalDeadlineTime from "@/components/OptionalDeadlineTime";
 
 const INPUT = "w-full rounded-md border border-bb-border bg-bb-surface px-2 py-1.5 text-xs text-bb-text focus:border-bb-primary focus:outline-none";
-const ROW_BTN = "inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-[11px] text-bb-text2 hover:bg-bb-surface2 hover:text-bb-text md:min-h-0 md:py-1";
+const ROW_BTN = "inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-xs text-bb-text2 hover:bg-bb-surface2 hover:text-bb-text md:min-h-0 md:py-1";
 
 type PlanTask = PlanContent["tasks"][number];
 type TaskItem = TasksContent["tasks"][number];
