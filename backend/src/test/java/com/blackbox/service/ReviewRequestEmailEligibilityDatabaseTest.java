@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 class ReviewRequestEmailEligibilityDatabaseTest {
     @Autowired ReviewRequestEmailEligibility eligibility;
+    @Autowired ReviewRoundService producer;
     @Autowired MailNotificationProperties settings;
     @Autowired EntityManager em;
     @Autowired PlatformTransactionManager transactions;
@@ -33,6 +34,22 @@ class ReviewRequestEmailEligibilityDatabaseTest {
     @MockitoBean ScoreScheduler scoreScheduler;
     record Team(UUID project, UUID deliverable, UUID review, UUID actor, UUID uploader, UUID recipient,
                 UUID observer, UUID outsider, UUID file, String email) {}
+
+    @Test void actualProducerNotificationCanBeRecheckedWithoutReconstructingItsEventKey() {
+        Team t=team(true);
+        UserNotification stored=new TransactionTemplate(transactions).execute(tx -> {
+            var opened=producer.open(t.project(),t.deliverable(),new com.blackbox.dto.ReviewDtos.OpenRequest(t.file()),
+                    em.find(User.class,t.actor()));
+            return em.createQuery("select n from UserNotification n where n.projectId=:p and n.recipientId=:u and n.reviewId=:r and n.type='REVIEW_REQUESTED'",UserNotification.class)
+                    .setParameter("p",t.project()).setParameter("u",t.recipient()).setParameter("r",opened.id()).getSingleResult();
+        });
+        try {
+            assertEquals(Optional.of(t.email()),eligibility.currentRecipient(stored));
+        } finally {
+            // 실제 생산자의 예약도 본인 합성 프로젝트에 한해서 종결한다. 다른 claim 검사의 자료와 섞지 않는다.
+            jdbc.update("UPDATE notification_email_outbox SET status='SKIPPED' WHERE project_id=? AND status='PENDING'",t.project());
+        }
+    }
 
     @Test void onlyIndependentContributorsReceiveAndCheckingWritesNothing() {
         Team t=team(true);
@@ -75,9 +92,8 @@ class ReviewRequestEmailEligibilityDatabaseTest {
             next.setFile(em.find(FileVault.class,t.file())); next.setRoundNo(2); em.persist(next); em.flush(); return next.getId();
         });
         assertTrue(eligibility.currentRecipient(old).isEmpty());
-        var current=snapshot(t,t.recipient()); current.setReviewId(newId); current.setEventKey("REVIEW_REQUESTED:"+newId);
+        var current=snapshot(t,t.recipient()); current.setReviewId(newId);
         assertTrue(eligibility.currentRecipient(current).isPresent());
-        current.setEventKey(old.getEventKey()); assertTrue(eligibility.currentRecipient(current).isEmpty());
     }
 
     @Test void approvedAndRevisionRequestedRoundsAreNoLongerPending() {
@@ -98,7 +114,6 @@ class ReviewRequestEmailEligibilityDatabaseTest {
         request=snapshot(t,t.recipient()); request.setProjectId(other); assertTrue(eligibility.currentRecipient(request).isEmpty());
         request=snapshot(t,t.recipient()); request.setActorId(t.outsider()); assertTrue(eligibility.currentRecipient(request).isEmpty());
         request=snapshot(t,t.recipient()); request.setRecipientId(UUID.randomUUID()); assertTrue(eligibility.currentRecipient(request).isEmpty());
-        request=snapshot(t,t.recipient()); request.setEventKey("REVIEW_REQUESTED:"+UUID.randomUUID()); assertTrue(eligibility.currentRecipient(request).isEmpty());
     }
 
     @Test void filelessIntermediateReviewUsesTheProducersSameUploaderRule() {
@@ -130,6 +145,6 @@ class ReviewRequestEmailEligibilityDatabaseTest {
     private UserNotification snapshot(Team t,UUID recipient) {
         UserNotification n=new UserNotification(); n.setType("REVIEW_REQUESTED"); n.setProjectId(t.project());
         n.setActorId(t.actor()); n.setRecipientId(recipient); n.setDeliverableId(t.deliverable()); n.setReviewId(t.review());
-        n.setEventKey("REVIEW_REQUESTED:"+t.review()); return n;
+        n.setEventKey("opaque-synthetic-event-"+UUID.randomUUID()); return n;
     }
 }

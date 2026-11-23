@@ -51,6 +51,20 @@ class ReviewRequestEmailEligibilityTest {
         when(reviews.get(n.getProjectId(),n.getDeliverableId(),n.getReviewId())).thenThrow(failure);
         assertSame(failure,assertThrows(org.springframework.dao.DataAccessResourceFailureException.class,() -> eligibility.currentRecipient(n)));
     }
+    @Test void eligibleReviewDoesNotDependOnProducerEventKeyFormat() {
+        var n=request(); allowed(n);
+        when(reviews.get(n.getProjectId(),n.getDeliverableId(),n.getReviewId())).thenReturn(new ReviewRoundReader.ReviewRoundView(
+                n.getReviewId(),n.getDeliverableId(),n.getProjectId(),1,true,null,"IN_REVIEW"));
+        Project p=new Project(); p.setId(n.getProjectId());
+        Deliverable d=new Deliverable(); d.setId(n.getDeliverableId()); d.setProject(p);
+        User actor=new User(); actor.setId(n.getActorId());
+        ReviewRound round=new ReviewRound(); round.setId(n.getReviewId()); round.setProject(p); round.setDeliverable(d); round.setOpenedBy(actor);
+        when(rounds.findById(n.getReviewId())).thenReturn(Optional.of(round));
+        for (String key:List.of("old-producer-format","new-producer-format:"+UUID.randomUUID())) {
+            n.setEventKey(key);
+            assertEquals(Optional.of("synthetic@example.invalid"),eligibility.currentRecipient(n));
+        }
+    }
     private void allowed(UserNotification n) {
         settings.setEnabled(true); settings.setRecipientAllowlist(List.of("synthetic@example.invalid"));
         Project p=new Project(); p.setId(n.getProjectId()); User u=new User(); u.setId(n.getRecipientId()); u.setEmail("synthetic@example.invalid");
@@ -61,6 +75,6 @@ class ReviewRequestEmailEligibilityTest {
     private UserNotification request() {
         UserNotification n=new UserNotification(); n.setType("REVIEW_REQUESTED"); n.setProjectId(UUID.randomUUID());
         n.setActorId(UUID.randomUUID()); n.setRecipientId(UUID.randomUUID()); n.setDeliverableId(UUID.randomUUID()); n.setReviewId(UUID.randomUUID());
-        n.setEventKey("REVIEW_REQUESTED:"+n.getReviewId()); return n;
+        n.setEventKey("opaque-synthetic-event-"+UUID.randomUUID()); return n;
     }
 }
