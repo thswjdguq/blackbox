@@ -126,6 +126,26 @@ class EmailDeliveryWorkerDatabaseTest {
         worker.poll(); verify(transport, times(1)).send(any(), any(), any()); assertEquals(1, appCount(r));
     }
 
+    @Test void authenticationFailureLeavesTheNextMailUnclaimedAcrossPolls() {
+        Request first = request(true), next = request(true);
+        settings.setRecipientAllowlist(List.of(first.address(), next.address()));
+        when(transport.send(any(), any(), any())).thenReturn(EmailNotificationTransport.Result.AUTHENTICATION_FAILURE);
+        worker.poll(); worker.poll();
+        assertEquals("FAILED", row(first).get("status")); assertEquals("AUTHENTICATION_FAILURE", row(first).get("error_code"));
+        assertEquals("PENDING", row(next).get("status")); assertEquals(0, ((Number) row(next).get("attempt_count")).intValue());
+        verify(transport, times(1)).send(any(), any(), any());
+    }
+
+    @Test void aTemporaryFailureStopsBeforeClaimingTheNextReadyMail() {
+        Request first = request(true), next = request(true);
+        settings.setRecipientAllowlist(List.of(first.address(), next.address()));
+        when(transport.send(any(), any(), any())).thenReturn(EmailNotificationTransport.Result.TEMPORARY_FAILURE);
+        worker.poll();
+        assertEquals("PENDING", row(first).get("status")); assertEquals(1, ((Number) row(first).get("attempt_count")).intValue());
+        assertEquals("PENDING", row(next).get("status")); assertEquals(0, ((Number) row(next).get("attempt_count")).intValue());
+        verify(transport, times(1)).send(any(), any(), any());
+    }
+
     private Request request(boolean verified) {
         return new TransactionTemplate(transactions).execute(status -> {
             User actor = person("합성 요청자"), assignee = person("합성 담당자"), recipient = person("합성 확인자");

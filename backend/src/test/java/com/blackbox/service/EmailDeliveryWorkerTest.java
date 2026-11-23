@@ -1,5 +1,8 @@
 package com.blackbox.service;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.blackbox.config.MailNotificationProperties;
 import com.blackbox.repository.EmailDeliveryLease;
 import com.blackbox.repository.EmailDeliveryRepository;
@@ -9,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -132,6 +136,8 @@ class EmailDeliveryWorkerTest {
         var failure = result == EmailNotificationTransport.Result.ACCEPTED ? null
                 : EmailDeliveryRepository.Failure.valueOf(result.name());
         verify(deliveries).complete(lease, completion, failure, now);
+        verify(deliveries, times(result == EmailNotificationTransport.Result.ACCEPTED
+                || result == EmailNotificationTransport.Result.PERMANENT_FAILURE ? 2 : 1)).claim(1, now);
         verify(transport).send(eq(lease.id()), eq(address), argThat(content -> content.target().getHost().equals("localhost")
                 && content.target().getPath().equals("/projects/" + lease.projectId() + "/board")
                 && content.target().getQuery().equals("task=" + lease.taskId())));
@@ -174,6 +180,37 @@ class EmailDeliveryWorkerTest {
         worker = new EmailDeliveryWorker(settings, deliveries, tasks, reviews, authProvider, transportProvider,
                 "http://untrusted.example", clock); worker.poll(); verifyNoInteractions(deliveries, transport);
         assertFalse(verified().toString().contains(address));
+    }
+
+    @Test void authenticationFailurePausesAllLaterPollsUntilANewWorkerIsCreated() {
+        when(transport.send(any(), any(), any())).thenReturn(EmailNotificationTransport.Result.AUTHENTICATION_FAILURE);
+        worker.poll(); worker.poll(); settings.setEnabled(false); worker.poll(); settings.setEnabled(true); worker.poll();
+        verify(deliveries, times(1)).claim(1, now); verify(transport, times(1)).send(any(), any(), any());
+        var next = lease("TASK_COMPLETION_REQUESTED", now);
+        when(deliveries.claim(eq(1), any())).thenReturn(List.of(next), List.of());
+        when(transport.send(any(), any(), any())).thenReturn(EmailNotificationTransport.Result.ACCEPTED);
+        new EmailDeliveryWorker(settings, deliveries, tasks, reviews, authProvider, transportProvider,
+                "http://localhost:13000", clock).poll();
+        verify(deliveries).complete(next, SENT, null, now);
+        verify(transport, times(2)).send(any(), any(), any());
+    }
+
+    @Test void authenticationPauseSurvivesFailureToRecordTheResult() {
+        var logger = (Logger) LoggerFactory.getLogger(EmailDeliveryWorker.class);
+        var logs = new ListAppender<ILoggingEvent>(); logs.start(); logger.addAppender(logs);
+        when(transport.send(any(), any(), any())).thenReturn(EmailNotificationTransport.Result.AUTHENTICATION_FAILURE);
+        when(deliveries.complete(lease, FAILED, AUTHENTICATION_FAILURE, now))
+                .thenThrow(new DataAccessResourceFailureException("synthetic-sensitive-detail"));
+        try {
+            worker.poll(); worker.poll();
+            verify(deliveries, times(1)).claim(1, now); verify(transport, times(1)).send(any(), any(), any());
+            assertEquals(1, logs.list.stream().filter(e -> e.getFormattedMessage().contains("AUTHENTICATION_PAUSED")).count());
+            assertTrue(logs.list.stream().allMatch(e -> e.getThrowableProxy() == null
+                    && !e.getFormattedMessage().contains("synthetic-sensitive-detail")
+                    && !e.getFormattedMessage().contains(address)));
+            assertTrue(logs.list.stream().anyMatch(e -> e.getFormattedMessage().contains(lease.id().toString())
+                    && e.getFormattedMessage().contains("DataAccessResourceFailureException")));
+        } finally { logger.detachAppender(logs); }
     }
 
     private EmailDeliveryAuthorization.State verified() {

@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.blackbox.repository.EmailDeliveryRepository.Completion.*;
@@ -38,6 +39,7 @@ public class EmailDeliveryWorker {
     private final Clock clock;
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicBoolean unavailableReported = new AtomicBoolean();
+    private final AtomicBoolean authenticationPaused = new AtomicBoolean();
 
     @Autowired
     public EmailDeliveryWorker(MailNotificationProperties settings, EmailDeliveryRepository deliveries,
@@ -59,7 +61,8 @@ public class EmailDeliveryWorker {
 
     @Scheduled(initialDelay = 15_000, fixedDelay = 10_000)
     public void poll() {
-        if (!enabled() || !running.compareAndSet(false, true)) return;
+        if (authenticationPaused.get() || !enabled() || !running.compareAndSet(false, true)) return;
+        UUID deliveryId = null;
         try {
             var authorization = authorizations.getIfAvailable();
             var transport = transports.getIfAvailable();
@@ -71,15 +74,17 @@ public class EmailDeliveryWorker {
             var composer = new EmailNotificationComposer(URI.create(frontendBaseUrl));
             for (int count = 0; count < EmailDeliveryRepository.MAX_BATCH && enabled(); count++) {
                 // 25건을 미리 잡지 않는다. 앞선 SMTP가 길어져도 뒤 건의 lease를 소모하지 않는다.
+                deliveryId = null;
                 var claimed = deliveries.claim(1, now());
                 if (claimed.isEmpty()) return;
+                deliveryId = claimed.getFirst().id();
                 if (!process(claimed.getFirst(), authorization, transport, composer)) return;
             }
         } catch (DataAccessException failure) {
-            log.warn("EMAIL_DELIVERY_DATABASE_UNAVAILABLE");
+            logFailure(deliveryId, failure);
         } catch (RuntimeException failure) {
             // 원본 예외의 주소/본문/SMTP 응답을 로그에 싣지 않는다. 획득한 건은 lease 회수 대상이다.
-            log.warn("EMAIL_DELIVERY_PROCESSING_UNAVAILABLE");
+            logFailure(deliveryId, failure);
         } finally {
             running.set(false);
         }
@@ -105,8 +110,9 @@ public class EmailDeliveryWorker {
             // 권한 조회가 지연되는 동안 수신 설정/인증이 바뀌었을 수 있다.
             if (!enabled() || !permitted(authorization.current(lease.recipientId()), lease, recipient)) return skip(lease);
         } catch (DataAccessException failure) {
+            logFailure(lease.id(), failure);
             deliveries.complete(lease, RETRY, TEMPORARY_FAILURE, now());
-            return true;
+            return false;
         } catch (IllegalArgumentException failure) {
             deliveries.complete(lease, FAILED, PERMANENT_FAILURE, now());
             return true;
@@ -116,6 +122,7 @@ public class EmailDeliveryWorker {
         try {
             result = transport.send(lease.id(), recipient, content);
         } catch (RuntimeException failure) {
+            logFailure(lease.id(), failure);
             result = EmailNotificationTransport.Result.UNKNOWN_OUTCOME;
         }
         if (result == null) result = EmailNotificationTransport.Result.UNKNOWN_OUTCOME;
@@ -123,10 +130,21 @@ public class EmailDeliveryWorker {
             case ACCEPTED -> deliveries.complete(lease, SENT, null, now());
             case TEMPORARY_FAILURE, UNKNOWN_OUTCOME -> deliveries.complete(lease, RETRY,
                     EmailDeliveryRepository.Failure.valueOf(result.name()), now());
-            case AUTHENTICATION_FAILURE, PERMANENT_FAILURE -> deliveries.complete(lease, FAILED,
-                    EmailDeliveryRepository.Failure.valueOf(result.name()), now());
+            case AUTHENTICATION_FAILURE -> {
+                // 결과 저장이 실패하더라도 잘못된 계정으로 다음 회차에 재접속하지 않는다.
+                if (authenticationPaused.compareAndSet(false, true))
+                    log.warn("EMAIL_DELIVERY_AUTHENTICATION_PAUSED delivery={}", lease.id());
+                deliveries.complete(lease, FAILED, AUTHENTICATION_FAILURE, now());
+            }
+            case PERMANENT_FAILURE -> deliveries.complete(lease, FAILED, PERMANENT_FAILURE, now());
         }
-        return true;
+        // 계정/서버 쪽 실패는 현재 회차를 중단한다. 수신자별 영구 실패와 성공만 다음 건으로 간다.
+        return result == EmailNotificationTransport.Result.ACCEPTED || result == EmailNotificationTransport.Result.PERMANENT_FAILURE;
+    }
+
+    private void logFailure(UUID deliveryId, RuntimeException failure) {
+        log.warn("메일 발송 처리 실패 delivery={} 예외={}", deliveryId == null ? "-" : deliveryId,
+                failure.getClass().getSimpleName());
     }
 
     private boolean permitted(Optional<EmailDeliveryAuthorization.State> result, EmailDeliveryLease lease, String recipient) {
