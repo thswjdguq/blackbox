@@ -274,7 +274,6 @@ function OpenRoundDialog({
   const [error, setError] = useState("");
 
   const mutation = useRef(false);
-  const initialFileSelected = useRef(false);
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState("");
   const upload = async (file: File) => {
@@ -305,16 +304,16 @@ function OpenRoundDialog({
     return map;
   }, [files]);
 
-  useEffect(() => {
-    if (!files || initialFileSelected.current) return;
-    initialFileSelected.current = true;
-    if (fileName) return;
+  // 파일 목록이 처음 오면 한 번만 고른다(지난번 검토 파일, 없으면 첫 파일). 그리는 중에 골라 빈 선택으로 한 번 더 그리지 않는다
+  const [initialFileSelected, setInitialFileSelected] = useState(false);
+  if (files && !initialFileSelected) {
+    setInitialFileSelected(true);
     const initial = previousFileName && byName.has(previousFileName) ? previousFileName : [...byName.keys()][0];
-    if (initial) {
+    if (!fileName && initial) {
       setFileName(initial);
       setFileId(byName.get(initial)![0].id);
     }
-  }, [files, byName, fileName, previousFileName]);
+  }
 
   const versions = fileName ? byName.get(fileName) ?? [] : [];
   const differentName = previousFileName != null && fileName !== "" && fileName !== previousFileName;

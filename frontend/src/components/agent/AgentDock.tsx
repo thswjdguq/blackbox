@@ -93,11 +93,13 @@ export default function AgentDock() {
     if (visible) headingRef.current?.focus();
   }, [visible]);
 
-  // 다른 프로젝트로 가면 고르던 입력은 버린다
-  useEffect(() => {
+  // 다른 프로젝트로 가면 고르던 입력은 버린다. 그리는 중에 버려 앞 프로젝트의 입력으로 한 번 더 그리지 않는다
+  const [inputProject, setInputProject] = useState(projectId);
+  if (projectId !== inputProject) {
+    setInputProject(projectId);
     setPending(null);
     setQuestion(""); setBrief(""); setPickedDeliverable(""); setPicked(null);
-  }, [projectId]);
+  }
 
   // 전체 화면 대화 상자에서는 키보드 초점이 뒤의 업무 화면으로 빠져나가지 않게 한다.
   useEffect(() => {

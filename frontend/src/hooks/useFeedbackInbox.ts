@@ -17,18 +17,20 @@ export function countActionableFeedback(inbox: FeedbackInbox | null): number {
 }
 
 export function useFeedbackInbox(projectId: string | null) {
-  const [data, setData] = useState<FeedbackInbox | null>(null);
+  // 받은 목록은 어느 프로젝트의 것인지와 함께 둔다. 프로젝트를 옮긴 첫 그림부터, 그리고 늦게 온 앞 프로젝트 응답도 보이지 않는다
+  const [result, setResult] = useState<{ projectId: string; data: FeedbackInbox } | null>(null);
+  const data = projectId && result?.projectId === projectId ? result.data : null;
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const refresh = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
-    try { const res = await api.get<FeedbackInbox>(`/projects/${projectId}/feedback`); setData(res.data); setError(""); }
+    try { const res = await api.get<FeedbackInbox>(`/projects/${projectId}/feedback`); setResult({ projectId, data: res.data }); setError(""); }
     catch(e) { setError(apiError(e,"피드백 요청을 불러오지 못했습니다.")); }
     finally { setLoading(false); }
   }, [projectId]);
   useEffect(() => {
-    setData(null); refresh();
+    refresh();
     const update = () => { if (!document.hidden) refresh(); };
     const timer = window.setInterval(update,30000);
     window.addEventListener("focus", update); window.addEventListener("task-feedback-changed",update);

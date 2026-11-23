@@ -24,7 +24,10 @@ export default function FinalSubmissionPanel({ projectId, deliverableId, isLeade
   const [initialSubmittedAt] = useState(submittedAt);
   const pending = useRef(false), sequence = useRef(0);
   const mounted = useRef(true);
-  useEffect(() => { setConfirmChecked(false); }, [view?.candidate?.reviewId, view?.candidate?.file.fileId]);
+  // 확정 후보(검토·파일)가 바뀌면 확인 체크를 푼다. 그리는 중에 풀어 새 후보에 이전 체크가 보이지 않게 한다
+  const candidateKey = `${view?.candidate?.reviewId ?? ""}:${view?.candidate?.file.fileId ?? ""}`;
+  const [checkedFor, setCheckedFor] = useState(candidateKey);
+  if (candidateKey !== checkedFor) { setCheckedFor(candidateKey); setConfirmChecked(false); }
   const dirty = !!view?.confirmation && !view.submission && (!!note.trim() || channel !== (submissionMethod ?? "") || submittedAt !== initialSubmittedAt || submittedChecked || !!reason.trim());
   useEffect(() => { onDirty(dirty); return () => onDirty(false); }, [dirty, onDirty]);
   useEffect(() => {

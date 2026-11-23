@@ -23,9 +23,12 @@ export default function Sidebar() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const clearTokens = useAuthStore((s) => s.clearTokens);
 
-  useEffect(() => {
+  // 다른 화면으로 가면 휴대폰 메뉴를 닫는다. 그리는 중에 맞춰 열린 메뉴로 한 번 더 그리지 않는다
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (pathname !== menuPath) {
+    setMenuPath(pathname);
     setMobileOpen(false);
-  }, [pathname]);
+  }
 
   // 닫기 버튼·배경·Escape로 닫으면 초점을 메뉴 버튼으로 돌려준다
   const closeMenu = useCallback(() => {

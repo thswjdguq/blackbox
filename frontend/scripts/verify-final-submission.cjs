@@ -21,7 +21,7 @@ async function main(){
   h.find(n=>n.type==='input'&&n.props.type==='checkbox').props.onChange({target:{checked:true}});h.render();
   button=h.find(n=>n.type==='button'&&n.props.children==='이 버전을 최종본으로 확정');const first=button.props.onClick();await button.props.onClick();assert.equal(h.writes.length,1);
   h.fail();await first;h.render();assert.ok(h.find(n=>n.props?.role==='alert'));assert.equal(h.find(n=>n.type==='input'&&n.props.type==='checkbox').props.checked,true,'확정 실패 입력 유지');
-  h.remote({...ready,candidate:{...ready.candidate,reviewId:'r2',file:{...file,fileId:'f2'}}});await h.find(n=>n.type==='button'&&n.props.children==='정보 다시 확인').props.onClick();h.render();h.effects()[0]();h.render();
+  h.remote({...ready,candidate:{...ready.candidate,reviewId:'r2',file:{...file,fileId:'f2'}}});await h.find(n=>n.type==='button'&&n.props.children==='정보 다시 확인').props.onClick();h.render();h.render();
   assert.equal(h.find(n=>n.type==='input'&&n.props.type==='checkbox').props.checked,false,'후보 변경 후 재확인 필수');
   const member=harness(ready,'MEMBER');await member.settle();assert.ok(!member.find(n=>n.type==='button'&&n.props.children==='이 버전을 최종본으로 확정'));
   const confirmed={...ready,status:'CONFIRMED',canConfirm:false,candidate:null,confirmation:{reviewId:'r',roundNo:2,file,confirmedBy:{name:'민지'},confirmedAt:new Date().toISOString(),fileStillLatest:true}};
@@ -45,7 +45,7 @@ async function main(){
   assert.ok(c.all().some(n=>text(n).includes('완료된 연결 업무는 그대로 완료입니다. 고치려면 업무를 재개하세요')),'완료 업무 안내');
   await cancelForm().props.onSubmit({preventDefault(){}});assert.equal(c.writes.length,0,'사유 없이 취소 차단');
   c.find(n=>n.type==='textarea'&&n.props['aria-label']==='확정 취소 사유').props.onChange({target:{value:'  표지 오타  '}});c.render();
-  c.effects()[1]();assert.equal(c.dirty.at(-1),true,'사유 입력은 저장 전 입력');
+  c.effects()[0]();assert.equal(c.dirty.at(-1),true,'사유 입력은 저장 전 입력');
   const firstCancel=cancelForm().props.onSubmit({preventDefault(){}});await cancelForm().props.onSubmit({preventDefault(){}});
   assert.equal(c.writes.length,1,'중복 클릭 한 번만');assert.deepEqual(c.writes[0],{url:'/projects/p/deliverables/d/confirmation/cancellation',body:{reviewId:'r',reason:'표지 오타'}});
   c.fail();await firstCancel;c.render();assert.ok(c.find(n=>n.props?.role==='alert'));

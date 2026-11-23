@@ -71,7 +71,7 @@ export default function KanbanBoard({
   const [editingTab, setEditingTab] = useState<"info" | "resources">("resources");
   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
-  const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [deliveryFilter, setDeliveryFilter] = useState(deliverableParam ?? "");
   const [boardError, setBoardError] = useState("");
   const storageKey = `task-view-v2:${userId}:${projectId}:${role}`;
   const [preferences, setPreferences] = useState<TaskView>(() => defaultTaskView(role));
@@ -95,7 +95,14 @@ export default function KanbanBoard({
   // 최종 제출물에서 들어온 링크와 명시적인 담당자 필터를 개인 기본 보기보다 우선한다.
   const scope = filter?.assigneeId ? "all" : scopeOverride ?? (deliverableParam ? "all" : preferences.scope);
   const changeScope = (next: TaskScope) => { onClearAssignee(); setScopeOverride(next); updatePreferences({ scope: next }); };
-  useEffect(() => { setScopeOverride(null); }, [deliverableParam]);
+  // 최종 제출물 상세의 "보드에서 이 최종 제출물 업무 보기"가 ?deliverable=<id> 로 연다.
+  // 주소가 바뀌면 그 제출물로 거르고 직접 고른 범위는 푼다. 그리는 중에 맞춰 이전 필터로 한 번 더 그리지 않는다
+  const [filterFor, setFilterFor] = useState(deliverableParam);
+  if (deliverableParam !== filterFor) {
+    setFilterFor(deliverableParam);
+    setDeliveryFilter(deliverableParam ?? "");
+    setScopeOverride(null);
+  }
   useEffect(() => {
     if (readOnly) { setReviewIds(new Set()); return; }
     let active = true;
@@ -117,11 +124,6 @@ export default function KanbanBoard({
     return () => { active = false; };
   }, [tasks, projectId, readOnly, reviewRetry]);
   const openedTask = useRef<string | null>(null);
-
-  // 최종 제출물 상세의 "보드에서 이 최종 제출물 업무 보기"가 ?deliverable=<id> 로 연다
-  useEffect(() => {
-    setDeliveryFilter(deliverableParam ?? "");
-  }, [deliverableParam]);
 
   const [deliverablesError, setDeliverablesError] = useState("");
 
@@ -152,9 +154,9 @@ export default function KanbanBoard({
     return () => {active=false;};
   }, [projectId,recordsVersion,onTasksChange]);
 
-  useEffect(() => {
-    setTasks(initialTasks);
-  }, [initialTasks]);
+  // 부모가 업무 목록을 새로 받으면 그것으로 바꾼다(그리는 중에)
+  const [syncedTasks, setSyncedTasks] = useState(initialTasks);
+  if (initialTasks !== syncedTasks) { setSyncedTasks(initialTasks); setTasks(initialTasks); }
   useEffect(() => {
     const id = taskParam;
     if (!id) {openedTask.current=null; return;}

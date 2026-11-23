@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useState} from "react";
 import AffiliationFields,{emptyAffiliation,affiliationPayload,affiliationReady} from "./AffiliationFields";
 import {CurrentProfile} from "@/lib/store/profileStore";
 import api from "@/lib/api";
@@ -7,7 +7,9 @@ import {apiError} from "@/lib/apiError";
 import {sessionGeneration} from "@/lib/sessionCache";
 export default function ProfileAffiliation({profile,onSaved}:{profile:CurrentProfile;onSaved:(p:CurrentProfile)=>void}) {
   const [value,setValue]=useState(emptyAffiliation),[editing,setEditing]=useState(false),[saving,setSaving]=useState(false),[message,setMessage]=useState("");
-  useEffect(()=>{const a=profile.affiliation;setValue(a?{source:a.source,schoolId:a.schoolId??"",departmentId:a.departmentId??"",schoolName:a.schoolName,departmentName:a.departmentName}:emptyAffiliation());},[profile]);
+  // 받은 프로필의 소속으로 칸을 채운다. 그리는 중에 맞춰 빈 칸으로 한 번 더 그리지 않는다
+  const [syncedProfile,setSyncedProfile]=useState<CurrentProfile|null>(null);
+  if(profile!==syncedProfile){setSyncedProfile(profile);const a=profile.affiliation;setValue(a?{source:a.source,schoolId:a.schoolId??"",departmentId:a.departmentId??"",schoolName:a.schoolName,departmentName:a.departmentName}:emptyAffiliation());}
   const save=async()=>{if(saving||!affiliationReady(value))return;const generation=sessionGeneration();setSaving(true);setMessage("");
     try{const {data}=await api.put<CurrentProfile>("/auth/profile",{name:profile.name,affiliation:affiliationPayload(value)});if(generation===sessionGeneration()){onSaved(data);setEditing(false);setMessage("소속 정보를 저장했습니다.");}}
     catch(e){if(generation===sessionGeneration())setMessage(apiError(e,"소속 정보를 저장하지 못했습니다."));}
