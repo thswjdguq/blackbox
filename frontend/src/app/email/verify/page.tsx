@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { apiError } from "@/lib/apiError";
-import { confirmEmailVerification } from "@/lib/api/email";
+import { confirmEmailVerification, getEmailSettings } from "@/lib/api/email";
 import { clearToken, stashToken, tabStorage } from "@/lib/emailVerifyToken";
 
 const NO_TOKEN = Symbol("no-token");
 
-type State = { kind: "checking" } | { kind: "done" } | { kind: "failed"; text: string } | { kind: "noToken" };
+type State = { kind: "checking" } | { kind: "done" } | { kind: "alreadyVerified" } | { kind: "failed"; text: string } | { kind: "noToken" };
 
 /**
  * 메일의 확인 링크 `/email/verify#token=…`(K-41 0.5 9장).
@@ -37,7 +37,13 @@ export default function EmailVerifyPage() {
         // 401은 로그인으로 보내진다. 토큰은 남겨 두어 로그인 뒤 다시 확인한다
         if (status === 401) return;
         if (status === 400 || status === 409 || status === 410) clearToken(storage);
-        setState({ kind: "failed", text: apiError(e, "이메일 주소를 확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.") });
+        const failed = apiError(e, "이메일 주소를 확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+        if (status !== 400) { setState({ kind: "failed", text: failed }); return; }
+        // 400은 다른 계정의 링크와 이미 쓴 링크를 구별하지 않는다. 이 계정이 이미 확인돼 있으면 그렇게 알리고,
+        // 상태를 읽지 못하면 서버 문장 그대로 둔다
+        getEmailSettings()
+          .then(({ data }) => setState(data.emailVerified ? { kind: "alreadyVerified" } : { kind: "failed", text: failed }))
+          .catch(() => setState({ kind: "failed", text: failed }));
       });
   }, []);
 
@@ -55,6 +61,13 @@ export default function EmailVerifyPage() {
             <CheckCircle2 size={32} className="mx-auto text-teal-600" aria-hidden="true" />
             <p className="text-sm text-bb-text">이메일 주소를 확인했습니다.</p>
             <p className="text-xs text-bb-text2">이메일 알림을 켜 두었다면 이제부터 생기는 업무 알림을 메일로 받습니다.</p>
+          </div>
+        )}
+        {state.kind === "alreadyVerified" && (
+          <div role="status" className="mt-4 space-y-2">
+            <CheckCircle2 size={32} className="mx-auto text-teal-600" aria-hidden="true" />
+            <p className="text-sm text-bb-text">이 계정의 이메일 주소는 이미 확인되어 있습니다.</p>
+            <p className="text-xs text-bb-text2">다른 계정으로 받은 확인 메일이라면 그 계정으로 로그인한 뒤 링크를 다시 열어 주세요.</p>
           </div>
         )}
         {state.kind === "failed" && (
