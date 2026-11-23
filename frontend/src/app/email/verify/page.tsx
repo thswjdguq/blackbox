@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { apiError } from "@/lib/apiError";
 import { confirmEmailVerification } from "@/lib/api/email";
-import { clearToken, stashToken } from "@/lib/emailVerifyToken";
+import { clearToken, stashToken, tabStorage } from "@/lib/emailVerifyToken";
 
 const NO_TOKEN = Symbol("no-token");
 
@@ -25,15 +25,18 @@ export default function EmailVerifyPage() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    const token = stashToken(window.location, window.sessionStorage, (url) => window.history.replaceState(null, "", url));
+    // 저장소 접근 자체가 막힌 브라우저도 있다(tabStorage가 null). 그때는 이번 화면에서만 토큰을 쓰고,
+    // 로그인으로 보내지면 토큰을 이어갈 수 없으므로 돌아온 화면은 "링크를 다시 열라"는 안내(noToken)가 된다
+    const storage = tabStorage();
+    const token = stashToken(window.location, storage, (url) => window.history.replaceState(null, "", url));
     (token ? confirmEmailVerification(token) : Promise.reject(NO_TOKEN))
-      .then(() => { clearToken(window.sessionStorage); setState({ kind: "done" }); })
+      .then(() => { clearToken(storage); setState({ kind: "done" }); })
       .catch((e) => {
         if (e === NO_TOKEN) { setState({ kind: "noToken" }); return; }
         const status = (e as { response?: { status?: number } })?.response?.status;
         // 401은 로그인으로 보내진다. 토큰은 남겨 두어 로그인 뒤 다시 확인한다
         if (status === 401) return;
-        if (status === 400 || status === 409 || status === 410) clearToken(window.sessionStorage);
+        if (status === 400 || status === 409 || status === 410) clearToken(storage);
         setState({ kind: "failed", text: apiError(e, "이메일 주소를 확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.") });
       });
   }, []);

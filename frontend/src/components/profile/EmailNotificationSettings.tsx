@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Mail } from "lucide-react";
 import { apiError } from "@/lib/apiError";
 import { getEmailSettings, putEmailSettings, requestEmailVerification, type EmailSettings } from "@/lib/api/email";
@@ -27,22 +27,32 @@ export default function EmailNotificationSettings({ email }: { email: string }) 
   const [waitUntil, setWaitUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
 
+  // 설정을 바꾸는 응답(GET·PUT)은 가장 최근에 보낸 요청의 것만 반영한다.
+  // 늦게 끝난 옛 GET(false)이 방금 저장한 PUT(true)을 덮지 않게 순번·세션 세대·마운트를 함께 본다
+  const seq = useRef(0);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const begin = () => ({ ticket: ++seq.current, gen: sessionGeneration() });
+  const current = (t: { ticket: number; gen: number }) => alive.current && t.ticket === seq.current && t.gen === sessionGeneration();
+
   const load = useCallback(async () => {
-    const gen = sessionGeneration();
+    const t = { ticket: ++seq.current, gen: sessionGeneration() };
+    const fresh = () => alive.current && t.ticket === seq.current && t.gen === sessionGeneration();
     try {
       const { data } = await getEmailSettings();
-      if (gen === sessionGeneration()) { setSettings(data); setLoadError(""); }
+      if (fresh()) { setSettings(data); setLoadError(""); }
     } catch (e) {
-      if (gen === sessionGeneration()) setLoadError(apiError(e, "이메일 알림 설정을 불러오지 못했습니다."));
+      if (fresh()) setLoadError(apiError(e, "이메일 알림 설정을 불러오지 못했습니다."));
     }
   }, []);
 
   // 처음 한 번: 응답이 온 뒤에만 상태를 바꾼다(다시 시도·인증 뒤 새로고침은 load)
   useEffect(() => {
-    const gen = sessionGeneration();
+    const ticket = ++seq.current, gen = sessionGeneration();
+    const fresh = () => alive.current && ticket === seq.current && gen === sessionGeneration();
     getEmailSettings()
-      .then(({ data }) => { if (gen === sessionGeneration()) { setSettings(data); setLoadError(""); } })
-      .catch((e) => { if (gen === sessionGeneration()) setLoadError(apiError(e, "이메일 알림 설정을 불러오지 못했습니다.")); });
+      .then(({ data }) => { if (fresh()) { setSettings(data); setLoadError(""); } })
+      .catch((e) => { if (fresh()) setLoadError(apiError(e, "이메일 알림 설정을 불러오지 못했습니다.")); });
   }, []);
 
   // 재요청 제한 남은 시간 표시
@@ -56,19 +66,23 @@ export default function EmailNotificationSettings({ email }: { email: string }) 
   const toggle = async (enabled: boolean) => {
     if (saving) return;
     setSaving(true); setMessage(null);
+    const t = begin();
     try {
       const { data } = await putEmailSettings(enabled);
-      setSettings(data);
+      if (current(t)) setSettings(data);
     } catch (e) {
-      setMessage({ ok: false, text: apiError(e, "이메일 알림 설정을 저장하지 못했습니다.") });
-    } finally { setSaving(false); }
+      if (current(t)) setMessage({ ok: false, text: apiError(e, "이메일 알림 설정을 저장하지 못했습니다.") });
+    } finally { if (alive.current) setSaving(false); }
   };
 
   const sendVerification = async () => {
     if (sending || waitLeft > 0) return;
     setSending(true); setMessage(null);
+    const gen = sessionGeneration();
+    const live = () => alive.current && gen === sessionGeneration();
     try {
       const res = await requestEmailVerification();
+      if (!live()) return;
       if (res.status === 204) {
         // 이미 인증된 주소: 상태를 다시 읽는다
         await load();
@@ -79,11 +93,12 @@ export default function EmailNotificationSettings({ email }: { email: string }) 
         setWaitUntil(Date.now() + 60_000); setNow(Date.now());
       }
     } catch (e) {
+      if (!live()) return;
       const status = (e as { response?: { status?: number } })?.response?.status;
       if (status === 429) { setWaitUntil(Date.now() + retryAfterSeconds(e) * 1000); setNow(Date.now()); }
       if (status === 503) await load();
       setMessage({ ok: false, text: apiError(e, "확인 메일을 요청하지 못했습니다.") });
-    } finally { setSending(false); }
+    } finally { if (alive.current) setSending(false); }
   };
 
   if (loadError) {
