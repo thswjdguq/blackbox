@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.URI;
@@ -48,6 +49,7 @@ public class EmailVerificationService {
     static final int PER_ACCOUNT_PER_HOUR = 5;
     // 서비스 Gmail 한 계정의 하루 발송 한도를 업무 메일과 나눠 쓰므로, 확인 메일은 서비스 전체에서 하루 이만큼만 보낸다
     static final int SERVICE_PER_DAY = 100;
+    private static final long ISSUE_LOCK = 0x4B34315F45564CL;   // 확인 메일 발급용 advisory lock 키(다른 잠금과 겹치지 않는 고정값)
 
     /** B의 수신 설정 응답(verificationAvailable·verificationUnavailableReason)이 읽는 값. 가능하면 reason은 null이다 */
     public record Availability(boolean available, String reason) {}
@@ -71,6 +73,7 @@ public class EmailVerificationService {
 
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
+    private final TransactionTemplate issue;   // 토큰 발급은 호출자의 트랜잭션과 따로 커밋한다
     private final MailNotificationProperties settings;
     private final ObjectProvider<EmailNotificationTransport> transports;
     private final String frontendBaseUrl;
@@ -87,6 +90,10 @@ public class EmailVerificationService {
     EmailVerificationService(JdbcTemplate jdbc, PlatformTransactionManager transactions, MailNotificationProperties settings,
                              ObjectProvider<EmailNotificationTransport> transports, String frontendBaseUrl, Clock clock) {
         this.jdbc = jdbc; this.tx = new TransactionTemplate(transactions); this.settings = settings;
+        // 메일은 토큰이 커밋된 후에만 보낸다. 호출자에게 트랜잭션이 있어도 발급은 먼저 커밋되어야
+        // 메일의 링크가 다른 연결에서도 보이고, 호출자가 롤백해도 이미 보낸 토큰이 사라지지 않는다
+        this.issue = new TransactionTemplate(transactions);
+        this.issue.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.transports = transports; this.frontendBaseUrl = frontendBaseUrl; this.clock = clock;
     }
 
@@ -100,9 +107,12 @@ public class EmailVerificationService {
     public Outcome request(User user) {
         if (!availability(user).available()) throw new Rejected(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE, null);
         String token = newToken();
-        Issued issued = tx.execute(status -> {
-            // 같은 사용자의 동시 요청이 둘 다 간격 검사를 통과해 메일 두 통을 만들지 않게 사용자 행을 잠근다
-            var row = jdbc.queryForMap("SELECT email, email_verified_at FROM users WHERE id = ? FOR UPDATE", user.getId());
+        Issued issued = issue.execute(status -> {
+            // 요청 제한의 검사와 발급을 직렬화한다. 계정별 간격뿐 아니라 서비스 전체 하루 상한도 지키려면
+            // 다른 사용자의 동시 요청까지 막아야 하므로 사용자 행 대신 발급 전체에 하나의 잠금을 건다.
+            // 트랜잭션이 끝나면 풀리며, SMTP 동안에는 잡고 있지 않다(발급 요청은 드물어 충분하다)
+            jdbc.queryForObject("SELECT 1 FROM pg_advisory_xact_lock(?)", Integer.class, ISSUE_LOCK);
+            var row = jdbc.queryForMap("SELECT email, email_verified_at FROM users WHERE id = ?", user.getId());
             if (row.get("email_verified_at") != null) return null;
             OffsetDateTime now = now();
             long wait = retryAfterSeconds(user.getId(), now);
@@ -163,7 +173,6 @@ public class EmailVerificationService {
         long wait = 0;
         if (account.last() != null) wait = Math.max(wait, secondsUntil(account.last().plus(RESEND_INTERVAL), now));
         if (account.count() >= PER_ACCOUNT_PER_HOUR) wait = Math.max(wait, secondsUntil(account.first().plusHours(1), now));
-        // ponytail: 서비스 전체 예산은 잠그지 않고 센다. 동시에 몰리면 몇 건 넘을 수 있다(사용자 수가 적어 충분하다)
         if (service.count() >= SERVICE_PER_DAY) wait = Math.max(wait, secondsUntil(service.first().plusDays(1), now));
         return wait;
     }
