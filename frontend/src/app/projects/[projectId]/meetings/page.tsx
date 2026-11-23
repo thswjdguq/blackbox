@@ -696,7 +696,8 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
   return (
     <div
       onClick={() => router.push(`/projects/${projectId}/meetings/${meeting.id}`)}
-      className="group bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer
+      /* 목적이 없는 회의도 같은 높이: 제목·날짜·목적 세 줄(휴대폰은 날짜가 두 줄로 접혀 네 줄). 제목·목적은 한 줄로 자른다 */
+      className="group min-h-28 sm:min-h-24 bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer
                  hover:border-bb-primary/40 hover:bg-bb-surface2 transition-all flex items-center gap-4"
     >
       {/* 아이콘 */}
