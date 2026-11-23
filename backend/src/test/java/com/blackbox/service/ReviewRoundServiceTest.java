@@ -28,9 +28,12 @@ class ReviewRoundServiceTest {
     final DeliverableConfirmationCancellationRepository cancellations = mock(DeliverableConfirmationCancellationRepository.class);
     final ProjectAccessChecker access = new ProjectAccessChecker(projects, members);
     final DeliverableStatuses statuses = new DeliverableStatuses(access, deliveries, rounds, confirmations, submissions, cancellations);
-    final ReviewRoundService service = new ReviewRoundService(rounds, deliveries, files, access, unresolved, statuses, cancellations, mock(ReviewFeedbackNotifications.class));
+    final NotificationService personal = mock(NotificationService.class);
+    final ReviewRoundService service = new ReviewRoundService(rounds, deliveries, files, access, unresolved, statuses, cancellations,
+            mock(ReviewFeedbackNotifications.class), members, personal);
     final Project project = new Project();
     final Deliverable delivery = new Deliverable();
+    final List<ProjectMember> memberships = new ArrayList<>();
     final User reviewer = user("LEADER"), uploader = user("MEMBER"), observer = user("OBSERVER");
 
     @BeforeEach void setup() {
@@ -39,7 +42,28 @@ class ReviewRoundServiceTest {
         when(projects.findById(project.getId())).thenReturn(Optional.of(project));
         when(deliveries.findByIdAndProject(delivery.getId(), project)).thenReturn(Optional.of(delivery));
         when(deliveries.lockByIdAndProject(delivery.getId(), project)).thenReturn(Optional.of(delivery));
-        when(rounds.save(any())).thenAnswer(call -> call.getArgument(0));
+        when(rounds.save(any())).thenAnswer(call -> {
+            ReviewRound saved = call.getArgument(0);
+            if (saved.getId() == null) saved.setId(UUID.randomUUID());
+            return saved;
+        });
+        when(members.findByProject(project)).thenReturn(memberships);
+    }
+
+    /** 새 회차는 그 회차를 결정할 수 있는 팀장·팀원에게 검토를 요청한다(K-41 2장): 행위자·파일을 올린 사람·관찰자는 빠진다 */
+    @Test void openRequestsReviewFromThoseWhoCanDecide() {
+        User other = user("MEMBER");
+        FileVault uploaded = file("a");
+        when(files.findByIdAndProject(uploaded.getId(), project)).thenReturn(Optional.of(uploaded));
+        existing();
+        Round withFile = service.open(project.getId(), delivery.getId(), new OpenRequest(uploaded.getId()), reviewer);
+        verify(personal).reviewEvent(eq("REVIEW_REQUESTED"), eq("REVIEW_REQUESTED:" + withFile.id()),
+                argThat(r -> r.getId().equals(withFile.id())), isNull(), eq(reviewer), eq(List.of(other)));
+
+        // 파일 없는 회차는 올린 사람이 없으므로 행위자만 빠진다. 결정 조건(decide)과 같다
+        Round fileless = service.open(project.getId(), delivery.getId(), new OpenRequest(null), uploader);
+        verify(personal).reviewEvent(eq("REVIEW_REQUESTED"), eq("REVIEW_REQUESTED:" + fileless.id()),
+                argThat(r -> r.getId().equals(fileless.id())), isNull(), eq(uploader), eq(List.of(reviewer, other)));
     }
 
     @Test void statusFollowsLatestRound() {
@@ -207,6 +231,8 @@ class ReviewRoundServiceTest {
         context.registerBean(DeliverableStatuses.class, () -> statuses);
         context.registerBean(DeliverableConfirmationCancellationRepository.class, () -> cancellations);
         context.registerBean(ReviewFeedbackNotifications.class, () -> mock(ReviewFeedbackNotifications.class));
+        context.registerBean(ProjectMemberRepository.class, () -> members);
+        context.registerBean(NotificationService.class, () -> personal);
         context.register(ReviewRoundService.class);
         if (counters.length > 0) context.register(counters);
         context.refresh();
@@ -255,6 +281,7 @@ class ReviewRoundServiceTest {
         User u = new User(); u.setId(UUID.randomUUID()); u.setName(role);
         ProjectMember m = new ProjectMember(); m.setUser(u); m.setProject(project); m.setRole(role);
         when(members.findByProjectAndUser(project, u)).thenReturn(Optional.of(m));
+        memberships.add(m);
         return u;
     }
 }
