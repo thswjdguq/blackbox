@@ -47,6 +47,7 @@ class NotificationAssignmentDatabaseTest {
     @MockitoBean DiscordNotificationService discord;
     @MockitoBean ScoreService scores;
     @MockitoBean DeliverableService deliverables;
+    @MockitoBean EmailOutboxQueue emailOutbox;
 
     class Team {
         final User leader = user("민지"), worker = user("현우"), peer = user("유나"), peer2 = user("지호"), observer = user("관찰자");
