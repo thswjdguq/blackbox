@@ -88,8 +88,10 @@ export default function EmailNotificationSettings({ email }: { email: string }) 
         await load();
         setMessage({ ok: true, text: "이미 확인된 주소입니다." });
       } else {
-        // 202는 발송 요청 접수이지 받은편지함 도착이 아니다(K-41 9장)
-        setMessage({ ok: true, text: `확인 메일 발송을 요청했습니다. ${email} 메일함에서 링크를 열어 주세요.` });
+        // 202는 발송 요청 접수이지 받은편지함 도착이 아니다(K-41 9장). 문장은 서버의 message 그대로(A-72),
+        // 화면은 받는 주소만 덧붙인다
+        const serverMessage = (res.data as { message?: string } | undefined)?.message;
+        setMessage({ ok: true, text: `${serverMessage ?? "확인 메일 발송을 요청했습니다."} 받는 주소: ${email}` });
         setWaitUntil(Date.now() + 60_000); setNow(Date.now());
       }
     } catch (e) {

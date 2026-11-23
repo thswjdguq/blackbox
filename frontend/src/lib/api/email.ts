@@ -20,8 +20,8 @@ export const getEmailSettings = () => api.get<EmailSettings>("/notifications/ema
 export const putEmailSettings = (enabled: boolean) =>
   api.put<EmailSettings>("/notifications/email-settings", { enabled });
 
-/** K-41 0.5 9장. 202 발송 요청, 204 이미 인증, 429(+Retry-After)·503은 서버 detail */
-export const requestEmailVerification = () => api.post("/auth/email-verification/request");
+/** K-41 0.5 9장. 202 발송 요청(`{ message }` 서버 문장), 204 이미 인증, 429(+Retry-After)·503은 서버 detail */
+export const requestEmailVerification = () => api.post<{ message?: string } | "">("/auth/email-verification/request");
 
 /** 204 인증 완료, 400(잘못된·다른 계정 토큰)·410(만료)·409(주소 변경)은 서버 detail */
 export const confirmEmailVerification = (token: string) =>
