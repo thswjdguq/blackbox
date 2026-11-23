@@ -350,7 +350,7 @@ export default function ProjectHomePage() {
                 {/* 멤버 아바타 스택 */}
                 {members.length > 0 && (
                   <div className="flex items-center">
-                    <div className="flex -space-x-2">
+                    <div className="flex gap-1">{/* 두 글자 이니셜이 겹쳐 읽히지 않아 띄운다 */}
                       {members.slice(0, 5).map((m) => (
                         <Avatar key={m.userId} name={m.name} size={8} />
                       ))}
