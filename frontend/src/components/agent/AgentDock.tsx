@@ -208,10 +208,10 @@ export default function AgentDock() {
               </select>
             </label>
           )}
-          {pickedBrief && brief.trim() && <p className="text-[11px] text-bb-text2">붙여 넣은 글은 이번 실행에 쓰지 않고 그대로 남겨 둡니다.</p>}
+          {pickedBrief && brief.trim() && <p className="text-xs text-bb-text2">붙여 넣은 글은 이번 실행에 쓰지 않고 그대로 남겨 둡니다.</p>}
           <div className="flex items-center justify-between gap-2">
             {/* 서버와 같은 기준(NFC·줄바꿈·앞뒤 공백 정리 뒤)으로 센다. macOS에서 붙여 넣은 한글을 더 세어 막지 않는다 */}
-            <span className={`text-[11px] ${briefTooLong && !pickedBrief ? "text-red-500" : "text-bb-text2"}`}>{briefChars.toLocaleString()} / {BRIEF_MAX.toLocaleString()}자</span>
+            <span className={`text-xs ${briefTooLong && !pickedBrief ? "text-red-500" : "text-bb-text2"}`}>{briefChars.toLocaleString()} / {BRIEF_MAX.toLocaleString()}자</span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPending(null)} className="px-2 py-1.5 text-xs text-bb-text2 hover:text-bb-text">취소</button>
               <button type="submit" disabled={(!brief.trim() && !pickedBrief) || running || (!pickedBrief && briefTooLong)} className="rounded-lg bg-bb-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-bb-primary-h disabled:opacity-50">
@@ -352,7 +352,7 @@ export default function AgentDock() {
             도우미
           </button>
           <button type="button" role="tab" aria-selected={activeTab === "proposals"} onClick={() => setTab("proposals")} className={tabCls(activeTab === "proposals")}>
-            제안{status.pendingProposalCount > 0 && <span className="ml-1 rounded-full bg-bb-primary px-1.5 text-[10px] text-white">{status.pendingProposalCount}</span>}
+            제안{status.pendingProposalCount > 0 && <span className="ml-1 rounded-full bg-bb-primary px-1.5 text-xs text-white">{status.pendingProposalCount}</span>}
           </button>
         </div>
       </header>
@@ -419,7 +419,7 @@ export default function AgentDock() {
             </button>
           </form>
         )}
-        <p className="mt-2 text-[11px] leading-relaxed text-bb-text2">
+        <p className="mt-2 text-xs leading-relaxed text-bb-text2">
           프로젝트 기록(이름, 역할, 최종 제출물·업무 내용)이 외부 AI 모델로 전송됩니다. 답은 새로 고치면 사라지고 제안은 남습니다.
         </p>
       </footer>

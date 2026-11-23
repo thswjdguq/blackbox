@@ -59,9 +59,9 @@ function EvidenceRef({ id, projectId, quote, requirement, briefs, currentRequire
   return (
     <span className="inline">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-evidence={id}
-        className={`mx-0.5 rounded px-1 font-mono text-[10px] align-middle ${changed ? "bg-amber-500/15 text-amber-500" : "bg-bb-primary/10 text-bb-primary"}`}>{id}</button>
+        className={`mx-0.5 rounded px-1 font-mono text-xs align-middle ${changed ? "bg-amber-500/15 text-amber-500" : "bg-bb-primary/10 text-bb-primary"}`}>{id}</button>
       {open && (
-        <span className="mt-1 block rounded-lg border border-bb-border bg-bb-surface p-2 text-[11px] text-bb-text" data-testid={`evidence-${id}`}>
+        <span className="mt-1 block rounded-lg border border-bb-border bg-bb-surface p-2 text-xs text-bb-text" data-testid={`evidence-${id}`}>
           {quote && (
             <>
               {changed && <span className="mb-1 block font-semibold text-amber-600 dark:text-amber-400">근거 안내문이 바뀜{brief ? "" : "(안내문을 찾을 수 없음)"} · 카드를 만들 때의 문장</span>}
@@ -197,7 +197,7 @@ export function RequirementProposalEditor({ proposal: p, projectId, onDone }: { 
           </label>
         </>
       )}
-      <p className="text-[11px] text-bb-text2">근거와 원문은 고칠 수 없습니다.</p>
+      <p className="text-xs text-bb-text2">근거와 원문은 고칠 수 없습니다.</p>
       {needsQuestion && <p className="text-xs text-amber-600 dark:text-amber-400">수정안이 없는 제안은 확인 질문이 있어야 합니다.</p>}
       {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
       <div className="flex gap-2">

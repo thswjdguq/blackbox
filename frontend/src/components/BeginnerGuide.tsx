@@ -87,7 +87,7 @@ export default function BeginnerGuide({ toggleLabel, steps, warning, faq, defaul
                   </div>
                 )}
                 {step.example && (
-                  <div className="mt-2.5 bg-bb-bg border border-bb-border rounded-lg p-3 font-mono text-[11px] text-bb-text2 break-all">
+                  <div className="mt-2.5 bg-bb-bg border border-bb-border rounded-lg p-3 font-mono text-xs text-bb-text2 break-all">
                     {step.example.before}
                     <span className="text-indigo-400 font-bold">{step.example.highlightPart}</span>
                     {step.example.after}

@@ -253,7 +253,7 @@ export default function ProjectSettingsPage() {
                   {testMsg.text}
                 </p>
               )}
-              <p className="mt-1 text-[11px] text-bb-text2">
+              <p className="mt-1 text-xs text-bb-text2">
                 Discord 채널 설정 → 연동 → 웹후크 → 웹후크 URL 복사
               </p>
             </div>
