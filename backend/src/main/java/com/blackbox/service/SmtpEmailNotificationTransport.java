@@ -2,6 +2,7 @@ package com.blackbox.service;
 
 import com.blackbox.config.MailNotificationProperties;
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.eclipse.angus.mail.smtp.SMTPAddressFailedException;
@@ -69,8 +70,8 @@ public class SmtpEmailNotificationTransport implements EmailNotificationTranspor
 
     private MimeMessage message(UUID deliveryId, String recipient, EmailNotificationComposer.Content content)
             throws MessagingException, UnsupportedEncodingException {
-        InternetAddress sender = new InternetAddress(from, true);
-        InternetAddress to = new InternetAddress(recipient, true);   // 주소 하나만 받는다
+        InternetAddress sender = single(from);
+        InternetAddress to = single(recipient);
         MimeMessage message = mail.createMimeMessage();
         var helper = new MimeMessageHelper(message, false, "UTF-8");
         helper.setFrom(sender.getAddress(), SENDER_NAME);
@@ -81,6 +82,13 @@ public class SmtpEmailNotificationTransport implements EmailNotificationTranspor
         String domain = sender.getAddress().substring(sender.getAddress().lastIndexOf('@') + 1);
         message.setHeader("Message-ID", "<" + deliveryId + "@" + domain + ">");
         return message;
+    }
+
+    /** 주소 하나만 받는다. 그룹 문법("목록:a@x,b@y;")도 주소 객체 하나로 해석되므로 따로 거절한다 */
+    private static InternetAddress single(String address) throws AddressException {
+        InternetAddress parsed = new InternetAddress(address, true);
+        if (parsed.isGroup()) throw new AddressException("그룹 주소는 받지 않는다");
+        return parsed;
     }
 
     /**
