@@ -305,7 +305,7 @@ export default function ProjectHomePage() {
                 <div className="flex items-center gap-3 flex-wrap mb-1">
                   <h1 className="text-2xl font-bold text-bb-text truncate">{project.name}</h1>
                   {/* 건강도 배지 */}
-                  <span className="text-xs px-2.5 py-1 rounded-md bg-bb-surface2 text-bb-text2">프로젝트 공간</span>
+                  <span className="text-xs px-2.5 py-1 rounded-md bg-bb-surface border border-bb-border text-bb-text2">프로젝트 공간</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-bb-text2 mt-1">
                   {project.courseName && <span>{project.courseName}</span>}
