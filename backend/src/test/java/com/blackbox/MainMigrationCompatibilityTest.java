@@ -16,7 +16,9 @@ class MainMigrationCompatibilityTest {
     private final String schema = "pr143_" + UUID.randomUUID().toString().replace("-", "");
     private Flyway flyway(String target) {
         var config = Flyway.configure().dataSource(url, user, password).schemas(schema).defaultSchema(schema)
-                .locations("classpath:db/migration");
+                .locations("classpath:db/migration")
+                // 이름 규칙(V<번호>__<설명>.sql)을 어긴 파일은 Flyway가 조용히 건너뛴다. 건너뛰지 말고 실패하게 한다
+                .validateMigrationNaming(true);
         if (target != null) config.target(MigrationVersion.fromVersion(target));
         return config.load();
     }
@@ -38,7 +40,10 @@ class MainMigrationCompatibilityTest {
     }
     @Test void emptyDatabaseMigratesAndRepeatedMigrationDoesNothing() throws Exception {
         var f = flyway(null); f.migrate(); f.validate();
-        assertEquals("39", f.info().current().getVersion().toString());
+        // 최신 버전을 숫자로 적어 두지 않는다. Flyway가 읽은 마이그레이션 파일 중 가장 높은 버전까지 적용됐는지 본다
+        var resolved = f.info().all();
+        assertEquals(resolved[resolved.length - 1].getVersion(), f.info().current().getVersion());
+        assertEquals(0, f.info().pending().length);
         assertEquals(0, f.migrate().migrationsExecuted);
         try (var c = connection()) {
             assertEquals("1", scalar(c, "SELECT count(*) FROM flyway_schema_history WHERE version='25' AND script='V25__agent_proposals.sql'"));
@@ -103,6 +108,33 @@ class MainMigrationCompatibilityTest {
             execute(c, "UPDATE notification_email_outbox SET status='PROCESSING',claimed_at=now(),attempt_count=attempt_count+1 WHERE event_type='TASK_COMPLETION_REQUESTED'");
             assertEquals("t", scalar(c, "SELECT updated_at > created_at FROM notification_email_outbox WHERE event_type='TASK_COMPLETION_REQUESTED'"));
             assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "UPDATE notification_email_outbox SET attempt_count=-1")).getSQLState());
+        }
+    }
+
+    /** V40(K-41 0.5 9·10장): 기존 계정은 미확인으로 시작하고, 확인 토큰·수신 설정의 제약을 지킨다 */
+    @Test void emailVerificationTokensAndNotificationPreferences() throws Exception {
+        flyway("39").migrate();
+        String member = "11111111-1111-4111-8111-111111111111";
+        try (var c = connection()) {
+            execute(c, "INSERT INTO users(id,email,name,password_hash) VALUES ('" + member + "','member@example.invalid','기존 회원','dummy')");
+        }
+        assertEquals(1, flyway("40").migrate().migrationsExecuted);   // V41이 생겨도 V40까지만 올려 본다
+        try (var c = connection()) {
+            assertNull(scalar(c, "SELECT email_verified_at FROM users"), "기존 계정은 미확인");
+            String token = "INSERT INTO email_verification_tokens(user_id,email,token_hash,created_at,expires_at,used_at) VALUES ('"
+                    + member + "','member@example.invalid','%s',now(),%s,%s)";
+            execute(c, token.formatted("a".repeat(64), "now()+interval '15 minutes'", "NULL"));
+            // 같은 해시는 두 번 없고, 만료는 발급보다 뒤이며, 사용 시각은 발급 이후다
+            assertEquals("23505", assertThrows(SQLException.class, () -> execute(c, token.formatted("a".repeat(64), "now()+interval '15 minutes'", "NULL"))).getSQLState());
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, token.formatted("b".repeat(64), "now()", "NULL"))).getSQLState());
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, token.formatted("c".repeat(64), "now()+interval '15 minutes'", "now()-interval '1 minute'"))).getSQLState());
+
+            // 수신 설정은 켜면 켠 시각이 있어야 하고, 바꾸면 updated_at이 갱신된다
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c,
+                    "INSERT INTO email_notification_preferences(user_id,enabled,notice_version) VALUES ('" + member + "',true,'v1')")).getSQLState());
+            execute(c, "INSERT INTO email_notification_preferences(user_id,enabled,notice_version,updated_at) VALUES ('" + member + "',false,'v1',now()-interval '1 hour')");
+            execute(c, "UPDATE email_notification_preferences SET enabled=true, enabled_at=now()");
+            assertEquals("t", scalar(c, "SELECT updated_at > now()-interval '1 minute' FROM email_notification_preferences"));
         }
     }
 }

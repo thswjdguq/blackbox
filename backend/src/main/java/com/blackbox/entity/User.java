@@ -28,6 +28,11 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
+    // 현재 주소를 확인한 시각(K-41 9·10장). NULL이면 미확인. EmailVerificationService만 SQL로 쓴다.
+    // JPA에서는 읽기만 해서, 확인 전에 읽어 둔 엔티티를 저장해도 확인 시각을 지우지 않는다
+    @Column(name = "email_verified_at", insertable = false, updatable = false)
+    private OffsetDateTime emailVerifiedAt;
+
     @Column(nullable = false, length = 100)
     private String name;
 
