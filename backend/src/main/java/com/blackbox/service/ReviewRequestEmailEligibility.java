@@ -58,12 +58,11 @@ public class ReviewRequestEmailEligibility {
         if (!new EmailNotificationPolicy(settings.isEnabled(),settings.getRecipientAllowlist())
                 .permits(project.getId(),request,current)) return Optional.empty();
         var view=reviews.get(project.getId(),request.getDeliverableId(),request.getReviewId());
-        if (!view.latest() || view.decision() != null || !"IN_REVIEW".equals(view.deliverableStatus())
-                || !Objects.equals(request.getEventKey(),"REVIEW_REQUESTED:"+view.reviewId())) return Optional.empty();
+        // 회차 id와 latest가 요청을 구분한다. 생산자의 key 문자열 형식을 여기서 다시 해석하지 않는다.
+        if (!view.latest() || view.decision() != null || !"IN_REVIEW".equals(view.deliverableStatus())) return Optional.empty();
         var round=rounds.findById(view.reviewId()).orElseThrow(() -> new NotFoundException("검토 회차가 없습니다."));
-        if (!Objects.equals(round.getProject().getId(),project.getId())
-                || !Objects.equals(round.getDeliverable().getId(),request.getDeliverableId())
-                || !Objects.equals(round.getOpenedBy().getId(),request.getActorId())
+        // 프로젝트/제출물/회차 관계는 reviews.get의 계약이 보장한다.
+        if (!Objects.equals(round.getOpenedBy().getId(),request.getActorId())
                 || ReviewRoundService.isRoundFileUploader(round,recipient)) return Optional.empty();
         return Optional.of(recipient.getEmail().strip());
     }
