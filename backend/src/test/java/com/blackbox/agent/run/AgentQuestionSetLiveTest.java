@@ -67,10 +67,10 @@ class AgentQuestionSetLiveTest {
         DeliverableRequirement users = data.requirement(proposal, "대상 사용자를 분석한다", true);
         data.requirement(proposal, "A4 5쪽 이내로 쓴다", false);
         data.assess(problem, leader);
-        data.task(project, leader, "문제 정의 초안", "DONE", today.minusDays(3), proposal, problem, lee);
+        data.doneTask(project, leader, "문제 정의 초안", today.minusDays(3), proposal, problem, lee, park);
         data.task(project, leader, "사용자 인터뷰", "IN_PROGRESS", today.plusDays(2), proposal, users, park);
         data.task(project, leader, "API 설계 문서", "TODO", today.minusDays(2), proposal, null, lee);
-        data.task(project, leader, "주제 선정", "DONE", today.minusDays(7), null, null, leader);
+        data.doneTask(project, leader, "주제 선정", today.minusDays(7), null, null, leader, lee);
         data.task(project, leader, "발표 자료 틀", "TODO", today.plusDays(10), proposal, null, park);
         data.alert(project, park, "박팀원님이 최근 2주 동안 활동 기록이 없습니다");
 

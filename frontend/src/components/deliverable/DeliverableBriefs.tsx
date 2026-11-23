@@ -41,7 +41,7 @@ export default function DeliverableBriefs({ projectId, deliverableId, deliverabl
   const editable = canWrite && !locked;
 
   return (
-    <section aria-label="과제 안내문" className="bg-bb-surface border border-bb-border rounded-xl p-5">
+    <section aria-label="과제 안내문" className="bg-bb-surface border border-bb-border rounded-xl p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-bb-text">과제 안내문 <span className="text-bb-text2">{briefs.length}</span></h2>

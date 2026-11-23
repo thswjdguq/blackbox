@@ -50,7 +50,7 @@ export default function MeetingOutcomes(p: Props) {
     } catch (e) { setError(apiError(e, e instanceof Error ? e.message : "반영에 실패했습니다. 완료 표시가 없는 항목을 확인하세요.")); }
     finally { p.onBusy(false); }
   };
-  return <section className="bg-bb-surface border border-bb-border rounded-xl p-6 mb-6">
+  return <section className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
     <div className="flex flex-wrap justify-between gap-3 mb-3"><div><h2 className="text-lg font-semibold">결정사항 · 할 일 정리</h2><p className="mt-1 text-xs text-bb-text2">회의록을 작성한 뒤 AI 제안을 확인하세요. 선택하기 전에는 저장되거나 업무로 등록되지 않습니다.</p></div>
       <button type="button" onClick={extract} disabled={!p.canWrite || p.busy || !p.notes.trim()} className="bg-bb-primary text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50">{p.busy ? "처리 중…" : "결정사항·할 일 추출"}</button></div>
     <p className="text-xs text-bb-text2 mb-4">AI 추출 시 회의록 본문이 설정된 외부 AI 서비스로 전달됩니다. 담당자와 기한은 직접 지정하세요.</p>

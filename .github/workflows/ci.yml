@@ -51,6 +51,9 @@ jobs:
           java-version: '25'
           cache: gradle
 
+      - name: 서버 스크립트 검사(S3 백업)
+        run: bash scripts/test-ec2-backup-s3.sh
+
       - name: 빌드 + 테스트
         working-directory: backend
         run: ./gradlew --no-daemon --console=plain build

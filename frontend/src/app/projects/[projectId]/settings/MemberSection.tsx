@@ -113,7 +113,7 @@ export default function MemberSection({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div className="bg-bb-surface border border-bb-border rounded-xl p-6 mb-5">
+    <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-5">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base font-semibold text-bb-text flex items-center gap-2">
           <Users size={16} className="text-bb-primary" />
