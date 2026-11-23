@@ -18,6 +18,15 @@ import static org.mockito.Mockito.*;
 
 /** mock 저장소 단위 테스트. 고유 제약·cursor 질의·롤백의 실제 동작은 NotificationDatabaseTest가 맡는다. */
 class NotificationServiceTest {
+    @Test void completionKeyUsesTaskAndDatabasePrecisionAcrossOffsets() {
+        UUID taskId=UUID.randomUUID();
+        OffsetDateTime at=OffsetDateTime.parse("2026-11-23T10:00:00.123456000+09:00");
+        String key=NotificationService.completionKey(taskId,at);
+        assertEquals(key,NotificationService.completionKey(taskId,at.withOffsetSameInstant(ZoneOffset.UTC)));
+        assertEquals(key,NotificationService.completionKey(taskId,at.plusNanos(999)));
+        assertNotEquals(key,NotificationService.completionKey(taskId,at.plusNanos(1000)));
+        assertNotEquals(key,NotificationService.completionKey(UUID.randomUUID(),at));
+    }
     final UserNotificationRepository repo = mock(UserNotificationRepository.class);
     final ProjectRepository projects = mock(ProjectRepository.class);
     final ProjectMemberRepository members = mock(ProjectMemberRepository.class);
