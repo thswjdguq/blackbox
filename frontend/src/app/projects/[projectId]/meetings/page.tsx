@@ -687,7 +687,7 @@ function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: stri
 }
 
 // ── 회의 카드 ──────────────────────────────────────────────────────────
-function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: string }) {
+function MeetingCard({ meeting, projectId, wide = false }: { meeting: Meeting; projectId: string; wide?: boolean }) {
   const router = useRouter();
 
   // 회의록이 작성된 경우 초록, 미작성이면 회색
@@ -696,8 +696,8 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
   return (
     <div
       onClick={() => router.push(`/projects/${projectId}/meetings/${meeting.id}`)}
-      className="group bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer
-                 hover:border-bb-primary/40 hover:bg-bb-surface2 transition-all flex items-center gap-4"
+      className={`group bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer ${wide ? "xl:col-span-2" : ""}
+                 hover:border-bb-primary/40 hover:bg-bb-surface2 transition-all flex items-center gap-4`}
     >
       {/* 아이콘 */}
       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0
@@ -788,7 +788,8 @@ export default function MeetingsPage() {
     setShowCreate(false);
   };
 
-  const grouped = groupByMonth(meetings);
+  // 달마다 나눠 그리면 회의가 하나뿐인 달의 오른쪽이 빈다. 같은 순서(달별로 모은 순)로 이어서 한 줄에 2개씩 채운다
+  const ordered = [...groupByMonth(meetings).values()].flat();
 
   // ── 로딩 스켈레톤 ────────────────────────────────────────────────────
   if (loading) {
@@ -872,20 +873,15 @@ export default function MeetingsPage() {
           </div>
         )}
 
-        {/* 월별 그룹 타임라인 */}
-        {[...grouped.entries()].map(([month, list]) => (
-          <section key={month} className="mb-6">
-            <h2 className="text-xs font-semibold text-bb-text2 uppercase tracking-wider mb-3 px-1">
-              {month}
-            </h2>
-            {/* 넓은 화면(1280px~)은 한 줄에 2개. 한 줄에 하나면 오른쪽이 너무 비었다 */}
-            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
-              {list.map((m) => (
-                <MeetingCard key={m.id} meeting={m} projectId={projectId} />
-              ))}
-            </div>
+        {/* 회의 목록: 넓은 화면(1280px~)은 한 줄에 2개. 날짜는 카드마다 있으므로 달 머리글 없이 이어서 채운다 */}
+        {ordered.length > 0 && (
+          <section aria-label="회의 목록" className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+            {/* 홀수 개면 마지막 카드는 한 줄 전체로(오른쪽이 비지 않게) */}
+            {ordered.map((m, i) => (
+              <MeetingCard key={m.id} meeting={m} projectId={projectId} wide={ordered.length % 2 === 1 && i === ordered.length - 1} />
+            ))}
           </section>
-        ))}
+        )}
       </main>
 
       {/* 회의 생성 모달 */}
