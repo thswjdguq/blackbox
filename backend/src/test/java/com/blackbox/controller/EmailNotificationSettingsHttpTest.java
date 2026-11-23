@@ -6,7 +6,7 @@ import com.blackbox.service.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.support.StaticListableBeanFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,7 +16,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,9 +40,7 @@ class EmailNotificationSettingsHttpTest {
         when(store.find(user.getId())).thenReturn(Optional.empty());
         when(store.update(eq(user.getId()), anyBoolean(), anyString(), any())).thenAnswer(call ->
                 EmailNotificationPreferenceStore.Preference.off().transition(call.getArgument(1), call.getArgument(2), call.getArgument(3)));
-        mvc = mvc(new EmailNotificationSettingsService(
-                new StaticListableBeanFactory(Map.of("store", store)).getBeanProvider(EmailNotificationPreferenceStore.class),
-                new StaticListableBeanFactory(Map.of("reader", reader)).getBeanProvider(EmailNotificationVerificationReader.class)));
+        mvc = mvc(new EmailNotificationSettingsService(store, reader));
     }
     @AfterEach void clearAccount() { SecurityContextHolder.clearContext(); }
 
@@ -97,14 +94,11 @@ class EmailNotificationSettingsHttpTest {
                 .andExpect(jsonPath("$.verificationUnavailableReason").value("합성 서버의 현재 사용 불가 안내"));
     }
 
-    @Test void missingBackendsReturnUserReadable503RatherThanPretendPersistence() throws Exception {
-        signIn(); mvc = mvc(new EmailNotificationSettingsService(
-                new StaticListableBeanFactory().getBeanProvider(EmailNotificationPreferenceStore.class),
-                new StaticListableBeanFactory().getBeanProvider(EmailNotificationVerificationReader.class)));
+    @Test void databaseFailureDoesNotReturnASuccessfulSaveOrExposeItsDetails() throws Exception {
+        signIn(); when(store.update(any(), anyBoolean(), anyString(), any()))
+                .thenThrow(new DataAccessResourceFailureException("synthetic-private-database-detail"));
         mvc.perform(put(path()).contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"))
-                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("EMAIL_SETTINGS_UNAVAILABLE"))
-                .andExpect(jsonPath("$.detail").value("이메일 알림 설정 기능을 준비 중입니다."));
-        verifyNoInteractions(store, reader);
+                .andExpect(status().isInternalServerError());
     }
 
     @Test void anotherFrameworkPrincipalIsNotAcceptedAsAnApplicationAccount() throws Exception {

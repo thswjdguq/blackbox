@@ -1,9 +1,7 @@
 package com.blackbox.service;
 
-import com.blackbox.exception.CodedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -12,7 +10,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -80,11 +77,9 @@ class EmailNotificationSettingsServiceTest {
         assertTrue(next.updatedAt().isAfter(first)); assertEquals(next.updatedAt(), saved.get().enabledAt());
     }
 
-    @Test void missingStoreOrVerificationReaderIsUnavailableWithoutPretendingToSave() {
-        for (var missing : new EmailNotificationSettingsService[]{service(null, reader), service(store, null)}) {
-            var error = assertThrows(CodedException.class, () -> missing.update(userId, true));
-            assertEquals(HttpStatus.SERVICE_UNAVAILABLE, error.getStatus()); assertEquals("EMAIL_SETTINGS_UNAVAILABLE", error.getCode());
-        }
+    @Test void requiredStoreAndVerificationReaderCannotBeMissing() {
+        assertThrows(NullPointerException.class, () -> service(null, reader));
+        assertThrows(NullPointerException.class, () -> service(store, null));
         verifyNoInteractions(store, reader);
     }
 
@@ -114,9 +109,7 @@ class EmailNotificationSettingsServiceTest {
     }
 
     private EmailNotificationSettingsService service(EmailNotificationPreferenceStore value, EmailNotificationVerificationReader verification) {
-        return new EmailNotificationSettingsService(
-                new StaticListableBeanFactory(value == null ? Map.of() : Map.of("store", value)).getBeanProvider(EmailNotificationPreferenceStore.class),
-                new StaticListableBeanFactory(verification == null ? Map.of() : Map.of("reader", verification)).getBeanProvider(EmailNotificationVerificationReader.class), clock);
+        return new EmailNotificationSettingsService(value, verification, clock);
     }
 
     private EmailNotificationVerificationReader.Status status(OffsetDateTime verifiedAt, boolean available, String reason) {
