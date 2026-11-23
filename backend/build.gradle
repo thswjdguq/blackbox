@@ -37,6 +37,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     // 이메일 알림(K-41). 버전은 Spring Boot가 관리한다
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+    // 스타터가 실행 시에 넣는 Jakarta Mail 구현. SMTP 응답 코드(4xx·5xx)를 읽으려고 컴파일에도 둔다
+    implementation 'org.eclipse.angus:angus-mail'
 
     // PostgreSQL
     runtimeOnly 'org.postgresql:postgresql'
