@@ -65,9 +65,55 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
     return <p className="py-16 text-center text-sm text-bb-text2">조건에 맞는 업무가 없습니다.</p>;
   }
 
+  const open = (t: Task) => onEdit(t);
+  const dueText = (t: Task) => t.dueDate
+    ? <><span className="text-bb-text2">{shortDate(t.dueDate)}</span>{t.status !== "DONE" && <span className={`ml-1.5 ${DUE_TEXT[dueTone(t.dueDate)]}`}>{dueLabel(t.dueDate)}</span>}</>
+    : <span className="text-bb-text2">마감 없음</span>;
+
   return (
-    // 작은 화면에서는 표만 가로로 넘긴다
-    <div className="overflow-x-auto rounded-xl border border-bb-border bg-bb-surface">
+    <>
+    {/* 휴대폰: 표의 열이 잘리므로 업무 하나를 카드 한 장으로. 정렬은 위의 고르기로 */}
+    <div className="md:hidden">
+      <label className="mb-2 flex items-center justify-end gap-2 text-xs text-bb-text2">
+        정렬
+        <select value={`${sortKey}:${asc ? "asc" : "desc"}`} onChange={(e) => { const [k, d] = e.target.value.split(":"); setSortKey(k as SortKey); setAsc(d === "asc"); }}
+          className="rounded-lg border border-bb-border bg-bb-surface px-2 py-1.5 text-xs text-bb-text">
+          {COLUMNS.map((c) => <option key={c.key} value={`${c.key}:asc`}>{c.label}</option>)}
+          <option value="due:desc">마감 늦은 순</option>
+        </select>
+      </label>
+      <ul className="space-y-2" aria-label="업무 목록">
+        {sorted.map((t) => {
+          const done = t.status === "DONE";
+          const locked = isLocked?.(t) ?? false;
+          return (
+            <li key={t.id} data-testid={`task-item-${t.id}`} className={`rounded-xl border border-bb-border bg-bb-surface p-3 ${done ? "opacity-60" : ""}`}>
+              <button type="button" onClick={() => open(t)} aria-label={`${t.title} ${readOnly || locked ? "보기" : "열기"}${locked ? " (확정된 최종 제출물)" : ""}`}
+                className="block w-full text-left">
+                <span className={`block break-words text-sm font-medium text-bb-text ${done ? "line-through" : ""}`}>{t.title} {aiIds?.has(t.id) && <AiBadge />}</span>
+                <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                  <span className="text-bb-text2">{t.assignees.length === 0 ? "미배정" : t.assignees.map((a) => a.name).join(", ")}</span>
+                  <span>{dueText(t)}</span>
+                  <span className="text-bb-text2">우선순위 {PRIORITY_TEXT[t.priority]}</span>
+                </span>
+                <span className="mt-1 block break-words text-xs text-bb-text2">
+                  {t.deliverableTitle ?? "최종 제출물 미연결"}
+                  {locked && <span data-testid="task-locked" className="ml-1.5 rounded bg-bb-surface2 px-1 py-0.5 text-[11px]">확정됨</span>}
+                  {t.requirementContent && <> · {t.requirementContent}</>}
+                </span>
+                {t.tag && <span className="mt-0.5 block text-xs text-bb-text2">#{t.tag}</span>}
+              </button>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <TaskStatusControl task={t} onMove={onMove} onEdit={onEdit} busy={busy} readOnly={readOnly || locked} />
+                {!readOnly && !locked && onManage && <button type="button" disabled={busy} onClick={() => onManage(t)} aria-label={`${t.title} 수정·삭제`} className="ml-auto rounded px-1 py-1 text-xs text-blue-700 hover:underline focus-visible:outline focus-visible:outline-2 dark:text-blue-300 disabled:opacity-40">수정·삭제</button>}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+    {/* 태블릿·PC: 표 */}
+    <div className="hidden overflow-x-auto rounded-xl border border-bb-border bg-bb-surface md:block">
       <table className="w-full min-w-[720px] table-fixed text-sm">
         <caption className="sr-only">업무 목록. 열 이름을 눌러 정렬합니다.</caption>
         <thead>
@@ -132,5 +178,6 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
         </tbody>
       </table>
     </div>
+    </>
   );
 }
