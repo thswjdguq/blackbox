@@ -697,7 +697,7 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
     <div
       onClick={() => router.push(`/projects/${projectId}/meetings/${meeting.id}`)}
       className="group bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer
-                 hover:border-slate-500 hover:bg-slate-800/80 transition-all flex items-center gap-4"
+                 hover:border-bb-primary/40 hover:bg-bb-surface2 transition-all flex items-center gap-4"
     >
       {/* 아이콘 */}
       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0
@@ -707,7 +707,7 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
 
       {/* 정보 */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-bb-text truncate group-hover:text-white transition-colors">
+        <p className="text-sm font-semibold text-bb-text truncate group-hover:text-bb-primary transition-colors">
           {meeting.title}
         </p>
         <div className="flex items-center gap-3 mt-1">
@@ -727,23 +727,23 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
           className={`text-xs font-medium px-2 py-0.5 rounded-full ${
             hasNotes
               ? "bg-green-500/15 text-green-400"
-              : "bg-slate-700 text-bb-text2"
+              : "bg-bb-surface text-bb-text2 border border-bb-border"
           }`}
         >
           {hasNotes ? "작성 완료" : "미작성"}
         </span>
         {/* Notion 동기화 배지 */}
         {meeting.notionPageId ? (
-          <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-400">
+          <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-bb-surface2 border border-bb-border text-bb-text2">
             <span className="text-[8px] font-bold bg-white text-[#191919] px-0.5 rounded leading-tight">N</span>
             동기화됨
           </span>
         ) : (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800/50 text-slate-600 border border-slate-700/50">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-bb-surface text-bb-text2 border border-bb-border">
             미동기화
           </span>
         )}
-        <ChevronRight size={15} className="text-slate-600 group-hover:text-bb-text2 transition-colors" />
+        <ChevronRight size={15} className="text-bb-text2 group-hover:text-bb-primary transition-colors" />
       </div>
     </div>
   );
@@ -799,9 +799,11 @@ export default function MeetingsPage() {
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-36 mb-6" />
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-20 bg-bb-surface rounded-xl" />
-            ))}
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-20 bg-bb-surface rounded-xl" />
+              ))}
+            </div>
           </div>
         </main>
       </div>
@@ -876,7 +878,8 @@ export default function MeetingsPage() {
             <h2 className="text-xs font-semibold text-bb-text2 uppercase tracking-wider mb-3 px-1">
               {month}
             </h2>
-            <div className="space-y-2">
+            {/* 넓은 화면(1280px~)은 한 줄에 2개. 한 줄에 하나면 오른쪽이 너무 비었다 */}
+            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
               {list.map((m) => (
                 <MeetingCard key={m.id} meeting={m} projectId={projectId} />
               ))}
