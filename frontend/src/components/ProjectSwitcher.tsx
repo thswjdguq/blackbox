@@ -81,7 +81,7 @@ export default function ProjectSwitcher({ currentProjectId, pathname, onNavigate
         <FolderKanban size={15} className="shrink-0 text-bb-primary" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-bb-text">{label}</span>
-          {current?.courseName && <span className="block truncate text-[11px] text-bb-text2">{current.courseName}</span>}
+          {current?.courseName && <span className="block truncate text-xs text-bb-text2">{current.courseName}</span>}
         </span>
         <ChevronsUpDown size={14} className="shrink-0 text-bb-text2" />
       </button>
@@ -113,7 +113,7 @@ export default function ProjectSwitcher({ currentProjectId, pathname, onNavigate
             </ul>
           )}
           {failed && projects !== null && (
-            <p className="border-t border-bb-border px-3 py-2 text-[11px] text-amber-500">목록을 새로 불러오지 못해 이전 목록입니다.</p>
+            <p className="border-t border-bb-border px-3 py-2 text-xs text-amber-500">목록을 새로 불러오지 못해 이전 목록입니다.</p>
           )}
           <Link
             href="/dashboard"

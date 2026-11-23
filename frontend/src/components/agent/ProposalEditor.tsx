@@ -11,14 +11,14 @@ import type { PlanContent, Proposal, TasksContent } from "@/types/agent";
 import OptionalDeadlineTime from "@/components/OptionalDeadlineTime";
 
 const INPUT = "w-full rounded-md border border-bb-border bg-bb-surface px-2 py-1.5 text-xs text-bb-text focus:border-bb-primary focus:outline-none";
-const ROW_BTN = "inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-[11px] text-bb-text2 hover:bg-bb-surface2 hover:text-bb-text md:min-h-0 md:py-1";
+const ROW_BTN = "inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-xs text-bb-text2 hover:bg-bb-surface2 hover:text-bb-text md:min-h-0 md:py-1";
 
 type PlanTask = PlanContent["tasks"][number];
 type TaskItem = TasksContent["tasks"][number];
 
 /** 칸 아래 이유. name은 서버가 400에 적는 경로와 같다(6.5) */
 function Problem({ name, problems }: { name: string; problems: Record<string, string> }) {
-  return problems[name] ? <p className="mt-0.5 text-[11px] text-red-400">{problems[name]}</p> : null;
+  return problems[name] ? <p className="mt-0.5 text-xs text-red-400">{problems[name]}</p> : null;
 }
 
 /** 요구사항 줄을 새로 더할 때 카드 안에서 겹치지 않는 key(4.7) */
@@ -250,12 +250,12 @@ export default function ProposalEditor({
             <Problem name={`tasks[${i}].completionCriteria`} problems={problems} />
             <div className="grid grid-cols-2 gap-2">
               <label className="block">
-                <span className="text-[11px] text-bb-text2">기한(선택)</span>
+                <span className="text-xs text-bb-text2">기한(선택)</span>
                 <input type="date" name={`tasks[${i}].dueDate`} value={t.dueDate ?? ""} className={INPUT}
                   onChange={(e) => updateTask(i, { dueDate: e.target.value || null })} />
               </label>
               <label className="block">
-                <span className="text-[11px] text-bb-text2">연결할 요구사항</span>
+                <span className="text-xs text-bb-text2">연결할 요구사항</span>
                 {plan ? (
                   <select name={`tasks[${i}].requirementKey`} value={(t as PlanTask).requirementKey ?? ""} className={INPUT}
                     onChange={(e) => updateTask(i, { requirementKey: e.target.value || null })}>

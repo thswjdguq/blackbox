@@ -135,7 +135,7 @@ function ProgressSection({
           {reqs.total === 0 ? "필수 요구사항 없음" : `${reqs.met}/${reqs.total} (${reqs.percent}%)`}
         </span>
       </div>
-      <p className="text-[11px] text-bb-text2">업무 완료와 요구사항 충족은 제출 준비 완료를 뜻하지 않습니다.</p>
+      <p className="text-xs text-bb-text2">업무 완료와 요구사항 충족은 제출 준비 완료를 뜻하지 않습니다.</p>
     </div>
   );
 }
@@ -457,7 +457,7 @@ export default function DeliverableDetailPage() {
                 >
                   {tab.label}
                   {!tab.implemented && (
-                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-bb-surface border border-bb-border rounded-full">준비 중</span>
+                    <span className="ml-1.5 text-xs px-1.5 py-0.5 bg-bb-surface border border-bb-border rounded-full">준비 중</span>
                   )}
                 </button>
               ))}

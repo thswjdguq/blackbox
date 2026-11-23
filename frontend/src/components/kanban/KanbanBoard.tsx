@@ -313,12 +313,19 @@ export default function KanbanBoard({
           ))}
         </div>
       </div>
-      <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="업무 범위">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div role="group" aria-label="업무 범위" className="flex flex-wrap rounded-lg border border-bb-border bg-bb-surface p-0.5 text-sm">
         {([...(readOnly ? [] : [["mine", "내 업무"], ["review", "내가 검토할 업무"]]), ["all", "전체 업무"], ["unassigned", "미배정"]] as [TaskScope, string][]).map(([key, label]) => {
           const count = tasks.filter(t => (preferences.showDone || t.status !== "DONE") && inTaskScope(t, key, userId, reviewIds)).length;
-          return <button key={key} aria-pressed={scope === key} onClick={() => changeScope(key)} className={`rounded-lg border px-3 py-2 text-sm ${scope === key ? "border-bb-primary bg-bb-primary/10 text-bb-primary" : "border-bb-border text-bb-text2"}`}>{label} {key === "review" && reviewError ? "확인 실패" : key === "review" && reviewLoading ? "확인 중" : count}</button>;
+          return <button key={key} aria-pressed={scope === key} onClick={() => changeScope(key)} className={`rounded-md px-3 py-1.5 ${scope === key ? "bg-bb-surface2 font-medium text-bb-text" : "text-bb-text2 hover:text-bb-text"}`}>{label} {key === "review" && reviewError ? "확인 실패" : key === "review" && reviewLoading ? "확인 중" : count}</button>;
         })}
+        </div>
         <label className="ml-auto flex items-center gap-2 text-sm text-bb-text2"><input type="checkbox" checked={preferences.showDone} onChange={e => updatePreferences({ showDone: e.target.checked })} />완료 업무 포함</label>
+        {view === "list" && tasks.length > 0 && !readOnly && (
+          <button onClick={() => openCreate("TODO")} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
+            + 업무 추가
+          </button>
+        )}
       </div>
       <p className="mb-3 text-xs text-bb-text2">프로젝트 {tasks.length}개 중 {visibleTasks.length}개 표시 · 범위 버튼의 건수는 프로젝트 전체 기준</p>
       {reviewError && <p role="alert" className="mb-3 text-sm text-red-500">검토 권한 일부를 확인하지 못했습니다. <button onClick={() => setReviewRetry(n => n + 1)} className="underline">다시 확인</button></p>}
@@ -333,13 +340,6 @@ export default function KanbanBoard({
       {boardError && <p role="alert" className="mb-4 text-sm text-red-500">{boardError}</p>}
       {view === "list" && tasks.length > 0 ? (
         <>
-          {!readOnly && (
-            <div className="mb-3 flex justify-end">
-              <button onClick={() => openCreate("TODO")} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
-                + 업무 추가
-              </button>
-            </div>
-          )}
           {!(scope === "review" && visibleTasks.length === 0 && (reviewLoading || reviewError)) && <TaskListView tasks={visibleTasks} onEdit={openEdit} onManage={task => { openEdit(task); setEditingTab("info"); }} onMove={handleMoveTask} busy={updating} readOnly={readOnly} aiIds={aiOrigins.task} isLocked={isLocked} />}
         </>
       ) : (
