@@ -114,7 +114,7 @@ function ProgressSection({
   const { tasks, requiredRequirements: reqs } = progress;
 
   return (
-    <div className="bg-bb-surface2 rounded-xl p-4 space-y-3">
+    <div className="bg-bb-surface border border-bb-border rounded-xl p-4 space-y-3">
       <p className="text-xs font-semibold text-bb-text2 uppercase tracking-wide">진척 현황</p>
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-bb-text2">
@@ -457,7 +457,7 @@ export default function DeliverableDetailPage() {
                 >
                   {tab.label}
                   {!tab.implemented && (
-                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-bb-surface2 rounded-full">준비 중</span>
+                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-bb-surface border border-bb-border rounded-full">준비 중</span>
                   )}
                 </button>
               ))}
