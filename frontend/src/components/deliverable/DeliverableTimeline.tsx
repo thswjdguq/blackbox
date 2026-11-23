@@ -91,7 +91,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
 
   return (
     <div className="rounded-xl border border-bb-border bg-bb-surface">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-bb-border px-4 py-2 text-[11px] text-bb-text2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-bb-border px-4 py-2 text-xs text-bb-text2">
         <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rotate-45 bg-amber-400" /> 제출 기한</span>
         {(["TODO", "IN_PROGRESS", "DONE"] as const).map((s) => (
           <span key={s} className="inline-flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${DOT[s]}`} /> 업무 {TASK_STATUS_TEXT[s]}</span>
@@ -104,7 +104,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
         {/* 기간이 짧아도 줄이 화면 끝까지 이어지게 */}
         <div className="relative" style={{ width: labelW + totalDays * DAY, minWidth: "100%" }}>
           {/* 날짜 머리줄 */}
-          <div className="sticky top-0 z-10 flex border-b border-bb-border bg-bb-surface text-[10px] text-bb-text2">
+          <div className="sticky top-0 z-10 flex border-b border-bb-border bg-bb-surface text-xs text-bb-text2">
             <div className="sticky left-0 z-20 flex shrink-0 items-end border-r border-bb-border bg-bb-surface px-3 py-1" style={{ width: labelW }}>최종 제출물</div>
             {days.map((d) => {
               const first = d.getDate() === 1 || d.getTime() === start.getTime();
@@ -129,7 +129,7 @@ export default function DeliverableTimeline({ projectId, deliverables, tasks }: 
                 ) : (
                   <span className="truncate text-sm text-bb-text2">{r.title}</span>
                 )}
-                <span className="truncate text-[11px] text-bb-text2">
+                <span className="truncate text-xs text-bb-text2">
                   {r.due && <span className={deliverableDue({ dueDate: r.due, dueTime: r.dueTime, status: r.status }).cls}>{deliverableDue({ dueDate: r.due, dueTime: r.dueTime, status: r.status }).label}</span>}
                   {r.due && " · "}업무 {r.tasks.length + r.undated}개{r.undated > 0 && ` (기한 없음 ${r.undated})`}
                 </span>

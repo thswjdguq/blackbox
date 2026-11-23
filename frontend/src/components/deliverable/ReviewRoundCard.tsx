@@ -155,11 +155,11 @@ export default function ReviewRoundCard({
             {round.file.uploaderName}
           </span>
         ) : (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">파일 없음 · 중간 검토</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">파일 없음 · 중간 검토</span>
         )}
         {result === "APPROVED" && (
           <span
-            className={`text-[11px] px-2 py-0.5 rounded-full ${
+            className={`text-xs px-2 py-0.5 rounded-full ${
               round.currentBasis ? "bg-teal-500/15 text-teal-400" : "bg-bb-surface2 text-bb-text2 line-through"
             }`}
           >
@@ -167,16 +167,16 @@ export default function ReviewRoundCard({
           </span>
         )}
         {round.confirmationCancelled && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">확정 취소</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">확정 취소</span>
         )}
         {result === "CHANGES_REQUESTED" && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">수정 요청</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">수정 요청</span>
         )}
         {result == null && round.latest && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400">검토 중</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400">검토 중</span>
         )}
         {result == null && !round.latest && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">결정 없음</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">결정 없음</span>
         )}
       </div>
       <p className="mt-1 text-xs text-bb-text2">
@@ -349,7 +349,7 @@ export default function ReviewRoundCard({
                       placeholder="완료 기준 (선택)"
                       className={FIELD}
                     />
-                    <p className="text-[11px] text-bb-text2">담당자와 기한은 만든 뒤 업무 보드에서 정합니다.</p>
+                    <p className="text-xs text-bb-text2">담당자와 기한은 만든 뒤 업무 보드에서 정합니다.</p>
                     <div className="flex justify-end gap-2">
                       <button type="button" onClick={() => setTaskFormId(null)} className="px-2 text-xs text-bb-text2">
                         취소

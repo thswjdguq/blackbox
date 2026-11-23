@@ -197,7 +197,7 @@ export default function ProposalCard({
             <span className={`rounded px-1.5 py-0.5 ${STATUS_CLS[p.status] ?? ""}`}>{STATUS_LABEL[p.status] ?? p.status}</span>
           </p>
           <p className="mt-1 text-sm font-medium text-bb-text break-words">{p.title}</p>
-          <p className="mt-0.5 text-[11px] text-bb-text2">
+          <p className="mt-0.5 text-xs text-bb-text2">
             {counts}{counts && " · "}{p.requestedBy.name} · {when(p.createdAt)}
           </p>
         </div>
@@ -223,7 +223,7 @@ export default function ProposalCard({
 
       {open && !editing && (
         <div className="space-y-3 border-t border-bb-border px-3 pb-3 pt-2 text-sm">
-          <p className="flex flex-wrap gap-1.5 text-[11px]">
+          <p className="flex flex-wrap gap-1.5 text-xs">
             <span className="rounded bg-bb-primary/10 px-1.5 py-0.5 text-bb-primary">AI 제안</span>
             {p.edited && <span className="rounded bg-bb-surface2 px-1.5 py-0.5 text-bb-text2">사람이 고침</span>}
           </p>
@@ -333,8 +333,8 @@ export default function ProposalCard({
                     거절
                   </button>
                 </div>
-                {planOrTasks && <p className="text-[11px] text-bb-text2">담당자는 만든 뒤 업무 보드에서 정합니다.</p>}
-                {questionOnly && <p className="text-[11px] text-bb-text2">안내문만으로 정할 수 없어 채택할 수 없습니다. 교수님께 확인한 뒤 요구사항을 직접 고치고 이 제안은 거절로 닫으세요.</p>}
+                {planOrTasks && <p className="text-xs text-bb-text2">담당자는 만든 뒤 업무 보드에서 정합니다.</p>}
+                {questionOnly && <p className="text-xs text-bb-text2">안내문만으로 정할 수 없어 채택할 수 없습니다. 교수님께 확인한 뒤 요구사항을 직접 고치고 이 제안은 거절로 닫으세요.</p>}
               </div>
             )
           )}
@@ -348,7 +348,7 @@ export default function ProposalCard({
                 ))}
               </div>
               {p.results?.assessmentCleared && <p className="text-xs text-amber-600 dark:text-amber-400" data-testid="assessment-cleared">요구사항 문구가 바뀌어 충족 확인이 풀렸습니다. 다시 확인해 주세요.</p>}
-              {planOrTasks && <p className="text-[11px] text-bb-text2">담당자는 업무 보드에서 정하세요.</p>}
+              {planOrTasks && <p className="text-xs text-bb-text2">담당자는 업무 보드에서 정하세요.</p>}
             </div>
           )}
           {p.status === "REJECTED" && decided}
