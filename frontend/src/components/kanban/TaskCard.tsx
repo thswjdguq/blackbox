@@ -94,14 +94,14 @@ export default function TaskCard({ task, onEdit, onMove, readOnly = false, isAi 
         </p>
 
         {/* Priority badge */}
-        <span className={`shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${priority.cls}`}>
+        <span className={`shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium ${priority.cls}`}>
           <PriorityIcon size={10} />
           {priority.label}
         </span>
 
         {/* 마감일 경고 배지 */}
         {dueWarning && (
-          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${dueWarning.badgeCls}`}>
+          <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-semibold ${dueWarning.badgeCls}`}>
             {dueWarning.label}
           </span>
         )}
@@ -109,7 +109,7 @@ export default function TaskCard({ task, onEdit, onMove, readOnly = false, isAi 
 
       <p className="mb-2 flex min-w-0 items-center gap-1.5 text-xs text-teal-400" title={task.deliverableTitle ?? "최종 제출물 미연결"}>
         <span className="truncate">{task.deliverableTitle ? `최종 제출물: ${task.deliverableTitle}` : "최종 제출물 미연결"}</span>
-        {locked && <span data-testid="task-locked" className="shrink-0 rounded bg-bb-surface2 px-1.5 py-0.5 text-[10px] font-medium text-bb-text2">확정됨</span>}
+        {locked && <span data-testid="task-locked" className="shrink-0 rounded bg-bb-surface2 px-1.5 py-0.5 text-xs font-medium text-bb-text2">확정됨</span>}
       </p>
       {/* Description preview */}
       {task.description && (
@@ -122,7 +122,7 @@ export default function TaskCard({ task, onEdit, onMove, readOnly = false, isAi 
       {task.tag && (
         <div className="flex items-center gap-1 mb-3">
           <Tag size={10} className="text-teal-400 shrink-0" />
-          <span className="text-[10px] text-teal-400 bg-teal-400/10 px-1.5 py-0.5 rounded-full font-medium">
+          <span className="text-xs text-teal-400 bg-teal-400/10 px-1.5 py-0.5 rounded-full font-medium">
             {task.tag}
           </span>
         </div>
@@ -138,7 +138,7 @@ export default function TaskCard({ task, onEdit, onMove, readOnly = false, isAi 
         {/* Assignee avatars */}
         <div className="flex items-center">
           {task.assignees.length === 0 ? (
-            <span className="text-[10px] text-bb-text2/70">미배정</span>
+            <span className="text-xs text-bb-text2/70">미배정</span>
           ) : (
             task.assignees.slice(0, 4).map((a) => (
               <Avatar key={a.userId} name={a.name} />
@@ -154,7 +154,7 @@ export default function TaskCard({ task, onEdit, onMove, readOnly = false, isAi 
         {/* Due + IN_PROGRESS → Done 버튼 */}
         <div className="flex items-center gap-2">
           {dueInfo && (
-            <span className={`flex items-center gap-1 text-[10px] font-medium ${dueInfo.cls}`}>
+            <span className={`flex items-center gap-1 text-xs font-medium ${dueInfo.cls}`}>
               <Calendar size={9} />
               {dueInfo.label}
             </span>

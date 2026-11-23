@@ -436,7 +436,7 @@ export default function SchedulePage() {
                   {/* 헤더: 순위 + 시간 + 점수 배지 */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-start gap-3">
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded shrink-0 mt-0.5 ${
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded shrink-0 mt-0.5 ${
                         rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-bb-surface2 text-bb-text"
                       }`}>
                         {rec.rank}위
@@ -447,7 +447,7 @@ export default function SchedulePage() {
                       </div>
                     </div>
                     {/* 추천도 점수 배지 */}
-                    <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                    <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full border ${
                       (rec.score ?? 100) >= 90
                         ? "bg-green-500/15 text-green-400 border-green-500/30"
                         : (rec.score ?? 100) >= 60

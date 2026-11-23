@@ -40,10 +40,10 @@ export default function AgentLauncher({ projectId, compact = false }: { projectI
       {running ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Sparkles size={16} aria-hidden="true" />}
       {!compact && (
         <>
-          <span className="text-left"><span className="block font-semibold">AI 도우미</span><span className="block mt-0.5 text-[10px] text-bb-text2">계획 · 업무 · 진행 상황</span></span>
-          {running && <span className="ml-auto text-[11px] text-bb-text2">진행 중</span>}
+          <span className="text-left"><span className="block font-semibold">AI 도우미</span><span className="block mt-0.5 text-xs text-bb-text2">계획 · 업무 · 진행 상황</span></span>
+          {running && <span className="ml-auto text-xs text-bb-text2">진행 중</span>}
           {!running && count > 0 && (
-            <span className="ml-auto rounded-full bg-bb-primary px-1.5 text-[10px] text-white" aria-label={`대기 제안 ${count}개`}>{count}</span>
+            <span className="ml-auto rounded-full bg-bb-primary px-1.5 text-xs text-white" aria-label={`대기 제안 ${count}개`}>{count}</span>
           )}
         </>
       )}
