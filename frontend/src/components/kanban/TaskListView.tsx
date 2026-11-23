@@ -78,8 +78,11 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
         정렬
         <select value={`${sortKey}:${asc ? "asc" : "desc"}`} onChange={(e) => { const [k, d] = e.target.value.split(":"); setSortKey(k as SortKey); setAsc(d === "asc"); }}
           className="rounded-lg border border-bb-border bg-bb-surface px-2 py-1.5 text-xs text-bb-text">
-          {COLUMNS.map((c) => <option key={c.key} value={`${c.key}:asc`}>{c.label}</option>)}
-          <option value="due:desc">마감 늦은 순</option>
+          {/* 표에서 열을 두 번 눌러 내림차순이 된 상태도 그대로 고를 수 있게 열마다 두 방향을 둔다 */}
+          {COLUMNS.flatMap((c) => [
+            <option key={`${c.key}:asc`} value={`${c.key}:asc`}>{c.label} ↑</option>,
+            <option key={`${c.key}:desc`} value={`${c.key}:desc`}>{c.label} ↓</option>,
+          ])}
         </select>
       </label>
       <ul className="space-y-2" aria-label="업무 목록">
