@@ -73,7 +73,7 @@ export default function RunEntryView({
 
       {lines.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-bb-primary">
+          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-bb-primary">
             <Sparkles size={11} aria-hidden="true" />
             AI 답변
           </p>
@@ -95,7 +95,7 @@ export default function RunEntryView({
               );
             })}
           </div>
-          {!running && <p className="mt-2 text-[11px] text-bb-text2">기록과 다를 수 있습니다. 링크로 확인하세요.</p>}
+          {!running && <p className="mt-2 text-xs text-bb-text2">기록과 다를 수 있습니다. 링크로 확인하세요.</p>}
         </div>
       )}
 

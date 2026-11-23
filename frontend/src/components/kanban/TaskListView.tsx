@@ -99,7 +99,7 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
               >
                 <td className="px-3 py-2.5">
                   <span className={`block truncate text-bb-text ${done ? "line-through" : ""}`}>{t.title} {aiIds?.has(t.id) && <AiBadge />}</span>
-                  {t.tag && <span className="block truncate text-[11px] text-bb-text2">#{t.tag}</span>}
+                  {t.tag && <span className="block truncate text-xs text-bb-text2">#{t.tag}</span>}
                   {!readOnly && !locked && onManage && <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); onManage(t); }} aria-label={`${t.title} 수정·삭제`} className="mt-1 rounded px-1 py-1 text-xs text-blue-700 hover:underline focus-visible:outline focus-visible:outline-2 dark:text-blue-300 disabled:opacity-40">수정·삭제</button>}
                 </td>
                 <td className="px-3 py-2.5">
@@ -121,9 +121,9 @@ export default function TaskListView({ tasks, onEdit, onManage, onMove, busy, re
                 <td className="px-3 py-2.5">
                   <span className="block truncate text-bb-text2">
                     {t.deliverableTitle ?? "최종 제출물 미연결"}
-                    {locked && <span data-testid="task-locked" className="ml-1.5 rounded bg-bb-surface2 px-1 py-0.5 text-[10px]">확정됨</span>}
+                    {locked && <span data-testid="task-locked" className="ml-1.5 rounded bg-bb-surface2 px-1 py-0.5 text-xs">확정됨</span>}
                   </span>
-                  {t.requirementContent && <span className="block truncate text-[11px] text-bb-text2/80">{t.requirementContent}</span>}
+                  {t.requirementContent && <span className="block truncate text-xs text-bb-text2/80">{t.requirementContent}</span>}
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap text-bb-text2">{PRIORITY_TEXT[t.priority]}</td>
               </tr>

@@ -153,7 +153,7 @@ export default function MyTasks({ projects }: { projects: ProjectRef[] }) {
                         href={`/projects/${t.projectId}/board?task=${t.id}`}
                         className="group flex items-center gap-3 rounded-lg px-2 py-1.5 -mx-2 hover:bg-bb-surface2"
                       >
-                        <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded ${t.status === "IN_PROGRESS" ? "bg-indigo-500/15 text-indigo-400" : "bg-bb-surface2 text-bb-text2"}`}>
+                        <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${t.status === "IN_PROGRESS" ? "bg-indigo-500/15 text-indigo-400" : "bg-bb-surface2 text-bb-text2"}`}>
                           {t.status === "IN_PROGRESS" ? "진행 중" : "할 일"}
                         </span>
                         <span className="min-w-0 flex-1">
