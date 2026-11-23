@@ -25,8 +25,10 @@ Java25·PostgreSQL16 전용 DB `bb_b_email_worker_fix_20261123`, 관련 **133/13
 ## 미검증·선행 작업
 
 - 실제 인증 API·토큰/SQL·설정 API·프로필/확인 화면은 미구현이다. #221에 합의한 대로 가입 API/화면은 변경하지 않는다. A·C 선행 구현을 기다린다. A의 V40 예약을 확인했고 B 설정에 필요한 실제 스키마와 현재 주소 인증/요청 가용 상태 읽기 인터페이스를 요청했다. SQL 번호를 선점하거나 기존 migration을 수정하지 않았다.
-- EmailDeliveryAuthorization의 실제 조회 구현과 A EmailNotificationTransport 구현이 없다. 이 PR만 적용해도 실제 이메일을 보낼 수 있는 상태가 아니다.
+- EmailDeliveryAuthorization의 실제 조회 구현이 없다. A EmailNotificationTransport 구현은 #224 수정본을 재승인/병합해 main에서 사용할 수 있다. 실제 인증 조회가 없으면 worker는 아무 건도 획득하지 않으므로 이 PR만 적용해 일반 회원에게 업무 이메일을 보내지 않는다.
 - 단위/DB의 transport 대역 ACCEPTED는 Gmail·Mailpit 수신 성공을 뜻하지 않는다. 실제 SMTP·메일함·브라우저 인증 흐름·운영 적용은 수행하지 않았다.
 - 실제 환경 파일·자격증명은 읽지 않았다. 로컬 main 서버를 이 Draft로 바꾸거나 재시작하지 않았다.
 - #224 SMTP 소비자 검토: 별도 detached 복사본에서 기존 네트워크 없는8/8 통과, RFC 그룹 수신자 제한 검사1건은 PERMANENT_FAILURE 대신 ACCEPTED로 실패했다. 실제 계정·메일은 사용하지 않았고 A에게 그룹 입력 거절과 회귀 검사를 요청했다. 현재 B 정책이 그룹 문법을 거절하므로 일반 업무 경로의 권한 우회를 재현한 것은 아니다. A의 Gmail 수신 보고는 B 실적으로 계산하지 않는다.
+- SMTP 재검토: A가 sender/to의 그룹 주소를 모두 거절한 뒤 기존8+실패 재현1, **9/9 통과**했다. 최신 head `80888112`의 CI4 성공·main 뒤처짐0을 확인해 승인/병합했다(main `3e206b14`).
+- 결합 확인: 원격 PR에 A 미병합 소스를 섞지 않는 별도 detached 복사본에서 worker와 수정 SMTP를 합쳐 전용 DB `bb_b_smtp_worker_20261123`의 관련 **142/142 통과**, 실패·오류·건너뜀0. 기존133+SMTP8+추가 재현1의 겹치는 범위이며 서로 합산하지 않는다. 현재 PR 백엔드와 검증 복사본의 추적 소스 차이는 없다. worker DB의 인증/전송은 대역이고 SMTP 단위도 가짜 연결이므로 실제 Gmail/Mailpit·인증 API·화면 전체 흐름 검증은 아니다.
 - 후속: A/C 계약 확인→A 인증/SQL/SMTP→B 설정 API·실제 인증 읽기 연결→C 화면→격리 SMTP/인증 전체 흐름→사용자의 실제 수신/링크 확인. 그 전 실제 발송 비활성 유지.
