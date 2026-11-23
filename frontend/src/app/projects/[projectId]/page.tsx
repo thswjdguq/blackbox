@@ -299,13 +299,13 @@ export default function ProjectHomePage() {
 
           {/* ── 프로젝트 헤더 ───────────────────────────────────────────── */}
           <div className="border-b border-bb-border pb-7 mb-7">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              {/* 제목 + 메타 */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              {/* 제목 + 메타. 휴대폰에서는 오른쪽 칸에 밀려 잘리지 않게 위아래로 쌓는다 */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap mb-1">
-                  <h1 className="text-2xl font-bold text-bb-text truncate">{project.name}</h1>
+                  <h1 className="text-2xl font-bold text-bb-text break-words min-w-0">{project.name}</h1>
                   {/* 건강도 배지 */}
-                  <span className="text-xs px-2.5 py-1 rounded-md bg-bb-surface2 text-bb-text2">프로젝트 공간</span>
+                  <span className="text-xs px-2.5 py-1 rounded-md bg-bb-surface border border-bb-border text-bb-text2">프로젝트 공간</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-bb-text2 mt-1">
                   {project.courseName && <span>{project.courseName}</span>}
@@ -327,7 +327,7 @@ export default function ProjectHomePage() {
               </div>
 
               {/* 우측: 초대코드 + 멤버 아바타 */}
-              <div className="flex flex-col items-end gap-3 shrink-0">
+              <div className="flex flex-col items-start gap-3 shrink-0 sm:items-end">
                 {/* 초대코드 복사 버튼 */}
                 <button
                   onClick={copyInviteCode}
@@ -618,7 +618,8 @@ export default function ProjectHomePage() {
           </div></details>
           {/* ── 팀플 종료 — 활동 보고서 ─────────────────────────────────── */}
           <div className="bg-bb-surface border border-bb-border rounded-2xl p-5">
-            <div className="flex items-start gap-4 flex-wrap">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="flex flex-1 min-w-0 items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-bb-surface2 flex items-center justify-center shrink-0">
                 <Archive size={18} className="text-bb-text2" />
               </div>
@@ -644,12 +645,13 @@ export default function ProjectHomePage() {
                   ))}
                 </ul>
               </div>
+              </div>
               <button
                 onClick={downloadEvidencePackage}
                 disabled={downloading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
                            bg-blue-700 hover:bg-blue-800 disabled:opacity-60
-                           text-white text-sm font-semibold transition-colors shrink-0"
+                           text-white text-sm font-semibold transition-colors shrink-0 self-stretch sm:self-start"
               >
                 {downloading ? (
                   <>

@@ -37,7 +37,7 @@ export default function ReviewQueue({ projects }: { projects: ProjectRef[] }) {
   // 늦게 온 옛 응답(이전 계정·이전 조회)은 버린다: 조회 번호, 세션 세대, 마운트 여부를 모두 본다
   const sequence = useRef(0);
   const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; sequence.current++; }; }, []);
+  useEffect(() => { const seq = sequence; alive.current = true; return () => { alive.current = false; seq.current++; }; }, []);
 
   const load = useCallback(async () => {
     const ticket = ++sequence.current;

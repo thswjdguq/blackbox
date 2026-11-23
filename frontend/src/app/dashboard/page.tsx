@@ -63,12 +63,6 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  // 인증 확인 + 초기 데이터
-  useEffect(() => {
-    fetchProjects();
-
-  }, []);
-
   const fetchProjects = async () => {
     setLoadError("");
     try {
@@ -82,6 +76,11 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
+
+  // 인증 확인 + 초기 데이터
+  useEffect(() => {
+    fetchProjects();
+  }, []);
 
   // 프로젝트 삭제
   const handleDelete = async () => {
