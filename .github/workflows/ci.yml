@@ -7,6 +7,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # main이 바뀌어 PR 브랜치를 자동으로 갱신한 뒤 update-pr-branches.yml이 부른다.
+  # GITHUB_TOKEN으로 만든 push는 pull_request 실행을 만들지 않으므로, 필수 검사를 이 방법으로 다시 돌린다
+  workflow_dispatch:
 
 permissions:
   contents: read
