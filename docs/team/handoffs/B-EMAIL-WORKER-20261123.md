@@ -24,7 +24,7 @@ Java25·PostgreSQL16 전용 DB `bb_b_email_worker_fix_20261123`, 관련 **133/13
 
 ## 미검증·선행 작업
 
-- 실제 인증 API·토큰/SQL·설정 API·가입/프로필/확인 화면은 미구현이다. A·C #221 검토와 각 담당 구현을 기다린다. SQL 번호를 선점하거나 기존 migration을 수정하지 않았다.
+- 실제 인증 API·토큰/SQL·설정 API·프로필/확인 화면은 미구현이다. #221 A 리뷰에 따라 가입 API/화면은 변경하지 않는다. A·C 최신 계약 검토와 각 담당 구현을 기다린다. SQL 번호를 선점하거나 기존 migration을 수정하지 않았다.
 - EmailDeliveryAuthorization의 실제 조회 구현과 A EmailNotificationTransport 구현이 없다. 이 PR만 적용해도 실제 이메일을 보낼 수 있는 상태가 아니다.
 - 단위/DB의 transport 대역 ACCEPTED는 Gmail·Mailpit 수신 성공을 뜻하지 않는다. 실제 SMTP·메일함·브라우저 인증 흐름·운영 적용은 수행하지 않았다.
 - 실제 환경 파일·자격증명은 읽지 않았다. 로컬 main 서버를 이 Draft로 바꾸거나 재시작하지 않았다.
