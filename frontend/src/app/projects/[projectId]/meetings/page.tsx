@@ -106,7 +106,7 @@ function StepBar({ step }: { step: 1 | 2 | 3 }) {
               }`}>
                 {done ? <CheckCircle2 size={11} /> : n}
               </div>
-              <span className={`whitespace-nowrap text-[11px] font-medium ${active ? "text-slate-200" : "sr-only sm:not-sr-only text-slate-500"}`}>
+              <span className={`whitespace-nowrap text-xs font-medium ${active ? "text-slate-200" : "sr-only sm:not-sr-only text-slate-500"}`}>
                 {label}
               </span>
             </div>
@@ -321,7 +321,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                 <label className="text-xs font-medium text-bb-text2 flex items-center gap-1.5">
                   <Users size={12} /> 참석자
                 </label>
-                <span className="text-[11px] text-slate-500">{selectedIds.size}명 선택</span>
+                <span className="text-xs text-slate-500">{selectedIds.size}명 선택</span>
               </div>
               {loadingMembers ? (
                 <div className="flex items-center gap-2 text-slate-500 text-xs py-3">
@@ -356,9 +356,9 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-slate-200">{m.name}</div>
-                          <div className="text-[11px] text-slate-500 truncate">{m.email}</div>
+                          <div className="text-xs text-slate-500 truncate">{m.email}</div>
                         </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
                           m.role === "LEADER"
                             ? "bg-indigo-500/15 text-indigo-400"
                             : "bg-slate-700 text-slate-500"
@@ -486,7 +486,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                 {/* 추천 카드 */}
                 {recommendations.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
                       <Sparkles size={10} className="text-indigo-400" />
                       카드를 클릭하면 날짜가 자동 입력됩니다
                     </p>
@@ -509,17 +509,17 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                             {selectedRank === rec.rank ? (
                               <CheckCircle2 size={15} className="text-indigo-400 shrink-0" />
                             ) : (
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${
                                 rec.rank === 1 ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-700 text-slate-300"
                               }`}>{rec.rank}위</span>
                             )}
                             <div>
                               <div className="text-xs font-semibold text-slate-200">{fmtRec(rec.time)}</div>
-                              <div className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">{rec.reason}</div>
+                              <div className="text-xs text-slate-300 mt-0.5 leading-relaxed">{rec.reason}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full border ${
                               (rec.score ?? 100) >= 90
                                 ? "bg-green-500/15 text-green-400 border-green-500/30"
                                 : (rec.score ?? 100) >= 60
@@ -528,7 +528,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                             }`}>
                               추천도 {rec.score ?? 100}
                             </span>
-                            <span className="text-[10px] text-slate-500">{rec.durationMinutes}분</span>
+                            <span className="text-xs text-slate-500">{rec.durationMinutes}분</span>
                           </div>
                         </div>
                         {/* 종일 일정(SOFT BLOCK) 경고 / 전원 가능 */}
@@ -539,14 +539,14 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                               : "bg-amber-500/10 border-amber-500/30"
                           }`}>
                             <TriangleAlert size={11} className="text-amber-400 shrink-0 mt-0.5" />
-                            <span className="text-[10px] text-amber-300 leading-snug">
+                            <span className="text-xs text-amber-300 leading-snug">
                               {(rec.softBlockMembers ?? []).join("님, ")}님이 종일 일정이 있습니다. 팀원과 일정을 조율해보세요.
                             </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 mt-1">
                             <CheckCircle2 size={10} className="text-green-400" />
-                            <span className="text-[10px] text-green-400">전원 가능</span>
+                            <span className="text-xs text-green-400">전원 가능</span>
                           </div>
                         )}
                       </button>
@@ -597,7 +597,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                   {selectedMembers.length === 0 && <span className="text-xs text-slate-500">없음</span>}
                   {selectedMembers.map((m) => (
                     <span key={m.userId}
-                      className="text-[11px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
+                      className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
                       {m.name}
                     </span>
                   ))}
@@ -611,7 +611,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                 <TriangleAlert size={14} className="text-yellow-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-xs font-medium text-yellow-400 mb-1">캘린더 미연동 참석자</p>
-                  <p className="text-[11px] text-yellow-400/70 leading-relaxed">
+                  <p className="text-xs text-yellow-400/70 leading-relaxed">
                     {unconnected.map((m) => m.name).join(", ")}님은 캘린더가 연동되어 있지 않아
                     Google Calendar 자동 등록이 되지 않습니다. 앱 내 알림만 전송됩니다.
                   </p>
@@ -620,7 +620,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
             )}
 
             {calStatusFailed && selectedMembers.length > 0 && (
-              <p className="text-[11px] text-bb-text2 bg-bb-surface2 rounded-xl px-4 py-3">
+              <p className="text-xs text-bb-text2 bg-bb-surface2 rounded-xl px-4 py-3">
                 참석자의 캘린더 연동 상태를 확인하지 못했습니다. 회의는 만들 수 있지만 캘린더 자동 등록 여부는 알 수 없습니다.
               </p>
             )}
@@ -629,7 +629,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
             {!calStatusFailed && selectedMembers.length > 0 && unconnected.length === 0 && (
               <div className="flex items-center gap-2 bg-green-500/8 border border-green-500/25 rounded-xl px-4 py-3">
                 <CheckCircle2 size={14} className="text-green-400 shrink-0" />
-                <p className="text-[11px] text-green-400">
+                <p className="text-xs text-green-400">
                   모든 참석자가 캘린더와 연동되어 있습니다. 회의 생성 시 자동 등록됩니다.
                 </p>
               </div>
@@ -696,8 +696,9 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
   return (
     <div
       onClick={() => router.push(`/projects/${projectId}/meetings/${meeting.id}`)}
-      className="group bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer
-                 hover:border-slate-500 hover:bg-slate-800/80 transition-all flex items-center gap-4"
+      /* 목적이 없는 회의도 같은 높이: 제목·날짜·목적 세 줄(휴대폰은 날짜가 두 줄로 접혀 네 줄). 제목·목적은 한 줄로 자른다 */
+      className="group min-h-28 sm:min-h-24 bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer
+                 hover:border-bb-primary/40 hover:bg-bb-surface2 transition-all flex items-center gap-4"
     >
       {/* 아이콘 */}
       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0
@@ -707,7 +708,7 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
 
       {/* 정보 */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-bb-text truncate group-hover:text-white transition-colors">
+        <p className="text-sm font-semibold text-bb-text truncate group-hover:text-bb-primary transition-colors">
           {meeting.title}
         </p>
         <div className="flex items-center gap-3 mt-1">
@@ -724,26 +725,26 @@ function MeetingCard({ meeting, projectId }: { meeting: Meeting; projectId: stri
       {/* 상태 + Notion 배지 + 화살표 */}
       <div className="flex items-center gap-2 shrink-0">
         <span
-          className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
             hasNotes
               ? "bg-green-500/15 text-green-400"
-              : "bg-slate-700 text-bb-text2"
+              : "bg-bb-surface text-bb-text2 border border-bb-border"
           }`}
         >
           {hasNotes ? "작성 완료" : "미작성"}
         </span>
         {/* Notion 동기화 배지 */}
         {meeting.notionPageId ? (
-          <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-400">
+          <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-bb-surface2 border border-bb-border text-bb-text2">
             <span className="text-[8px] font-bold bg-white text-[#191919] px-0.5 rounded leading-tight">N</span>
             동기화됨
           </span>
         ) : (
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800/50 text-slate-600 border border-slate-700/50">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-bb-surface text-bb-text2 border border-bb-border">
             미동기화
           </span>
         )}
-        <ChevronRight size={15} className="text-slate-600 group-hover:text-bb-text2 transition-colors" />
+        <ChevronRight size={15} className="text-bb-text2 group-hover:text-bb-primary transition-colors" />
       </div>
     </div>
   );
@@ -788,7 +789,8 @@ export default function MeetingsPage() {
     setShowCreate(false);
   };
 
-  const grouped = groupByMonth(meetings);
+  // 달마다 나눠 그리면 회의가 하나뿐인 달의 오른쪽이 빈다. 같은 순서(달별로 모은 순)로 이어서 한 줄에 2개씩 채운다
+  const ordered = [...groupByMonth(meetings).values()].flat();
 
   // ── 로딩 스켈레톤 ────────────────────────────────────────────────────
   if (loading) {
@@ -799,9 +801,11 @@ export default function MeetingsPage() {
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
             <div className="h-6 bg-bb-surface rounded w-36 mb-6" />
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-20 bg-bb-surface rounded-xl" />
-            ))}
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-20 bg-bb-surface rounded-xl" />
+              ))}
+            </div>
           </div>
         </main>
       </div>
@@ -870,19 +874,14 @@ export default function MeetingsPage() {
           </div>
         )}
 
-        {/* 월별 그룹 타임라인 */}
-        {[...grouped.entries()].map(([month, list]) => (
-          <section key={month} className="mb-6">
-            <h2 className="text-xs font-semibold text-bb-text2 uppercase tracking-wider mb-3 px-1">
-              {month}
-            </h2>
-            <div className="space-y-2">
-              {list.map((m) => (
-                <MeetingCard key={m.id} meeting={m} projectId={projectId} />
-              ))}
-            </div>
+        {/* 회의 목록: 넓은 화면(1280px~)은 한 줄에 2개. 날짜는 카드마다 있으므로 달 머리글 없이 이어서 채운다 */}
+        {ordered.length > 0 && (
+          <section aria-label="회의 목록" className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+            {ordered.map((m) => (
+              <MeetingCard key={m.id} meeting={m} projectId={projectId} />
+            ))}
           </section>
-        ))}
+        )}
       </main>
 
       {/* 회의 생성 모달 */}

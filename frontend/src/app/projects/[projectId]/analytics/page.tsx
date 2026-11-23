@@ -46,7 +46,7 @@ interface RiskData {
 const LEVEL_CONFIG = {
   FULL:    { label: "전체 참여", cls: "bg-teal-500/15 text-teal-400 border-teal-500/30", dot: "bg-teal-400" },
   PARTIAL: { label: "부분 참여", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", dot: "bg-yellow-400" },
-  NONE:    { label: "집계 기록 적음",    cls: "bg-red-500/15 text-red-400 border-red-500/30",    dot: "bg-red-400" },
+  NONE:    { label: "집계 기록 적음",    cls: "bg-bb-surface2 text-bb-text2 border-bb-border",    dot: "bg-slate-400" },
 } as const;
 
 const ALERT_CONFIG: Record<AlertType, { label: string; color: string; bg: string }> = {
@@ -72,7 +72,7 @@ function ParticipationCell({ participated }: { participated: boolean }) {
   return participated ? (
     <span className="text-teal-400 font-bold text-base" aria-label="충족">✓</span>
   ) : (
-    <span className="text-red-400/60 text-base" aria-label="미충족">✗</span>
+    <span className="text-bb-text2 text-base" aria-label="미충족">–</span>
   );
 }
 
@@ -83,14 +83,13 @@ const ITEM_ICON: Record<string, React.ElementType> = {
 
 // ── KPI 카드 ────────────────────────────────────────────────────────────
 function KpiCard({
-  label, value, sub, icon: Icon, accent,
+  label, value, sub, icon: Icon,
 }: {
   label: string; value: string | number; sub?: string;
-  icon: React.ElementType; accent?: string;
+  icon: React.ElementType;
 }) {
   return (
     <div className="bg-white dark:bg-bb-surface border border-bb-border rounded-xl overflow-hidden shadow-sm">
-      <div className="h-1 w-full" style={{ background: accent ?? "#6366F1" }} />
       <div className="p-5">
         <div className="flex items-center gap-2 mb-3">
           <Icon size={14} className="text-bb-text2" />
@@ -336,28 +335,24 @@ export default function AnalyticsPage() {
                 value={scores.length}
                 sub="명"
                 icon={Users}
-                accent="#6366F1"
               />
               <KpiCard
                 label="전체 참여"
                 value={fullCount}
                 sub={`${scores.length}명 중 ${fullCount}명`}
                 icon={TrendingUp}
-                accent="#2DD4BF"
               />
               <KpiCard
                 label="부분 참여"
                 value={partialCount}
                 sub="2~3개 항목 참여"
                 icon={Zap}
-                accent="#F59E0B"
               />
               <KpiCard
                 label="집계 기록 적음"
                 value={noneCount}
                 sub="0~1개 항목 참여"
                 icon={TrendingDown}
-                accent="#EF4444"
               />
             </div>
 
@@ -373,18 +368,18 @@ export default function AnalyticsPage() {
                 <div role="table" aria-label="팀원별 항목 참여 여부" className="min-w-max">
                 {/* 테이블 헤더 */}
                 <div role="row" className="grid gap-0 border-b border-bb-border bg-bb-bg/60" style={{ gridTemplateColumns: gridCols }}>
-                  <div role="columnheader" className="py-3 px-4 pl-5 text-left text-[11px] font-semibold text-bb-text2 uppercase tracking-wide">팀원</div>
+                  <div role="columnheader" className="py-3 px-4 pl-5 text-left text-xs font-semibold text-bb-text2 uppercase tracking-wide">팀원</div>
                   {levelCols.map((col) => (
-                    <div key={col.code} role="columnheader" title={col.description} className="py-3 px-4 text-center text-[11px] font-semibold text-bb-text2 uppercase tracking-wide">
+                    <div key={col.code} role="columnheader" title={col.description} className="py-3 px-4 text-center text-xs font-semibold text-bb-text2 uppercase tracking-wide">
                       {col.label}
                     </div>
                   ))}
                   {extraCols.map((col) => (
-                    <div key={col.code} role="columnheader" title={col.description} className="py-3 px-4 text-center text-[11px] font-semibold text-bb-text2 tracking-wide">
+                    <div key={col.code} role="columnheader" title={col.description} className="py-3 px-4 text-center text-xs font-semibold text-bb-text2 tracking-wide">
                       {col.label}<span className="block font-normal">판정 제외</span>
                     </div>
                   ))}
-                  <div role="columnheader" className="py-3 px-4 pr-5 text-center text-[11px] font-semibold text-bb-text2 uppercase tracking-wide">종합</div>
+                  <div role="columnheader" className="py-3 px-4 pr-5 text-center text-xs font-semibold text-bb-text2 uppercase tracking-wide">종합</div>
                 </div>
 
                 {/* 행 */}
@@ -412,7 +407,7 @@ export default function AnalyticsPage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-bb-text">{s.name}</p>
-                          <p className="text-[11px] text-bb-text2">{s.email}</p>
+                          <p className="text-xs text-bb-text2">{s.email}</p>
                         </div>
                       </div>
 
@@ -425,11 +420,11 @@ export default function AnalyticsPage() {
                           <div key={col.code} role="cell" title={col.description} className="py-4 px-4 text-center">
                             {item && noTarget(item) ? (
                               // 확인할 대상이 없으면 미충족(✗)으로 보이지 않는다(PDF와 같음)
-                              <span className="text-[11px] text-bb-text2">{text}</span>
+                              <span className="text-xs text-bb-text2">{text}</span>
                             ) : item ? (
                               <div className="flex flex-col items-center gap-1">
                                 <ParticipationCell participated={item.passed} />
-                                {text ? <span className="text-[11px] text-bb-text2">{text}</span> : Icon && <Icon size={11} className="text-bb-text2" />}
+                                {text ? <span className="text-xs text-bb-text2">{text}</span> : Icon && <Icon size={11} className="text-bb-text2" />}
                               </div>
                             ) : <span className="text-xs text-bb-text2">–</span>}
                           </div>
@@ -457,12 +452,12 @@ export default function AnalyticsPage() {
               </div>
 
               {/* 판정 기준 안내: 응답의 설명을 그대로 쓴다 */}
-              <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-bb-text2" aria-label="항목 설명">
+              <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-bb-text2" aria-label="항목 설명">
                 {[...levelCols, ...extraCols].map((col) => (
                   <li key={col.code}>{col.label}: {col.description}</li>
                 ))}
               </ul>
-              <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-bb-text2">
+              <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-xs text-bb-text2">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />전체참여: 판정 항목 4개 모두
                 </span>
@@ -470,11 +465,11 @@ export default function AnalyticsPage() {
                   <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />부분참여: 2~3개
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />집계 기록 적음: 0~1개
+                  <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />집계 기록 적음: 0~1개
                 </span>
               </div>
               {(criteria || lastCalc) && (
-                <p className="mt-1 text-[11px] text-bb-text2">
+                <p className="mt-1 text-xs text-bb-text2">
                   {criteria && `계산 기준 ${criteria}`}{criteria && lastCalc && " · "}{lastCalc && `마지막 계산 ${new Date(lastCalc).toLocaleString("ko-KR")}`}
                 </p>
               )}
@@ -500,7 +495,7 @@ export default function AnalyticsPage() {
                         {r.details && r.details.length > 0 && (
                           <ul className="mt-2 flex flex-wrap gap-1.5">
                             {r.details.map((d) => (
-                              <li key={d.code} className={`text-[11px] px-2 py-0.5 rounded-full border border-bb-border ${d.count > 0 ? "text-bb-text" : "text-bb-text2 opacity-60"}`}>
+                              <li key={d.code} className={`text-xs px-2 py-0.5 rounded-full border border-bb-border ${d.count > 0 ? "text-bb-text" : "text-bb-text2 opacity-60"}`}>
                                 {d.label} {d.count}
                               </li>
                             ))}
@@ -560,7 +555,7 @@ export default function AnalyticsPage() {
                     {risk.reasons.length > 0 && (
                       <div className="pt-2 border-t border-bb-border">
                         {risk.reasons.map((r, i) => (
-                          <p key={i} className="text-[11px] text-amber-400 mt-1">• {r}</p>
+                          <p key={i} className="text-xs text-amber-400 mt-1">• {r}</p>
                         ))}
                       </div>
                     )}
@@ -600,16 +595,16 @@ export default function AnalyticsPage() {
                               <LevelBadge level={member.participationLevel} />
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[10px] text-teal-400">✅ {done.length}완료</span>
-                              <span className="text-[10px] text-indigo-400">🔄 {inProgress.length}진행</span>
-                              <span className="text-[10px] text-bb-text2">⬜ {todo.length}예정</span>
+                              <span className="text-xs text-teal-400">✅ {done.length}완료</span>
+                              <span className="text-xs text-indigo-400">🔄 {inProgress.length}진행</span>
+                              <span className="text-xs text-bb-text2">⬜ {todo.length}예정</span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
                             <p className={`text-xl font-bold ${
                               pct === 100 ? "text-teal-400" : pct >= 50 ? "text-indigo-400" : "text-bb-text2"
                             }`}>{myTasks.length > 0 ? `${pct}%` : "-"}</p>
-                            <p className="text-[10px] text-bb-text2">완료율</p>
+                            <p className="text-xs text-bb-text2">완료율</p>
                           </div>
                         </div>
 
@@ -639,7 +634,7 @@ export default function AnalyticsPage() {
                                     {task.title}
                                   </span>
                                   {task.dueDate && (
-                                    <span className={`text-[10px] shrink-0 ${task.status !== "DONE" ? DUE_TEXT[dueTone(task.dueDate)] : "text-bb-text2"}`}>
+                                    <span className={`text-xs shrink-0 ${task.status !== "DONE" ? DUE_TEXT[dueTone(task.dueDate)] : "text-bb-text2"}`}>
                                       {shortDate(task.dueDate)}{task.status !== "DONE" && ` · ${dueLabel(task.dueDate)}`}
                                     </span>
                                   )}

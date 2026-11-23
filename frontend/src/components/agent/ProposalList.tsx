@@ -80,7 +80,7 @@ export default function ProposalList({
           />
         ) : null
       )}
-      {list && list.ids.length >= PROPOSAL_LIMIT && <p className="mt-3 text-[11px] text-bb-text2">최근 {PROPOSAL_LIMIT}건만 보입니다.</p>}
+      {list && list.ids.length >= PROPOSAL_LIMIT && <p className="mt-3 text-xs text-bb-text2">최근 {PROPOSAL_LIMIT}건만 보입니다.</p>}
     </div>
   );
 }

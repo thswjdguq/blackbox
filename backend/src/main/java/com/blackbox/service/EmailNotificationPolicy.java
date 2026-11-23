@@ -20,6 +20,11 @@ public final class EmailNotificationPolicy {
                 .map(EmailNotificationPolicy::addressKey).filter(s -> !s.isEmpty()).collect(Collectors.toUnmodifiableSet());
     }
 
+    /** 발송이 켜져 있고 주소가 허용 목록에 있는지. 주소 확인 메일(K-41 9장)도 업무 메일과 같은 정규화로 판단한다 */
+    boolean allowsAddress(String email) {
+        return enabled && allowed.contains(addressKey(email));
+    }
+
     /** 후보 이메일만으로 허용하지 않고 같은 프로젝트의 현재 기여자와 알림 수신자 id를 함께 대조한다. */
     public boolean permits(UUID projectId, UserNotification notification, ProjectMember currentMember) {
         if (!enabled || allowed.isEmpty() || projectId == null || notification == null || currentMember == null) return false;

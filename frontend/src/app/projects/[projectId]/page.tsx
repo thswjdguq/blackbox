@@ -99,7 +99,7 @@ function StatusBadge({ status }: { status: Task["status"] }) {
     DONE:        { label: "완료",   cls: "bg-teal-500/15 text-teal-400" },
   }[status];
   return (
-    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.cls}`}>
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cfg.cls}`}>
       {cfg.label}
     </span>
   );
@@ -350,7 +350,7 @@ export default function ProjectHomePage() {
                 {/* 멤버 아바타 스택 */}
                 {members.length > 0 && (
                   <div className="flex items-center">
-                    <div className="flex -space-x-2">
+                    <div className="flex gap-1">{/* 두 글자 이니셜이 겹쳐 읽히지 않아 띄운다 */}
                       {members.slice(0, 5).map((m) => (
                         <Avatar key={m.userId} name={m.name} size={8} />
                       ))}
@@ -405,7 +405,7 @@ export default function ProjectHomePage() {
                   <div key={label} className="bg-bb-bg rounded-xl p-3 text-center">
                     <div className="flex items-center justify-center gap-1.5 mb-1">
                       <div className={`w-2 h-2 rounded-full ${dot}`} />
-                      <span className="text-[11px] text-bb-text2">{label}</span>
+                      <span className="text-xs text-bb-text2">{label}</span>
                     </div>
                     <p className={`text-xl font-bold ${text}`}>{count}</p>
                   </div>
@@ -425,7 +425,7 @@ export default function ProjectHomePage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-bb-text truncate">{t.title}</p>
                         {t.assignees.length > 0 && (
-                          <p className="text-[11px] text-bb-text2 mt-0.5 truncate">
+                          <p className="text-xs text-bb-text2 mt-0.5 truncate">
                             👤 {t.assignees.map((a) => a.name).join(", ")}
                           </p>
                         )}
@@ -465,13 +465,13 @@ export default function ProjectHomePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-bb-text truncate">{m.title}</p>
-                        <p className="text-[11px] text-bb-text2 mt-0.5">
+                        <p className="text-xs text-bb-text2 mt-0.5">
                           {fmtDateTime(m.meetingDate)}
                         </p>
                       </div>
                       {/* Notion 동기화 배지 */}
                       {m.notionPageId && (
-                        <span className="flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5
+                        <span className="flex items-center gap-1 text-xs font-medium px-1.5 py-0.5
                                          rounded-full bg-slate-800 border border-slate-600 text-slate-400 shrink-0">
                           <span className="font-bold bg-white text-[#191919] px-0.5 rounded text-[7px]">N</span>
                           동기화
@@ -538,7 +538,7 @@ export default function ProjectHomePage() {
                   const levelCfg = {
                     FULL:    { label: "전체 참여", cls: "text-teal-400 bg-teal-500/10 border-teal-500/25" },
                     PARTIAL: { label: "부분 참여", cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/25" },
-                    NONE:    { label: "집계 기록 적음",    cls: "text-red-400 bg-red-500/10 border-red-500/25" },
+                    NONE:    { label: "집계 기록 적음",    cls: "text-bb-text2 bg-bb-surface2 border-bb-border" },
                   }[s.participationLevel];
                   return (
                     <div key={s.userId} className="flex items-center gap-3 p-2 rounded-lg bg-bb-bg/40">
@@ -546,18 +546,18 @@ export default function ProjectHomePage() {
                       <span className="text-xs font-medium text-bb-text flex-1 truncate">{s.name}</span>
                       <div className="flex items-center gap-2 shrink-0">
                         {memberAlert && (
-                          <span className={`flex items-center gap-1 text-[10px] border px-2 py-0.5 rounded-full ${alertTone.color} ${alertTone.bg}`}>
+                          <span className={`flex items-center gap-1 text-xs border px-2 py-0.5 rounded-full ${alertTone.color} ${alertTone.bg}`}>
                             <AlertTriangle size={9} />
                             {alertTone.label} · {ALERT_LABEL[memberAlert.alertType] ?? memberAlert.alertType}
                           </span>
                         )}
                         {/* K-40 6장: 판정 배지는 그대로, 검토 참여 횟수를 함께(판정에는 넣지 않음) */}
                         {review && (
-                          <span title={review.description} className="text-[10px] text-bb-text2 border border-bb-border px-2 py-0.5 rounded-full">
+                          <span title={review.description} className="text-xs text-bb-text2 border border-bb-border px-2 py-0.5 rounded-full">
                             검토 {review.count}건
                           </span>
                         )}
-                        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${levelCfg.cls}`}>
+                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${levelCfg.cls}`}>
                           {levelCfg.label}
                         </span>
                       </div>
@@ -602,11 +602,11 @@ export default function ProjectHomePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-bb-text truncate">{f.fileName}</p>
-                      <p className="text-[11px] text-bb-text2 mt-0.5">
+                      <p className="text-xs text-bb-text2 mt-0.5">
                         {f.uploaderName} · {fmtDateTime(f.uploadedAt)}
                       </p>
                     </div>
-                    <span className="text-[10px] text-bb-text2 bg-bb-bg px-2 py-0.5 rounded-full shrink-0">
+                    <span className="text-xs text-bb-text2 bg-bb-bg px-2 py-0.5 rounded-full shrink-0">
                       v{f.version}
                     </span>
                   </div>
@@ -638,7 +638,7 @@ export default function ProjectHomePage() {
                   ].map((tag) => (
                     <li
                       key={tag}
-                      className="text-[11px] px-2 py-0.5 rounded-full bg-bb-bg text-bb-text2 border border-bb-border"
+                      className="text-xs px-2 py-0.5 rounded-full bg-bb-bg text-bb-text2 border border-bb-border"
                     >
                       {tag}
                     </li>

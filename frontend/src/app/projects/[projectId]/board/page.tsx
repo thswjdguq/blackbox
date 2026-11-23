@@ -321,13 +321,13 @@ export default function BoardPage() {
 
                       {/* Pill badges */}
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-bb-surface text-bb-text2 border border-bb-border">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-bb-surface text-bb-text2 border border-bb-border">
                           할 일 {myTodo}
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                           진행 {myInProgress}
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-400/10 text-teal-400 border border-teal-400/20">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-teal-400/10 text-teal-400 border border-teal-400/20">
                           완료 {myDone}
                         </span>
                       </div>
@@ -347,7 +347,7 @@ export default function BoardPage() {
 
                       {/* Unassigned indicator */}
                       {total === 0 && (
-                        <span className="text-[10px] text-bb-text2 shrink-0">미배정</span>
+                        <span className="text-xs text-bb-text2 shrink-0">미배정</span>
                       )}
                     </div>
                   );

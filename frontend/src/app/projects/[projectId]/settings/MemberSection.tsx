@@ -177,7 +177,7 @@ export default function MemberSection({ projectId }: { projectId: string }) {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-bb-text truncate">{m.name}</span>
                         {isMe && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-bb-surface2 text-bb-text2">
                             나
                           </span>
                         )}
@@ -202,7 +202,7 @@ export default function MemberSection({ projectId }: { projectId: string }) {
                         ))}
                       </select>
                     ) : (
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE[m.role]}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE[m.role]}`}>
                         {ROLE_LABEL[m.role]}
                       </span>
                     )}
