@@ -60,7 +60,7 @@ public class TaskRequestEmailEligibility {
         var task=completion.task();
         if (!completion.canReview() || !"IN_PROGRESS".equals(task.status()) || task.completionRequestedAt() == null
                 || task.completionApprovedAt() != null || !Objects.equals(task.completionRequestedBy(), request.getActorId())
-                || !Objects.equals(request.getEventKey(), "COMPLETION:" + task.id() + ":" + NotificationService.micros(task.completionRequestedAt()))) {
+                || !Objects.equals(request.getEventKey(), NotificationService.completionKey(task.id(), task.completionRequestedAt()))) {
             return Optional.empty();
         }
         return Optional.of(recipient.getEmail().strip());

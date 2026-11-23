@@ -69,8 +69,13 @@ public class NotificationService {
 
     /** 요청 시각이 요청 한 번을 구분한다. 보완 후 다시 요청하면 시각이 달라져 새 알림이 된다. */
     public void completionRequested(Task task, User actor, Collection<User> reviewers) {
-        publish(COMPLETION_REQUESTED, "COMPLETION:" + task.getId() + ":" + micros(task.getCompletionRequestedAt()),
+        publish(COMPLETION_REQUESTED, completionKey(task.getId(), task.getCompletionRequestedAt()),
                 task, actor, null, null, reviewers);
+    }
+
+    /** 업무 확인 요청의 사건 식별자. 발행자와 발송 전 재확인이 같은 형식을 사용한다. */
+    public static String completionKey(UUID taskId, OffsetDateTime requestedAt) {
+        return "COMPLETION:" + Objects.requireNonNull(taskId) + ":" + micros(Objects.requireNonNull(requestedAt));
     }
 
     /** 보완 결정은 대기 중인 요청 하나에 한 번만 가능하므로 그 요청 시각을 키로 쓴다. */
