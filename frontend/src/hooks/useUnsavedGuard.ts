@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 /** 링크를 눌렀을 때 실제로 이 화면을 떠나는지. 새 탭·내려받기·같은 주소·#이동은 떠나지 않는다 */
 export function leavesPage(e: MouseEvent, here: { pathname: string; search: string }): boolean {
@@ -27,17 +27,15 @@ export function leavesPage(e: MouseEvent, here: { pathname: string; search: stri
  * 버튼에서 router.push로 옮기는 곳과 브라우저 뒤로 가기는 막지 못한다.
  */
 export function useUnsavedGuard(dirty: boolean, message = "저장하지 않은 내용이 있습니다. 이 화면을 떠날까요?") {
-  const text = useRef(message);
-  text.current = message;
   useEffect(() => {
     if (!dirty) return;
     const unload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
     const click = (e: MouseEvent) => {
       if (!leavesPage(e, window.location)) return;
-      if (!window.confirm(text.current)) { e.preventDefault(); e.stopPropagation(); }
+      if (!window.confirm(message)) { e.preventDefault(); e.stopPropagation(); }
     };
     window.addEventListener("beforeunload", unload);
     document.addEventListener("click", click, true);
     return () => { window.removeEventListener("beforeunload", unload); document.removeEventListener("click", click, true); };
-  }, [dirty]);
+  }, [dirty, message]);
 }

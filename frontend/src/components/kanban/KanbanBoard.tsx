@@ -62,7 +62,7 @@ export default function KanbanBoard({
   const recordsVersion = useAgentStore(s => s.recordsVersion);
   const mutationLock = useRef(false);
   const tasksRef = useRef(tasks);
-  tasksRef.current = tasks;
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
   const [updating, setUpdating] = useState(false);
 
   // Modal state

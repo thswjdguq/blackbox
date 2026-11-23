@@ -9,7 +9,7 @@ import type { AgentStatus, Proposal } from "@/types/agent";
 import ProposalCard from "./ProposalCard";
 
 function useElapsed(startedAt: number, running: boolean) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => setNow(Date.now()), 1000);

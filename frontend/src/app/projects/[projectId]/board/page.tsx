@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ProjectNav from "@/components/project/ProjectNav";
 import Sidebar from "@/components/Sidebar";
@@ -65,15 +65,7 @@ export default function BoardPage() {
   const isFiltered = filter.assigneeId !== null || filter.priority !== null || filter.tag !== "";
   const clearFilter = () => setFilter({ assigneeId: null, priority: null, tag: "" });
 
-  useEffect(() => {
-    if (!projectId) {
-      router.replace("/dashboard");
-      return;
-    }
-    bootstrap();
-  }, [projectId]);
-
-  async function bootstrap() {
+  const bootstrap = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -95,7 +87,15 @@ export default function BoardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [projectId, router]);
+
+  useEffect(() => {
+    if (!projectId) {
+      router.replace("/dashboard");
+      return;
+    }
+    bootstrap();
+  }, [projectId, router, bootstrap]);
 
 
   // Stats

@@ -38,7 +38,8 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
       .catch(() => { if (live && generation === sessionGeneration()) setTeam(null); });
     return () => { live = false; };
   }, [initialTask.projectId]);
-  const snapshot = useRef(onSnapshot); snapshot.current = onSnapshot;
+  const snapshot = useRef(onSnapshot);
+  useEffect(() => { snapshot.current = onSnapshot; }, [onSnapshot]);
   const sequence = useRef(0);
   const load = useCallback(async () => {
     const request = ++sequence.current;
@@ -49,7 +50,7 @@ export default function TaskCompletionPanel({ task: initialTask, disabled, onCha
     }
     catch(e) { if (request === sequence.current && generation === sessionGeneration() && alive.current) setError(apiError(e, "결과 확인 조건을 불러오지 못했습니다.")); }
   }, [path]);
-  useEffect(() => { alive.current = true; load(); return () => { alive.current = false; sequence.current++; }; }, [load, initialTask.updatedAt, initialTask.completionRequestedAt, initialTask.completionApprovedAt, refreshKey]);
+  useEffect(() => { const seq = sequence; alive.current = true; load(); return () => { alive.current = false; seq.current++; }; }, [load, initialTask.updatedAt, initialTask.completionRequestedAt, initialTask.completionApprovedAt, refreshKey]);
   useEffect(() => {
     const refresh = () => { if (!document.hidden && !busy) load(); };
     window.addEventListener("focus", refresh);
