@@ -25,6 +25,12 @@ assert.deepEqual(notificationAction({...base,target:tgt({kind:'UNKNOWN'}),path:n
 // 다른 프로젝트·다른 사이트·이상한 경로는 이동하지 않는다
 for(const bad of ['/projects/p2/board','https://evil.example/projects/p1/x','//evil.example','/projects/p1//x','/projects/p1/\\x','/projects/p1/x\n','/dashboard'])assert.equal(samePath(bad,P),false,bad);
 assert.deepEqual(notificationAction({...r,path:'/projects/p2/deliverables/d1?tab=review'},P),{kind:'none'});
+// dot segment: 원문은 /projects/p1/로 시작해도 정규화하면 다른 프로젝트·대시보드다(B #202 리뷰 재현 세 경우와 변형)
+for(const bad of ['/projects/p1/../p2/board','/projects/p1/%2e%2e/p2/board','/projects/p1/%2E%2e/p2/board','/projects/p1/.%2e/p2/board','/projects/p1/../../dashboard','/projects/p1/./board','/projects/p1/board/..','/projects/p1/board/%2e%2e?tab=review'])
+  {assert.equal(samePath(bad,P),false,bad);assert.deepEqual(notificationAction({...r,path:bad},P),{kind:'none'},bad);}
+// 정상 경로의 query·anchor는 그대로, 점이 경로 칸 전체가 아니면(파일 이름 등) 막지 않는다
+for(const ok of ['/projects/p1/deliverables/d1?tab=review#comment-c1','/projects/p1/board?task=t9','/projects/p1/vault/report.v2.pdf','/projects/p1/board?next=../x'])
+  assert.equal(samePath(ok,P),true,ok);
 // 필수 칸이 빠지거나 모양이 틀린 응답: 오류 없이 이동을 막고, 옛 칸(taskId)으로 대신 열지 않는다
 const {notificationBroken,BROKEN_NOTICE}=m.exports;
 const broken=[{...base,target:null},{...base,target:undefined},{...base,target:{taskId:'t9'}},{...base,message:undefined},{...base,message:'  '},{...base,path:undefined},{...base,path:5}];

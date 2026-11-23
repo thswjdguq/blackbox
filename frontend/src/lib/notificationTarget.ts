@@ -10,12 +10,25 @@ export type NotificationAction =
   | { kind: "path"; href: string }
   | { kind: "none" };
 
-/** 서버가 보낸 path가 지금 프로젝트 안의 같은 사이트 경로인가. 아니면 이동하지 않는다 */
+const LOCAL = "http://local.invalid";
+
+/**
+ * 서버가 보낸 path가 지금 프로젝트 안의 같은 사이트 경로인가. 아니면 이동하지 않는다.
+ * 원문 접두사만 보면 "/projects/p1/../p2/board"가 다른 프로젝트로 정규화되므로,
+ * 경로 칸의 "."·".."(%2e 변형 포함)을 거절하고 정규화한 결과도 같은 프로젝트 안인지 본다
+ */
 export function samePath(path: string | null | undefined, projectId: string): boolean {
   if (!path || path.length > 2000) return false;
-  if (!path.startsWith(`/projects/${projectId}/`)) return false;
+  const prefix = `/projects/${projectId}/`;
+  if (!path.startsWith(prefix)) return false;
   if (path.includes("//") || path.includes("\\") || /[\u0000-\u001F\u007F]/.test(path)) return false;
-  return true;
+  if (path.split(/[?#]/)[0].split("/").some((s) => /^(?:\.|%2e){1,2}$/i.test(s))) return false;
+  try {
+    const url = new URL(path, LOCAL);
+    return url.origin === LOCAL && url.pathname.startsWith(prefix);
+  } catch {
+    return false;
+  }
 }
 
 /** 필수 칸(message·target·path)이 빠지거나 모양이 틀린 응답. 옛 문구로 다시 만들지 않고 이동을 막는다(K-41 5장) */
