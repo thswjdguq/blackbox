@@ -5,7 +5,7 @@
 
 ## 변경
 
-ReviewRequestEmailEligibility는 현재 메일 설정·허용 목록·현재 기여자·행위자 제외를 EmailNotificationPolicy로 확인한다. ReviewRoundReader.get으로 프로젝트/제출물/회차의 관계, 최신·미결정·IN_REVIEW 상태를 확인하고 같은 회차의 REVIEW_REQUESTED event_key만 허용한다. 회차를 연 사람도 스냅숏의 행위자와 같아야 한다.
+ReviewRequestEmailEligibility는 현재 메일 설정·허용 목록·현재 기여자·행위자 제외를 EmailNotificationPolicy로 확인한다. ReviewRoundReader.get으로 프로젝트/제출물/회차의 관계, 최신·미결정·IN_REVIEW 상태를 확인한다. 회차를 연 사람도 스냅숏의 행위자와 같아야 한다. A 리뷰를 반영해 생산자 event_key 형식 비교와 A 조회가 보장하는 관계의 중복 비교는 제거했다. 최초45건 기록 이후의 수정 검증은 후속 리뷰 handoff에 별도 기록한다.
 
 파일 업로더 제외는 #208에서 후보 계산과 decide()가 공유한 A의 ReviewRoundService.isRoundFileUploader를 직접 사용한다. B가 결정 권한을 따로 구현하지 않는다. 파일 없는 중간 검토에서는 같은 판정대로 해당 팀원을 임의로 제외하지 않는다.
 
