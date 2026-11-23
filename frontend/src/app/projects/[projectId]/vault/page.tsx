@@ -87,7 +87,7 @@ function HistoryItem({
 
       {/* 버전 뱃지 */}
       <div className="shrink-0 w-24">
-        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
           record.version === 1
             ? "bg-teal-500/15 text-teal-400"
             : isTampered
@@ -166,7 +166,7 @@ function FileGroup({
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-bb-text truncate">{fileName}</span>
             {hasTamper && (
-              <span className="shrink-0 flex items-center gap-1 text-[10px] font-medium
+              <span className="shrink-0 flex items-center gap-1 text-xs font-medium
                                px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                 <AlertTriangle size={9} />
                 파일 변경 내역

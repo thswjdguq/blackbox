@@ -203,7 +203,7 @@ function ProfileSettingsContent() {
               <div>
                 <p className="text-sm font-medium text-bb-text">{profile?.name ?? "..."}</p>
                 <p className="text-xs text-bb-text2">{profile?.email ?? ""}</p>
-                <span className="text-[10px] px-2 py-0.5 mt-1 inline-block rounded-full
+                <span className="text-xs px-2 py-0.5 mt-1 inline-block rounded-full
                                  bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
                   {profile?.role ?? "STUDENT"}
                 </span>
