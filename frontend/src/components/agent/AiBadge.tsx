@@ -13,7 +13,7 @@ export default function AiBadge({ className = "" }: { className?: string }) {
     <span
       data-testid="ai-badge"
       title="AI가 제안하고 팀원이 채택해 만든 기록입니다"
-      className={`inline-flex shrink-0 items-center gap-0.5 rounded bg-bb-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-bb-primary ${className}`}
+      className={`inline-flex shrink-0 items-center gap-0.5 rounded bg-bb-primary/10 px-1.5 py-0.5 text-xs font-medium text-bb-primary ${className}`}
     >
       <Sparkles size={9} aria-hidden="true" />
       AI 제안
