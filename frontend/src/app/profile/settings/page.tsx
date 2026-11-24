@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 const GOOGLE_BLUE = "#4285F4";
 
@@ -163,7 +164,7 @@ function ProfileSettingsContent() {
     }
   };
 
-  const initials = profile ? profile.name.slice(0, 2).toUpperCase() : "..";
+  const initials = profile ? avatarName(profile.name) : "..";
   const hue = profile
     ? profile.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360
     : 220;

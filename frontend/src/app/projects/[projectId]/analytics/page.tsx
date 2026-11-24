@@ -21,6 +21,7 @@ import {
   ListChecks, MessageSquareText,
 } from "lucide-react";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 // ── 타입 ──────────────────────────────────────────────────────────────────
 interface TaskSummary {
@@ -403,7 +404,7 @@ export default function AnalyticsPage() {
                           style={{ background: `hsl(${hue} 50% 45%)` }}
                           className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                         >
-                          {s.name.slice(0, 2).toUpperCase()}
+                          {avatarName(s.name)}
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-bb-text">{s.name}</p>
@@ -587,7 +588,7 @@ export default function AnalyticsPage() {
                             style={{ background: `hsl(${hue} 50% 45%)` }}
                             className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                           >
-                            {member.name.slice(0, 2).toUpperCase()}
+                            {avatarName(member.name)}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">

@@ -17,6 +17,7 @@ import {
 import { KanbanFilter } from "@/components/kanban/KanbanBoard";
 import { TaskPriority, PRIORITY_TEXT } from "@/types/task";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 interface Member {
   userId: string;
@@ -313,7 +314,7 @@ export default function BoardPage() {
                         style={{ background: `hsl(${hue} 55% 45%)` }}
                         className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                       >
-                        {m.name.slice(0, 2).toUpperCase()}
+                        {avatarName(m.name)}
                       </div>
 
                       {/* Name */}

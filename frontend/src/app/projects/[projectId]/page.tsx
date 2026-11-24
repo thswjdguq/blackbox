@@ -25,6 +25,7 @@ import {
   AlertCircle, Hash, Archive, Download,
 } from "lucide-react";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 // ── 타입 ─────────────────────────────────────────────────────────────────
 interface ProjectDetail {
@@ -66,7 +67,7 @@ function Avatar({ name, size = 8 }: { name: string; size?: number }) {
   const cls = `w-${size} h-${size} rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ring-2 ring-bb-bg`;
   return (
     <div className={cls} style={{ background: `hsl(${hue} 55% 42%)` }}>
-      {name.slice(0, 2).toUpperCase()}
+      {avatarName(name)}
     </div>
   );
 }

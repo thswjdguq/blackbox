@@ -29,6 +29,7 @@ import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus
 import SmartDateInput from "@/components/SmartDateInput";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
 function formatDate(iso: string | null): string {
@@ -352,7 +353,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                           {checked && <CheckCircle2 size={10} className="text-white" />}
                         </div>
                         <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-200 font-medium shrink-0">
-                          {m.name[0]}
+                          {avatarName(m.name)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-slate-200">{m.name}</div>
@@ -433,7 +434,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                 {selectedMembers.map((m) => (
                   <div key={m.userId} className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-full px-2.5 py-1">
                     <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[10px] text-indigo-300 font-bold">
-                      {m.name[0]}
+                      {avatarName(m.name, 1)}
                     </div>
                     <span className="text-xs text-slate-300">{m.name}</span>
                   </div>
