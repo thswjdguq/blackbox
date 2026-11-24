@@ -136,10 +136,11 @@ export default function DeliverablesPage() {
           </div>
           {canWrite && (
             <div className="flex flex-wrap items-center justify-end gap-2">
-            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
+            {/* 두 버튼은 같은 크기. 주 버튼에도 투명한 테두리를 두어 테두리 있는 AI 버튼과 높이를 맞춘다 */}
+            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" size="md" />
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
+              className="flex items-center gap-1.5 border border-transparent px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
             >
               <Plus size={15} />
               최종 제출물 추가
@@ -187,15 +188,15 @@ export default function DeliverablesPage() {
             {canWrite ? (
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
+                className="flex items-center gap-1.5 border border-transparent px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
               >
-                <Plus size={14} />
+                <Plus size={15} />
                 최종 제출물 등록하기
               </button>
             ) : (
               <p className="text-xs text-bb-text2">팀원이 최종 제출물을 등록하면 여기서 확인할 수 있습니다.</p>
             )}
-            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
+            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" size="md" />
           </div>
         )}
 
