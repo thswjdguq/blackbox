@@ -141,15 +141,12 @@ export default function ProjectSettingsPage() {
       {/* flex 안의 본문은 min-width가 auto라 안쪽 최소 폭만큼 늘어난다. 휴대폰 폭에서 가로로 넘치지 않게 min-w-0 */}
       <main className="md:ml-64 mt-14 md:mt-0 flex-1 min-w-0 px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
-        {/* 다른 화면과 같은 폭을 쓴다(예전 672px 제한은 오른쪽이 크게 비었음).
-            넓은 화면에서는 왼쪽에 멤버·캘린더, 오른쪽에 Discord를 두어 두 줄 높이를 비슷하게 맞춘다 */}
+        {/* 한 줄로 쌓고 다른 화면과 같은 폭을 쓴다. 예전 672px 제한은 오른쪽만 크게 비어 좌우 여백이 달랐다 */}
         <div>
 
           <h1 className="text-2xl font-bold text-bb-text mb-1">프로젝트 설정</h1>
           <p className="text-sm text-bb-text2 mb-5">프로젝트 관련 설정을 관리합니다</p>
 
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 xl:items-start">
-          <div className="min-w-0 space-y-5 [&>*]:mb-0">
           <MemberSection projectId={projectId} />
 
           {/* Google 캘린더 안내 */}
@@ -174,10 +171,8 @@ export default function ProjectSettingsPage() {
               </div>
             </div>
           </Section>
-          </div>
 
           {/* Discord 알림 */}
-          <div className="min-w-0 [&>*]:mb-0">
           <Section title="Discord 알림">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-[#5865F2]/15 flex items-center justify-center shrink-0">
@@ -298,8 +293,6 @@ export default function ProjectSettingsPage() {
               {saving ? "저장 중..." : "저장"}
             </button>
           </Section>
-          </div>
-          </div>
 
         </div>
       </main>
