@@ -8,6 +8,7 @@ import api from "@/lib/api";
 import { useProfileStore } from "@/lib/store/profileStore";
 import { sessionGeneration } from "@/lib/sessionCache";
 import ProfileAffiliation from "@/components/auth/ProfileAffiliation";
+import EmailNotificationSettings from "@/components/profile/EmailNotificationSettings";
 import type {CurrentProfile} from "@/lib/store/profileStore";
 import {
   Mail,
@@ -327,6 +328,9 @@ function ProfileSettingsContent() {
               </button>
             </div>
           </Section>
+
+          {/* 업무 이메일 알림(K-41 0.5): 켜기·끄기와 주소 인증 */}
+          {profile && <Section title="이메일 알림"><EmailNotificationSettings email={profile.email} /></Section>}
 
           {/* ③ 연동 서비스 */}
           <Section title="연동 서비스">
