@@ -156,9 +156,9 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
             <p className="text-xs font-semibold tracking-widest text-bb-primary mb-2">TEAM WORKSPACE</p><h1 className="text-3xl font-bold text-bb-text">함께 만드는 결과물, 한곳에서.</h1>
             <p className="text-sm text-bb-text2 mt-1">참여 중인 프로젝트 {projects.length}개</p>
@@ -196,9 +196,9 @@ export default function DashboardPage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-bb-surface border border-bb-border rounded-xl p-5 animate-pulse">
+              <div key={i} className="bg-bb-surface border border-bb-border rounded-xl p-4 animate-pulse">
                 <div className="h-4 bg-bb-surface2 rounded w-2/3 mb-3" />
-                <div className="h-3 bg-bb-surface2 rounded w-1/2 mb-6" />
+                <div className="h-3 bg-bb-surface2 rounded w-1/2 mb-5" />
                 <div className="h-3 bg-bb-surface2 rounded w-full" />
               </div>
             ))}
@@ -224,7 +224,7 @@ export default function DashboardPage() {
               <FolderKanban size={28} className="text-bb-text2" />
             </div>
             <p className="text-sm font-medium text-bb-text2 mb-1">프로젝트가 없습니다</p>
-            <p className="text-xs text-bb-text2 mb-6">새 프로젝트를 만들거나 코드로 참여해 보세요</p>
+            <p className="text-xs text-bb-text2 mb-5">새 프로젝트를 만들거나 코드로 참여해 보세요</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowJoin(true)}
@@ -426,7 +426,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
   return (
     <div
       onClick={() => router.push(`/projects/${project.id}`)}
-      className="bg-bb-surface border border-bb-border rounded-xl p-5 cursor-pointer hover:border-bb-primary/30 hover:shadow-sm transition-all group"
+      className="bg-bb-surface border border-bb-border rounded-xl p-4 cursor-pointer hover:border-bb-primary/30 hover:shadow-sm transition-all group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
@@ -484,7 +484,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain bg-bb-surface border border-bb-border rounded-xl p-5 shadow-2xl">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain bg-bb-surface border border-bb-border rounded-xl p-4 shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-bb-text">{title}</h2>
           <button onClick={onClose} className="text-bb-text2 hover:text-bb-text transition-colors p-1 rounded-lg hover:bg-bb-surface2">

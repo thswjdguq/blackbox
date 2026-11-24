@@ -157,7 +157,7 @@ function FileGroup({
       {/* 파일 헤더 */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-4 p-5 hover:bg-bb-surface2/50 transition-colors text-left"
+        className="w-full flex items-center gap-4 p-4 hover:bg-bb-surface2/50 transition-colors text-left"
       >
         {/* 파일 아이콘 */}
         <FileIcon size={20} className={fileColor(fileName)} />
@@ -265,7 +265,7 @@ function UploadZone({ projectId, onUploaded }: UploadZoneProps) {
   };
 
   return (
-    <div className="mb-6">
+    <div className="mb-5">
       {/* 드롭존 */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -394,10 +394,10 @@ export default function VaultPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
-            <div className="h-6 bg-bb-surface rounded w-32 mb-6" />
+            <div className="h-6 bg-bb-surface rounded w-32 mb-5" />
             <div className="h-32 bg-bb-surface rounded-xl" />
             {[...Array(3)].map((_, i) => (
               <div key={i} className="h-20 bg-bb-surface rounded-xl" />
@@ -412,10 +412,10 @@ export default function VaultPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
 <ProjectNav projectId={projectId} />
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2">
               <Files size={22} className="text-indigo-400" />
@@ -430,7 +430,7 @@ export default function VaultPage() {
         {/* 파일 변경 내역 알림 */}
         {tamperAlert && (
           <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30
-                          rounded-xl mb-6">
+                          rounded-xl mb-5">
             <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-amber-400">파일 변경 내역 감지</p>
@@ -447,7 +447,7 @@ export default function VaultPage() {
 
         {/* 에러 */}
         {error && (
-          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-6">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-5">
             <AlertCircle size={16} className="text-red-400 shrink-0" />
             <p className="text-sm text-red-400">{error}</p>
             <button onClick={fetchFiles} className="ml-auto text-xs text-red-400 underline">
@@ -457,7 +457,7 @@ export default function VaultPage() {
         )}
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-5">
           {[
             { label: "등록 파일", value: uniqueFiles, color: "text-indigo-400", icon: Files },
             { label: "전체 버전", value: totalVersions, color: "text-bb-text", icon: Hash },
@@ -475,7 +475,7 @@ export default function VaultPage() {
 
         {/* 업로드 영역 */}
         {readOnly ? (
-          <p className="mb-6 text-xs text-bb-text2">관찰자는 파일을 볼 수만 있습니다. 내려받기와 변경 내역 확인은 할 수 있습니다.</p>
+          <p className="mb-5 text-xs text-bb-text2">관찰자는 파일을 볼 수만 있습니다. 내려받기와 변경 내역 확인은 할 수 있습니다.</p>
         ) : (
           <UploadZone projectId={projectId} onUploaded={handleUploaded} />
         )}
