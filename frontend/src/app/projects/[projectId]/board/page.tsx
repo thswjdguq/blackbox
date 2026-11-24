@@ -111,7 +111,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
           <div className="animate-pulse space-y-5">
             <div className="h-7 bg-bb-surface rounded-lg w-48" />
@@ -131,7 +131,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16 flex items-center justify-center">
         <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
           <div className="text-center">
             <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
@@ -154,7 +154,7 @@ export default function BoardPage() {
       <Sidebar />
 
       {/* 다른 화면과 같은 바깥 여백. 머리 부분을 흰 띠로 따로 두지 않는다 */}
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
         <div className="mt-6">
           <div className="flex flex-wrap items-start justify-between gap-4">

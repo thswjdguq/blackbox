@@ -245,7 +245,7 @@ export default function SchedulePage() {
         </div>
       )}
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
         <div className="max-w-2xl">
 

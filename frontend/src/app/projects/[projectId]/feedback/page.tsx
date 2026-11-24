@@ -68,7 +68,7 @@ export default function FeedbackPage() {
           <p className="text-xs text-bb-text2 mt-auto pt-3">{item.fromName ? `${item.fromName} · ` : ""}{new Date(item.createdAt).toLocaleString("ko-KR")} · {opening!==null && opening===item.taskId ? "여는 중…" : item.deliverableId ? "최종 제출물 열기" : isFeedbackFinished(item) ? "내용 보기" : item.kind==="OPINION" ? "업무에서 답변하기" : "업무 열기"}</p>
         </button>);
   return <div className="min-h-screen bg-bb-bg"><Sidebar />
-    <main className="md:ml-64 mt-14 md:mt-0 px-4 md:px-12 xl:px-16 py-5 md:py-6 max-w-[1440px]">
+    <main className="md:ml-64 mt-14 md:mt-0 px-4 md:px-8 lg:px-12 xl:px-16 py-5 md:py-6">
       <ProjectNav projectId={projectId} />
       <div className="flex justify-between items-center mt-6 gap-3"><div><h1 className="text-2xl font-bold">피드백</h1><p className="mt-2 text-sm text-bb-text2">업무와 최종 제출물의 피드백, 답변·반영 기록을 함께 확인하세요.</p></div>
         <button type="button" onClick={refresh} disabled={loading} aria-label="피드백 새로고침" className="p-2 rounded-lg border border-bb-border bg-bb-surface"><RefreshCw size={17} className={loading ? "animate-spin" : ""}/></button></div>

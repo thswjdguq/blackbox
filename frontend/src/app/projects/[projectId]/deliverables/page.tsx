@@ -122,13 +122,13 @@ export default function DeliverablesPage() {
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto px-4 py-5 md:px-12 md:py-6 xl:px-16">
+      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
 
 
         <div className="flex items-start justify-between gap-4 mt-3 mb-5">
           <div>
-            <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2">
               <ClipboardList size={20} className="text-bb-primary" />
               최종 제출물
             </h1>

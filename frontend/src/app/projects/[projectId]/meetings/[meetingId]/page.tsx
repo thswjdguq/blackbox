@@ -192,7 +192,7 @@ export default function MeetingDetailPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-4 max-w-3xl">
             <div className="h-6 bg-bb-surface rounded w-24" />
@@ -221,7 +221,7 @@ export default function MeetingDetailPage() {
         </div>
       )}
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
         <div className="max-w-5xl mx-auto">
           {/* 뒤로 가기 */}

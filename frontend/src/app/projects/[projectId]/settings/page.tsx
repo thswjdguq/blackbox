@@ -139,7 +139,7 @@ export default function ProjectSettingsPage() {
     <div className="flex min-h-screen bg-bb-bg">
       <Sidebar />
       {/* flex 안의 본문은 min-width가 auto라 안쪽 최소 폭만큼 늘어난다. 휴대폰 폭에서 가로로 넘치지 않게 min-w-0 */}
-      <main className="md:ml-64 mt-14 md:mt-0 flex-1 min-w-0 px-4 py-5 md:px-12 md:py-6 xl:px-16">
+      <main className="md:ml-64 mt-14 md:mt-0 flex-1 min-w-0 px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
         <div className="max-w-2xl">
 

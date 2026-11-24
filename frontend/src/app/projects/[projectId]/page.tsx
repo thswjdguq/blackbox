@@ -227,7 +227,7 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-4 max-w-5xl">
             <div className="h-8 bg-bb-surface rounded w-64 mb-2" />
@@ -249,7 +249,7 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16 flex items-center justify-center">
 <ProjectNav projectId={projectId} />
           <div className="text-center">
             <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
@@ -293,7 +293,7 @@ export default function ProjectHomePage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 xl:px-16">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
         <div className="max-w-5xl">
 
