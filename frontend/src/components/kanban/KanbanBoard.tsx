@@ -355,7 +355,7 @@ export default function KanbanBoard({
               <p className="text-sm text-bb-text2">팀원이 업무를 만들면 여기서 확인할 수 있습니다</p>
             ) : (
               <>
-                <p className="text-sm text-bb-text2 mb-6">첫 업무를 만들어 팀원에게 배정해보세요</p>
+                <p className="text-sm text-bb-text2 mb-5">첫 업무를 만들어 팀원에게 배정해보세요</p>
                 <button
                   onClick={() => openCreate("TODO")}
                   className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500

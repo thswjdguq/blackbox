@@ -14,6 +14,7 @@ export default function AgentButton({
   skill,
   input,
   titleExtra,
+  size = "sm",
   className = "",
 }: {
   projectId: string;
@@ -22,6 +23,8 @@ export default function AgentButton({
   input?: object;
   /** 실행 기록 제목 뒤에 붙일 말(업무 나누기의 최종 제출물 이름) */
   titleExtra?: string;
+  /** sm: 테두리만 있는 작은 버튼(기본). md: 옆의 주 버튼(px-4 py-2 text-sm)과 같은 크기 */
+  size?: "sm" | "md";
   className?: string;
 }) {
   const status = useAgentStore((s) => s.status[projectId]);
@@ -44,9 +47,9 @@ export default function AgentButton({
       disabled={running}
       onClick={() => openWith(projectId, skill, input, titleExtra)}
       title={running ? "AI 도우미가 다른 일을 하는 중입니다" : undefined}
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-bb-primary/30 px-2.5 py-1 text-xs text-bb-primary hover:bg-bb-primary/10 disabled:opacity-50 ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-lg border border-bb-primary/30 text-bb-primary hover:bg-bb-primary/10 disabled:opacity-50 ${size === "md" ? "gap-1.5 px-4 py-2 text-sm" : "gap-1 px-2.5 py-1 text-xs"} ${className}`}
     >
-      <Sparkles size={12} aria-hidden="true" />
+      <Sparkles size={size === "md" ? 15 : 12} aria-hidden="true" />
       {skillInfo.label}
     </button>
   );
