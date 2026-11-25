@@ -5,6 +5,9 @@ public final class TargetTypes {
     public static final String DELIVERABLE = "DELIVERABLE";
     public static final String REQUIREMENT = "REQUIREMENT";
     public static final String TASK = "TASK";
+    /** 초안 카드를 채택해 파일 금고에 올린 .docx와 그 파일로 연 검토 회차(K-59 3장) */
+    public static final String FILE = "FILE";
+    public static final String REVIEW_ROUND = "REVIEW_ROUND";
     /** 만들어진 기록이 아니라, 수정 카드를 채택해 그 요구사항(target_id)의 충족 확인이 풀렸다는 표시(K-31 5.2) */
     public static final String ASSESSMENT_CLEARED = "REQUIREMENT_ASSESSMENT_CLEARED";
 
