@@ -96,8 +96,8 @@ class SpringAiAgentModelTest {
     }
 
     /**
-     * Gemini는 글 조각마다 결과(Generation)를 하나씩 만든다. 첫 결과만 읽으면 긴 답이 STOP으로 끝났는데도 중간에서 끊겼다(A-80).
-     * 결과를 순서대로 이어 붙이고, 생각 조각과 도구 호출 자리(빈 글)는 넣지 않는다
+     * Gemini는 글 조각마다 결과(Generation)를 하나씩 만든다. 첫 결과만 읽으면 긴 응답이 STOP으로 끝났는데도 중간에서 끊겼다(A-80).
+     * 결과를 순서대로 이어 붙이고, 추론 조각과 도구 호출 자리(빈 글)는 넣지 않는다
      */
     @Test void anAnswerSplitIntoSeveralResultsIsJoinedWithoutThoughts() {
         ChatModel split = prompt -> new ChatResponse(List.of(

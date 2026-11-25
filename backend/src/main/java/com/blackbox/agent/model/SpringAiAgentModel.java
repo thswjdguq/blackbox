@@ -61,13 +61,13 @@ public class SpringAiAgentModel implements AgentModel {
         }
     }
 
-    /** Gemini가 생각(thinking) 조각에 붙이는 표시. 공급자 클래스에 묶이지 않게 이름만 쓴다(GoogleGenAiChatModel.THOUGHT_METADATA_KEY) */
+    /** Gemini가 추론(thinking) 조각에 붙이는 표시. 공급자 클래스에 묶이지 않게 이름만 쓴다(GoogleGenAiChatModel.THOUGHT_METADATA_KEY) */
     static final String THOUGHT = "isThought";
 
     /**
-     * 답의 글. 공급자가 답 하나를 결과(Generation) 여러 개로 나눠 줄 수 있다. Gemini는 글 조각(part)마다 결과를 하나씩 만들어,
-     * 첫 결과만 읽으면 긴 답이 중간에서 끊긴다(종료 이유는 STOP). 생각 조각은 빼고 순서대로 이어 붙인다.
-     * 후보 답을 여러 개 청하지 않으므로 이어 붙여도 다른 답이 섞이지 않는다
+     * 응답의 글. 공급자가 응답 하나를 결과(Generation) 여러 개로 나눠 줄 수 있다. Gemini는 글 조각(part)마다 결과를 하나씩 만들어,
+     * 첫 결과만 읽으면 긴 응답이 중간에서 끊긴다(종료 이유는 STOP). 추론 조각은 빼고 순서대로 이어 붙인다.
+     * 후보 응답을 여러 개 청하지 않으므로 이어 붙여도 다른 응답이 섞이지 않는다
      */
     static String text(ChatResponse response) {
         if (response == null) return null;
