@@ -43,7 +43,7 @@ const TOGGLES: { key: keyof Omit<DiscordSettings, "webhookUrl">; label: string; 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-5">
+    <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
       <h2 className="text-base font-semibold text-bb-text mb-5">{title}</h2>
       {children}
     </div>
@@ -139,12 +139,13 @@ export default function ProjectSettingsPage() {
     <div className="flex min-h-screen bg-bb-bg">
       <Sidebar />
       {/* flex 안의 본문은 min-width가 auto라 안쪽 최소 폭만큼 늘어난다. 휴대폰 폭에서 가로로 넘치지 않게 min-w-0 */}
-      <main className="md:ml-64 mt-14 md:mt-0 flex-1 min-w-0 px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 flex-1 min-w-0 px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
-        <div className="max-w-2xl">
+        {/* 한 줄로 쌓고 다른 화면과 같은 폭을 쓴다. 예전 672px 제한은 오른쪽만 크게 비어 좌우 여백이 달랐다 */}
+        <div>
 
           <h1 className="text-2xl font-bold text-bb-text mb-1">프로젝트 설정</h1>
-          <p className="text-sm text-bb-text2 mb-6">프로젝트 관련 설정을 관리합니다</p>
+          <p className="text-sm text-bb-text2 mb-5">프로젝트 관련 설정을 관리합니다</p>
 
           <MemberSection projectId={projectId} />
 

@@ -797,10 +797,10 @@ export default function MeetingsPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
-            <div className="h-6 bg-bb-surface rounded w-36 mb-6" />
+            <div className="h-6 bg-bb-surface rounded w-36 mb-5" />
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="h-20 bg-bb-surface rounded-xl" />
@@ -816,10 +816,10 @@ export default function MeetingsPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-bold text-bb-text">회의</h1>
             <p className="text-sm text-bb-text2 mt-1">총 {meetings.length}개의 회의</p>
@@ -837,7 +837,7 @@ export default function MeetingsPage() {
 
         {/* 에러 */}
         {error && (
-          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-6">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-5">
             <AlertCircle size={18} className="text-red-400 shrink-0" />
             <p className="text-sm text-red-400">{error}</p>
             <button
@@ -856,7 +856,7 @@ export default function MeetingsPage() {
             <p className="text-sm font-semibold text-bb-text mb-1.5">아직 회의가 없어요</p>
             {isLeader ? (
               <>
-                <p className="text-xs text-bb-text2 mb-6">팀원들과 첫 회의를 만들어보세요</p>
+                <p className="text-xs text-bb-text2 mb-5">팀원들과 첫 회의를 만들어보세요</p>
                 <button
                   onClick={() => setShowCreate(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500

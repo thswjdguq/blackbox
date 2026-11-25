@@ -43,7 +43,7 @@ export default function ConfirmDeleteDialog({
       aria-modal="true"
       aria-labelledby="confirm-delete-title"
     >
-      <section className="w-full max-w-md bg-bb-surface border border-bb-border rounded-xl p-5">
+      <section className="w-full max-w-md bg-bb-surface border border-bb-border rounded-xl p-4">
         <h2 id="confirm-delete-title" className="text-base font-semibold text-bb-text">
           {title} 삭제
         </h2>

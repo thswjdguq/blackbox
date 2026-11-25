@@ -61,14 +61,14 @@ export default function FeedbackPage() {
   const settingsOnly = async () => { throw new Error("업무 화면에서 설정을 수정하세요."); };
   const activeItems = lists?.[tab].filter(item => !isFeedbackFinished(item)) ?? [];
   const finishedItems = lists?.[tab].filter(isFeedbackFinished) ?? [];
-  const renderCard = (item: FeedbackItem) => (<button type="button" key={itemKey(item)} onClick={()=>open(item)} disabled={!ready||!!opening} className="w-full text-left border border-bb-border bg-bb-surface rounded-xl p-4 hover:border-bb-primary/50 transition-colors disabled:opacity-50">
+  const renderCard = (item: FeedbackItem) => (<button type="button" key={itemKey(item)} onClick={()=>open(item)} disabled={!ready||!!opening} className="flex h-full w-full flex-col text-left border border-bb-border bg-bb-surface rounded-xl p-4 hover:border-bb-primary/50 transition-colors disabled:opacity-50">
           <div className="flex justify-between gap-3"><span className="text-xs font-medium rounded-md px-2 py-1 bg-bb-primary/10 text-bb-primary">{labels[item.kind]} · {statuses[item.status??"OPEN"]??item.status}</span><ArrowUpRight size={16} className="text-bb-text2"/></div>
-          <h2 className="font-semibold mt-3 text-sm">{item.taskTitle}</h2><p className="text-sm text-bb-text2 mt-1 whitespace-pre-wrap line-clamp-2">{item.body}</p>
+          <h2 className="font-semibold mt-3 text-sm">{item.taskTitle}</h2><p className="text-sm text-bb-text2 mt-1 min-h-10 whitespace-pre-wrap line-clamp-2">{item.body}</p>
           {item.response && <p className="mt-3 border-l-2 border-bb-primary pl-3 text-sm whitespace-pre-wrap line-clamp-3">답변·반영 기록: {item.response}</p>}
-          <p className="text-xs text-bb-text2 mt-3">{item.fromName ? `${item.fromName} · ` : ""}{new Date(item.createdAt).toLocaleString("ko-KR")} · {opening!==null && opening===item.taskId ? "여는 중…" : item.deliverableId ? "최종 제출물 열기" : isFeedbackFinished(item) ? "내용 보기" : item.kind==="OPINION" ? "업무에서 답변하기" : "업무 열기"}</p>
+          <p className="text-xs text-bb-text2 mt-auto pt-3">{item.fromName ? `${item.fromName} · ` : ""}{new Date(item.createdAt).toLocaleString("ko-KR")} · {opening!==null && opening===item.taskId ? "여는 중…" : item.deliverableId ? "최종 제출물 열기" : isFeedbackFinished(item) ? "내용 보기" : item.kind==="OPINION" ? "업무에서 답변하기" : "업무 열기"}</p>
         </button>);
   return <div className="min-h-screen bg-bb-bg"><Sidebar />
-    <main className="md:ml-64 mt-14 md:mt-0 px-4 md:px-12 py-5 md:py-6 max-w-[1440px]">
+    <main className="md:ml-64 mt-14 md:mt-0 px-4 md:px-8 lg:px-12 xl:px-16 py-5 md:py-6">
       <ProjectNav projectId={projectId} />
       <div className="flex justify-between items-center mt-6 gap-3"><div><h1 className="text-2xl font-bold">피드백</h1><p className="mt-2 text-sm text-bb-text2">업무와 최종 제출물의 피드백, 답변·반영 기록을 함께 확인하세요.</p></div>
         <button type="button" onClick={refresh} disabled={loading} aria-label="피드백 새로고침" className="p-2 rounded-lg border border-bb-border bg-bb-surface"><RefreshCw size={17} className={loading ? "animate-spin" : ""}/></button></div>
@@ -79,14 +79,15 @@ export default function FeedbackPage() {
       {!lists && loading ? <p className="mt-8 text-sm text-bb-text2">요청을 불러오는 중…</p> : lists && <div role="tabpanel" className="mt-4 space-y-3">
         <section aria-labelledby="active-feedback-heading" className="space-y-3">
           <h2 id="active-feedback-heading" className="text-sm font-semibold text-bb-text">진행 중인 피드백 {activeItems.length}</h2>
-          {activeItems.length ? activeItems.map(renderCard) : <p className="rounded-xl border border-bb-border bg-bb-surface px-4 py-8 text-center text-sm text-bb-text2">진행 중인 피드백이 없습니다.</p>}
+          {/* 넓은 화면에서는 한 줄에 2개. 같은 줄의 카드는 높이를 맞추고 아래 줄(보낸 사람·시각)을 바닥에 둔다 */}
+          {activeItems.length ? <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">{activeItems.map(renderCard)}</div> : <p className="rounded-xl border border-bb-border bg-bb-surface px-4 py-8 text-center text-sm text-bb-text2">진행 중인 피드백이 없습니다.</p>}
         </section>
         {finishedItems.length > 0 && <details key={`${projectId}-${tab}`} className="group rounded-xl border border-bb-border bg-bb-surface">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-4 text-sm font-medium text-bb-text2 [&::-webkit-details-marker]:hidden">
             <ChevronRight size={16} className="shrink-0 transition-transform group-open:rotate-90" />
             완료된 피드백 {finishedItems.length}
           </summary>
-          <div className="space-y-3 border-t border-bb-border p-3">{finishedItems.map(renderCard)}</div>
+          <div className="grid grid-cols-1 gap-3 border-t border-bb-border p-3 xl:grid-cols-2">{finishedItems.map(renderCard)}</div>
         </details>}
       </div>}
       {selected && <TaskModal key={selected.id} mode="edit" task={selected} members={members.filter(m=>m.role!=="OBSERVER")} readOnly={readOnly} workOnly focusMessageId={messageId}
