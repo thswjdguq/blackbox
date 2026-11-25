@@ -12,6 +12,7 @@ import TaskSteps from "./TaskSteps";
 import TaskDiscussion from "./TaskDiscussion";
 import { DUE_BADGE, dueLabel, dueTone } from "@/lib/due";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
+import { avatarName } from "@/lib/avatarName";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
 interface Member {
@@ -351,7 +352,7 @@ export default function TaskModal({
                       style={{ background: `hsl(${hue} 55% 45%)` }}
                       className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
                     >
-                      {m.name.slice(0, 2).toUpperCase()}
+                      {avatarName(m.name)}
                     </div>
                     {m.name}
                     {selected && (

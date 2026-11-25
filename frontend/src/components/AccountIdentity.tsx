@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useProfileStore } from "@/lib/store/profileStore";
+import { avatarName } from "@/lib/avatarName";
 
 export default function AccountIdentity({ compact = false, active = false, onNavigate }: {
   compact?: boolean; active?: boolean; onNavigate?: () => void;
@@ -10,7 +11,7 @@ export default function AccountIdentity({ compact = false, active = false, onNav
   const { profile, loading, failed, load } = useProfileStore();
   useEffect(() => { void load(); }, [load]);
   const name = profile?.name.trim() || profile?.email || "";
-  const initials = name ? Array.from(name).slice(0, 2).join("").toUpperCase() : failed ? "!" : "…";
+  const initials = name ? avatarName(name) : failed ? "!" : "…";
   const label = profile ? `${name} (${profile.email}) · 프로필 설정` : failed ? "로그인 정보 확인 실패 · 프로필 설정" : "로그인 정보 확인 중";
   return <div className={compact ? "ml-auto shrink-0" : "min-w-0"}>
     <Link href="/profile/settings" onClick={onNavigate} aria-label={label} title={label}
