@@ -100,7 +100,7 @@ class AgentHttpTest {
         JsonNode forMember = body(get("/status", member));
         assertTrue(forMember.path("available").asBoolean());
         assertTrue(forMember.path("unavailableReason").isNull());
-        assertEquals(List.of("PLAN_FROM_BRIEF:true", "BREAK_DOWN_TASKS:true", "STATUS_BRIEF:true", "ASK:true", "FIND_REQUIREMENT_GAPS:true", "DRAFT_OUTLINE:true"), skills(forMember));
+        assertEquals(List.of("PLAN_FROM_BRIEF:true", "BREAK_DOWN_TASKS:true", "STATUS_BRIEF:true", "ASK:true", "FIND_REQUIREMENT_GAPS:true", "DRAFT_OUTLINE:true", "DRAFT_DOCUMENT:true"), skills(forMember));
         assertEquals("과제 안내문으로 계획 만들기", forMember.path("skills").get(0).path("label").asString());
         JsonNode stage = forMember.path("stages").get(0);
         assertEquals(report.getId().toString(), stage.path("deliverableId").asString());
@@ -112,7 +112,7 @@ class AgentHttpTest {
         assertTrue(body(get("/status", leader)).path("canDecide").asBoolean(), "팀장도 같다");
 
         JsonNode forObserver = body(get("/status", observer));
-        assertEquals(List.of("PLAN_FROM_BRIEF:false", "BREAK_DOWN_TASKS:false", "STATUS_BRIEF:true", "ASK:true", "FIND_REQUIREMENT_GAPS:false", "DRAFT_OUTLINE:false"), skills(forObserver));
+        assertEquals(List.of("PLAN_FROM_BRIEF:false", "BREAK_DOWN_TASKS:false", "STATUS_BRIEF:true", "ASK:true", "FIND_REQUIREMENT_GAPS:false", "DRAFT_OUTLINE:false", "DRAFT_DOCUMENT:false"), skills(forObserver));
         // 칸이 빠져도 실패하게 없을 때의 값을 참으로 읽는다
         assertFalse(forObserver.path("canDecide").asBoolean(true), "관찰자는 카드를 결정할 수 없다");
 
