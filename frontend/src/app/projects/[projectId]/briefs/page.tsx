@@ -133,9 +133,9 @@ export default function BriefsPage() {
   return (
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
-        <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
           <div>
             <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2"><BookOpenText size={22} className="text-indigo-400" />과제 안내문</h1>
             <p className="text-sm text-bb-text2 mt-1">교수님의 과제 안내와 공지를 붙여 두면 계획 만들기와 요구사항 찾기가 이 글을 근거로 씁니다. 개인정보는 적지 마세요.</p>
@@ -147,7 +147,7 @@ export default function BriefsPage() {
         {error && <p role="alert" className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
         {notice && <p role="status" className="mb-4 text-sm text-bb-primary">{notice}</p>}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(16rem,22rem)_1fr]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(16rem,22rem)_1fr]">
           {/* 목록: 최근 수정이 먼저 */}
           <section aria-label="안내문 목록" className="space-y-2">
             {briefs === null ? <p className="text-sm text-bb-text2">불러오는 중…</p>
