@@ -3,6 +3,7 @@ package com.blackbox.agent.run;
 import com.blackbox.agent.AgentProposal;
 import com.blackbox.agent.AgentTestData;
 import com.blackbox.agent.draft.DocxWriter;
+import com.blackbox.agent.model.AgentModel;
 import com.blackbox.agent.proposal.ProposalService;
 import com.blackbox.agent.skill.DraftDocumentSkill;
 import com.blackbox.agent.skill.DraftOutlineSkill;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.nio.file.Files;
@@ -31,6 +33,8 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 
 /**
  * 실제 모델로 문서 목차와 초안을 만든다(K-59 8장 7). 요구사항 12개인 제출물에서 초안이 출력 상한에 걸리지 않는지,
@@ -51,6 +55,9 @@ class DocumentDraftLiveTest {
     @Autowired EntityManager em;
     @Autowired PlatformTransactionManager transactions;
     @Autowired JdbcTemplate jdbc;
+    // 실제 모델을 그대로 부르고 답의 원문만 테스트 출력(DRAFTRAW)에 남긴다. 형식이 틀린 답을 고칠 지시문의 근거로 본다.
+    // 운영 로그에는 원문을 남기지 않는다(프로젝트 기록이 들어 있다). 여기서는 테스트용 프로젝트뿐이다
+    @MockitoSpyBean AgentModel model;
 
     static final String[] REQUIREMENTS = {
             "문제 정의와 개발 동기를 적는다", "관련 서비스와 비교한다", "요구사항 명세를 표로 정리한다", "시스템 구조도를 넣는다",
@@ -65,6 +72,11 @@ class DocumentDraftLiveTest {
     final List<String> failures = new ArrayList<>();
 
     @BeforeEach void testProject() {
+        doAnswer(call -> {
+            String answer = (String) call.callRealMethod();
+            System.out.println("DRAFTRAW|" + answer.replace("\n", "\\n"));
+            return answer;
+        }).when(model).generate(any(), any(), any());
         data = new AgentTestData(em, transactions, jdbc);
         leader = data.user("김팀장"); member = data.user("이팀원");
         project = data.project("캡스톤 디자인", leader);
