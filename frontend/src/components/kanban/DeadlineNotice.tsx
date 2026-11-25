@@ -22,7 +22,7 @@ export default function DeadlineNotice({ tasks }: { tasks: Task[] }) {
 
   return <section aria-label="업무 마감 알림" className="rounded-xl border border-bb-border bg-bb-surface p-4">
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      <h2 className="mr-2 inline-flex items-center gap-1.5 font-semibold text-bb-text"><Clock size={14} />마감 알림</h2>
+      <h2 className="mr-2 inline-flex items-center gap-1.5 text-sm font-semibold text-bb-text"><Clock size={14} />마감 알림</h2>
       <span className={`rounded border px-2 py-1 ${DUE_BADGE.overdue}`}>초과 {overdue} · 오늘 {today}</span>
       <span className={`rounded border px-2 py-1 ${DUE_BADGE.soon}`}>임박 · 1~3일 {urgent.length - overdue - today}</span>
       <span className={`rounded border px-2 py-1 ${DUE_BADGE.later}`}>여유 · 4일 이상 {pending.length - urgent.length}</span>

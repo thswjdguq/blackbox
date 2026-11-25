@@ -12,6 +12,7 @@ import TaskSteps from "./TaskSteps";
 import TaskDiscussion from "./TaskDiscussion";
 import { DUE_BADGE, dueLabel, dueTone } from "@/lib/due";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
+import { avatarName } from "@/lib/avatarName";
 
 // ── 모달에서 사용할 멤버 타입 ─────────────────────────────────────────
 interface Member {
@@ -274,7 +275,7 @@ export default function TaskModal({
             { label: "대화·피드백", ref: discussionRef },
           ].map(({ label, ref }) => <button key={label} type="button" onClick={() => { ref.current?.scrollIntoView({ block: "start" }); ref.current?.focus({ preventScroll: true }); }} className="rounded-lg border border-bb-border px-3 py-2 text-xs text-bb-text hover:bg-bb-surface2">{label}</button>)}
         </nav>}
-        {task && <div className={`${tab === "resources" ? "flex-1 overflow-y-auto" : "hidden"} px-6 py-5 space-y-6`}>
+        {task && <div className={`${tab === "resources" ? "flex-1 overflow-y-auto" : "hidden"} px-6 py-5 space-y-5`}>
           <div><p className="text-xs text-bb-text2 mb-1">{task.deliverableTitle ?? "프로젝트 업무"}</p><h3 className="text-xl font-semibold break-words">{task.title}</h3><p className="mt-2 text-xs text-bb-text2">{task.assignees.map(a => a.name).join(", ") || "담당자 미지정"}{task.dueDate ? ` · ${task.dueDate}까지` : ""}</p>
             {task.dueDate && task.status !== "DONE" && <span className={`mt-2 inline-block rounded border px-2 py-0.5 text-xs font-semibold ${DUE_BADGE[dueTone(task.dueDate)]}`}>{dueLabel(task.dueDate)}</span>}
           </div>
@@ -350,7 +351,7 @@ export default function TaskModal({
                       style={{ background: `hsl(${hue} 55% 45%)` }}
                       className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
                     >
-                      {m.name.slice(0, 2).toUpperCase()}
+                      {avatarName(m.name)}
                     </div>
                     {m.name}
                     {selected && (

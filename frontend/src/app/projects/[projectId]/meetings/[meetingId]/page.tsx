@@ -192,7 +192,7 @@ export default function MeetingDetailPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-4 max-w-3xl">
             <div className="h-6 bg-bb-surface rounded w-24" />
@@ -221,13 +221,13 @@ export default function MeetingDetailPage() {
         </div>
       )}
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <ProjectNav projectId={projectId} />
         <div className="max-w-5xl mx-auto">
           {/* 뒤로 가기 */}
           <button
             onClick={() => { if (!dirty || window.confirm("저장하지 않은 회의록이 있습니다. 이동할까요?")) router.push(`/projects/${projectId}/meetings`); }}
-            className="flex items-center gap-2 text-sm text-bb-text2 hover:text-bb-text transition-colors mb-6"
+            className="flex items-center gap-2 text-sm text-bb-text2 hover:text-bb-text transition-colors mb-5"
           >
             <ArrowLeft size={15} />
             회의 목록으로
@@ -235,7 +235,7 @@ export default function MeetingDetailPage() {
 
           {/* 에러 배너 */}
           {error && (
-            <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-6">
+            <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-5">
               <AlertCircle size={16} className="text-red-400 shrink-0" />
               <p className="text-sm text-red-400 flex-1">{error}</p>
               <button onClick={() => setError("")} className="text-red-400 hover:text-red-300">
@@ -245,7 +245,7 @@ export default function MeetingDetailPage() {
           )}
 
           {/* 회의 헤더 */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
             <div className="flex items-start justify-between gap-4">
               <h1 className="text-2xl font-bold text-bb-text mb-3">{meeting.title}</h1>
 
@@ -275,7 +275,7 @@ export default function MeetingDetailPage() {
             <Link href={`/projects/${projectId}/board`} className="text-bb-primary font-medium">업무 보러 가기 →</Link>
           </div>
           {/* 회의록 편집 */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h2 className="text-lg font-semibold text-bb-text">회의록</h2>
               {canWrite && !editNotes.trim() && <button type="button" onClick={() => setEditNotes("## 1. 회의 개요\n\n- 일시 / 참석자:\n\n## 2. 논의 안건\n\n### 안건 A: 최종 제출물 일정 조율\n\n- 논의 내용:\n\n## 3. 결정사항 및 다음 할 일\n\n- [ ] ")} className="text-xs px-3 py-2 border border-bb-border rounded-lg">회의록 양식 넣기</button>}
@@ -318,7 +318,7 @@ export default function MeetingDetailPage() {
             saveDecisions={async (text) => { await saveNow(text); }} />
 
           {/* 액션 아이템 */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-5">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-lg font-semibold text-bb-text flex items-center gap-2">
                 <ClipboardList size={16} className="text-bb-accent" />

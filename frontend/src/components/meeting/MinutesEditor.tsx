@@ -66,6 +66,6 @@ export default function MinutesEditor({ value, onChange, label, readOnly = false
       {!readOnly && !source && actions.map(action => <button key={action.name} type="button" disabled={!editor} onClick={action.run} className="px-2 py-1.5 rounded text-xs text-bb-text hover:bg-bb-surface2 disabled:opacity-40">{action.name}</button>)}
       <button type="button" aria-pressed={source} onClick={() => setSource(!source)} className="ml-auto px-2 py-1.5 rounded text-xs text-bb-primary">{source ? "문서 보기" : "마크다운 원문"}</button>
     </div>
-    {source ? <textarea aria-label={`${label} 마크다운 원문`} readOnly={readOnly} value={value} onChange={e => onChange(e.target.value)} className="w-full min-h-64 p-5 text-sm font-mono bg-bb-surface text-bb-text" /> : <EditorContent editor={editor} />}
+    {source ? <textarea aria-label={`${label} 마크다운 원문`} readOnly={readOnly} value={value} onChange={e => onChange(e.target.value)} className="w-full min-h-64 p-4 text-sm font-mono bg-bb-surface text-bb-text" /> : <EditorContent editor={editor} />}
   </div>;
 }

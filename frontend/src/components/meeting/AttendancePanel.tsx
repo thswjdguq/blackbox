@@ -30,7 +30,7 @@ export default function AttendancePanel({ meeting, myUserId, role, onMeetingChan
   const open = !!summary && serverTime >= new Date(summary.opensAt).getTime();
   const writable = role === "LEADER" || role === "MEMBER";
   const recorded = !!me && me.status !== "PENDING" && me.status !== "LEGACY";
-  return <section className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-6">
+  return <section className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
     <h2 className="text-lg font-semibold">회의 참석 현황</h2>
     <p className="text-xs text-bb-text2 mt-1">프로젝트 팀장·팀원이 참석 대상에 자동으로 포함됩니다. 참석 확인은 회의 시작 10분 전부터 가능합니다.</p>
     {error && <p role="alert" className="text-sm text-red-600 mt-3">{error} <button type="button" onClick={load} className="underline">다시 조회</button></p>}

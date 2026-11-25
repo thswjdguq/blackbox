@@ -140,7 +140,7 @@ export default function NextStepCard({
   if (deliverables.length === 0) {
     return (
       <section
-        className="mb-6 block rounded-xl border border-blue-500/30 bg-blue-500/10 p-5 hover:bg-blue-500/15"
+        className="mb-5 block rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 hover:bg-blue-500/15"
       >
         <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">다음 할 일</p>
         <h2 className="mt-1 font-semibold text-bb-text">{canWrite ? "최종 제출물부터 계획하기" : "아직 최종 제출물이 없습니다"}</h2>
@@ -161,7 +161,7 @@ export default function NextStepCard({
   const due = deliverableDue(target);
 
   return (
-    <section className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 p-5" aria-labelledby="next-step-title">
+    <section className="mb-5 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4" aria-labelledby="next-step-title">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="font-semibold text-blue-700 dark:text-blue-300">다음 할 일</span>
         <span className="flex items-center gap-1 text-bb-text2">
