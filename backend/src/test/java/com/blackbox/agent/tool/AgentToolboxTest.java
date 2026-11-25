@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Transactional
 class AgentToolboxTest {
     static final List<String> ALL = List.of(GetProjectTool.NAME, ListDeliverablesTool.NAME, GetProgressTool.NAME,
-            ListTasksTool.NAME, ListAlertsTool.NAME, GetScoresTool.NAME);
+            ListTasksTool.NAME, ListAlertsTool.NAME, GetScoresTool.NAME, ListMeetingsTool.NAME);
 
     @Autowired EntityManager em;
     @Autowired AgentToolbox toolbox;
@@ -158,6 +158,32 @@ class AgentToolboxTest {
         assertTrue(call(tools, GetProgressTool.NAME, "{}").has("error"));
         assertTrue(call(tools, GetProgressTool.NAME, "{\"deliverableId\":\"abc\"}").has("error"));
         assertTrue(call(tools, GetProgressTool.NAME, "{잘못된 JSON").has("error"));
+    }
+
+    /** 회의(K-59 5장). 회의록은 앞 1000자만, 출석 체크인 코드와 노션 정보는 보내지 않는다 */
+    @Test void meetingsGoOutWithoutCheckInCodesAndWithTheirNotesCut() throws Exception {
+        Meeting meeting = new Meeting();
+        meeting.setProject(em.find(Project.class, project.getId())); meeting.setCreatedBy(em.find(User.class, leader.getId()));
+        meeting.setTitle("설계 회의"); meeting.setMeetingDate(OffsetDateTime.now()); meeting.setPurpose("구조 정하기");
+        meeting.setDecisions("API를 먼저 정한다. 문의는 lead@example.test"); meeting.setNotes("가".repeat(999) + "😀끝"); meeting.setCheckinCode("SECRET12");
+        meeting.setNotionPageId("notion-page");
+        em.persist(meeting); em.flush(); em.clear();
+
+        JsonNode item = call(bind(member), ListMeetingsTool.NAME, "{}").path("items").get(0);
+        assertEquals("설계 회의", item.path("title").asString());
+        assertEquals("API를 먼저 정한다. 문의는 [이메일]", item.path("decisions").asString());
+        assertEquals("가".repeat(999) + "😀", item.path("notes").asString(), "글자 단위로 1000자에서 자르고 이모지를 반으로 가르지 않는다");
+        assertTrue(item.path("notesTruncated").asBoolean());
+        assertFalse(item.toString().contains("SECRET12") || item.toString().contains("notion-page"), item.toString());
+    }
+
+    /** 회의록의 연락처는 가려서 보낸다(K-30 5장). 날짜·시각·금액 같은 숫자는 그대로 둔다 */
+    @Test void contactsInMeetingTextAreMaskedButOtherNumbersStay() {
+        assertEquals("연락: [전화번호], [전화번호], [전화번호], [전화번호], [이메일]",
+                ListMeetingsTool.masked("연락: 010-1234-5678, 02 123 4567, 01012345678, +82 10-1234-5678, kim.lee+bb@mail.example.ac.kr"));
+        for (String kept : List.of("2026-11-26 14:00 회의", "예산 1,500,000원", "학번 20231234", "버전 1.10.2", "3번 안 채택"))
+            assertEquals(kept, ListMeetingsTool.masked(kept));
+        assertNull(ListMeetingsTool.masked(null));
     }
 
     @Test void toolsAreFoundByNameAndNamesMustBeUnique() {
