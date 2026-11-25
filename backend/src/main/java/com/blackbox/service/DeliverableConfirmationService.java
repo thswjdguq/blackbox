@@ -55,6 +55,7 @@ public class DeliverableConfirmationService {
         Project project = access.getProject(projectId);
         if (!"LEADER".equals(access.requireMember(project, user).getRole()))
             throw new ForbiddenException("최종본 확정은 팀장만 할 수 있습니다");
+        access.requireNotArchived(project);
         Deliverable d = lock(project, deliverableId);
         requireRoundOf(d, reviewId);
         Optional<DeliverableConfirmation> confirmed = confirmations.findById(d.getId());
@@ -80,6 +81,7 @@ public class DeliverableConfirmationService {
         Project project = access.getProject(projectId);
         if (!"LEADER".equals(access.requireMember(project, user).getRole()))
             throw new ForbiddenException("확정 취소는 팀장만 할 수 있습니다");
+        access.requireNotArchived(project);
         Deliverable d = lock(project, deliverableId);
         requireRoundOf(d, reviewId);
         // 같은 회차로 다시 보낸 것은 중복 클릭으로 보고 지금 상태를 돌려준다. 처음 사유가 남는다

@@ -101,6 +101,7 @@ public class ProposalService implements AgentOriginReader {
     private AgentProposal lockForDecision(UUID projectId, User user, UUID proposalId) {
         Project project = access.getProject(projectId);
         if (!ProjectAccessChecker.canContribute(access.requireMember(project, user))) throw new ForbiddenException(OBSERVER_REFUSED);
+        access.requireNotArchived(project);   // 보관 중에는 카드를 고치거나 결정하지 않는다(K-60)
         return proposals.lockByIdAndProject(proposalId, project).orElseThrow(ProposalService::notFound);
     }
 
