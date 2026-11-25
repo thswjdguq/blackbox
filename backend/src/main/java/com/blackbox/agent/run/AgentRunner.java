@@ -157,7 +157,9 @@ public class AgentRunner {
 
         Answer read = read(answer, p, input, allowedKinds);
         if (!read.problems().isEmpty()) {
-            // 한 번만 다시 요청한다(K-30 6장). 기록은 다시 조회하지 않고 형식만 고치게 한다
+            // 한 번만 다시 요청한다(K-30 6장). 기록은 다시 조회하지 않고 형식만 고치게 한다.
+            // 다시 요청한 호출이 실패하면 무엇이 틀렸는지 남지 않으므로 먼저 적는다. 문제 목록은 칸 이름·규칙·기록 id뿐이고 사용자 글은 없다
+            log.info("에이전트 응답 형식 다시 요청 run={} skill={} 문제={}", p.run().getId(), p.skill().name(), read.problems());
             read = read(model.generate(guide, instructions.repair(material, answer, read.problems()), List.of()), p, input, allowedKinds);
             requireInTime(p);
             if (!read.problems().isEmpty()) throw new IllegalStateException("형식에 맞지 않는 응답: " + read.problems());
