@@ -41,6 +41,7 @@
 | K-30 / A+B | AI 호출 인터페이스(A) / PM 브리핑 API(B) | C AI 화면 |
 | K-31 / A | `/briefs` 과제 안내문 공간, `/deliverables/{id}/briefs` 연결, 요구사항 찾기 실행 | C 안내문·제출물·제안 카드 화면, B 진척(K-13) |
 | K-40 / B(초안 A) | `/scores`의 항목 목록(`items`)과 검토 활동 횟수, 경보용 활동 기록 | C 기여도·홈·업무 보드, A PDF·AI 점수 도구 |
+| K-59 / A | AI 문서 초안: 실행 `DRAFT_OUTLINE`·`DRAFT_DOCUMENT`, 카드 `DOCUMENT_OUTLINE`·`DOCUMENT_DRAFT`(채택 시 .docx 파일 금고 저장과 검토 회차), 읽기 도구 `list_meetings` | B 회의 조회, C 제출물 상세·카드 화면 |
 
 외부 HTTP 경로에는 위 공통 `/api/projects/{projectId}`를 붙인다. A의 기존 `DeliverableDtos`에 B 응답을 계속 추가하는 대신 B의 별도 조회 DTO를 쓴다. 프론트는 도메인별 호출 래퍼를 구성하고 페이지에서 URL·응답 변환을 중복 작성하지 않는다.
 
