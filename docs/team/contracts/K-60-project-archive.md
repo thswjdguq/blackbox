@@ -33,6 +33,7 @@
 | AI 실행 시작과 제안 카드의 수정·채택·거절 | **409** | 물어보기(`ASK`)·상태 요약(`STATUS_BRIEF`)처럼 글로만 답하는 실행도 막는다 |
 | 초대 코드로 참여 | **409** | 새 멤버를 받지 않는다 |
 | 프로젝트 나가기 | **409** | 멤버 구성도 기록이다. 필요하면 팀장이 해제한 후 나간다 |
+| 경보 읽음 처리 | **409** | 본인 알림과 달리 팀이 함께 보는 상태라 기록 변경이다. 알림 읽음 표시와 구분한다 |
 | 본인 계정에 관한 것: 알림 읽음 표시, 데이터 수집 동의 변경(철회 포함) | 허용 | 프로젝트 기록이 아니라 본인의 상태다. 동의 철회는 보관과 상관없이 막지 않는다 |
 | 보관 해제 | 허용(팀장) | |
 | 프로젝트 삭제 | 지금 규칙 그대로 | 기록이 있으면 409 |
@@ -86,7 +87,7 @@ V41(A 작성):
 | 최종본 확정·확정 취소(`DeliverableConfirmationService`) | 회원 검사 + 팀장 역할 비교 | 409 | A |
 | 초대 코드 참여(`ProjectService.joinProject`) | 없음(초대 코드) | 409 | A |
 
-- A의 경로는 가능하면 `requireContributor`·`requireLeader`를 쓰도록 바꿔 보관 검사를 함께 받게 하고, 그럴 수 없는 곳(나가기, 초대 코드 참여)에만 `requireNotArchived`를 직접 부른다
+- 위 경로는 지금의 역할 검사와 403 문장을 그대로 두고, 역할 검사 다음에 `requireNotArchived`를 직접 부른다. `requireContributor`·`requireLeader`로 바꾸면 403 문장이 달라지고, AI 실행은 관찰자의 물어보기를 허용하기 때문이다
 - 회의 액션 아이템 만들기(`MeetingService.createActionItem`)는 바깥에서 회원 검사만 하지만 안에서 `TaskService.createTask`의 `requireContributor`를 지나므로, 따로 고치지 않아도 보관 중 409다
 - 보관 검사용 공개 메서드(`ProjectAccessChecker.requireNotArchived(Project)`)를 두어 같은 검사와 같은 오류를 쓸 수 있게 한다
 - 보관 여부를 읽기만 하는 곳(스케줄러, 이메일 발송 직전 재확인)을 위해 `Project.getArchivedAt()`과 `Project.isArchived()`를 둔다. 이런 곳은 409를 던지지 말고 그 프로젝트를 건너뛴다. 이메일 발송 직전 재확인이 409를 밖으로 던지면 worker가 lease 회수와 재시도로 남기므로, 빈 자격으로 돌려 `SKIPPED`로 끝낸다
