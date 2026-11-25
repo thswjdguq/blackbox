@@ -122,13 +122,13 @@ export default function DeliverablesPage() {
     <div className="flex h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto px-4 py-5 md:px-12 md:py-6">
+      <main className="flex-1 md:ml-64 mt-14 md:mt-0 overflow-y-auto px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
 
 
-        <div className="flex items-start justify-between gap-4 mt-3 mb-6">
+        <div className="flex items-start justify-between gap-4 mt-3 mb-5">
           <div>
-            <h1 className="text-xl font-bold text-bb-text flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-bb-text flex items-center gap-2">
               <ClipboardList size={20} className="text-bb-primary" />
               최종 제출물
             </h1>
@@ -136,10 +136,11 @@ export default function DeliverablesPage() {
           </div>
           {canWrite && (
             <div className="flex flex-wrap items-center justify-end gap-2">
-            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
+            {/* 두 버튼은 같은 크기. 주 버튼에도 투명한 테두리를 두어 테두리 있는 AI 버튼과 높이를 맞춘다 */}
+            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" size="md" />
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
+              className="flex items-center gap-1.5 border border-transparent px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors shrink-0"
             >
               <Plus size={15} />
               최종 제출물 추가
@@ -187,15 +188,15 @@ export default function DeliverablesPage() {
             {canWrite ? (
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
+                className="flex items-center gap-1.5 border border-transparent px-4 py-2 bg-bb-primary hover:bg-bb-primary-h text-white text-sm rounded-lg transition-colors"
               >
-                <Plus size={14} />
+                <Plus size={15} />
                 최종 제출물 등록하기
               </button>
             ) : (
               <p className="text-xs text-bb-text2">팀원이 최종 제출물을 등록하면 여기서 확인할 수 있습니다.</p>
             )}
-            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" />
+            <AgentButton projectId={projectId} skill="PLAN_FROM_BRIEF" size="md" />
           </div>
         )}
 
