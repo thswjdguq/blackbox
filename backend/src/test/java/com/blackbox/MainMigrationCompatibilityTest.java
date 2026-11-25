@@ -137,4 +137,22 @@ class MainMigrationCompatibilityTest {
             assertEquals("t", scalar(c, "SELECT updated_at > now()-interval '1 minute' FROM email_notification_preferences"));
         }
     }
+
+    /** V41(K-60): 기존 프로젝트는 보관되지 않은 상태로 시작하고, 보관 시각과 보관한 사람은 함께 있거나 함께 없다 */
+    @Test void projectArchiveColumns() throws Exception {
+        flyway("40").migrate();
+        String leader = "11111111-1111-4111-8111-111111111111", project = "22222222-2222-4222-8222-222222222222";
+        try (var c = connection()) {
+            execute(c, "INSERT INTO users(id,email,name,password_hash) VALUES ('" + leader + "','archive@example.invalid','팀장','dummy')");
+            execute(c, "INSERT INTO projects(id,name,created_by) VALUES ('" + project + "','기존 프로젝트','" + leader + "')");
+        }
+        assertEquals(1, flyway("41").migrate().migrationsExecuted);   // V42가 생겨도 V41까지만 올려 본다
+        try (var c = connection()) {
+            assertNull(scalar(c, "SELECT archived_at FROM projects"), "기존 프로젝트는 보관되지 않은 상태");
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "UPDATE projects SET archived_at=now()")).getSQLState());
+            assertEquals("23514", assertThrows(SQLException.class, () -> execute(c, "UPDATE projects SET archived_by='" + leader + "'")).getSQLState());
+            execute(c, "UPDATE projects SET archived_at=now(), archived_by='" + leader + "'");
+            execute(c, "UPDATE projects SET archived_at=NULL, archived_by=NULL");
+        }
+    }
 }
