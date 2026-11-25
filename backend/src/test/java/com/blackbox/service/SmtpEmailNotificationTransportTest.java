@@ -42,7 +42,10 @@ class SmtpEmailNotificationTransportTest {
     }
     @AfterEach void detach() { logger.detachAppender(logs); }
 
-    SmtpEmailNotificationTransport transport() { return new SmtpEmailNotificationTransport(smtp, settings, SENDER); }
+    SmtpEmailNotificationTransport transport() { return transport(SENDER); }
+    SmtpEmailNotificationTransport transport(String from) {
+        return new SmtpEmailNotificationTransport(smtp, settings, from, "smtp.gmail.com", true, true);
+    }
 
     @Test void acceptedMessageIsOnePlainTextUtf8MailWithStableMessageId() throws Exception {
         UUID id = UUID.randomUUID();
@@ -97,12 +100,23 @@ class SmtpEmailNotificationTransportTest {
         assertEquals(1, smtp.sent.size());
     }
 
+    @Test void authAndStarttlsCanBeOffOnlyForLoopbackTestInbox() {
+        for (String loopback : List.of("127.0.0.1", "localhost", " LOCALHOST ", "::1"))
+            assertDoesNotThrow(() -> SmtpEmailNotificationTransport.requireProtectedUnlessLoopback(loopback, false, false), loopback);
+        for (String outside : List.of("smtp.gmail.com", "127.0.0.2", "localhost.example.test", ""))
+            for (boolean[] off : new boolean[][]{{false, true}, {true, false}, {false, false}})
+                assertThrows(IllegalStateException.class,
+                        () -> SmtpEmailNotificationTransport.requireProtectedUnlessLoopback(outside, off[0], off[1]), outside);
+        assertThrows(IllegalStateException.class, () -> SmtpEmailNotificationTransport.requireProtectedUnlessLoopback(null, false, false));
+        assertDoesNotThrow(() -> SmtpEmailNotificationTransport.requireProtectedUnlessLoopback("smtp.gmail.com", true, true));
+    }
+
     @Test void nothingIsSentWhenDisabledUnconfiguredOrAddressIsNotOne() {
-        assertEquals(AUTHENTICATION_FAILURE, new SmtpEmailNotificationTransport(smtp, settings, " ").send(UUID.randomUUID(), TO, content));
+        assertEquals(AUTHENTICATION_FAILURE, transport(" ").send(UUID.randomUUID(), TO, content));
         for (String bad : List.of("a@example.test, b@example.test", "Group:alpha@example.test,beta@example.test;",
                 "not-an-address", ""))
             assertEquals(PERMANENT_FAILURE, transport().send(UUID.randomUUID(), bad, content), bad);
-        assertEquals(PERMANENT_FAILURE, new SmtpEmailNotificationTransport(smtp, settings, "Group:" + SENDER + ";")
+        assertEquals(PERMANENT_FAILURE, transport("Group:" + SENDER + ";")
                 .send(UUID.randomUUID(), TO, content), "보내는 주소도 한 명");
         assertEquals(PERMANENT_FAILURE, transport().send(UUID.randomUUID(), null, content));
         settings.setEnabled(false);
