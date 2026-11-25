@@ -227,15 +227,15 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-4 max-w-5xl">
             <div className="h-8 bg-bb-surface rounded w-64 mb-2" />
-            <div className="h-4 bg-bb-surface rounded w-40 mb-6" />
+            <div className="h-4 bg-bb-surface rounded w-40 mb-5" />
             <div className="grid grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-bb-surface rounded-xl" />)}
             </div>
-            <div className="grid grid-cols-2 gap-6 mt-6">
+            <div className="grid grid-cols-2 gap-5 mt-6">
               <div className="h-64 bg-bb-surface rounded-xl" />
               <div className="h-64 bg-bb-surface rounded-xl" />
             </div>
@@ -249,7 +249,7 @@ export default function ProjectHomePage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16 flex items-center justify-center">
 <ProjectNav projectId={projectId} />
           <div className="text-center">
             <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
@@ -293,7 +293,7 @@ export default function ProjectHomePage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
         <div className="max-w-5xl">
 
@@ -385,7 +385,7 @@ export default function ProjectHomePage() {
           <ProjectWorkflow />
 
           {/* ── 두 열 그리드: 업무 + 회의 ─────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
 
             {/* 업무 현황 */}
             <div className="bg-bb-surface border border-bb-border rounded-xl p-4">
@@ -484,9 +484,9 @@ export default function ProjectHomePage() {
             </div>
           </div>
 
-          <details className="mb-6 rounded-xl border border-bb-border bg-bb-surface p-4"><summary className="cursor-pointer text-sm font-semibold">팀 활동·자료 더 보기</summary><div className="mt-5">
+          <details className="mb-5 rounded-xl border border-bb-border bg-bb-surface p-4"><summary className="cursor-pointer text-sm font-semibold">팀 활동·자료 더 보기</summary><div className="mt-5">
           {/* ── KPI 4개 ──────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             <KpiCard
               icon={Kanban}
               label="업무 완료율"
@@ -518,7 +518,7 @@ export default function ProjectHomePage() {
           </div>
 
           {/* ── 기여도 현황 ──────────────────────────────────────────────── */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-6">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
             <SectionHeader
               title="기여도 현황"
               icon={BarChart2}
@@ -578,7 +578,7 @@ export default function ProjectHomePage() {
           </div>
 
           {/* ── Hash Vault ───────────────────────────────────────────────── */}
-          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-6">
+          <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
             <SectionHeader
               title="프로젝트 자료"
               icon={Files}
@@ -617,7 +617,7 @@ export default function ProjectHomePage() {
 
           </div></details>
           {/* ── 팀플 종료 — 활동 보고서 ─────────────────────────────────── */}
-          <div className="bg-bb-surface border border-bb-border rounded-2xl p-5">
+          <div className="bg-bb-surface border border-bb-border rounded-2xl p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               <div className="flex flex-1 min-w-0 items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-bb-surface2 flex items-center justify-center shrink-0">
