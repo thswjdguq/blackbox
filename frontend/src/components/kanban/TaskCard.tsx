@@ -13,6 +13,7 @@ import {
   ChevronsUp,
   Check,
 } from "lucide-react";
+import { avatarName } from "@/lib/avatarName";
 
 interface TaskCardProps {
   task: Task;
@@ -44,7 +45,7 @@ function getDueWarning(dueDate: string | null, isDone: boolean): { label: string
 }
 
 function Avatar({ name }: { name: string }) {
-  const initials = name.slice(0, 2).toUpperCase();
+  const initials = avatarName(name);
   const hue = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
   return (
     <div
