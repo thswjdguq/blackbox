@@ -63,12 +63,14 @@ export default function DatePicker({
     }
   };
 
-  // Sync parent value → parts when changed externally
-  useEffect(() => {
+  // 부모의 value가 바뀌면 칸을 다시 채운다. 그리는 중에 맞춰 이전 값으로 한 번 더 그리지 않는다
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
     setYear(value ? value.slice(0, 4) : "");
     setMonth(value ? value.slice(5, 7) : "");
     setDay(value ? value.slice(8, 10) : "");
-  }, [value]);
+  }
 
   // Close on outside click
   useEffect(() => {

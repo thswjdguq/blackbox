@@ -153,10 +153,14 @@ export default function DeliverableDetailPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeliverableProgress | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const [submissionDirty, setSubmissionDirty] = useState(false);
   const desiredTab = useSearchParams()?.get("tab");
-  useEffect(() => { if (desiredTab === "overview" || desiredTab === "review" || desiredTab === "submit") setActiveTab(desiredTab); }, [desiredTab, deliverableId]);
+  // 주소의 ?tab=으로 처음부터 그 탭을 그리고, 주소·제출물이 바뀌면 그리는 중에 맞춘다
+  const linkedTab = desiredTab === "overview" || desiredTab === "review" || desiredTab === "submit" ? desiredTab : null;
+  const [activeTab, setActiveTab] = useState<Tab>(linkedTab ?? "overview");
+  const tabKey = `${desiredTab ?? ""}:${deliverableId}`;
+  const [tabFor, setTabFor] = useState(tabKey);
+  if (tabKey !== tabFor) { setTabFor(tabKey); if (linkedTab) setActiveTab(linkedTab); }
+  const [submissionDirty, setSubmissionDirty] = useState(false);
   const changeTab = (next: Tab) => { if (submissionDirty && !window.confirm("저장하지 않은 제출 기록이 있습니다. 이동할까요?")) return; setActiveTab(next); };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

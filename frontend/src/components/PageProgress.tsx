@@ -12,11 +12,15 @@ export default function PageProgress() {
   const [visible, setVisible] = useState(false);
   const [width,   setWidth]   = useState(0);
 
-  useEffect(() => {
-    // 페이지 바뀔 때마다 진행 바 재생
+  // 페이지 바뀔 때마다 진행 바 재생. 시작 상태는 그리는 중에 맞추고, 진행은 타이머로
+  const [startedFor, setStartedFor] = useState<string | null>(null);
+  if (pathname !== startedFor) {
+    setStartedFor(pathname);
     setWidth(0);
     setVisible(true);
+  }
 
+  useEffect(() => {
     const t1 = setTimeout(() => setWidth(80), 50);    // 빠르게 80%
     const t2 = setTimeout(() => setWidth(100), 300);  // 완료
     const t3 = setTimeout(() => setVisible(false), 550);

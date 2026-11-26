@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, BookOpenText, ChevronDown, ClipboardList, FileText, Files, FolderKanban, Kanban, LayoutDashboard, Settings, BarChart2, MessageSquare } from "lucide-react";
 import { countActionableFeedback, useFeedbackInbox } from "@/hooks/useFeedbackInbox";
@@ -22,7 +22,9 @@ export default function SidebarNavigation({ projectId, onNavigate }: { projectId
   const auxiliary = selected?.primary === false;
   const [more, setMore] = useState(auxiliary);
   const moreId = useId();
-  useEffect(() => { setMore(auxiliary); }, [auxiliary, pathname]);
+  // 화면이 바뀌면 "더 보기"를 지금 화면에 맞춘다(보조 화면이면 펼침). 그리는 중에 맞춘다
+  const [moreFor, setMoreFor] = useState(pathname);
+  if (pathname !== moreFor) { setMoreFor(pathname); setMore(auxiliary); }
   const renderItem = (item: typeof projectNavigation[number]) => {
     const Icon = icons[item.key]; const active = selected?.key === item.key;
     return <Link key={item.key} href={`/projects/${projectId}${item.suffix}`} onClick={onNavigate}

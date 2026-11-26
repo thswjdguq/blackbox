@@ -40,34 +40,37 @@ export default function SmartDateInput({
   const dayRef   = useRef<HTMLInputElement>(null);
   const hourRef  = useRef<HTMLInputElement>(null);
   const minRef   = useRef<HTMLInputElement>(null);
-  const lastEmitted = useRef("");
+  const [lastEmitted, setLastEmitted] = useState("");
   const error = dateInputError(year, month, day, hour, min, withTime);
   useEffect(() => { yearRef.current?.setCustomValidity(error); }, [error]);
 
-  // 외부 value → 내부 state 파싱
-  useEffect(() => {
-    if (value === lastEmitted.current) return;   // 내가 보낸 echo면 덮어쓰지 않음
-    if (!value) {
-      setYear(""); setMonth(""); setDay(""); setHour(""); setMin("");
-      return;
+  // 외부 value → 내부 state 파싱. 그리는 중에 맞춰 빈 칸으로 한 번 더 그리지 않는다
+  const [seen, setSeen] = useState<{ value: string; withTime: boolean } | null>(null);
+  if (!seen || seen.value !== value || seen.withTime !== withTime) {
+    setSeen({ value, withTime });
+    if (value !== lastEmitted) {   // 내가 보낸 echo면 덮어쓰지 않음
+      if (!value) {
+        setYear(""); setMonth(""); setDay(""); setHour(""); setMin("");
+      } else {
+        // YYYY-MM-DDTHH:MM 또는 YYYY-MM-DD
+        const dateStr = value.split("T")[0];
+        const timeStr = value.includes("T") ? value.split("T")[1]?.slice(0, 5) : "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          const [y, m, d] = dateStr.split("-");
+          setYear(y); setMonth(m); setDay(d);
+        }
+        if (withTime && timeStr && /^\d{2}:\d{2}$/.test(timeStr)) {
+          const [h, mn] = timeStr.split(":");
+          setHour(h); setMin(mn);
+        }
+      }
     }
-    // YYYY-MM-DDTHH:MM 또는 YYYY-MM-DD
-    const dateStr = value.split("T")[0];
-    const timeStr = value.includes("T") ? value.split("T")[1]?.slice(0, 5) : "";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      const [y, m, d] = dateStr.split("-");
-      setYear(y); setMonth(m); setDay(d);
-    }
-    if (withTime && timeStr && /^\d{2}:\d{2}$/.test(timeStr)) {
-      const [h, mn] = timeStr.split(":");
-      setHour(h); setMin(mn);
-    }
-  }, [value, withTime]);
+  }
 
   const emit = (y: string, mo: string, d: string, h: string, mn: string) => {
     const dateFull = y.length === 4 && mo.length >= 1 && d.length >= 1;
     if (!dateFull) {
-      if (!y && !mo && !d) { lastEmitted.current = ""; onChange(""); }
+      if (!y && !mo && !d) { setLastEmitted(""); onChange(""); }
       return;
     }
     if (dateInputError(y, mo, d, h, mn, withTime)) return;
@@ -75,11 +78,11 @@ export default function SmartDateInput({
     if (withTime) {
       if (h.length >= 1 && mn.length >= 1) {
         const out = `${dateVal}T${h.padStart(2, "0")}:${mn.padStart(2, "0")}`;
-        lastEmitted.current = out;
+        setLastEmitted(out);
         onChange(out);
       }
     } else {
-      lastEmitted.current = dateVal;
+      setLastEmitted(dateVal);
       onChange(dateVal);
     }
   };

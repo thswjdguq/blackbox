@@ -28,20 +28,16 @@ onSessionReset(() => statusCache.clear());
 
 /** Discord / Notion / Google Calendar 연동 상태를 조합해 미연동 항목 개수를 계산 */
 export function useIntegrationStatus(projectId: string | null): IntegrationStatus {
-  const [status, setStatus] = useState<ConnStatus | null>(
-    () => (projectId ? statusCache.get(projectId) ?? null : null)
-  );
-  const [loading, setLoading] = useState(
-    () => (projectId ? !statusCache.has(projectId) : false)
-  );
+  // 결과는 어느 프로젝트의 것인지와 함께 둔다. 프로젝트가 바뀐 첫 그림부터 앞 프로젝트 값을 쓰지 않고
+  // 그 프로젝트의 캐시(없으면 null)를 쓴다
+  const [fetched, setFetched] = useState<{ projectId: string; status: ConnStatus } | null>(null);
+  const [settledFor, setSettledFor] = useState<string | null>(null);
+  const status = !projectId ? null
+    : fetched?.projectId === projectId ? fetched.status : statusCache.get(projectId) ?? null;
+  const loading = !!projectId && status === null && settledFor !== projectId;
 
   useEffect(() => {
-    if (!projectId) { setStatus(null); setLoading(false); return; }
-
-    const cached = statusCache.get(projectId) ?? null;
-    setStatus(cached);
-    setLoading(cached === null);
-
+    if (!projectId) return;
     let cancelled = false;
     const gen = sessionGeneration();
     (async () => {
@@ -62,9 +58,9 @@ export function useIntegrationStatus(projectId: string | null): IntegrationStatu
           calendarConnected: calendarRes.data.connected,
         };
         statusCache.set(projectId, next);
-        setStatus(next);
+        setFetched({ projectId, status: next });
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setSettledFor(projectId);
       }
     })();
 

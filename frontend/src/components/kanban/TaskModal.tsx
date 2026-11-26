@@ -146,9 +146,10 @@ export default function TaskModal({
     return () => document.removeEventListener("keydown", onKey);
   });
 
-  // task prop 변경 시 폼 필드 동기화
-  useEffect(() => {
-    if (!task) return;
+  // task prop 변경 시 폼 필드 동기화. 그리는 중에 맞춰 이전 업무 값으로 한 번 더 그리지 않는다
+  const [syncedTask, setSyncedTask] = useState(task);
+  if (task && task !== syncedTask) {
+    setSyncedTask(task);
     setTitle(task.title);
     setDeliverableId(task.deliverableId ?? "");
     setRequirementId(task.requirementId ?? "");
@@ -160,7 +161,7 @@ export default function TaskModal({
     setTag(task.tag ?? "");
     setDueDate(task.dueDate ?? "");
     setSelectedAssignees(task.assignees.map((a) => a.userId));
-  }, [task]);
+  }
 
   // 담당자 토글
   const toggleAssignee = (userId: string) => {

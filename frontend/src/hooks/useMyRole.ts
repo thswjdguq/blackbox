@@ -37,15 +37,15 @@ export function forgetMyRole(projectId: string) {
  * 화면 안내용일 뿐이며 권한은 서버가 다시 확인한다.
  */
 export function useMyRole(projectId: string | null): MemberRole | null {
-  const [role, setRole] = useState<MemberRole | null>(null);
+  // 역할은 어느 프로젝트의 것인지와 함께 둔다. 프로젝트가 바뀐 첫 그림부터 앞 프로젝트의 역할을 쓰지 않는다
+  const [loaded, setLoaded] = useState<{ projectId: string; role: MemberRole | null } | null>(null);
 
   useEffect(() => {
-    setRole(null);
     if (!projectId) return;
     let alive = true;
-    loadRole(projectId).then((r) => { if (alive) setRole(r); });
+    loadRole(projectId).then((role) => { if (alive) setLoaded({ projectId, role }); });
     return () => { alive = false; };
   }, [projectId]);
 
-  return role;
+  return projectId && loaded?.projectId === projectId ? loaded.role : null;
 }
