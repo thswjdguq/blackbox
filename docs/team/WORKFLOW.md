@@ -64,7 +64,7 @@
 - 검토는 다음 작업 시간 내, 목표 24시간. 지연되면 비작성자인 나머지 팀원이 대체 검토한다. 전문 변경은 소유권 규칙을 지킨다.
 - CI 통과 + 충돌 없음 + 미해결 변경 요청 없음 + 의존 PR 충족 시 **주중에도 merge commit으로 병합**한다. 월요일까지 묶어 두지 않는다.
 - 병합 직전에 최신 main 기준을 확인하고 변경 영향 검사 재실행. PR 설명에는 수행한 검사와 미수행 사유를 구분한다.
-- main이 바뀌면 `update-pr-branches.yml`이 Draft가 아닌 열린 PR 브랜치에 최신 main을 병합하고 CI를 다시 실행한다. 손으로 update-branch를 부르지 않아도 된다. 충돌하는 PR은 건너뛰므로 작성자가 직접 해결한다. 실행이 실패로 끝나면(CI 요청 실패 등) Actions의 "PR 브랜치 최신화"를 다시 실행하면 남은 PR만 이어서 처리한다. 자동 병합 커밋이 원격에 생기므로, 작업을 이어서 push하기 전에 `git pull --no-rebase`로 받는다(받지 않으면 push가 거절된다). `--no-rebase`를 붙여야 `pull.rebase` 설정과 상관없이 merge로 받아, 위의 "PR을 연 뒤에는 rebase하지 않는다"를 지킨다.
+- main이 바뀌면 `update-pr-branches.yml`이 Draft가 아닌 열린 PR 브랜치에 최신 main을 병합한다. 손으로 update-branch를 부르지 않아도 된다. 병합은 저장소 Secret `PR_UPDATE_TOKEN`(저장소 관리자의 fine-grained 개인 액세스 토큰)으로 하므로 그 push에서 CI가 승인 없이 바로 실행된다. 충돌하는 PR은 건너뛰므로 작성자가 직접 해결한다. 실행이 실패로 끝나면(권한 오류 등) Actions의 "PR 브랜치 최신화"를 main에서 다시 실행하면 아직 뒤처진 PR만 갱신한다. 토큰이 만료되면 저장소 관리자가 새로 만들어 같은 이름으로 등록한다. 자동 병합 커밋이 원격에 생기므로, 작업을 이어서 push하기 전에 `git pull --no-rebase`로 받는다(받지 않으면 push가 거절된다). `--no-rebase`를 붙여야 `pull.rebase` 설정과 상관없이 merge로 받아, 위의 "PR을 연 뒤에는 rebase하지 않는다"를 지킨다.
 - 장애를 만든 PR은 먼저 revert PR로 되돌리고 재작업한다. DB가 적용된 경우 코드 되돌림만으로 안전한지 확인하고 후속 migration으로 복구한다. 기존 migration을 지우지 않는다.
 
 권장 GitHub 설정(A-01): main 직접 push 제한, 1인 승인, 새 커밋 시 재승인, 대화 해결, 실제 CI 검사 필수, merge commit만 허용(squash/rebase merge 비활성화). 권한/요금제 때문에 강제 설정이 불가능하면 ‘설정됨’으로 적지 말고 동등한 수동 확인을 PR에 남긴다. 실제 검사 이름은 CI 구현 후 기입한다.

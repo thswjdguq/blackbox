@@ -29,6 +29,7 @@ import { CalendarRecommendation, CalendarRecommendResponse, MemberCalendarStatus
 import SmartDateInput from "@/components/SmartDateInput";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 // ── 날짜 포맷 헬퍼 ─────────────────────────────────────────────────────
 function formatDate(iso: string | null): string {
@@ -352,7 +353,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                           {checked && <CheckCircle2 size={10} className="text-white" />}
                         </div>
                         <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-200 font-medium shrink-0">
-                          {m.name[0]}
+                          {avatarName(m.name)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-slate-200">{m.name}</div>
@@ -433,7 +434,7 @@ function CreateMeetingModal({ onClose, onCreated, projectId }: CreateModalProps)
                 {selectedMembers.map((m) => (
                   <div key={m.userId} className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-full px-2.5 py-1">
                     <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[10px] text-indigo-300 font-bold">
-                      {m.name[0]}
+                      {avatarName(m.name, 1)}
                     </div>
                     <span className="text-xs text-slate-300">{m.name}</span>
                   </div>
@@ -797,10 +798,10 @@ export default function MeetingsPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
           <div className="animate-pulse space-y-3">
-            <div className="h-6 bg-bb-surface rounded w-36 mb-6" />
+            <div className="h-6 bg-bb-surface rounded w-36 mb-5" />
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="h-20 bg-bb-surface rounded-xl" />
@@ -816,10 +817,10 @@ export default function MeetingsPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
 <ProjectNav projectId={projectId} />
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-bold text-bb-text">회의</h1>
             <p className="text-sm text-bb-text2 mt-1">총 {meetings.length}개의 회의</p>
@@ -837,7 +838,7 @@ export default function MeetingsPage() {
 
         {/* 에러 */}
         {error && (
-          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-6">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-5">
             <AlertCircle size={18} className="text-red-400 shrink-0" />
             <p className="text-sm text-red-400">{error}</p>
             <button
@@ -856,7 +857,7 @@ export default function MeetingsPage() {
             <p className="text-sm font-semibold text-bb-text mb-1.5">아직 회의가 없어요</p>
             {isLeader ? (
               <>
-                <p className="text-xs text-bb-text2 mb-6">팀원들과 첫 회의를 만들어보세요</p>
+                <p className="text-xs text-bb-text2 mb-5">팀원들과 첫 회의를 만들어보세요</p>
                 <button
                   onClick={() => setShowCreate(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500

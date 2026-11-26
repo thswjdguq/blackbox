@@ -17,6 +17,7 @@ import {
 import { KanbanFilter } from "@/components/kanban/KanbanBoard";
 import { TaskPriority, PRIORITY_TEXT } from "@/types/task";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 interface Member {
   userId: string;
@@ -111,11 +112,11 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
-          <div className="animate-pulse space-y-6">
+          <div className="animate-pulse space-y-5">
             <div className="h-7 bg-bb-surface rounded-lg w-48" />
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-5">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="bg-bb-surface rounded-xl p-4 h-64" />
               ))}
@@ -131,7 +132,7 @@ export default function BoardPage() {
     return (
       <div className="min-h-screen bg-bb-bg">
         <Sidebar />
-        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6 flex items-center justify-center">
+        <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16 flex items-center justify-center">
         <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
           <div className="text-center">
             <AlertCircle size={40} className="text-rose-400 mx-auto mb-4" />
@@ -153,17 +154,14 @@ export default function BoardPage() {
     <div className="min-h-screen bg-bb-bg">
       <Sidebar />
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen flex flex-col">
-        <div className="px-4 md:px-8 pt-4"><ProjectNav projectId={projectId} /></div>
-        {/* Top bar with gradient accent */}
-        <div className="relative px-4 md:px-8 pt-6 md:pt-8 pb-6 border-b border-bb-border overflow-hidden">
-          {/* Decorative gradient */}
-          <div className="absolute inset-0 bg-bb-surface pointer-events-none" />
-
-          <div className="relative flex flex-wrap items-start justify-between gap-4">
+      {/* 다른 화면과 같은 바깥 여백. 머리 부분을 흰 띠로 따로 두지 않는다 */}
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
+        <ProjectNav projectId={projectId} />
+        <div className="mt-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-bb-text">팀 업무</h1>
-              <p className="text-xs text-bb-text2 mt-1">{project?.name}</p>
+              <h1 className="text-2xl font-bold text-bb-text">팀 업무</h1>
+              <p className="text-sm text-bb-text2 mt-1">{project?.name}</p>
 
               {project?.courseName && (
                 <p className="text-xs text-bb-text2 mt-1">
@@ -197,13 +195,13 @@ export default function BoardPage() {
         </div>
 
         {readOnly && (
-          <p className="mx-8 mt-4 text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다. 업무를 클릭하면 내용을 확인할 수 있습니다.</p>
+          <p className="mt-4 text-xs text-bb-text2">관찰자는 업무를 볼 수만 있습니다. 업무를 클릭하면 내용을 확인할 수 있습니다.</p>
         )}
 
-        <div className="px-4 md:px-8 py-4"><DeadlineNotice tasks={tasks} /></div>
+        <div className="mt-5"><DeadlineNotice tasks={tasks} /></div>
 
         {/* ── 필터 바 ──────────────────────────────────────────────────────── */}
-        <div className="px-8 py-3 border-b border-bb-border flex items-center gap-3 flex-wrap">
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-bb-text2 shrink-0">
             <SlidersHorizontal size={13} />
             <span>필터</span>
@@ -267,7 +265,7 @@ export default function BoardPage() {
         </div>
 
         {/* Board area */}
-        <div className="flex-1 p-4 md:p-8 md:overflow-x-auto">
+        <div className="mt-4 md:overflow-x-auto">
           <div>
             <KanbanBoard
               key={`${projectId}:${myUserId}:${myRole}`}
@@ -289,7 +287,7 @@ export default function BoardPage() {
 
           {/* 팀원별 진행 현황 */}
           {members.length > 0 && (
-            <div className="md:min-w-[900px] mt-8 bg-bb-surface border border-bb-border rounded-xl p-4">
+            <div className="md:min-w-[900px] mt-5 bg-bb-surface border border-bb-border rounded-xl p-4">
               <h2 className="text-sm font-semibold text-bb-text mb-4 flex items-center gap-2">
                 <FolderKanban size={14} className="text-indigo-400" />
                 팀원별 업무 현황
@@ -313,7 +311,7 @@ export default function BoardPage() {
                         style={{ background: `hsl(${hue} 55% 45%)` }}
                         className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                       >
-                        {m.name.slice(0, 2).toUpperCase()}
+                        {avatarName(m.name)}
                       </div>
 
                       {/* Name */}

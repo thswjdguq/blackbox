@@ -22,6 +22,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { loginHref } from "@/lib/loginRedirect";
+import { avatarName } from "@/lib/avatarName";
 
 const GOOGLE_BLUE = "#4285F4";
 
@@ -35,7 +36,7 @@ const INPUT_CLS =
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-bb-surface border border-bb-border rounded-xl p-5 mb-5">
+    <div className="bg-bb-surface border border-bb-border rounded-xl p-4 mb-5">
       <h2 className="text-base font-semibold text-bb-text mb-5">{title}</h2>
       {children}
     </div>
@@ -164,7 +165,7 @@ function ProfileSettingsContent() {
     }
   };
 
-  const initials = profile ? profile.name.slice(0, 2).toUpperCase() : "..";
+  const initials = profile ? avatarName(profile.name) : "..";
   const hue = profile
     ? profile.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360
     : 220;
@@ -183,17 +184,17 @@ function ProfileSettingsContent() {
         </div>
       )}
 
-      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-12 md:py-6">
+      <main className="md:ml-64 mt-14 md:mt-0 min-h-screen px-4 py-5 md:px-8 md:py-6 lg:px-12 xl:px-16">
         <div className="max-w-xl">
 
           {/* 헤더 */}
           <h1 className="text-2xl font-bold text-bb-text mb-1">프로필 설정</h1>
-          <p className="text-sm text-bb-text2 mb-6">이름, 비밀번호, 연동 서비스를 관리합니다</p>
+          <p className="text-sm text-bb-text2 mb-5">이름, 비밀번호, 연동 서비스를 관리합니다</p>
 
           {/* ① 기본 정보 */}
           <Section title="기본 정보">
             {/* 아바타 */}
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-5">
               <div
                 style={{ background: `hsl(${hue} 55% 45%)` }}
                 className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white shrink-0"
