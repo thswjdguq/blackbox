@@ -1,0 +1,22 @@
+# 메일 테스트 수신함(K-41 11장). 메일을 Gmail이 아니라 docker-compose.test-db.yml의 Mailpit(blackbox_mail_test)으로 보낸다.
+#
+# - 로컬에서만 다른 프로필에 더해 켠다(예: SPRING_PROFILES_ACTIVE=local,test-mail). 운영 서버에서 켜지 않는다
+# - Mailpit은 인증·STARTTLS를 쓰지 않는다. 이 두 가지를 끄는 것은 SMTP 주소가 loopback일 때만 허용되고,
+#   다른 주소면 서버가 기동하지 않는다(SmtpEmailNotificationTransport)
+# - 발신 주소는 합성 주소로 고정해 .env의 실제 Gmail 계정과 앱 비밀번호를 쓰지 않는다
+# - 수신 허용 목록(MAIL_RECIPIENT_ALLOWLIST)은 그대로 적용된다. 받을 테스트 계정 주소를 넣는다
+spring:
+  mail:
+    host: 127.0.0.1
+    port: 28125
+    username: blackbox@example.test
+    password: ""
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+      mail.smtp.starttls.required: false
+
+app:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}   # 확인 메일 링크의 출처
+  mail:
+    enabled: true

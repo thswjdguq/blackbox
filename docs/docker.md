@@ -281,6 +281,24 @@ spring:
 SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 ```
 
+### 메일 테스트 수신함(Mailpit)
+
+확인 메일과 알림 메일을 실제 Gmail로 보내지 않고 이 PC의 테스트 수신함에서 확인한다(K-41 11장). 수신함은 받은 메일을 밖으로 전달하지 않고, 127.0.0.1에서만 열린다.
+
+```bash
+# 수신함 기동(SMTP 127.0.0.1:28125, 화면·API http://127.0.0.1:28025)
+docker compose -f docker-compose.test-db.yml -p blackbox-test up -d mail-test
+
+# 백엔드를 test-mail 프로필을 더해 실행. 받을 테스트 계정 주소를 허용 목록에 넣는다
+cd backend && SPRING_PROFILES_ACTIVE=local,test-mail MAIL_RECIPIENT_ALLOWLIST=member@example.test ./gradlew bootRun
+```
+
+- `test-mail` 프로필은 SMTP를 수신함으로 돌리고 인증·STARTTLS를 끈다. 발신 주소는 `blackbox@example.test`로 고정되어 `.env`의 Gmail 계정과 앱 비밀번호를 쓰지 않는다
+- 인증·STARTTLS를 끄는 설정은 SMTP 주소가 loopback일 때만 허용된다. 다른 주소면 서버가 기동하지 않는다
+- 확인 메일 링크는 `FRONTEND_BASE_URL`(기본 `http://localhost:3000`)로 만들어진다
+- 수신함에 메일이 도착한 것은 실제 Gmail 배달 성공과 다르다. 운영 발송은 따로 확인한다
+- 확인 메일이 확인 API까지 가는 자동 테스트(`EmailVerificationMailpitTest`)는 `BB_MAIL_TEST_API=http://127.0.0.1:28025`가 있을 때만 돈다. CI는 같은 수신함을 service로 띄워 매번 실행한다
+
 ---
 
 ## 프로덕션 배포 가이드
