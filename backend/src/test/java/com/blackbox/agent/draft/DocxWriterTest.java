@@ -48,7 +48,7 @@ class DocxWriterTest {
         assertFalse(new String(parts.get("word/styles.xml"), java.nio.charset.StandardCharsets.UTF_8).contains("rFonts"), "글꼴은 지정하지 않는다");
     }
 
-    /** 같은 초안을 다시 채택하면 해시가 같아 파일 금고에 변경 기록이 남지 않는다. 항목의 시각은 서버의 시간대와 상관없이 고정이다 */
+    /** 같은 내용의 초안을 다시 채택하면 해시가 같아 내용 변경 기록(REUPLOAD)이 남지 않는다. 항목의 시각은 서버의 시간대와 상관없이 고정이다 */
     @Test void theSameDocumentGivesTheSameBytesInAnyTimeZone() throws Exception {
         byte[] docx = DocxWriter.write(doc);
         assertArrayEquals(docx, DocxWriter.write(doc));
