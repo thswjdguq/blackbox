@@ -237,6 +237,25 @@ class AgentRunnerTest {
         assertEquals(1, proposals.findByProjectOrderByCreatedAtDesc(project, Limit.of(10)).size());
     }
 
+    /** 목차 카드(K-59 3장). 제출물은 모델이 쓴 값이 아니라 고른 제출물이고, 어느 장에도 없는 필수 요구사항을 서버가 표시한다 */
+    @Test void anOutlineCardIsTiedToTheChosenDeliverableAndShowsUncoveredRequirements() throws Exception {
+        DeliverableRequirement cover = data.requirement(report, "표지를 붙인다", false), design = data.requirement(report, "설계를 적는다", true);
+        answers.add("""
+                {"text": "설계 자료가 부족합니다.", "proposals": [{"kind": "DOCUMENT_OUTLINE", "title": "중간 보고서 목차", "rationale": "요구사항에 맞췄습니다",
+                  "content": {"deliverableId": "%s", "title": "중간 보고서", "sections": [
+                    {"title": "문제 정의", "requirementIds": ["%s"], "note": "업무 기록 있음"}, {"title": "표지", "requirementIds": ["%s"]}]}}]}"""
+                .formatted(foreign.getId(), requirement.getId(), cover.getId()));
+        Recorder events = run(member, DraftOutlineSkill.NAME, "{\"deliverableId\":\"" + report.getId() + "\"}");
+        assertEquals("done 1", events.seen.get(events.seen.size() - 1));
+        assertEquals(4, toolCounts.get(0), "제출물·업무·회의·프로젝트 조회");
+        assertTrue(materials.get(0).contains(report.getId().toString()) && materials.get(0).contains("중간 보고서"));
+
+        JsonNode content = proposals.findByProjectOrderByCreatedAtDesc(project, Limit.of(1)).get(0).getContent();
+        assertEquals(report.getId().toString(), content.path("deliverableId").asString());
+        assertEquals(List.of(design.getId().toString()), content.path("uncoveredRequirementIds").valueStream().map(JsonNode::asString).toList(),
+                "선택 요구사항은 걸리지 않아도 표시하지 않는다");
+    }
+
     @Test void whatIsWrongBeforeTheRunStartsIsAnHttpError() {
         assertEquals(400, status(() -> prepare(member, "DELETE_EVERYTHING", "{}")));
         assertEquals(400, status(() -> prepare(member, PlanFromBriefSkill.NAME, "{\"briefText\":\"  \"}")));
