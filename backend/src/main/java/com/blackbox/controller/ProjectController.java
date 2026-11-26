@@ -62,6 +62,18 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
+    // ── 보관(K-60) ─────────────────────────────────────────────────────────
+
+    @PostMapping("/{projectId}/archive")
+    public ResponseEntity<ProjectResponse> archiveProject(@PathVariable UUID projectId, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(projectService.archiveProject(projectId, user));
+    }
+
+    @PostMapping("/{projectId}/unarchive")
+    public ResponseEntity<ProjectResponse> unarchiveProject(@PathVariable UUID projectId, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(projectService.unarchiveProject(projectId, user));
+    }
+
     // ── 초대 코드 ──────────────────────────────────────────────────────────
 
     @PostMapping("/{projectId}/invite-code/regenerate")

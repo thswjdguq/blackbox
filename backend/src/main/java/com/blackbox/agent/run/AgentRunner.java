@@ -84,6 +84,8 @@ public class AgentRunner {
         AgentSkill skill = skills.get(skillName);
         if (skill == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모르는 실행 종류입니다");
         if (!skill.allows(contributor)) throw new ForbiddenException(ProposalService.OBSERVER_REFUSED);
+        // 보관된 프로젝트는 글로만 답하는 실행(물어보기·상태 요약)도 막는다. 새 실행 기록과 모델 사용량을 만드는 쓰기다(K-60 3장)
+        access.requireNotArchived(project);
         JsonNode given = input == null ? json.createObjectNode() : input;
         String material = skill.material(projectId, user, given);
         if (!model.available()) {

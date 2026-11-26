@@ -1,6 +1,7 @@
 package com.blackbox.dto;
 
 import com.blackbox.entity.Project;
+import com.blackbox.service.ProjectAccessChecker;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -19,7 +20,9 @@ public record ProjectResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         long memberCount,
-        String myRole   // 현재 로그인 사용자의 프로젝트 내 역할 (LEADER / MEMBER / OBSERVER)
+        String myRole,  // 현재 로그인 사용자의 프로젝트 내 역할 (LEADER / MEMBER / OBSERVER)
+        OffsetDateTime archivedAt,   // 보관한 시각(K-60). null이면 보관되지 않은 프로젝트
+        String archivedNotice        // 보관 중일 때 화면 상단에 보일 서버 문장. 409 detail과 같은 상수
 ) {
     public static ProjectResponse from(Project p, long memberCount, String myRole) {
         return new ProjectResponse(
@@ -29,7 +32,8 @@ public record ProjectResponse(
                 p.getInviteCode(),
                 p.getCreatedBy().getId(),
                 p.getCreatedAt(), p.getUpdatedAt(),
-                memberCount, myRole
+                memberCount, myRole,
+                p.getArchivedAt(), p.isArchived() ? ProjectAccessChecker.ARCHIVED_NOTICE : null
         );
     }
 }

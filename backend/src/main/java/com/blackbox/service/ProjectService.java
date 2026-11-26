@@ -17,6 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -102,10 +104,31 @@ public class ProjectService {
         return response(project, leader);
     }
 
+    // ── 보관(K-60) ─────────────────────────────────────────────────────────
+
+    /** 보관하면 읽기 전용이 된다. 이미 보관됐으면 지금 상태를 그대로 돌려준다(중복 클릭) */
+    @Transactional
+    public ProjectResponse archiveProject(UUID projectId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        ProjectMember leader = accessChecker.requireLeaderEvenIfArchived(project, user);
+        projectRepository.archive(projectId, OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS), user.getId());
+        return response(accessChecker.getProject(projectId), leader);
+    }
+
+    /** 해제하면 보관 시각과 보관한 사람을 지운다. 보관되지 않았으면 지금 상태를 그대로 돌려준다 */
+    @Transactional
+    public ProjectResponse unarchiveProject(UUID projectId, User user) {
+        Project project = accessChecker.getProject(projectId);
+        ProjectMember leader = accessChecker.requireLeaderEvenIfArchived(project, user);
+        projectRepository.unarchive(projectId);
+        return response(accessChecker.getProject(projectId), leader);
+    }
+
     @Transactional
     public void deleteProject(UUID projectId, User user) {
         Project project = accessChecker.getProject(projectId);
-        accessChecker.requireLeader(project, user);
+        // 삭제 규칙은 보관과 상관없이 그대로다(K-60 1장). 기록이 있으면 아래에서 409다
+        accessChecker.requireLeaderEvenIfArchived(project, user);
         try {
             // 엔티티 remove는 권한 검사에서 읽은 멤버의 project 참조와 충돌한다.
             // 단일 DELETE를 즉시 실행하고 DB의 기존 기록 보존 제약은 그대로 적용한다.
@@ -137,6 +160,8 @@ public class ProjectService {
         if (projectMemberRepository.existsByProjectAndUser(project, user)) {
             throw new ForbiddenException("이미 참여 중인 프로젝트입니다");
         }
+        // 보관된 프로젝트는 새 멤버를 받지 않는다. 초대 코드를 가진 사람에게는 보관 상태를 알린다(K-60 3장)
+        accessChecker.requireNotArchived(project);
 
         ProjectMember member = new ProjectMember();
         member.setProject(project);
@@ -204,6 +229,7 @@ public class ProjectService {
     public void leaveProject(UUID projectId, User user) {
         Project project = accessChecker.getProject(projectId);
         ProjectMember member = accessChecker.requireMember(project, user);
+        accessChecker.requireNotArchived(project);   // 멤버 구성도 기록이다(K-60 3장)
 
         if ("LEADER".equals(member.getRole())) {
             long leaderCount = projectMemberRepository.countByProjectAndRole(project, "LEADER");
