@@ -95,6 +95,19 @@ class SpringAiAgentModelTest {
         }
     }
 
+    /**
+     * Gemini는 글 조각마다 결과(Generation)를 하나씩 만든다. 첫 결과만 읽으면 긴 응답이 STOP으로 끝났는데도 중간에서 끊겼다(A-80).
+     * 결과를 순서대로 이어 붙이고, 추론 조각과 도구 호출 자리(빈 글)는 넣지 않는다
+     */
+    @Test void anAnswerSplitIntoSeveralResultsIsJoinedWithoutThoughts() {
+        ChatModel split = prompt -> new ChatResponse(List.of(
+                new Generation(AssistantMessage.builder().content("먼저 기록을 살펴보자").properties(java.util.Map.of("isThought", true)).build()),
+                new Generation(new AssistantMessage("{\"text\": \"목차입니다\", ")),
+                new Generation(new AssistantMessage("")),
+                new Generation(new AssistantMessage("\"proposals\": []}"))));
+        assertEquals("{\"text\": \"목차입니다\", \"proposals\": []}", new SpringAiAgentModel(Optional.of(split)).generate("지시", "자료", List.of()));
+    }
+
     /** 실제 공급자처럼 도구를 받을 수 있는 옵션을 내놓는다. Spring AI 2.0은 모델의 옵션이 이 모양일 때 도구를 실어 보낸다 */
     private static ChatModel stub(List<Prompt> seen, String answer) {
         return new ChatModel() {
