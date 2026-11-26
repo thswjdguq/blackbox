@@ -18,7 +18,9 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import static com.blackbox.service.EmailNotificationTransport.Result.*;
@@ -38,8 +40,24 @@ public class SmtpEmailNotificationTransport implements EmailNotificationTranspor
     private final String from;
 
     public SmtpEmailNotificationTransport(JavaMailSender mail, MailNotificationProperties settings,
-                                          @Value("${spring.mail.username:}") String from) {
+                                          @Value("${spring.mail.username:}") String from,
+                                          @Value("${spring.mail.host:}") String host,
+                                          @Value("${spring.mail.properties.mail.smtp.auth:false}") boolean auth,
+                                          @Value("${spring.mail.properties.mail.smtp.starttls.required:false}") boolean starttls) {
+        requireProtectedUnlessLoopback(host, auth, starttls);
         this.mail = mail; this.settings = settings; this.from = from == null ? "" : from.strip();
+    }
+
+    private static final Set<String> LOOPBACK = Set.of("127.0.0.1", "localhost", "::1", "[::1]");
+
+    /**
+     * 인증·STARTTLS를 끄는 것은 메일 테스트 수신함(test-mail 프로필, loopback의 Mailpit)에서만 허용한다(K-41 11장).
+     * 다른 주소에서 둘 중 하나라도 꺼져 있으면 기동을 멈춰, 설정 실수로 외부 SMTP에 평문·무인증으로 보내지 않는다
+     */
+    static void requireProtectedUnlessLoopback(String host, boolean auth, boolean starttls) {
+        if (auth && starttls) return;
+        if (host == null || !LOOPBACK.contains(host.strip().toLowerCase(Locale.ROOT)))
+            throw new IllegalStateException("SMTP 인증과 STARTTLS는 loopback 주소의 메일 테스트 수신함에서만 끌 수 있습니다(spring.mail.host).");
     }
 
     @Override
