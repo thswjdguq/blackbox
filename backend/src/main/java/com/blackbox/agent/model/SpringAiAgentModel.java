@@ -7,12 +7,15 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Spring AI를 쓰는 유일한 곳. 공급자(Gemini, Bedrock)는 설정(spring.ai.model.chat)으로 고르고 이 코드는 구분하지 않는다.
@@ -44,7 +47,7 @@ public class SpringAiAgentModel implements AgentModel {
                     .call()
                     .chatResponse();
             logCall(response, started);
-            String text = response == null || response.getResult() == null ? null : response.getResult().getOutput().getText();
+            String text = text(response);
             if (text == null || text.isBlank()) {
                 String message = truncated(finishReason(response))
                         ? "모델의 답이 출력 상한에 걸려 잘렸습니다" : "모델이 빈 응답을 돌려줬습니다";
@@ -56,6 +59,21 @@ public class SpringAiAgentModel implements AgentModel {
         } catch (RuntimeException e) {
             throw new AgentModelException(AgentModelException.Reason.FAILED, "모델 호출에 실패했습니다", e);
         }
+    }
+
+    /** Gemini가 추론(thinking) 조각에 붙이는 표시. 공급자 클래스에 묶이지 않게 이름만 쓴다(GoogleGenAiChatModel.THOUGHT_METADATA_KEY) */
+    static final String THOUGHT = "isThought";
+
+    /**
+     * 응답의 글. 공급자가 응답 하나를 결과(Generation) 여러 개로 나눠 줄 수 있다. Gemini는 글 조각(part)마다 결과를 하나씩 만들어,
+     * 첫 결과만 읽으면 긴 응답이 중간에서 끊긴다(종료 이유는 STOP). 추론 조각은 빼고 순서대로 이어 붙인다.
+     * 후보 응답을 여러 개 청하지 않으므로 이어 붙여도 다른 응답이 섞이지 않는다
+     */
+    static String text(ChatResponse response) {
+        if (response == null) return null;
+        return response.getResults().stream().map(Generation::getOutput)
+                .filter(m -> !Boolean.TRUE.equals(m.getMetadata().get(THOUGHT)))
+                .map(m -> m.getText()).filter(Objects::nonNull).collect(Collectors.joining());
     }
 
     /** 사용량 한도를 따져 볼 수 있게 호출마다 모델, 걸린 시간, 토큰 수, 마지막 답이 끝난 이유를 남긴다. 도구를 부르며 오간 요청은 합쳐서 한 줄이다 */
