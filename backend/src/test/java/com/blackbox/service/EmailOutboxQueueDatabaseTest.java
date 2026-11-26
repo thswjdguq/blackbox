@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,6 +28,7 @@ import static com.blackbox.repository.ReviewFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
 
 /** V39의 실제 대기 저장·중복·롤백 검사. worker/SMTP는 없으며 모델·메일을 호출하지 않는다. */
 @SpringBootTest(properties = {"app.mail.enabled=true", "spring.datasource.hikari.minimum-idle=0"})
@@ -40,6 +42,7 @@ class EmailOutboxQueueDatabaseTest {
     @Autowired PlatformTransactionManager transactions;
     @MockitoSpyBean EmailOutboxRepository repository;
     @MockitoBean ScoreScheduler scheduler;
+    @MockitoBean EmailDeliveryAuthorization authorization;
 
     private record Team(Project project, User leader, User worker, User peer, User observer, User outsider) {}
     private static class SyntheticQueueFailure extends RuntimeException {
@@ -123,6 +126,23 @@ class EmailOutboxQueueDatabaseTest {
         assertEquals(0, count("notification_email_outbox", t.project().getId()));
     }
 
+    @Test void unverifiedAddressNeverQueuesAndVerificationDoesNotBackfillTheOldRequest() {
+        Team t = team(); Task task = task(t); em.flush();
+        when(authorization.current(t.worker().getId())).thenReturn(Optional.of(
+                new EmailDeliveryAuthorization.State(t.worker().getEmail(), true, OffsetDateTime.now().minusDays(1), null)));
+        notifications.completionRequested(task, t.leader(), List.of(t.worker()));
+        assertEquals(1, count("user_notifications", t.project().getId()));
+        assertEquals(0, count("notification_email_outbox", t.project().getId()));
+        when(authorization.current(t.worker().getId())).thenReturn(Optional.of(
+                new EmailDeliveryAuthorization.State(t.worker().getEmail(), true,
+                        OffsetDateTime.now().minusDays(1), OffsetDateTime.now().minusSeconds(1))));
+        notifications.completionRequested(task, t.leader(), List.of(t.worker()));
+        assertEquals(0, count("notification_email_outbox", t.project().getId()));
+        task.setCompletionRequestedAt(task.getCompletionRequestedAt().plusSeconds(1)); em.flush();
+        notifications.completionRequested(task, t.leader(), List.of(t.worker()));
+        assertEquals(1, count("notification_email_outbox", t.project().getId()));
+    }
+
     @Test @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void failureAfterActualOutboxInsertRollsBackTaskNotificationAndOutbox() {
         var projectId = new AtomicReference<UUID>();
@@ -151,6 +171,10 @@ class EmailOutboxQueueDatabaseTest {
         Project p = project(em, leader); member(em, p, leader, "LEADER"); member(em, p, worker, "MEMBER");
         member(em, p, peer, "MEMBER"); member(em, p, observer, "OBSERVER");
         settings.setRecipientAllowlist(List.of(worker.getEmail()));
+        for (User u : List.of(leader, worker, peer, observer, outsider)) {
+            when(authorization.current(u.getId())).thenReturn(Optional.of(new EmailDeliveryAuthorization.State(
+                    u.getEmail(), true, OffsetDateTime.now().minusDays(1), OffsetDateTime.now().minusDays(1))));
+        }
         return new Team(p, leader, worker, peer, observer, outsider);
     }
     private User person(String name) { User u = user(em, name); u.setEmail(UUID.randomUUID() + "@example.invalid"); return u; }
