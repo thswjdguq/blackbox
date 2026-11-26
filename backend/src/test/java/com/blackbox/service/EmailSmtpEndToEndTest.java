@@ -20,9 +20,11 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,14 +33,12 @@ import java.util.regex.Pattern;
 import static com.blackbox.repository.ReviewFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** 명시적으로 켜는 로컬 Mailpit 검사. 실제 Gmail/자격증명을 쓰지 않으며 기본 CI에서는 실행하지 않는다. */
-@EnabledIfEnvironmentVariable(named="BB_MAILPIT_SMOKE", matches="true")
-@SpringBootTest(properties={"spring.datasource.hikari.minimum-idle=0", "app.frontend-base-url=http://localhost:13010",
-        "spring.mail.host=127.0.0.1", "spring.mail.port=28135", "spring.mail.username=sender@example.test",
-        "spring.mail.password=", "spring.mail.properties.mail.smtp.auth=false",
-        "spring.mail.properties.mail.smtp.starttls.enable=false", "spring.mail.properties.mail.smtp.starttls.required=false"})
-@ActiveProfiles("test")
+/** 공통 test-mail 수신함을 쓰는 종단 검사. BB_MAIL_TEST_API가 있는 로컬/CI에서만 실행하며 실제 Gmail은 쓰지 않는다. */
+@EnabledIfEnvironmentVariable(named="BB_MAIL_TEST_API", matches="https?://.+")
+@SpringBootTest(properties={"spring.datasource.hikari.minimum-idle=0", "app.frontend-base-url=http://localhost:13010"})
+@ActiveProfiles({"test", "test-mail"})
 class EmailSmtpEndToEndTest {
+    static final String INBOX = System.getenv("BB_MAIL_TEST_API");
     @Autowired EntityManager em;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
@@ -76,6 +76,7 @@ class EmailSmtpEndToEndTest {
 
             assertEquals(EmailVerificationService.Outcome.REQUESTED,verification.request(team.recipient()));
             var confirmation=waitFor(address,1).getFirst();
+            assertEquals("blackbox@example.test", read("/api/v1/message/"+confirmation.get("ID").asString()).get("From").get("Address").asString());
             String text=messageText(confirmation);
             var match=Pattern.compile("http://localhost:13010/email/verify#token=([A-Za-z0-9_-]+)").matcher(text);
             assertTrue(match.find(),"인증 메일에 fragment 링크가 있어야 한다");
@@ -126,14 +127,15 @@ class EmailSmtpEndToEndTest {
     private String state(Team t,UUID task) { return jdbc.queryForObject("SELECT status FROM notification_email_outbox WHERE project_id=? AND task_id=?",String.class,t.project(),task); }
     private JsonNode read(String path) {
         try {
-            var response=http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:28035"+path)).GET().build(),HttpResponse.BodyHandlers.ofString());
+            var response=http.send(HttpRequest.newBuilder(URI.create(INBOX+path)).GET().build(),HttpResponse.BodyHandlers.ofString());
             if(response.statusCode()!=200) throw new IllegalStateException("테스트 메일함 응답 실패");
             return json.readTree(response.body());
         } catch(Exception e) { throw new IllegalStateException("로컬 테스트 메일함에 연결하지 못함",e); }
     }
     private List<JsonNode> messages(String address) {
         var result=new ArrayList<JsonNode>();
-        for(var message:read("/api/v1/messages?limit=100").get("messages"))
+        String query=URLEncoder.encode("to:\""+address+"\"",StandardCharsets.UTF_8);
+        for(var message:read("/api/v1/search?query="+query).get("messages"))
             for(var to:message.get("To")) if(address.equals(to.get("Address").asString())) { result.add(message); break; }
         return result;
     }
