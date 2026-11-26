@@ -4,6 +4,7 @@ import com.blackbox.config.MailNotificationProperties;
 import com.blackbox.entity.*;
 import com.blackbox.repository.EmailOutboxRepository;
 import com.blackbox.repository.ProjectMemberRepository;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +17,12 @@ public class EmailOutboxQueue {
     private final MailNotificationProperties settings;
     private final ProjectMemberRepository members;
     private final EmailOutboxRepository outbox;
+    private final ObjectProvider<EmailDeliveryAuthorization> authorizations;
 
-    public EmailOutboxQueue(MailNotificationProperties settings, ProjectMemberRepository members, EmailOutboxRepository outbox) {
+    public EmailOutboxQueue(MailNotificationProperties settings, ProjectMemberRepository members, EmailOutboxRepository outbox,
+            ObjectProvider<EmailDeliveryAuthorization> authorizations) {
         this.settings = settings; this.members = members; this.outbox = outbox;
+        this.authorizations = authorizations;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -40,6 +44,11 @@ public class EmailOutboxQueue {
     private boolean configured() { return settings.isEnabled() && !settings.getRecipientAllowlist().isEmpty(); }
 
     private void enqueue(UserNotification snapshot, Project project, User recipient) {
+        var authorization = authorizations.getIfAvailable();
+        if (recipient.getEmail() == null || recipient.getEmail().isBlank()) return;
+        // 실제 인증/수신 설정 조회가 없거나 미인증이면, 앱 알림만 남기고 메일은 예약하지 않는다.
+        if (authorization == null || authorization.current(recipient.getId())
+                .filter(state -> state.permits(snapshot.getCreatedAt(), recipient.getEmail().strip())).isEmpty()) return;
         ProjectMember current = members.findByProjectAndUser(project, recipient).orElse(null);
         var policy = new EmailNotificationPolicy(settings.isEnabled(), settings.getRecipientAllowlist());
         if (policy.permits(project.getId(), snapshot, current)) outbox.insertIgnoringDuplicate(snapshot);
