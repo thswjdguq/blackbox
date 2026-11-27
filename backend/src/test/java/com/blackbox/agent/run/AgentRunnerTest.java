@@ -3,6 +3,7 @@ package com.blackbox.agent.run;
 import com.blackbox.agent.*;
 import com.blackbox.agent.model.AgentModel;
 import com.blackbox.agent.model.AgentModelException;
+import com.blackbox.agent.proposal.DocumentOutlineKind;
 import com.blackbox.agent.proposal.ProposalService;
 import com.blackbox.agent.skill.*;
 import com.blackbox.agent.tool.AgentTool;
@@ -254,6 +255,31 @@ class AgentRunnerTest {
         assertEquals(report.getId().toString(), content.path("deliverableId").asString());
         assertEquals(List.of(design.getId().toString()), content.path("uncoveredRequirementIds").valueStream().map(JsonNode::asString).toList(),
                 "선택 요구사항은 걸리지 않아도 표시하지 않는다");
+    }
+
+    /** 초안 카드(K-59 3장). 제출물과 목차는 서버가 채우고, 확인할 수 없는 근거는 빼고 개수를 글 끝에 알린다 */
+    @Test void aDraftFollowsTheAcceptedOutlineAndDropsUnknownSources() throws Exception {
+        AgentProposal outline = data.card(project, member, DocumentOutlineKind.NAME, "목차", """
+                {"deliverableId": "%s", "title": "중간 보고서", "sections": [{"title": "문제 정의", "requirementIds": ["%s"], "note": "업무 기록 있음"}]}"""
+                .formatted(report.getId(), requirement.getId()));
+        decisions.accept(project.getId(), member, outline.getId());
+        answers.add("""
+                {"text": "설문 결과가 기록에 없습니다.", "proposals": [{"kind": "DOCUMENT_DRAFT", "title": "중간 보고서 초안", "rationale": "업무 기록으로 썼습니다",
+                  "content": {"deliverableId": "%s", "outlineProposalId": "%s", "title": "중간 보고서", "sections": [{"title": "문제 정의",
+                    "body": "기록이 흩어진다. [작성 필요: 설문 결과]", "sources": {"taskIds": ["abc"], "meetingIds": [], "requirementIds": ["%s", "%3$s", "%s"]}}]}}]}"""
+                .formatted(foreign.getId(), UUID.randomUUID(), requirement.getId(), foreignRequirement.getId()));
+
+        Recorder events = run(member, DraftDocumentSkill.NAME, "{\"outlineProposalId\":\"" + outline.getId() + "\"}");
+        assertEquals("done 1", events.seen.get(events.seen.size() - 1));
+        assertTrue(events.seen.contains("text 설문 결과가 기록에 없습니다.\n\n근거를 확인할 수 없어 2건은 뺐습니다"), "겹친 id는 세지 않는다: " + events.seen);
+        assertTrue(materials.get(0).contains("1. 문제 정의") && materials.get(0).contains(requirement.getId().toString()), "채택한 목차와 다룰 요구사항을 자료로 준다");
+
+        JsonNode content = proposals.findByProjectOrderByCreatedAtDesc(project, Limit.of(1)).get(0).getContent();
+        assertEquals(report.getId().toString(), content.path("deliverableId").asString());
+        assertEquals(outline.getId().toString(), content.path("outlineProposalId").asString());
+        assertEquals(List.of(requirement.getId().toString()), content.at("/sections/0/sources/requirementIds").valueStream().map(JsonNode::asString).toList());
+        assertEquals(0, content.at("/sections/0/sources/taskIds").size());
+        assertEquals(1, content.path("missingCount").asInt());
     }
 
     @Test void whatIsWrongBeforeTheRunStartsIsAnHttpError() {

@@ -56,6 +56,12 @@ public interface AgentSkill {
      */
     default String complete(String kind, ObjectNode content, JsonNode input) { return null; }
 
+    /**
+     * 응답 하나를 다 읽은 뒤, 실행의 글 끝에 덧붙일 문장. input은 그 응답을 읽으며 complete가 받은 사본이다.
+     * 카드는 남기고 카드 안의 일부만 뺐을 때 그 사실을 알린다(예: "근거를 확인할 수 없어 n건은 뺐습니다")
+     */
+    default List<String> notes(JsonNode input) { return List.of(); }
+
     static String requiredText(JsonNode input, String field, String label, int maxLength) {
         String text = input.path(field).asString("").strip();
         if (text.isEmpty()) throw badInput(label + " 입력이 필요합니다");

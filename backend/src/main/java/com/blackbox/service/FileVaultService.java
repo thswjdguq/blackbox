@@ -5,18 +5,25 @@ import com.blackbox.dto.FileUploadResponse;
 import com.blackbox.entity.*;
 import com.blackbox.exception.NotFoundException;
 import com.blackbox.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class FileVaultService {
+    private static final Logger log = LoggerFactory.getLogger(FileVaultService.class);
 
     private final FileVaultRepository fileVaultRepository;
     private final TamperDetectionLogRepository tamperLogRepository;
@@ -77,6 +84,7 @@ public class FileVaultService {
 
         // 파일 디스크 저장
         String storagePath = fileStorageService.store(file, projectId);
+        deleteIfRolledBack(storagePath);
 
         // file_vault INSERT (immutable)
         FileVault vault = new FileVault();
@@ -172,4 +180,23 @@ public class FileVaultService {
         if (s == null) return "";
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
+
+    /**
+     * DB 기록이 되돌아가면 디스크에 쓴 파일도 지운다. 같은 트랜잭션에서 업로드 다음 일(검토 회차 열기 등)이 실패해도 주인 없는 파일이 남지 않는다.
+     * 커밋 여부를 알 수 없을 때(STATUS_UNKNOWN)는 기록이 남았을 수 있어 지우지 않는다
+     */
+    private static void deleteIfRolledBack(String storagePath) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCompletion(int status) {
+                if (status != STATUS_ROLLED_BACK) return;
+                try {
+                    Files.deleteIfExists(Path.of(storagePath));
+                } catch (IOException e) {
+                    log.warn("되돌린 업로드의 파일을 지우지 못했습니다 path={}", storagePath, e);
+                }
+            }
+        });
+    }
+
 }

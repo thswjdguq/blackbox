@@ -157,7 +157,9 @@ public class AgentRunner {
 
         Answer read = read(answer, p, input, allowedKinds);
         if (!read.problems().isEmpty()) {
-            // 한 번만 다시 요청한다(K-30 6장). 기록은 다시 조회하지 않고 형식만 고치게 한다
+            // 한 번만 다시 요청한다(K-30 6장). 기록은 다시 조회하지 않고 형식만 고치게 한다.
+            // 다시 요청한 호출이 실패하면 무엇이 틀렸는지 남지 않으므로 먼저 적는다. 문제 목록은 칸 이름·규칙·기록 id뿐이고 사용자 글은 없다
+            log.info("에이전트 응답 형식 다시 요청 run={} skill={} 문제={}", p.run().getId(), p.skill().name(), read.problems());
             read = read(model.generate(guide, instructions.repair(material, answer, read.problems()), List.of()), p, input, allowedKinds);
             requireInTime(p);
             if (!read.problems().isEmpty()) throw new IllegalStateException("형식에 맞지 않는 응답: " + read.problems());
@@ -167,6 +169,7 @@ public class AgentRunner {
         for (Map.Entry<String, Integer> d : read.dropped().entrySet()) {
             text = (text.isEmpty() ? "" : text + "\n\n") + d.getKey() + " " + d.getValue() + "건은 제외했습니다";
         }
+        for (String note : read.notes()) text = (text.isEmpty() ? "" : text + "\n\n") + note;
         if (!text.isBlank()) events.text(text);
         List<UUID> ids = new ArrayList<>();
         for (Draft draft : read.drafts()) {
@@ -180,8 +183,8 @@ public class AgentRunner {
     }
 
     private record Draft(String kind, String title, String rationale, JsonNode content) {}
-    /** dropped는 서버가 카드로 만들지 않은 것의 이유별 개수다 */
-    private record Answer(String text, List<Draft> drafts, Map<String, Integer> dropped, List<String> problems) {}
+    /** dropped는 서버가 카드로 만들지 않은 것의 이유별 개수, notes는 실행 종류가 글 끝에 덧붙일 문장이다 */
+    private record Answer(String text, List<Draft> drafts, Map<String, Integer> dropped, List<String> problems, List<String> notes) {}
 
     /** 모델의 답을 읽는다. 형식에 맞지 않는 곳이 있으면 problems에 담고, 그때는 아무것도 저장하지 않는다 */
     private Answer read(String answer, Prepared p, JsonNode begun, List<String> allowedKinds) {
@@ -192,7 +195,7 @@ public class AgentRunner {
             // 모델이 코드 블록 표시나 앞뒤 말을 붙여도 객체만 읽는다
             root = json.readTree(answer.substring(answer.indexOf('{'), answer.lastIndexOf('}') + 1));
         } catch (JacksonException | IndexOutOfBoundsException e) {
-            return new Answer("", List.of(), Map.of(), List.of("답이 JSON 객체 하나가 아니다"));
+            return new Answer("", List.of(), Map.of(), List.of("답이 JSON 객체 하나가 아니다"), List.of());
         }
         List<String> problems = new ArrayList<>();
         List<Draft> drafts = new ArrayList<>();
@@ -218,6 +221,6 @@ public class AgentRunner {
         }
         String text = root.path("text").asString("").strip();
         if (problems.isEmpty() && text.isEmpty() && drafts.isEmpty() && dropped.isEmpty()) problems.add("text와 proposals가 모두 비어 있다");
-        return new Answer(text, drafts, dropped, problems);
+        return new Answer(text, drafts, dropped, problems, problems.isEmpty() ? p.skill().notes(input) : List.of());
     }
 }
