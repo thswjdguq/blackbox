@@ -7,9 +7,6 @@ on:
   pull_request:
   push:
     branches: [main]
-  # main이 바뀌어 PR 브랜치를 자동으로 갱신한 뒤 update-pr-branches.yml이 부른다.
-  # GITHUB_TOKEN으로 만든 push는 pull_request 실행을 만들지 않으므로, 필수 검사를 이 방법으로 다시 돌린다
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,6 +34,15 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
+      # 메일 테스트 수신함(K-41 11장). 확인 메일을 실제 SMTP로 받아 확인 API까지 가는 테스트가 쓴다.
+      # docker-compose.test-db.yml의 mail-test와 같은 이미지·포트다
+      mailpit:
+        image: axllent/mailpit:v1.27.4@sha256:df6c2541907e1be6fac21f509927cf6ed771617a1f4b361ef66d97bd05593d2d
+        env:
+          MP_DISABLE_VERSION_CHECK: "true"
+        ports:
+          - 28125:1025
+          - 28025:8025
     env:
       # 실제 DB를 붙여야 BlackboxApplicationTests가 Flyway 적용과 ddl-auto=validate 검사를 제대로 한다.
       SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/blackbox_test
@@ -44,6 +50,7 @@ jobs:
       SPRING_DATASOURCE_PASSWORD: blackbox_test
       JWT_SECRET: ci-only-dummy-signing-key-not-a-real-secret-0123456789
       JAVA_TOOL_OPTIONS: -Dspring.test.context.cache.maxSize=3
+      BB_MAIL_TEST_API: http://127.0.0.1:28025   # 있을 때만 EmailVerificationMailpitTest가 돈다
     steps:
       - uses: actions/checkout@v4
 
