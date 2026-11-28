@@ -193,7 +193,7 @@ public class AgentRunner {
         JsonNode root;
         try {
             // 모델이 코드 블록 표시나 앞뒤 말을 붙여도 객체만 읽는다
-            root = json.readTree(answer.substring(answer.indexOf('{'), answer.lastIndexOf('}') + 1));
+            root = ModelJson.read(json, answer);
         } catch (JacksonException | IndexOutOfBoundsException e) {
             return new Answer("", List.of(), Map.of(), List.of("답이 JSON 객체 하나가 아니다"), List.of());
         }

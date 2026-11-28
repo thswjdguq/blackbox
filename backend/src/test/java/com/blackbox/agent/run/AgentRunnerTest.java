@@ -189,6 +189,17 @@ class AgentRunnerTest {
         assertTrue(materials.get(1).contains("proposals[0].content.deliverable.title"), "어디가 틀렸는지 알려 준다: " + materials.get(1));
     }
 
+    /** 카드 객체를 닫는 "}"가 빠진 답은 괄호 짝만 맞춰 읽고, 모델에 다시 묻지 않는다(A-83). 내용은 그대로 검증을 지난다 */
+    @Test void anAnswerMissingOneClosingBraceIsReadWithoutAskingAgain() throws Exception {
+        assertTrue(PLAN.endsWith("\"tasks\": []}}]}"));
+        answers.add(PLAN.substring(0, PLAN.length() - "}]}".length()) + "]}");
+
+        Recorder events = run(member, PlanFromBriefSkill.NAME, "{\"briefText\":\"안내문\"}");
+
+        assertEquals("done 2", events.seen.get(events.seen.size() - 1));
+        assertEquals(1, guides.size(), "다시 묻지 않는다");
+    }
+
     @Test void aModelFailureEndsTheRunWithAFixedSentence() throws Exception {
         doThrow(new AgentModelException(AgentModelException.Reason.FAILED, "모델 호출에 실패했습니다", new IllegalStateException("429 quota")))
                 .when(model).generate(any(), any(), any());
